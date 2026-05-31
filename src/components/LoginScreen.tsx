@@ -1,0 +1,927 @@
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ChevronRight,
+  RefreshCw,
+  Copy,
+  Volume2,
+  VolumeX,
+  Info,
+  Bell,
+  Sparkles,
+  AlertCircle,
+  Share2,
+  MessageCircle,
+  Shield,
+  Zap,
+  Users,
+  Hash,
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import AMLogo from "./AMLogo.tsx";
+
+interface LoginScreenProps {
+  onLogin: (
+    username: string,
+    role: string,
+    color: string,
+    uid?: string,
+  ) => void;
+  primaryTheme: "dark" | "amoled";
+  setPrimaryTheme: (theme: "dark" | "amoled") => void;
+}
+
+// Generate guest IDs like LC-Guest48291
+function generateRandomGuestId() {
+  const num = Math.floor(Math.random() * 90000) + 10000;
+  return `LC_Guest_${num}`;
+}
+
+const NICKNAME_ADJECTIVES = [
+  "Shadow",
+  "Luna",
+  "Neon",
+  "Void",
+  "Solar",
+  "Glitch",
+  "Alpha",
+  "Cyber",
+  "Hunter",
+];
+const NICKNAME_COLORS = [
+  "#22c55e",
+  "#3fb950",
+  "#58a6ff",
+  "#a371f7",
+  "#ef4444",
+  "#f59e0b",
+];
+
+export default function LoginScreen({
+  onLogin,
+  primaryTheme,
+  setPrimaryTheme,
+}: LoginScreenProps) {
+  const [email, setEmail] = useState("example@email.com");
+  const [password, setPassword] = useState("•••••••••");
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+
+  // Sound feedback preferences
+  const [soundOn, setSoundOn] = useState(true);
+
+  // Suggested guest ID state
+  const [guestId, setGuestId] = useState(generateRandomGuestId());
+
+  // Show a greeting banner toast at the top right of the screen
+  const [showSuccessToast, setShowSuccessToast] = useState(true);
+
+  // Non-blocking in-app toast notification state
+  const [toastMsg, setToastMsg] = useState<{
+    text: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
+
+  const showToast = (
+    text: string,
+    type: "success" | "error" | "info" = "info",
+  ) => {
+    setToastMsg({ text, type });
+    playBeepSound(
+      type === "error" ? 300 : type === "success" ? 800 : 600,
+      "sine",
+    );
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+      setToastMsg((prev) => (prev?.text === text ? null : prev));
+    }, 5000);
+  };
+
+  // Stateful share/invite modal
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const [customLogoUrl, setCustomLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedLogo = localStorage.getItem("lamma_custom_logo_url");
+    if (savedLogo) {
+      setCustomLogoUrl(savedLogo);
+    }
+  }, []);
+
+  // Simulated live active users list
+  const activeMembers = [
+    {
+      name: "ShadowX",
+      role: "Owner",
+      roleColor: "text-red-400 bg-red-500/10 border-red-500/20",
+      status: "Online",
+      avatar: "🧔",
+      color: "#ef4444",
+    },
+    {
+      name: "Luna_99",
+      role: "Mod",
+      roleColor: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+      status: "Online",
+      avatar: "👩",
+      color: "#a371f7",
+    },
+    {
+      name: "CodeMaster",
+      role: "User",
+      roleColor: "text-green-400 bg-green-500/10 border-green-500/20",
+      status: "Online",
+      avatar: "👨",
+      color: "#22c55e",
+    },
+    {
+      name: "NightOwl",
+      role: "Idle",
+      roleColor: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
+      status: "Idle",
+      avatar: "🦉",
+      color: "#f59e0b",
+    },
+  ];
+
+  const handleRegenerateGuestId = () => {
+    setGuestId(generateRandomGuestId());
+    playBeepSound(600, "sine");
+  };
+
+  const playBeepSound = (freq = 440, type: OscillatorType = "sine") => {
+    if (!soundOn) return;
+    try {
+      const AudioCtx =
+        window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch (_) {}
+  };
+
+  const handleCopyGuestId = () => {
+    navigator.clipboard.writeText(guestId);
+    playBeepSound(800, "square");
+    showToast(`تم نسخ اسم المعرف بنجاح: ${guestId}`, "success");
+  };
+
+  const handleFormLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    const cleanNick = email.split("@")[0] || "مستخدم_لمة";
+    const assignedColor =
+      NICKNAME_COLORS[Math.floor(Math.random() * NICKNAME_COLORS.length)];
+    const assumedRole = email.includes("admin") ? "admin" : "user";
+
+    playBeepSound(520, "sine");
+    onLogin(cleanNick, assumedRole, assignedColor);
+  };
+
+  const handleCopyLink = () => {
+    setShowShareModal(true);
+    playBeepSound(480, "sine");
+  };
+
+  const fallbackCopy = (text: string) => {
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.position = "fixed";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand("copy");
+      document.body.removeChild(textArea);
+      if (successful) {
+        setCopiedLink(true);
+        playBeepSound(800, "sine");
+        setTimeout(() => setCopiedLink(false), 3000);
+      } else {
+        throw new Error("fallback prompt");
+      }
+    } catch (err) {
+      prompt("يرجى نسخ الرابط يدوياً من المربع أدناه:", text);
+    }
+  };
+
+  const handleSwiftGuestLogin = async () => {
+    const assignedColor =
+      NICKNAME_COLORS[Math.floor(Math.random() * NICKNAME_COLORS.length)];
+
+    // Instant local-guest bypass
+    playBeepSound(440, "sine");
+    showToast("🚀 تم الدخول السريع بأمان بوضع الزائر المحلي!", "success");
+    setTimeout(() => {
+      onLogin(guestId, "guest", assignedColor);
+    }, 200);
+  };
+
+  const handleGoogleLogin = async () => {
+    showToast("⚠️ تسجيل الدخول باستخدام Google غير متاح حالياً.", "error");
+  };
+
+  return (
+    <div
+      className={`h-screen w-full relative overflow-y-auto overflow-x-hidden transition-colors duration-500 font-sans ${
+        primaryTheme === "amoled"
+          ? "bg-black text-gray-100"
+          : "bg-[#040805] text-[#e2e8f0]"
+      }`}
+      dir="rtl"
+    >
+      {/* Background radial glowing gradients of emerald green */}
+      <div className="absolute top-[10%] left-[5%] w-[450px] h-[450px] bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[10%] right-[5%] w-[500px] h-[500px] bg-green-500/5 rounded-full blur-[160px] pointer-events-none" />
+
+      {/* Grid of sparks overlay */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.03),transparent)] pointer-events-none" />
+
+      {/* Floating Sparkles decorative layers */}
+      <div className="absolute top-24 left-[15%] w-1.5 h-1.5 bg-green-400 rounded-full animate-ping" />
+      <div className="absolute bottom-32 right-[20%] w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+      <div className="absolute top-[40%] right-[10%] w-1 h-1 bg-yellow-300 rounded-full animate-pulse" />
+
+      {/* Dynamic Scrollable Wrapper with centering behavior */}
+      <div className="min-h-full w-full flex items-center justify-center p-3 sm:p-4 md:p-6 lg:py-10">
+        {/* Main Grid Wrapper */}
+        <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 items-start relative z-10">
+          {/* COLUMN 1: BRANDING & SYSTEM STATS (LEFT) */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="lg:col-span-3 flex flex-col gap-3 rounded-[24px] bg-black/40 border border-green-500/10 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.03)] h-auto w-full p-4"
+          >
+            {/* Branding Header */}
+            <div className="flex flex-col items-center text-center pb-2">
+              <img
+                src={customLogoUrl || "/images/lamma-logo.png"}
+                alt="LAMMA CHAT"
+                className="w-[180px] max-w-full drop-shadow-xl my-2"
+              />
+              <div className="mt-1 flex items-center justify-center p-2 rounded-full bg-emerald-950/60 border border-green-500/30 text-green-400 shadow-[0_0_15px_rgba(16,185,129,0.2)] animate-pulse">
+                <MessageCircle size={18} />
+              </div>
+              <p className="mt-2 text-gray-400 text-[11px] font-bold leading-relaxed px-4">
+                الغرف الصوتية والنصية الخاصة والعامة مشفرة ومؤمنة بالكامل
+              </p>
+              <div className="w-16 h-[2px] bg-gradient-to-r from-transparent via-green-500 to-transparent mt-3" />
+            </div>
+
+            {/* Core Server Stats Blocks */}
+            <div className="flex-1 flex flex-col gap-2 mt-1">
+              <div className="p-3 rounded-xl bg-black/50 border border-green-500/10 hover:border-green-500/30 transition-all duration-300">
+                <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold mb-1">
+                  <span>حالة الخوادم</span>
+                  <span className="text-green-400">99.9% Online</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-ping flex-shrink-0" />
+                  <span className="font-black text-white text-xs">
+                    Servers Online
+                  </span>
+                  <div className="mr-auto w-12 h-6 flex items-center opacity-70">
+                    <svg
+                      className="w-full h-full"
+                      viewBox="0 0 100 40"
+                      fill="none"
+                    >
+                      <path
+                        d="M 10 20 L 30 20 L 35 10 L 40 30 L 45 5 L 50 35 L 55 20 L 60 20 L 65 15 L 70 25 L 75 20 L 95 20"
+                        stroke="#10b981"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-black/50 border border-green-500/10 hover:border-green-500/30 transition-all duration-300">
+                <div className="text-[10px] text-gray-400 font-bold flex justify-between items-center mb-1">
+                  <span>المتصلون</span>
+                  <span className="text-green-400 animate-pulse">نشط الآن</span>
+                </div>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-2xl font-black text-[#a3e635] drop-shadow-[0_0_12px_rgba(163,230,53,0.3)]">
+                    12,845+
+                  </span>
+                  <span className="text-[10px] text-gray-300 font-bold">
+                    أونلاين
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-black/50 border border-green-500/10 hover:border-green-500/30 transition-all duration-300 space-y-2">
+                <div className="flex items-center gap-1.5 pb-1.5 border-b border-green-500/10 text-right">
+                  <Shield size={12} className="text-blue-400 flex-shrink-0" />
+                  <span className="text-[10px] font-black text-white">
+                    جودة الاتصال والأمان
+                  </span>
+                </div>
+                <div className="space-y-1.5 text-right">
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-gray-400 font-bold">
+                      زمن الاستجابة (Ping):
+                    </span>
+                    <span className="text-green-400 font-black">15ms ⚡</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-gray-400 font-bold">
+                      نظام التشفير:
+                    </span>
+                    <span className="text-[#a3e635] font-black">
+                      WSS / AES-256
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-black/50 border border-green-500/10 hover:border-green-500/30 transition-all duration-300">
+                <div className="flex items-center justify-between pb-1.5 border-b border-green-500/10 mb-1.5 text-right">
+                  <div className="flex items-center gap-1.5 text-[10px] font-black text-white">
+                    <Sparkles
+                      size={12}
+                      className="text-green-400 animate-pulse"
+                    />
+                    <span>تحديثات المنصة</span>
+                  </div>
+                  <span className="text-[8px] bg-[#a3e635]/15 text-[#a3e635] px-1.5 py-0.5 rounded-full font-black">
+                    V14.2
+                  </span>
+                </div>
+                <div className="space-y-2 text-right mt-2 text-[10px] font-semibold text-gray-300">
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-green-400 mt-0.5">⚡</span>
+                    <p className="leading-tight">غرف صوتية بجودة HD مجانية</p>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-green-400 mt-0.5">⚡</span>
+                    <p className="leading-tight">
+                      مشاركة آمنة للوسائط بدون ضغط
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-green-400 mt-0.5">⚡</span>
+                    <p className="leading-tight">
+                      نظام رتب وشارات حصرية للأعضاء
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ================= COLUMN 2 (MIDDLE COLUMN): THE LOGIN CARD ================= */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="lg:col-span-5 flex flex-col justify-start items-center h-auto w-full relative z-20"
+          >
+            {/* Rounded glass container with green neon border shadow */}
+            <div
+              className={`w-full max-w-[460px] h-auto relative rounded-[32px] p-6 md:p-8 border overflow-hidden shadow-2xl transition-all duration-300 flex flex-col ${
+                primaryTheme === "amoled"
+                  ? "bg-neutral-950/90 border-green-500/20 shadow-[0_0_30px_rgba(16,185,129,0.1)]"
+                  : "bg-white/[0.02] border-green-500/15 backdrop-blur-xl shadow-[0_0_30px_rgba(16,185,129,0.08)]"
+              }`}
+            >
+              {/* Horizontal neon neon ambient line at the top rim of card */}
+              <div className="absolute top-0 right-0 left-0 h-[2.5px] bg-gradient-to-r from-transparent via-green-500 to-transparent animate-pulse" />
+
+              {/* Glowing corner beads */}
+              <div className="absolute top-3 left-3 flex gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#a3e635] animate-pulse" />
+              </div>
+
+              {/* Header logo & headings */}
+              <div className="text-center mb-4">
+                <div className="mx-auto flex justify-center mb-2 mt-0">
+                  <img
+                    src={customLogoUrl || "/images/lamma-logo.png"}
+                    alt="LAMMA CHAT"
+                    className="w-[200px] sm:w-[260px] max-w-full h-auto drop-shadow-2xl"
+                  />
+                </div>
+                <h2 className="text-[20px] md:text-2xl font-black text-white m-0 mt-2">
+                  تسجيل الدخول
+                </h2>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  مرحباً بك! الرجاء تسجيل الدخول للمتابعة
+                </p>
+              </div>
+
+              {/* Input credentials forms */}
+              <form onSubmit={handleFormLogin} className="space-y-3">
+                {/* Email / Username field */}
+                <div className="space-y-1">
+                  <label
+                    htmlFor="email"
+                    className="block text-[11px] font-black text-gray-400 mr-1 text-right"
+                  >
+                    البريد الإلكتروني
+                  </label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-green-500 pointer-events-none">
+                      <Mail size={16} />
+                    </span>
+                    <input
+                      id="email-field"
+                      name="email"
+                      type="text"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full pr-11 pl-4 py-2.5 bg-black/60 border border-green-500/15 focus:border-green-400 rounded-2xl text-xs focus:ring-1 focus:ring-green-400/30 focus:outline-none text-white transition-all font-mono"
+                      placeholder="example@email.com"
+                      autoComplete="email"
+                    />
+                  </div>
+                </div>
+
+                {/* Password field */}
+                <div className="space-y-1">
+                  <label
+                    htmlFor="password"
+                    className="block text-[11px] font-black text-gray-400 mr-1 text-right"
+                  >
+                    كلمة المرور
+                  </label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-green-500 pointer-events-none">
+                      <Lock size={16} />
+                    </span>
+                    <input
+                      id="password-field"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full pr-11 pl-12 py-2.5 bg-black/60 border border-green-500/15 focus:border-green-400 rounded-2xl text-xs focus:ring-1 focus:ring-green-400/30 focus:outline-none text-white transition-all font-mono"
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500 hover:text-green-400 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Custom remember state & forgot links */}
+                <div className="flex justify-between items-center text-[11px] pt-1 select-none">
+                  <label
+                    htmlFor="rememberMe"
+                    className="flex items-center gap-2 cursor-pointer text-gray-300 hover:text-white"
+                  >
+                    <input
+                      id="rememberMe"
+                      name="rememberMe"
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded border-green-500/20 bg-black/50 text-green-500 accent-green-600 focus:ring-0"
+                    />
+                    <span>تذكرني</span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      showToast(
+                        "📧 سيتم توجيه رمز إعادة تعيين كلمة المرور إلى بريدك الإلكتروني قريباً.",
+                        "info",
+                      )
+                    }
+                    className="text-green-400 hover:text-green-300 font-extrabold transition-all"
+                  >
+                    نسيت كلمة المرور؟
+                  </button>
+                </div>
+
+                {/* Glowing Luminous green submit button matching button in login screen picture */}
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-gradient-to-l from-emerald-600 via-green-500 to-[#a3e635] text-black rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(16,185,129,0.3)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.55)] transition-all cursor-pointer border border-[#a3e635]/30"
+                >
+                  <span>تسجيل الدخول</span>
+                  <ChevronRight size={16} className="rotate-180" />
+                </button>
+              </form>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3.5 my-3 text-gray-400 text-[11px] font-bold">
+                <span className="flex-1 h-[1px] bg-gradient-to-l from-green-500/10 to-transparent" />
+                <span>أو</span>
+                <span className="flex-1 h-[1px] bg-gradient-to-r from-green-500/10 to-transparent" />
+              </div>
+
+              {/* Google Authentication row button */}
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="w-full py-2.5 bg-black/40 hover:bg-white/[0.04] border border-green-500/10 hover:border-green-500/30 rounded-2xl text-[11px] font-black flex items-center justify-between px-4 transition-all text-gray-300 hover:text-white"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285f4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34a853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#fbbc05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    />
+                    <path
+                      fill="#ea4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 11.99 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                  <span>متابعة باستخدام Google</span>
+                </div>
+                <ChevronRight size={13} className="rotate-180 opacity-60" />
+              </button>
+
+              {/* Fast login as guest box styled exactly like the bottom grid in middle card */}
+              <div className="mt-4 p-3 rounded-xl bg-gradient-to-br from-green-500/[0.04] to-emerald-950/[0.04] border border-green-500/10">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="flex items-center gap-1">
+                    <Sparkles
+                      size={13}
+                      className="text-green-400 animate-spin duration-3000"
+                    />
+                    <span className="text-[11px] font-black text-white">
+                      دخول سريع باستخدام Lamma Chat
+                    </span>
+                  </div>
+                  <span className="text-[9px] text-[#a3e635] bg-green-500/10 px-2 py-0.5 rounded-full font-bold">
+                    تلقائي
+                  </span>
+                </div>
+
+                <p className="text-[10px] text-gray-400 mb-3 text-right">
+                  سيتم إنشاء اسم مستخدم ورقم تلقائياً والدخول فوراً
+                </p>
+
+                <div className="grid grid-cols-12 gap-3 items-center">
+                  {/* Robot/User representation */}
+                  <div className="col-span-3 flex justify-center">
+                    <div className="relative w-12 h-12 rounded-2xl bg-black/60 border border-green-500/20 flex items-center justify-center text-2xl shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                      <span>🤖</span>
+                      <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-green-500 border border-black animate-pulse" />
+                    </div>
+                  </div>
+
+                  {/* Proposed Guest username with Copy & Regenerate tools */}
+                  <div className="col-span-9 space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        id="guest-id-display"
+                        name="guestId"
+                        type="text"
+                        readOnly
+                        value={guestId}
+                        className="flex-1 bg-black/60 border border-green-500/15 text-xs px-2.5 py-2 rounded-xl text-green-300 font-mono text-center focus:outline-none"
+                        autoComplete="off"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={handleCopyGuestId}
+                        className="p-2 rounded-lg bg-black/60 hover:bg-black text-gray-400 hover:text-white border border-green-500/10 hover:border-green-500/30 transition-all"
+                        title="نسخ المعرف"
+                      >
+                        <Copy size={13} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleRegenerateGuestId}
+                        className="p-2 rounded-lg bg-black/60 hover:bg-black text-gray-400 hover:text-white border border-green-500/10 hover:border-green-500/30 transition-all group"
+                        title="توليد معرف جديد"
+                      >
+                        <RefreshCw
+                          size={13}
+                          className="group-hover:rotate-180 transition-transform duration-500"
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Green swift guest button to sign in directly */}
+                <button
+                  type="button"
+                  onClick={handleSwiftGuestLogin}
+                  className="w-full mt-3 py-2.5 bg-[#a3e635]/5 hover:bg-[#a3e635]/15 border border-[#a3e635]/25 hover:border-[#a3e635] text-xs font-black rounded-xl text-[#a3e635] hover:text-white transition-all cursor-pointer"
+                >
+                  🚀 دخول مباشر بالاسم المقترح
+                </button>
+              </div>
+
+              {/* Bottom link as Guest */}
+              <div className="mt-4 text-center space-y-3">
+                <button
+                  type="button"
+                  id="continue-as-guest-btn"
+                  name="continueAsGuest"
+                  onClick={handleSwiftGuestLogin}
+                  className="text-xs text-gray-400 hover:text-green-300 flex items-center justify-center gap-1.5 mx-auto font-black transition-all"
+                >
+                  <span>Continue as Guest</span>
+                  <ChevronRight size={13} className="rotate-180 opacity-60" />
+                </button>
+
+                <button
+                  type="button"
+                  id="copy-app-link-btn"
+                  name="copyAppLink"
+                  onClick={handleCopyLink}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full text-[10px] text-gray-300 hover:text-white border border-white/5 transition-all cursor-pointer mx-auto"
+                >
+                  <Share2 size={12} />
+                  <span>هات الرابط بتاعى (Get My App Link)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Footer Rights */}
+            <div className="text-center mt-auto pt-4 text-xs text-gray-400/80 font-bold">
+              © 2026 Lamma Chat. جميع الحقوق محفوظة{" "}
+              <span className="text-green-500">💚</span>
+            </div>
+          </motion.div>
+
+          {/* COLUMN 3: LIVE MEMBERS & INFO */}
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="lg:col-span-4 flex flex-col gap-3 rounded-[24px] bg-black/40 border border-green-500/10 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.03)] h-auto w-full p-4"
+          >
+            {/* Intro Highlights */}
+            <div className="flex flex-col gap-2 space-y-1">
+              {/* Privacy Item */}
+              <div className="p-2.5 rounded-xl bg-black/40 border border-green-500/10 hover:border-green-500/30 transition-all text-right flex items-center gap-3">
+                <span className="text-sm bg-green-500/10 w-8 h-8 flex items-center justify-center rounded-lg border border-green-500/20 flex-shrink-0 text-green-400">
+                  <Shield size={16} />
+                </span>
+                <div className="flex-1">
+                  <span className="text-[12px] font-black text-white block">
+                    آمن وخصوصي
+                  </span>
+                  <span className="text-[10px] text-gray-400 leading-none block font-semibold mt-1">
+                    نحمي بياناتك وخصوصيتك بأعلى معايير الأمان
+                  </span>
+                </div>
+              </div>
+
+              {/* Speed Item */}
+              <div className="p-2.5 rounded-xl bg-black/40 border border-green-500/10 hover:border-green-500/30 transition-all text-right flex items-center gap-3">
+                <span className="text-sm bg-yellow-500/10 w-8 h-8 flex items-center justify-center rounded-lg border border-yellow-500/20 flex-shrink-0 text-yellow-400">
+                  <Zap size={16} />
+                </span>
+                <div className="flex-1">
+                  <span className="text-[12px] font-black text-white block">
+                    سريع وسهل
+                  </span>
+                  <span className="text-[10px] text-gray-400 leading-none block font-semibold mt-1">
+                    تواصل مباشرة بدون تعقيد وبأسرع استجابة
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-black/50 border border-green-500/10 backdrop-blur-md rounded-xl space-y-3 mt-1">
+              <div className="flex justify-between items-center border-b border-green-500/10 pb-2">
+                <span className="text-[10px] uppercase font-bold text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">
+                  Live النشط الآن
+                </span>
+                <h3 className="text-xs font-black text-white flex items-center gap-1.5">
+                  مين موجود؟ <Users size={12} className="text-green-400" />
+                </h3>
+              </div>
+              <div className="space-y-2">
+                {activeMembers.map((member, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2 hover:bg-black/40 border border-transparent hover:border-green-500/10 transition-all cursor-default rounded-xl"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl drop-shadow-md">
+                        {member.avatar}
+                      </span>
+                      <div className="text-right">
+                        <span
+                          className="text-xs font-black block"
+                          style={{ color: member.color }}
+                        >
+                          {member.name}
+                        </span>
+                        <span className="text-[9px] text-gray-400 font-bold block mt-0.5">
+                          {member.role}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_#22c55e] animate-pulse"></span>
+                  </div>
+                ))}
+                <div className="text-center text-[10px] text-gray-500 font-bold mt-2 pt-1 border-t border-white/5">
+                  وأكثر من <span className="text-green-400">12,000+</span> عضو
+                  آخر...
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-black/50 border border-green-500/10 backdrop-blur-md rounded-xl space-y-3 mt-1">
+              <div className="flex justify-between items-center border-b border-green-500/10 pb-2">
+                <h3 className="text-xs font-black text-white flex items-center gap-1.5 w-full justify-end">
+                  الغرف الشائعة <Hash size={12} className="text-green-400" />
+                </h3>
+              </div>
+              <div className="space-y-1.5 text-right font-semibold">
+                <div className="flex justify-between items-center p-2 rounded-lg bg-black/30 border border-green-500/5">
+                  <span className="text-[10px] text-gray-300">
+                    💬 العام والتعارف
+                  </span>
+                  <span className="text-green-400 font-bold text-[9px] bg-green-500/10 px-1.5 py-0.5 rounded">
+                    4.2k نشط
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-2 rounded-lg bg-black/30 border border-green-500/5">
+                  <span className="text-[10px] text-gray-300">
+                    🎮 ملتقى الجيمرز
+                  </span>
+                  <span className="text-green-400 font-bold text-[9px] bg-green-500/10 px-1.5 py-0.5 rounded">
+                    1.8k نشط
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-2 rounded-lg bg-black/30 border border-green-500/5">
+                  <span className="text-[10px] text-gray-300">
+                    🎙️ الصالون العائلي الصوتي
+                  </span>
+                  <span className="text-green-400 font-bold text-[9px] bg-green-500/10 px-1.5 py-0.5 rounded">
+                    920 نشط
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {showShareModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[99999] flex items-center justify-center p-4 overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="w-full max-w-md bg-[#050a06] border border-green-500/20 rounded-[28px] p-6 text-right relative shadow-[0_0_50px_rgba(16,185,129,0.1)] my-8"
+            >
+              <div className="flex items-center justify-between border-b border-green-500/10 pb-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+                  <h3 className="text-base font-black text-white">
+                    طريقة الدخول ومشاركة شات لمة 💚
+                  </h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowShareModal(false);
+                    setCopiedLink(false);
+                  }}
+                  className="text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all cursor-pointer"
+                >
+                  إغلاق
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  💡{" "}
+                  <strong className="text-green-400 font-black">
+                    ليه شات لمة مش بيظهر بالبحث على جوجل؟
+                  </strong>
+                  <br />
+                  شات لمة بيشتغل بخصوصية تامة ومشفر لتوفير غرف آمنة لك
+                  ولأصدقائك. محركات البحث مثل جوجل لا تقوم بأرشفة هذه الروابط
+                  لحماية خصوصيتك وسرية غرفتك من الغرباء أو المتسللين.
+                </p>
+
+                <div className="p-3 bg-white/5 border border-green-500/15 rounded-xl">
+                  <label className="block text-[10px] text-gray-400 font-bold mb-1.5">
+                    رابط الدخول المباشر للغرفة:
+                  </label>
+                  <div className="flex gap-2 items-center">
+                    <button
+                      onClick={() => {
+                        const u = window.location.origin.replace(
+                          "ais-dev-",
+                          "ais-pre-",
+                        );
+                        try {
+                          if (
+                            navigator.clipboard &&
+                            navigator.clipboard.writeText
+                          ) {
+                            navigator.clipboard
+                              .writeText(u)
+                              .then(() => {
+                                setCopiedLink(true);
+                                playBeepSound(800, "sine");
+                                setTimeout(() => setCopiedLink(false), 3000);
+                              })
+                              .catch(() => fallbackCopy(u));
+                          } else {
+                            fallbackCopy(u);
+                          }
+                        } catch (err) {
+                          fallbackCopy(u);
+                        }
+                      }}
+                      className={`px-4 py-2.5 rounded-lg font-black text-xs transition-all flex-shrink-0 cursor-pointer ${
+                        copiedLink
+                          ? "bg-green-500/20 text-green-300 border border-green-500/30 animate-pulse"
+                          : "bg-[#a3e635] text-black hover:bg-[#a3e635]/90"
+                      }`}
+                    >
+                      {copiedLink ? "✅ تم النسخ!" : "إسحب الرابط"}
+                    </button>
+                    <input
+                      type="text"
+                      readOnly
+                      value={window.location.origin.replace(
+                        "ais-dev-",
+                        "ais-pre-",
+                      )}
+                      onClick={(e) => {
+                        (e.target as HTMLInputElement).select();
+                      }}
+                      className="w-full bg-black/60 border border-green-500/10 rounded-lg p-2 text-center text-xs text-gray-200 font-mono select-all focus:outline-none focus:border-green-500/30"
+                    />
+                  </div>
+                  <span className="block text-[9px] text-gray-500 mt-1.5">
+                    💡 تلميح: لو كبس الزرار مش مدعوم في متصفحك بسبب الحماية،
+                    اضغط داخل المربع الفوقاني لتحديد العنوان كله ثم انسخه بنفسك
+                    يدوياً.
+                  </span>
+                </div>
+
+                <div className="flex flex-col items-center justify-center p-4 bg-black/40 border border-green-500/10 rounded-xl text-center">
+                  <span className="text-[10px] text-gray-400 font-bold mb-2">
+                    أو وجّه كاميرا موبايلك (أو موبايل صديقك) نحو الكود ده للدخول
+                    فوراً:
+                  </span>
+                  <div className="bg-white p-2.5 rounded-2xl inline-block border-2 border-[#a3e635]/30">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(window.location.origin.replace("ais-dev-", "ais-pre-"))}`}
+                      alt="QR Code"
+                      className="w-[140px] h-[140px]"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <span className="text-[9px] text-green-400 mt-2 font-black">
+                    🟢 اتصال مباشر آمن ومفعل بالكامل
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

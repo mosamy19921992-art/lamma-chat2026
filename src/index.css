@@ -1,0 +1,125 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;800;900&family=Tajawal:wght@400;700;900&family=Space+Grotesk:wght@400;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Cairo", "Tajawal", "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "Space Grotesk", monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* =========================
+   LAMMA GOLD LOGO
+========================= */
+
+.login-logo-wrap{
+    display:flex;
+    justify-content:center;
+}
+
+.login-logo{
+    max-width:100%;
+    height:auto;
+    display:block;
+}
+
+.lamma-logo{
+    text-align:center;
+    margin-bottom:30px;
+    user-select:none;
+}
+
+.lamma-am{
+    font-family: "Times New Roman", serif;
+    font-size:120px;
+    font-weight:700;
+    line-height:1;
+
+    background: linear-gradient(
+        180deg,
+        #fff3a0 0%,
+        #f6d365 25%,
+        #d4af37 50%,
+        #f6d365 75%,
+        #fff3a0 100%
+    );
+
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+
+    text-shadow:
+        0 0 10px rgba(212,175,55,.6),
+        0 0 20px rgba(212,175,55,.5),
+        0 0 40px rgba(212,175,55,.4);
+
+    letter-spacing:-8px;
+}
+
+.lamma-ar{
+    margin-top:-10px;
+
+    font-size:52px;
+    font-weight:800;
+
+    background: linear-gradient(
+        180deg,
+        #fff3a0,
+        #d4af37
+    );
+
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+
+    text-shadow:
+        0 0 12px rgba(212,175,55,.5);
+}
+
+.lamma-en{
+    margin-top:12px;
+
+    color:#ffffff;
+
+    letter-spacing:12px;
+
+    font-size:22px;
+
+    font-weight:300;
+}
+
+/* Custom gorgeous scrollbar aesthetics for smooth dark transitions */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(34, 197, 90, 0.15);
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 197, 90, 0.4);
+}
+
+@keyframes marquee {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
