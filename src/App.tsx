@@ -18,31 +18,37 @@ export default function App() {
     return (saved === "dark" || saved === "amoled") ? saved : "dark";
   });
 
- // التحقق من الجلسة عبر Supabase
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setUser({
-          nickname: session.user.email || 'User',
-          role: 'user', // يمكنك لاحقاً ربط الرتبة بجدول الأدمن
-          color: 'white',
-          uid: session.user.id
-        });
-      }
-    });
+// استبدل كود الـ useEffect الذي أضفته بهذا الكود:
+useEffect(() => {
+  // التأكد من وجود supabase قبل استخدامه
+  if (!supabase) return;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        setUser({
-          nickname: session.user.email || 'User',
-          role: 'user',
-          color: 'white',
-          uid: session.user.id
-        });
-      } else {
-        setUser(null);
-      }
-    });
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session?.user) {
+      setUser({
+        nickname: session.user.email || 'User',
+        role: 'user',
+        color: 'white',
+        uid: session.user.id
+      });
+    }
+  });
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (session?.user) {
+      setUser({
+        nickname: session.user.email || 'User',
+        role: 'user',
+        color: 'white',
+        uid: session.user.id
+      });
+    } else {
+      setUser(null);
+    }
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
 
     return () => subscription.unsubscribe();
   }, []);
