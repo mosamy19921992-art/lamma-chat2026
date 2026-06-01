@@ -21,16 +21,12 @@ export default function App() {
 
     //2. الاستماع لتغييرات الحالة (تسجيل دخول او خروج)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser({
-          nickname: session.user.email,
+     setUser (session?.user ? {
+          nickname: session?.user.email,
           role: 'user',
           color: 'white',
           uid: session.user.id
-        });
-      } else {
-        setUser(null);
-      }
+      } : null);
     });
 
     return () => subscription.unsubscribe();
