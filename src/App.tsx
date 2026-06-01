@@ -7,7 +7,7 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    // 1. محاولة جلب الجلسه الحالية
+    // 1. محاولة جلب الجلسة الحالية
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser({
@@ -19,13 +19,13 @@ export default function App() {
       }
     });
 
-    //2. الاستماع لتغييرات الحالة (تسجيل دخول او خروج)
+    // 2. الاستماع لتغييرات الحالة (تسجيل دخول أو خروج)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-     setUser (session?.user ? {
-          nickname: session?.user.email,
-          role: 'user',
-          color: 'white',
-          uid: session.user.id
+      setUser(session?.user ? { 
+        nickname: session.user.email, 
+        role: 'user', 
+        color: 'white', 
+        uid: session.user.id 
       } : null);
     });
 
