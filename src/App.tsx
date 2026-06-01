@@ -18,28 +18,38 @@ export default function App() {
     return (saved === "dark" || saved === "amoled") ? saved : "dark";
   });
 
-  // Track session on initial mount
+ // التحقق من الجلسة عبر Supabase
   useEffect(() => {
-    const savedUser = localStorage.getItem("lamma_user_session");
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        setUser(parsed);
-      } catch (e) {
-        console.warn("Corrupted session data discarded");
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setUser({
+          nickname: session.user.email || 'User',
+          role: 'user', // يمكنك لاحقاً ربط الرتبة بجدول الأدمن
+          color: 'white',
+          uid: session.user.id
+        });
       }
-    }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setUser({
+          nickname: session.user.email || 'User',
+          role: 'user',
+          color: 'white',
+          uid: session.user.id
+        });
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogin = (nickname: string, role: string, color: string, uid?: string) => {
-    const newSession = { nickname, role, color };
-    setUser(newSession);
-    localStorage.setItem("lamma_user_session", JSON.stringify(newSession));
-  };
-
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem("lamma_user_session");
   };
 
   const handleSetPrimaryTheme = (theme: "dark" | "amoled") => {
