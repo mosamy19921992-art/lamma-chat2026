@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import LoginScreen from './components/LoginScreen.tsx';
 import ChatScreen from './components/ChatScreen.tsx';
-import { supabase } from './supabase';
+import { supabase } from '../lib/supabase';
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
@@ -9,7 +9,7 @@ export default function App() {
   useEffect(() => {
     if (!supabase) return;
 
-    // جلب الجلسة الحقيقية من Supabase
+    // جلب الجلسة الحقيقية
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser({
