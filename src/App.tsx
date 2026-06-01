@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import LoginScreen from './components/LoginScreen.tsx';
 import ChatScreen from './components/ChatScreen.tsx';
-import { supabase } from './lib/supabase';
+import { supabase } from './supabase';
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
