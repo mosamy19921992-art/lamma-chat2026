@@ -50,13 +50,16 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import AMLogo from "./AMLogo.tsx";
 import { OperationType } from "../lib/types.ts";
-import { supabase, SupabaseMessage } from "../lib/supabase.ts";
+import { getClientUid, supabase, SupabaseMessage } from "../lib/supabase.ts";
 
 interface ChatScreenProps {
   currentUser: {
     nickname: string;
     role: string;
     color: string;
+    uid?: string | null;
+    email?: string | null;
+    authProvider?: "supabase" | "guest";
   };
   onLogout: () => void;
   primaryTheme: "dark" | "amoled";
@@ -261,16 +264,32 @@ const getFrameFromAuthor = (author: string, currentUserObj: any): string => {
   return "";
 };
 
+function hexToRgba(hex: string, alpha: number) {
+  const raw = hex.replace("#", "").trim();
+  const value = raw.length === 3 ? raw.split("").map((c) => c + c).join("") : raw;
+  if (value.length !== 6) return `rgba(16,185,129,${alpha})`;
+  const r = parseInt(value.slice(0, 2), 16);
+  const g = parseInt(value.slice(2, 4), 16);
+  const b = parseInt(value.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 const ROOMS_DEF = [
-  { id: "egypt", name: "مصر", icon: "🇪🇬", count: 128 },
-  { id: "arab", name: "كل العرب", icon: "🌍", count: 99 },
-  { id: "romance", name: "رومانسية", icon: "💖", count: 76 },
-  { id: "youth", name: "لمة شباب وبنات", icon: "👫", count: 85 },
-  { id: "fun", name: "فرفشة", icon: "🥳", count: 65 },
-  { id: "palestine", name: "فلسطين", icon: "🇵🇸", count: 54 },
-  { id: "games", name: "ألعاب", icon: "🎮", count: 41 },
-  { id: "admin", name: "الإدارة", icon: "🛡️", count: 3 },
-  { id: "owner", name: "المالك", icon: "👑", count: 1 },
+  { id: "egypt", name: "مصر", icon: "🇪🇬", count: 128, category: "social" },
+  { id: "arab", name: "كل العرب", icon: "🌍", count: 99, category: "social" },
+  { id: "youth", name: "لمة شباب وبنات", icon: "👫", count: 85, category: "social" },
+  { id: "palestine", name: "فلسطين", icon: "🇵🇸", count: 54, category: "social" },
+  { id: "fun", name: "فرفشة", icon: "🥳", count: 65, category: "fun" },
+  { id: "games", name: "ألعاب", icon: "🎮", count: 41, category: "fun" },
+  { id: "romance", name: "رومانسية", icon: "💖", count: 76, category: "relations" },
+  { id: "admin", name: "الإدارة", icon: "🛡️", count: 3, category: "private" },
+];
+
+const ROOM_CATEGORIES = [
+  { id: "social", name: "اجتماعي", icon: "👥" },
+  { id: "fun", name: "ترفيه", icon: "🎮" },
+  { id: "relations", name: "علاقات", icon: "💖" },
+  { id: "private", name: "خاصة", icon: "🛡️" },
 ];
 
 const GIFT_TYPES = [
@@ -517,6 +536,64 @@ export interface ActivityLog {
   details: string;
 }
 
+function MobileBottomSheet({
+  isOpen,
+  onClose,
+  title,
+  icon,
+  children,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="md:hidden fixed inset-0 z-[120]"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70"
+            onClick={onClose}
+            aria-label="إغلاق"
+          />
+          <motion.div
+            initial={{ y: 520 }}
+            animate={{ y: 0 }}
+            exit={{ y: 520 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="absolute inset-x-0 bottom-0 bg-[#0a0f0c]/98 border-t border-green-500/20 shadow-2xl rounded-t-3xl backdrop-blur-md overflow-hidden max-h-[80vh]"
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-green-500/10 bg-black/40">
+              <div className="flex items-center gap-2">
+                {icon}
+                <h3 className="font-black text-white text-sm">{title}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
+                aria-label="إغلاق"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div className="p-3 overflow-y-auto">{children}</div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export default function ChatScreen({
   currentUser,
   onLogout,
@@ -525,6 +602,23 @@ export default function ChatScreen({
   const [ownerBgImage, setOwnerBgImage] = useState<string | null>(() =>
     localStorage.getItem("lamma_owner_bg_image"),
   );
+  const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(() =>
+    localStorage.getItem("lamma_custom_logo_url"),
+  );
+  const [glowColor, setGlowColor] = useState<string>(() => {
+    return localStorage.getItem("lamma_glow_color") || "#10b981";
+  });
+  const [roomBgMap, setRoomBgMap] = useState<Record<string, string>>(() => {
+    const raw = localStorage.getItem("lamma_room_bg_map");
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return {};
+      return parsed;
+    } catch {
+      return {};
+    }
+  });
   const [inputText, setInputText] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showSearchPop, setShowSearchPop] = useState(false);
@@ -550,11 +644,27 @@ export default function ChatScreen({
     { id: "egypt", name: "مصر", flag: "🇪🇬" },
   ]);
   const [activeRoomId, setActiveRoomId] = useState("egypt");
+  const appLink = import.meta.env.VITE_APP_URL || window.location.origin;
+  const geminiSearchEndpoint = import.meta.env.VITE_GEMINI_SEARCH_ENDPOINT || "";
+  const senderUid = currentUser.uid || getClientUid();
+  const roleLower = (currentUser.role || "").toLowerCase();
+  const isOwnerRole =
+    roleLower === "owner" ||
+    roleLower === "malek" ||
+    roleLower === "المالك" ||
+    currentUser.role === "Owner" ||
+    currentUser.role === "Malek";
+  const isAdminRole = roleLower === "admin";
+  const activeRoomBg = roomBgMap[activeRoomId] || ownerBgImage;
 
   const performSearch = async () => {
     if (!searchQuery) return;
+    if (!geminiSearchEndpoint) {
+      alert("ميزة البحث بالذكاء الاصطناعي غير متاحة حالياً.");
+      return;
+    }
     try {
-      const response = await fetch("/api/gemini/search", {
+      const response = await fetch(geminiSearchEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: searchQuery }),
@@ -576,8 +686,13 @@ export default function ChatScreen({
     | "logs_manager"
     | "store"
     | "owner"
+    | "leadership"
     | null
   >(null);
+
+  const [leadershipTab, setLeadershipTab] = useState<
+    "quick" | "guard" | "store" | "design" | "stats"
+  >("quick");
 
   // --- AUTOMATION AND STORE SYSTEM STATES ---
   const [subscription, setSubscription] = useState<any>(() => {
@@ -1687,8 +1802,13 @@ export default function ChatScreen({
       | "logs_manager"
       | "store"
       | "owner"
+      | "leadership"
       | null,
   ) => {
+    if (modal === "leadership" && !isOwnerRole) return;
+    if (modal === "owner" && !isOwnerRole) return;
+    if (modal === "guard" && !isOwnerRole) return;
+    if (modal === "admin" && (!isAdminRole || isOwnerRole)) return;
     setShowAttachmentDropdown(false);
     setShowGamesDropdown(false);
     setShowMusicDropdown(false);
@@ -1733,27 +1853,6 @@ export default function ChatScreen({
     document.addEventListener("mousedown", handleGlobalClick);
     return () => document.removeEventListener("mousedown", handleGlobalClick);
   }, []);
-
-  // Sync sidebar open state with mobile tabs
-  useEffect(() => {
-    if (mobileTab === "members") {
-      setIsSidebarOpen(true);
-    } else if (mobileTab === "chat" || mobileTab === "private") {
-      setIsSidebarOpen(false);
-    }
-  }, [mobileTab]);
-
-  useEffect(() => {
-    if (isSidebarOpen) {
-      if (mobileTab !== "members" && window.innerWidth < 768) {
-        setMobileTab("members");
-      }
-    } else {
-      if (mobileTab === "members") {
-        setMobileTab("chat");
-      }
-    }
-  }, [isSidebarOpen]);
 
   // Sync banned list to localStorage
   useEffect(() => {
@@ -2142,6 +2241,8 @@ export default function ChatScreen({
   }, [activeRoomId]);
 
   useEffect(() => {
+    if (!supabase) return;
+
     // Fetch initial messages for active room from Supabase
     const fetchSupabaseMessages = async () => {
       const { data, error } = await supabase
@@ -2853,7 +2954,7 @@ export default function ChatScreen({
       );
 
       // Push to Supabase if not shadowed
-      if (!isShadowed) {
+      if (!isShadowed && supabase) {
         supabase
           .from("messages")
           .insert([
@@ -2864,7 +2965,7 @@ export default function ChatScreen({
               text: cleanText,
               color: currentUser.color || "#10b981",
               type: "text",
-              sender_uid: "local",
+              sender_uid: senderUid,
             },
           ])
           .then(({ error }) => {
@@ -2981,24 +3082,26 @@ export default function ChatScreen({
       };
     });
 
-    supabase
-      .from("messages")
-      .insert([
-        {
-          id: newUuid,
-          room_id: activeRoomId,
-          author: currentUser.nickname,
-          text: `أرسل هدية ${icon} في الغرفة 🎁`,
-          color: currentUser.color || "#10b981",
-          type: "gift",
-          gift_icon: icon,
-          gift_name: "هدية تفاعلية",
-          sender_uid: "local",
-        },
-      ])
-      .then(({ error }) => {
-        if (error) console.error("Error sending gift to Supabase:", error);
-      });
+    if (supabase) {
+      supabase
+        .from("messages")
+        .insert([
+          {
+            id: newUuid,
+            room_id: activeRoomId,
+            author: currentUser.nickname,
+            text: `أرسل هدية ${icon} في الغرفة 🎁`,
+            color: currentUser.color || "#10b981",
+            type: "gift",
+            gift_icon: icon,
+            gift_name: "هدية تفاعلية",
+            sender_uid: senderUid,
+          },
+        ])
+        .then(({ error }) => {
+          if (error) console.error("Error sending gift to Supabase:", error);
+        });
+    }
 
     // Animate multiple particles
     for (let i = 0; i < 8; i++) {
@@ -3154,23 +3257,25 @@ export default function ChatScreen({
         JSON.stringify(updatedMessages),
       );
 
-      supabase
-        .from("messages")
-        .insert([
-          {
-            id: newUuid,
-            room_id: activeRoomId,
-            author: currentUser.nickname,
-            text: "",
-            color: currentUser.color || "#10b981",
-            type: type,
-            media_url: mediaUrl,
-            sender_uid: "local",
-          },
-        ])
-        .then(({ error }) => {
-          if (error) console.error("Error sending media to Supabase:", error);
-        });
+      if (supabase) {
+        supabase
+          .from("messages")
+          .insert([
+            {
+              id: newUuid,
+              room_id: activeRoomId,
+              author: currentUser.nickname,
+              text: "",
+              color: currentUser.color || "#10b981",
+              type: type,
+              media_url: mediaUrl,
+              sender_uid: senderUid,
+            },
+          ])
+          .then(({ error }) => {
+            if (error) console.error("Error sending media to Supabase:", error);
+          });
+      }
     }
 
     setShowAttachmentDropdown(false);
@@ -3292,16 +3397,21 @@ export default function ChatScreen({
       }`}
       dir="rtl"
       style={{
-        backgroundImage: ownerBgImage ? `url(${ownerBgImage})` : "none",
+        backgroundImage: activeRoomBg ? `url(${activeRoomBg})` : "none",
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
     >
-      {ownerBgImage && (
+      {activeRoomBg && (
         <div className="absolute inset-0 bg-black/60 z-0 pointer-events-none" />
       )}
       {/* Background radial soft light particles */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.015),transparent_70%)] pointer-events-none z-0" />
+      <div
+        className="absolute inset-0 pointer-events-none z-0"
+        style={{
+          background: `radial-gradient(circle at center, ${hexToRgba(glowColor, 0.05)}, transparent 70%)`,
+        }}
+      />
 
       {/* Floating particles animations block */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-[9999]">
@@ -3329,11 +3439,20 @@ export default function ChatScreen({
 
       {/* ================= HEADER BAR ================= */}
       {!isZenMode && (
-        <header className="h-[75px] bg-gradient-to-r from-[#0c120d] via-[#0f1811] to-[#0c120d] border-b border-green-500/20 px-4 md:px-6 flex items-center justify-between relative z-20 backdrop-blur-xl shadow-[0_5px_40px_rgba(16,185,129,0.05),0_1px_3px_rgba(0,0,0,0.5)] shrink-0">
+        <header className="h-[56px] sm:h-[75px] bg-gradient-to-r from-[#0c120d] via-[#0f1811] to-[#0c120d] border-b border-green-500/20 px-2 sm:px-4 md:px-6 flex items-center justify-between relative z-20 backdrop-blur-xl shadow-[0_5px_40px_rgba(16,185,129,0.05),0_1px_3px_rgba(0,0,0,0.5)] shrink-0">
           {/* Right side controls (User account & actions - Now in the visual start "اول الصفحة" due to RTL) */}
           <div className="flex items-center gap-2 md:gap-3">
             {/* User badge */}
-            <div className="hidden sm:flex items-center gap-2 select-none">
+            <div
+              className={`flex items-center gap-2 select-none max-w-[58vw] sm:max-w-none ${
+                isOwnerRole ? "cursor-pointer" : ""
+              }`}
+              onClick={() => {
+                if (!isOwnerRole) return;
+                setLeadershipTab("quick");
+                openModal("leadership");
+              }}
+            >
               {myActiveSession.frame ? (
                 <div
                   className={`p-[1.5px] rounded-full bg-gradient-to-r ${myActiveSession.frame} animate-[pulse_1.5s_infinite] shadow-[0_0_8px_rgba(234,179,8,0.3)] shrink-0`}
@@ -3349,7 +3468,7 @@ export default function ChatScreen({
               )}
               <div className="flex flex-col items-start leading-none gap-0.5">
                 <span
-                  className={`text-[11px] font-black flex items-center gap-1 ${myActiveSession.role === "platinum_vip" ? "animate-[pulse_1.5s_infinite] text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400 font-extrabold" : ""}`}
+                  className={`text-[11px] font-black flex items-center gap-1 truncate max-w-[45vw] sm:max-w-none ${myActiveSession.role === "platinum_vip" ? "animate-[pulse_1.5s_infinite] text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400 font-extrabold" : ""}`}
                   style={{
                     color:
                       myActiveSession.role === "platinum_vip"
@@ -3364,7 +3483,7 @@ export default function ChatScreen({
                     </span>
                   )}
                 </span>
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="hidden sm:flex items-center gap-1.5 mt-0.5">
                   <div className="flex items-center gap-1">
                     {myActiveSession.role === "platinum_vip" ? (
                       <span className="text-yellow-400 text-[8px] font-black bg-yellow-500/15 px-1 py-0.5 rounded leading-none border border-yellow-500/30 tracking-wider">
@@ -3398,9 +3517,6 @@ export default function ChatScreen({
                     <button
                       onClick={() => {
                         toggleDropdown("rooms" as any);
-                        if (window.innerWidth < 768) {
-                          setMobileTab("members");
-                        }
                         if (isSidebarOpen && activeSidebarTab === "rooms") {
                           setIsSidebarOpen(false);
                         } else {
@@ -3420,9 +3536,6 @@ export default function ChatScreen({
                     <button
                       onClick={() => {
                         toggleDropdown("members" as any);
-                        if (window.innerWidth < 768) {
-                          setMobileTab("members");
-                        }
                         if (isSidebarOpen && activeSidebarTab === "members") {
                           setIsSidebarOpen(false);
                         } else {
@@ -3437,6 +3550,23 @@ export default function ChatScreen({
                       <span className="absolute -top-0.5 -right-0.5 bg-green-500 w-1 h-1 rounded-full border border-black animate-pulse"></span>
                     </button>
                   </div>
+
+                  {isOwnerRole && (
+                    <div className="relative dropdown-container flex items-center">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLeadershipTab("quick");
+                          openModal("leadership");
+                        }}
+                        className="flex items-center justify-center p-0.5 rounded-md hover:bg-white/10 transition-colors relative cursor-pointer text-yellow-500"
+                        title="غرفة القيادة"
+                      >
+                        <Crown size={10} />
+                      </button>
+                    </div>
+                  )}
 
                   {/* Master Settings Dropdown container inline */}
                   <div className="relative dropdown-container flex items-center">
@@ -3462,7 +3592,7 @@ export default function ChatScreen({
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           transition={{ duration: 0.15 }}
-                          className="fixed top-20 right-4 md:right-10 w-[240px] bg-[#0a0f0c]/98 border border-green-500/30 shadow-2xl rounded-2xl z-[99] flex flex-col backdrop-blur-md pb-1"
+                          className="hidden md:flex fixed top-20 right-4 md:right-10 w-[240px] bg-[#0a0f0c]/98 border border-green-500/30 shadow-2xl rounded-2xl z-[99] flex-col backdrop-blur-md pb-1"
                         >
                           <div className="flex items-center justify-between p-2.5 border-b border-green-500/20 bg-black/40 cursor-grab active:cursor-grabbing">
                             <div className="flex items-center gap-2 pointer-events-none">
@@ -3542,6 +3672,67 @@ export default function ChatScreen({
                       )}
                     </AnimatePresence>
                   </div>
+                  <MobileBottomSheet
+                    isOpen={showHeaderMenu}
+                    onClose={() => setShowHeaderMenu(false)}
+                    title="القائمة الرئيسية"
+                    icon={
+                      <SettingsIcon size={14} className="text-gray-400" />
+                    }
+                  >
+                    <div className="flex-col flex pt-1 w-full">
+                      <button
+                        onClick={() => {
+                          setIsCompactView(!isCompactView);
+                          setShowHeaderMenu(false);
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl"
+                      >
+                        <Grid
+                          size={16}
+                          className={isCompactView ? "text-green-400" : ""}
+                        />
+                        <span>
+                          {isCompactView
+                            ? "إلغاء العرض المدمج"
+                            : "العرض المدمج للرسائل"}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsZenMode(true);
+                          setIsSidebarOpen(false);
+                          setIsPmOpen(false);
+                          setShowHeaderMenu(false);
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl"
+                      >
+                        <span className="text-xl leading-none">🌌</span>
+                        <span>وضع التركيز (Zen)</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleCopyLink();
+                          setShowHeaderMenu(false);
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl"
+                      >
+                        <Share2 size={16} />
+                        <span>دعوة الأصدقاء</span>
+                      </button>
+                      <div className="h-[1px] bg-white/5 my-1" />
+                      <button
+                        onClick={() => {
+                          handleInitiateLogout();
+                          setShowHeaderMenu(false);
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-all text-sm w-full text-right font-bold cursor-pointer rounded-xl"
+                      >
+                        <LogOut size={16} />
+                        <span>تسجيل الخروج</span>
+                      </button>
+                    </div>
+                  </MobileBottomSheet>
 
                   {/* Inline PM Dropdown Container */}
                   <div className="relative dropdown-container flex items-center">
@@ -3571,7 +3762,7 @@ export default function ChatScreen({
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           transition={{ duration: 0.15 }}
-                          className="fixed top-20 left-4 md:left-auto md:right-1/4 w-[280px] bg-[#0a0f0c]/98 border border-green-500/20 shadow-2xl rounded-2xl z-[99] flex flex-col backdrop-blur-md"
+                          className="hidden md:flex fixed top-20 left-4 md:left-auto md:right-1/4 w-[280px] bg-[#0a0f0c]/98 border border-green-500/20 shadow-2xl rounded-2xl z-[99] flex-col backdrop-blur-md"
                           style={{
                             resize: "both",
                             overflow: "hidden",
@@ -3683,6 +3874,90 @@ export default function ChatScreen({
                       )}
                     </AnimatePresence>
                   </div>
+                  <MobileBottomSheet
+                    isOpen={showPmListDropdown}
+                    onClose={() => setShowPmListDropdown(false)}
+                    title="المحادثات الخاصة"
+                    icon={<span className="text-lg leading-none">💌</span>}
+                  >
+                    <div className="bg-transparent text-right space-y-2">
+                      {Object.keys(pmThreads).length === 0 ? (
+                        <p className="text-[11px] text-gray-400 font-bold text-center py-4">
+                          لا توجد محادثات الخاصة بعد.
+                        </p>
+                      ) : (
+                        Object.keys(pmThreads).map((nickname) => {
+                          const lastMsg =
+                            pmThreads[nickname]?.[
+                              pmThreads[nickname].length - 1
+                            ];
+                          const targetUser = chatMembers.find(
+                            (m) => m.nickname === nickname,
+                          ) || { nickname, color: "#a3e635" };
+                          return (
+                            <div
+                              key={nickname}
+                              onClick={() => {
+                                setPmTarget(targetUser as any);
+                                if (window.innerWidth < 1280)
+                                  setMobileTab("private");
+                                else setIsPmOpen(true);
+                                setShowPmListDropdown(false);
+                              }}
+                              className="p-2.5 bg-black/40 hover:bg-white/5 rounded-xl border border-green-500/10 hover:border-green-500/30 transition-all flex items-center gap-2.5 cursor-pointer"
+                            >
+                              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 text-xl overflow-hidden shadow-inner relative pointer-events-none">
+                                👤
+                              </div>
+                              <div className="flex-1 min-w-0 pointer-events-none">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <h4
+                                      className="text-[12px] font-black"
+                                      style={{
+                                        color: targetUser.color || "#fff",
+                                      }}
+                                    >
+                                      {nickname}
+                                    </h4>
+                                    {(targetUser as any).role ===
+                                      "platinum_vip" && (
+                                      <span className="text-yellow-400 text-[6px] font-black bg-yellow-500/15 px-1 py-0.5 rounded leading-none border border-yellow-500/30 tracking-wider">
+                                        PLATINUM VIP
+                                      </span>
+                                    )}
+                                    {(targetUser as any).role === "vip" && (
+                                      <span className="text-green-400 text-[6px] font-black bg-green-500/10 px-1 py-0.5 rounded leading-none border border-green-500/20 tracking-wider">
+                                        VIP
+                                      </span>
+                                    )}
+                                    {(targetUser as any).role === "admin" && (
+                                      <span className="text-blue-400 text-[6px] font-black bg-blue-500/10 px-1 py-0.5 rounded leading-none border border-blue-500/20 tracking-wider">
+                                        ADMIN
+                                      </span>
+                                    )}
+                                    {(targetUser as any).role === "owner" && (
+                                      <span className="text-yellow-500 text-[6px] font-black bg-yellow-500/10 px-1 py-0.5 rounded leading-none border border-yellow-500/20 tracking-wider">
+                                        OWNER
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[9px] text-gray-500">
+                                    {lastMsg?.time || ""}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-gray-400 mt-0.5 truncate">
+                                  {lastMsg?.isOwn
+                                    ? `أنت: ${lastMsg.text}`
+                                    : lastMsg?.text}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </MobileBottomSheet>
 
                   {/* Inline Notifications Dropdown Container */}
                   <div className="relative dropdown-container flex items-center">
@@ -3710,7 +3985,7 @@ export default function ChatScreen({
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           transition={{ duration: 0.15 }}
-                          className="fixed top-20 left-4 md:left-auto md:right-1/3 w-[280px] sm:w-[320px] bg-[#0a0f0c]/98 border border-green-500/20 shadow-2xl rounded-2xl z-[99] flex flex-col backdrop-blur-md"
+                          className="hidden md:flex fixed top-20 left-4 md:left-auto md:right-1/3 w-[280px] sm:w-[320px] bg-[#0a0f0c]/98 border border-green-500/20 shadow-2xl rounded-2xl z-[99] flex-col backdrop-blur-md"
                           style={{
                             resize: "both",
                             overflow: "hidden",
@@ -3810,6 +4085,81 @@ export default function ChatScreen({
                       )}
                     </AnimatePresence>
                   </div>
+                  <MobileBottomSheet
+                    isOpen={showNotificationsDropdown}
+                    onClose={() => setShowNotificationsDropdown(false)}
+                    title="مركز الإشعارات"
+                    icon={<span className="text-lg leading-none">🔔</span>}
+                  >
+                    <div className="bg-transparent text-right space-y-2">
+                      <p className="text-[11px] text-gray-400 font-bold border-b border-green-500/10 pb-2">
+                        أحدث التنبيهات والأحداث الخاصة بك في البرنامج.
+                      </p>
+
+                      <div className="grid gap-2">
+                        <div className="p-2.5 bg-black/40 rounded-xl border border-green-500/20 flex items-start gap-2.5 pointer-events-none cursor-default">
+                          <div className="w-7 h-7 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center flex-shrink-0">
+                            <Heart size={12} />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-[11px] font-black text-white">
+                              إعجاب بملفك الشخصي
+                            </h4>
+                            <p className="text-[9px] text-gray-400 mt-0.5">
+                              قام <strong>عمر</strong> بتسجيل إعجابه بملفك
+                              الشخصي.
+                            </p>
+                            <span className="text-[8px] text-gray-500 font-mono mt-1 block">
+                              منذ 5 دقائق
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 bg-black/40 rounded-xl border border-green-500/10 flex items-start gap-2.5 opacity-80">
+                          <div className="w-7 h-7 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0 pointer-events-none">
+                            <Users size={12} />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-[11px] font-black text-white pointer-events-none">
+                              طلب صداقة جديد
+                            </h4>
+                            <p className="text-[9px] text-gray-400 mt-0.5 pointer-events-none">
+                              أرسل لك <strong>سارة</strong> طلب صداقة.
+                            </p>
+                            <div className="flex gap-1.5 mt-1.5">
+                              <button className="px-2.5 py-1 bg-green-500 text-black font-bold text-[8px] rounded-md cursor-pointer">
+                                قبول
+                              </button>
+                              <button className="px-2.5 py-1 bg-white/10 text-white font-bold text-[8px] rounded-md hover:bg-red-500 cursor-pointer">
+                                رفض
+                              </button>
+                            </div>
+                            <span className="text-[8px] text-gray-500 font-mono mt-1 block pointer-events-none">
+                              منذ 3 ساعات
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 bg-black/40 rounded-xl border border-yellow-500/10 flex items-start gap-2.5 opacity-60 pointer-events-none">
+                          <div className="w-7 h-7 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center flex-shrink-0">
+                            <Crown size={12} />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-[11px] font-black text-white">
+                              ترقية الحساب
+                            </h4>
+                            <p className="text-[9px] text-gray-400 mt-0.5">
+                              انتهى اشتراك VIP الخاص بك. جدد الآن للحصول على
+                              الشارات.
+                            </p>
+                            <span className="text-[8px] text-gray-500 font-mono mt-1 block">
+                              الأمس
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </MobileBottomSheet>
                 </div>
               </div>
             </div>
@@ -3819,11 +4169,13 @@ export default function ChatScreen({
 
           {/* Center Room Info Display (Absolutely Centered Layout) */}
           {!isZenMode && (
-            <div className="absolute left-1/2 top-11 md:top-[38px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center max-w-[150px] md:max-w-xs text-center group/welcome z-30 pointer-events-none w-full">
-              <div className="flex items-center gap-1.5 text-[11px] md:text-xs font-black text-white pointer-events-auto">
-                <span>🇪🇬</span>
-                <span>لمة شات</span>
-              </div>
+            <div className="absolute left-1/2 top-9 sm:top-11 md:top-[38px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center max-w-[240px] md:max-w-xs text-center group/welcome z-30 pointer-events-none w-full">
+              <img
+                src={brandLogoUrl || "/images/lamma-wordmark.svg"}
+                alt="LAMMA CHAT"
+                className="h-6 sm:h-7 w-auto drop-shadow-lg pointer-events-auto select-none"
+                draggable={false}
+              />
               <div className="flex items-center gap-2 pointer-events-auto">
                 {isEditingWelcome ? (
                   <input
@@ -3900,22 +4252,34 @@ export default function ChatScreen({
 
       {/* Mobile panel toggler header bar (Visible only on compact screens) */}
       {!isZenMode && (
-        <div className="md:hidden grid grid-cols-3 text-[11px] font-black bg-[#040605] border-b border-green-500/20 text-center select-none z-10 relative shrink-0 tracking-wider">
+        <div className="md:hidden grid grid-cols-3 text-[10px] font-black bg-[#040605] border-b border-green-500/20 text-center select-none z-10 relative shrink-0 tracking-wider overflow-hidden">
+          <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#040605] to-transparent pointer-events-none" />
+          <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#040605] to-transparent pointer-events-none" />
           <button
-            onClick={() => setMobileTab("chat")}
-            className={`py-3.5 flex items-center justify-center gap-1.5 transition-all ${mobileTab === "chat" ? "text-green-400 bg-green-500/5 border-b-[3px] border-green-500" : "text-gray-400 hover:bg-white/5"}`}
+            onClick={() => {
+              setMobileTab("chat");
+              setIsSidebarOpen(false);
+            }}
+            className={`py-2.5 flex items-center justify-center gap-1.5 transition-all ${mobileTab === "chat" ? "text-green-400 bg-green-500/5 border-b-[3px] border-green-500" : "text-gray-400 hover:bg-white/5"}`}
           >
             <span className="text-sm">📢</span> العام
           </button>
           <button
-            onClick={() => setMobileTab("members")}
-            className={`py-3.5 flex items-center justify-center gap-1.5 transition-all ${mobileTab === "members" ? "text-green-400 bg-green-500/5 border-b-[3px] border-green-500" : "text-gray-400 hover:bg-white/5"}`}
+            onClick={() => {
+              setMobileTab("members");
+              setActiveSidebarTab("members");
+              setIsSidebarOpen(true);
+            }}
+            className={`py-2.5 flex items-center justify-center gap-1.5 transition-all ${mobileTab === "members" ? "text-green-400 bg-green-500/5 border-b-[3px] border-green-500" : "text-gray-400 hover:bg-white/5"}`}
           >
             <span className="text-sm">👥</span> المتصلين
           </button>
           <button
-            onClick={() => setMobileTab("private")}
-            className={`py-3.5 relative flex items-center justify-center gap-1.5 transition-all ${mobileTab === "private" ? "text-green-400 bg-green-500/5 border-b-[3px] border-green-500" : "text-gray-400 hover:bg-white/5"}`}
+            onClick={() => {
+              setMobileTab("private");
+              setIsSidebarOpen(false);
+            }}
+            className={`py-2.5 relative flex items-center justify-center gap-1.5 transition-all ${mobileTab === "private" ? "text-green-400 bg-green-500/5 border-b-[3px] border-green-500" : "text-gray-400 hover:bg-white/5"}`}
           >
             <span className="text-sm">💌</span> الخاص
             {Object.keys(pmThreads).length > 0 && (
@@ -3937,52 +4301,49 @@ export default function ChatScreen({
 
       {/* ================= FOUR-PANEL BODY ================= */}
       <div className="flex-1 flex overflow-hidden relative min-h-0">
+        <div
+          className={`absolute inset-0 bg-black/70 z-30 transition-opacity ${
+            isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+          onClick={() => setIsSidebarOpen(false)}
+        />
         {/* ----------------- OVERLAY SIDEBAR PANEL (ROOMS & MEMBERS TABBED) ----------------- */}
         <aside
-          className={`sidebar-container w-full md:w-72 border-l border-green-500/10 bg-[#060a07]/98 md:bg-[#060a07]/95 flex flex-col justify-between flex-shrink-0 md:order-1 z-40 absolute md:relative inset-y-0 right-0 h-full shadow-[0_0_25px_rgba(0,0,0,0.85)] max-w-full ${
+          className={`sidebar-container w-full sm:w-[420px] border-l border-green-500/10 bg-[#060a07]/98 flex flex-col justify-between flex-shrink-0 z-40 absolute inset-y-0 right-0 h-full shadow-[0_0_25px_rgba(0,0,0,0.85)] max-w-[92vw] ${
             isSidebarOpen ? "flex animate-fade-in" : "hidden"
           }`}
         >
           {/* Header switchers inside the sidebar */}
           <div className="p-3 border-b border-green-500/10 bg-black/40 flex flex-col gap-2 shrink-0">
             {/* Mobile Close option */}
-            <div className="flex md:hidden items-center justify-between pb-1.5 border-b border-green-500/10 mb-1">
+            <div className="flex lg:hidden items-center justify-between pb-1.5 border-b border-green-500/10 mb-1">
               <span className="text-white font-black text-xs">
                 🗂️ القوائم والاتصال
               </span>
               <button
                 type="button"
-                onClick={() => setMobileTab("chat")}
+                onClick={() => {
+                  setMobileTab("chat");
+                  setIsSidebarOpen(false);
+                }}
                 className="p-1 px-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white text-[10px] font-bold transition-all cursor-pointer"
               >
                 إغلاق ✕
               </button>
             </div>
 
-            {/* Neon Slider Tabs */}
-            <div className="grid grid-cols-2 gap-1 bg-black/60 p-1 rounded-xl border border-green-500/10 relative">
-              <button
-                onClick={() => setActiveSidebarTab("rooms")}
-                className={`py-2 px-1 text-center font-black rounded-lg transition-all text-[11px] cursor-pointer flex items-center justify-center gap-1.5 ${
-                  activeSidebarTab === "rooms"
-                    ? "bg-green-500/10 text-green-400 border border-green-500/20 shadow-[0_0_10px_rgba(16,185,129,0.05)]"
-                    : "text-gray-400 hover:text-white"
-                }`}
-              >
-                <span>🏠</span>
-                <span>الغرف المتاحة</span>
-              </button>
-
-              <button
-                onClick={() => setActiveSidebarTab("members")}
-                className={`py-2 px-1 text-center font-black rounded-lg transition-all text-[11px] cursor-pointer flex items-center justify-center gap-1.5 ${
-                  activeSidebarTab === "members"
-                    ? "bg-green-500/10 text-green-400 border border-green-500/20 shadow-[0_0_10px_rgba(16,185,129,0.05)]"
-                    : "text-gray-400 hover:text-white"
-                }`}
-              >
-                <span>👥</span>
-              </button>
+            <div className="bg-black/60 p-2 rounded-xl border border-green-500/10 flex items-center justify-center gap-2 text-[11px] font-black text-green-400">
+              {activeSidebarTab === "rooms" ? (
+                <>
+                  <span>🏠</span>
+                  <span>الغرف المتاحة</span>
+                </>
+              ) : (
+                <>
+                  <span>👥</span>
+                  <span>المتصلين</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -3991,8 +4352,7 @@ export default function ChatScreen({
             {activeSidebarTab === "rooms" && (
               <div className="space-y-3">
                 {/* Feature: Create room button */}
-                {(currentUser.role === "owner" ||
-                  currentUser.role === "malek" ||
+                {(isOwnerRole ||
                   memberCustomPermissions[currentUser.nickname]
                     ?.roomCreationAllowed) && (
                   <button
@@ -4005,60 +4365,64 @@ export default function ChatScreen({
                   </button>
                 )}
 
-                <div className="text-[10px] text-green-400 font-extrabold tracking-widest uppercase pb-1 border-b border-green-500/5">
-                  الغرف العامة المفتوحة
-                </div>
-
-                <div className="space-y-1.5">
-                  {ROOMS_DEF.filter((room) => {
-                    const role = currentUser.role.toLowerCase();
-                    if (
-                      room.id === "owner" &&
-                      role !== "owner" &&
-                      role !== "malek"
-                    )
+                {(() => {
+                  const visibleRooms = ROOMS_DEF.filter((room) => {
+                    if (room.id === "admin" && !isAdminRole && !isOwnerRole) {
                       return false;
-                    if (
-                      room.id === "admin" &&
-                      role !== "admin" &&
-                      role !== "owner" &&
-                      role !== "malek"
-                    )
-                      return false;
+                    }
                     return true;
-                  }).map((room) => (
-                    <div
-                      key={room.id}
-                      onClick={() => {
-                        if (!openRooms.find((r) => r.id === room.id)) {
-                          setOpenRooms((prev) => [
-                            ...prev,
-                            { id: room.id, name: room.name, flag: room.icon },
-                          ]);
-                        }
-                        handleSwitchRoom(room.id);
-                        if (window.innerWidth < 768) {
-                          setMobileTab("chat");
-                        }
-                        setIsSidebarOpen(false);
-                      }}
-                      className={`p-2.5 rounded-xl border transition-all text-xs font-black cursor-pointer flex items-center justify-between ${
-                        room.id === activeRoomId
-                          ? "bg-green-500/10 border-green-500/30 text-green-400 shadow-[0_0_10px_rgba(16,185,129,0.08)]"
-                          : "bg-black/20 border-green-500/5 hover:bg-white/5 text-gray-300 hover:border-green-500/10"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">{room.icon}</span>
-                        <span>{room.name}</span>
+                  });
+
+                  return ROOM_CATEGORIES.map((category) => {
+                    const rooms = visibleRooms.filter(
+                      (r: any) => r.category === category.id,
+                    );
+                    if (rooms.length === 0) return null;
+
+                    return (
+                      <div key={category.id} className="space-y-2">
+                        <div className="text-[10px] text-green-400 font-extrabold tracking-widest uppercase pb-1 border-b border-green-500/5 flex items-center gap-2">
+                          <span>{category.icon}</span>
+                          <span>{category.name}</span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {rooms.map((room: any) => (
+                            <div
+                              key={room.id}
+                              onClick={() => {
+                                if (!openRooms.find((r) => r.id === room.id)) {
+                                  setOpenRooms((prev) => [
+                                    ...prev,
+                                    { id: room.id, name: room.name, flag: room.icon },
+                                  ]);
+                                }
+                                handleSwitchRoom(room.id);
+                                if (window.innerWidth < 768) {
+                                  setMobileTab("chat");
+                                }
+                                setIsSidebarOpen(false);
+                              }}
+                              className={`p-2.5 rounded-xl border transition-all text-xs font-black cursor-pointer flex items-center justify-between ${
+                                room.id === activeRoomId
+                                  ? "bg-green-500/10 border-green-500/30 text-green-400 shadow-[0_0_10px_rgba(16,185,129,0.08)]"
+                                  : "bg-black/20 border-green-500/5 hover:bg-white/5 text-gray-300 hover:border-green-500/10"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm">{room.icon}</span>
+                                <span>{room.name}</span>
+                              </div>
+                              <span className="bg-black/60 px-2 py-0.5 rounded-full border border-green-500/10 text-[9px] text-[#a3e635] font-black font-mono">
+                                {room.count}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      {/* Glowing counter badge */}
-                      <span className="bg-black/60 px-2 py-0.5 rounded-full border border-green-500/10 text-[9px] text-[#a3e635] font-black font-mono">
-                        {room.count}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                    );
+                  });
+                })()}
               </div>
             )}
 
@@ -4306,7 +4670,7 @@ export default function ChatScreen({
             </div>
 
             {/* System Actions Side (Left) */}
-            <div className="w-[180px] sm:w-[220px] flex items-center justify-center px-2 py-0.5 relative overflow-hidden bg-white/[0.02]">
+            <div className="w-[140px] sm:w-[180px] md:w-[220px] flex items-center justify-center px-2 py-0.5 relative overflow-hidden bg-white/[0.02]">
               <AnimatePresence mode="popLayout">
                 <motion.div
                   key={systemActivity.id}
@@ -5110,7 +5474,7 @@ export default function ChatScreen({
           {/* Scrolling Commercial ad banner */}
           {isAdsEnabled && !isAdBannerDismissed && (
             <div
-              className="w-full bg-gradient-to-r from-[#1a1400] via-black to-[#1a1400] border-t border-yellow-500/30 px-3 py-1.5 flex items-center justify-between text-yellow-500 text-[11px] font-bold z-[40] relative"
+              className="w-full bg-gradient-to-r from-[#1a1400] via-black to-[#1a1400] border-t border-yellow-500/30 px-3 py-1 sm:py-1.5 flex items-center justify-between text-yellow-500 text-[10px] sm:text-[11px] font-bold z-[40] relative"
               dir="rtl"
             >
               <div className="flex items-center gap-2 flex-1 overflow-hidden">
@@ -5160,12 +5524,12 @@ export default function ChatScreen({
           <div
             className={
               isZenMode
-                ? "p-2 absolute bottom-2 left-2 right-2 max-w-4xl mx-auto z-40 bg-transparent shrink-0 backdrop-blur-sm shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-full"
-                : "p-2 bg-[#0d130e]/80 border-t border-green-500/10 relative z-10 shrink-0"
+                ? "p-1.5 sm:p-2 absolute bottom-2 left-2 right-2 max-w-4xl mx-auto z-40 bg-transparent shrink-0 backdrop-blur-sm shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-full"
+                : "p-1.5 sm:p-2 bg-[#0d130e]/80 border-t border-green-500/10 relative z-10 shrink-0"
             }
           >
             <div
-              className={`flex flex-wrap md:flex-nowrap items-center gap-1.5 rounded-3xl md:rounded-full px-3 py-2 md:py-1 ${
+              className={`flex flex-wrap md:flex-nowrap items-center gap-1.5 rounded-3xl md:rounded-full px-2 sm:px-3 py-1.5 sm:py-2 md:py-1 ${
                 isZenMode
                   ? "bg-[#0b100c]/90 border border-green-500/30 shadow-2xl backdrop-blur-xl"
                   : "bg-black/40 border border-green-500/10"
@@ -5328,47 +5692,32 @@ export default function ChatScreen({
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full border border-black"></span>
                 </button>
 
-                {(currentUser.role === "admin" ||
-                  currentUser.role === "Owner" ||
-                  currentUser.role === "owner" ||
-                  currentUser.role === "Malek" ||
-                  currentUser.role === "malek" ||
-                  currentUser.role === "المالك") && (
+                {(isOwnerRole || isAdminRole) && (
                   <div className="flex gap-1 items-center shrink-0">
-                    {(currentUser.role === "Owner" ||
-                      currentUser.role === "owner" ||
-                      currentUser.role === "Malek" ||
-                      currentUser.role === "malek" ||
-                      currentUser.role === "المالك") && (
+                    {isOwnerRole && (
                       <button
                         type="button"
-                        onClick={() => openModal("owner")}
+                        onClick={() => {
+                          setLeadershipTab("quick");
+                          openModal("leadership");
+                        }}
                         className="w-8 h-8 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 transition-all flex-shrink-0 border border-transparent hover:border-yellow-500/20 cursor-pointer shadow-[0_0_10px_rgba(234,179,8,0.2)]"
-                        title="غرفة التحكم السيادية للمالك"
+                        title="غرفة القيادة"
                       >
                         <span className="text-sm">👑</span>
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => openModal("admin")}
-                      className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 hover:bg-red-500/20 transition-all flex-shrink-0 border border-transparent hover:border-red-500/20 cursor-pointer"
-                      title="لوحة الإدارة"
-                    >
-                      <span className="text-sm">🛡️</span>
-                    </button>
 
-                    <button
-                      type="button"
-                      onClick={() => openModal("guard")}
-                      className="w-8 h-8 rounded-full bg-lime-500/10 flex items-center justify-center text-lime-400 hover:bg-lime-500/20 transition-all flex-shrink-0 border border-transparent hover:border-lime-500/20 relative cursor-pointer"
-                      title="حارس الشات الذكي Lamma Guard"
-                    >
-                      <span className="text-sm">🤖</span>
-                      {isBotEnabled && (
-                        <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-lime-400 rounded-full animate-pulse border border-black"></span>
-                      )}
-                    </button>
+                    {isAdminRole && !isOwnerRole && (
+                      <button
+                        type="button"
+                        onClick={() => openModal("admin")}
+                        className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 hover:bg-red-500/20 transition-all flex-shrink-0 border border-transparent hover:border-red-500/20 cursor-pointer"
+                        title="لوحة الإدارة"
+                      >
+                        <span className="text-sm">🛡️</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -6122,12 +6471,15 @@ export default function ChatScreen({
               <div className="flex items-center justify-between p-4 border-b border-green-500/20 bg-black/40 cursor-grab active:cursor-grabbing shrink-0">
                 <div className="flex items-center gap-2 pointer-events-none">
                   <span className="text-lg">
+                    {activeModal === "leadership" && "👑"}
                     {activeModal === "owner" && "👑"}
                     {activeModal === "admin" && "🛡️"}
                     {activeModal === "guard" && "🤖"}
                     {activeModal === "store" && "💎"}
                   </span>
                   <h3 className="font-sans font-black text-white text-sm">
+                    {activeModal === "leadership" &&
+                      "غرفة القيادة • مركز عمليات المالك"}
                     {activeModal === "owner" &&
                       "لوحة تحكم سيادة المالك (Owner's Dashboard)"}
                     {activeModal === "admin" &&
@@ -6152,16 +6504,98 @@ export default function ChatScreen({
 
               {/* Modal Body scrollable area */}
               <div className="flex-1 overflow-y-auto p-5 text-right space-y-4">
+                {activeModal === "leadership" && (
+                  <div className="space-y-4 select-none" dir="rtl">
+                    <div className="p-4 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="text-white text-sm font-black">
+                          👑 غرفة القيادة
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-bold">
+                          مركز عمليات المالك الكامل: التحكم، الحماية، المتجر،
+                          التصميم، والإحصائيات.
+                        </div>
+                      </div>
+                      <div className="text-[9px] text-yellow-500 font-black bg-black/30 border border-yellow-500/20 px-3 py-1.5 rounded-xl">
+                        صلاحية: Owner فقط
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 border-b border-white/5 pb-2 overflow-x-auto scroller-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setLeadershipTab("quick")}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
+                          leadershipTab === "quick"
+                            ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/25"
+                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                        }`}
+                      >
+                        ⚡ التحكم السريع
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLeadershipTab("guard")}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
+                          leadershipTab === "guard"
+                            ? "bg-lime-500/15 text-lime-400 border border-lime-500/25"
+                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                        }`}
+                      >
+                        🛡️ الحماية
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLeadershipTab("store")}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
+                          leadershipTab === "store"
+                            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
+                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                        }`}
+                      >
+                        🏪 المتجر
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLeadershipTab("design")}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
+                          leadershipTab === "design"
+                            ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/25"
+                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                        }`}
+                      >
+                        🎨 مركز التصميم
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLeadershipTab("stats")}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
+                          leadershipTab === "stats"
+                            ? "bg-blue-500/15 text-blue-300 border border-blue-500/25"
+                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                        }`}
+                      >
+                        📊 الإحصائيات
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* OWNER MODAL CONTENT */}
-                {activeModal === "owner" && (
+                {(activeModal === "owner" ||
+                  (activeModal === "leadership" &&
+                    leadershipTab === "quick")) && (
                   <div className="space-y-6 select-none" dir="rtl">
                     <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 text-center">
                       <h4 className="text-sm font-black text-yellow-500 mb-2">
-                        غرفة التحكم الخاصة بالمالك فقط 👑
+                        {activeModal === "leadership"
+                          ? "⚡ التحكم السريع"
+                          : "غرفة التحكم الخاصة بالمالك فقط 👑"}
                       </h4>
                       <p className="text-[10px] text-gray-400">
-                        أي تغيير هنا يطبق فورا بالقوة الجبرية على كل الغرف
-                        والأعضاء.
+                        {activeModal === "leadership"
+                          ? "تفعيل فوري وتطبيق مباشر على كل الغرف."
+                          : "أي تغيير هنا يطبق فورا بالقوة الجبرية على كل الغرف والأعضاء."}
                       </p>
                     </div>
 
@@ -6311,6 +6745,7 @@ export default function ChatScreen({
                                 "lamma_custom_logo_url",
                                 inp.value.trim(),
                               );
+                              setBrandLogoUrl(inp.value.trim());
                               alert(
                                 "تم تحديث أيقونة التطبيق بنجاح! سيتم تطبيقها لجميع المستخدمين.",
                               );
@@ -6321,6 +6756,7 @@ export default function ChatScreen({
                               );
                             } else {
                               localStorage.removeItem("lamma_custom_logo_url");
+                              setBrandLogoUrl(null);
                               alert("تم استعادة الأيقونة الافتراضية.");
                             }
                           }}
@@ -7680,7 +8116,9 @@ export default function ChatScreen({
                   </div>
                 )}
 
-                {activeModal === "guard" && (
+                {(activeModal === "guard" ||
+                  (activeModal === "leadership" &&
+                    leadershipTab === "guard")) && (
                   <div className="space-y-6 select-none" dir="rtl">
                     <div className="flex flex-col md:flex-row items-center justify-between p-4 bg-lime-950/15 border border-lime-500/20 rounded-2xl gap-3">
                       <div className="flex items-start gap-2.5">
@@ -7928,7 +8366,9 @@ export default function ChatScreen({
                 )}
 
                 {/* LAMMA AUTO-STORE AND AUTOMATION MODAL */}
-                {activeModal === "store" && (
+                {(activeModal === "store" ||
+                  (activeModal === "leadership" &&
+                    leadershipTab === "store")) && (
                   <div className="space-y-4 text-right selection:bg-emerald-500/20 font-sans">
                     {/* Header Banner */}
                     <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-green-950/15 to-black border border-emerald-500/20 shadow-[inset_0_0_15px_rgba(16,185,129,0.06)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none">
@@ -8972,6 +9412,233 @@ export default function ChatScreen({
                     )}
                   </div>
                 )}
+                {activeModal === "leadership" &&
+                  leadershipTab === "design" && (
+                    <div className="space-y-4 select-none" dir="rtl">
+                      <div className="p-4 bg-cyan-950/15 border border-cyan-500/20 rounded-2xl">
+                        <div className="text-white text-xs font-black">
+                          🎨 مركز التصميم
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-bold mt-1">
+                          تحكم في الهوية البصرية: اللوجو، الخلفيات، وبعض عناصر
+                          الواجهة.
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-black/40 border border-white/10 rounded-2xl space-y-3">
+                        <div className="text-[11px] text-cyan-300 font-black">
+                          الشعار
+                        </div>
+                        <div className="flex items-center justify-center bg-black/30 border border-white/10 rounded-xl p-3">
+                          <img
+                            src={brandLogoUrl || "/images/lamma-wordmark.svg"}
+                            alt="LAMMA CHAT"
+                            className="h-10 sm:h-12 w-auto"
+                            draggable={false}
+                          />
+                        </div>
+                        <div className="flex bg-black/30 p-1.5 rounded-lg border border-white/10">
+                          <input
+                            type="text"
+                            id="leadership_logo_url_input"
+                            defaultValue={brandLogoUrl || ""}
+                            placeholder="رابط الشعار (URL)..."
+                            className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const inp = document.getElementById(
+                                "leadership_logo_url_input",
+                              ) as HTMLInputElement;
+                              if (inp && inp.value.trim() !== "") {
+                                localStorage.setItem(
+                                  "lamma_custom_logo_url",
+                                  inp.value.trim(),
+                                );
+                                setBrandLogoUrl(inp.value.trim());
+                              } else {
+                                localStorage.removeItem("lamma_custom_logo_url");
+                                setBrandLogoUrl(null);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap"
+                          >
+                            تطبيق
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-black/40 border border-white/10 rounded-2xl space-y-3">
+                        <div className="text-[11px] text-cyan-300 font-black">
+                          ألوان الإضاءة
+                        </div>
+                        <div className="flex items-center gap-3 bg-black/30 border border-white/10 rounded-xl p-3">
+                          <input
+                            type="color"
+                            value={glowColor}
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              setGlowColor(next);
+                              localStorage.setItem("lamma_glow_color", next);
+                            }}
+                            className="w-10 h-10 rounded-lg bg-transparent border border-white/10"
+                          />
+                          <input
+                            type="text"
+                            value={glowColor}
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              setGlowColor(next);
+                              localStorage.setItem("lamma_glow_color", next);
+                            }}
+                            className="flex-1 bg-transparent border border-white/10 rounded-lg text-[11px] text-white px-2 py-2 focus:outline-none"
+                            dir="ltr"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-black/40 border border-white/10 rounded-2xl space-y-3">
+                        <div className="text-[11px] text-cyan-300 font-black">
+                          خلفية الغرفة الحالية
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-bold">
+                          {openRooms.find((r) => r.id === activeRoomId)?.name ||
+                            activeRoomId}
+                        </div>
+                        <div className="flex bg-black/30 p-1.5 rounded-lg border border-white/10">
+                          <input
+                            type="text"
+                            id="leadership_room_bg_url_input"
+                            defaultValue={roomBgMap[activeRoomId] || ""}
+                            placeholder="رابط صورة خلفية لهذه الغرفة (URL)..."
+                            className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const inp = document.getElementById(
+                                "leadership_room_bg_url_input",
+                              ) as HTMLInputElement;
+                              const next = inp?.value?.trim() || "";
+                              const updated = { ...roomBgMap };
+                              if (next) updated[activeRoomId] = next;
+                              else delete updated[activeRoomId];
+                              setRoomBgMap(updated);
+                              localStorage.setItem(
+                                "lamma_room_bg_map",
+                                JSON.stringify(updated),
+                              );
+                            }}
+                            className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap"
+                          >
+                            تطبيق
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = { ...roomBgMap };
+                            delete updated[activeRoomId];
+                            setRoomBgMap(updated);
+                            localStorage.setItem(
+                              "lamma_room_bg_map",
+                              JSON.stringify(updated),
+                            );
+                          }}
+                          className="w-full py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-[10px] border border-red-500/20 transition-all"
+                        >
+                          حذف خلفية الغرفة
+                        </button>
+                      </div>
+
+                      <div className="p-4 bg-black/40 border border-white/10 rounded-2xl space-y-3">
+                        <div className="text-[11px] text-cyan-300 font-black">
+                          الخلفية الافتراضية
+                        </div>
+                        <div className="flex bg-black/30 p-1.5 rounded-lg border border-white/10">
+                          <input
+                            type="text"
+                            id="leadership_bg_url_input"
+                            defaultValue={ownerBgImage || ""}
+                            placeholder="رابط صورة الخلفية (URL)..."
+                            className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const inp = document.getElementById(
+                                "leadership_bg_url_input",
+                              ) as HTMLInputElement;
+                              if (inp && inp.value.trim() !== "") {
+                                localStorage.setItem(
+                                  "lamma_owner_bg_image",
+                                  inp.value.trim(),
+                                );
+                                setOwnerBgImage(inp.value.trim());
+                              } else {
+                                localStorage.removeItem("lamma_owner_bg_image");
+                                setOwnerBgImage(null);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap"
+                          >
+                            تطبيق
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                {activeModal === "leadership" &&
+                  leadershipTab === "stats" && (
+                    <div className="space-y-4 select-none" dir="rtl">
+                      <div className="p-4 bg-blue-950/15 border border-blue-500/20 rounded-2xl">
+                        <div className="text-white text-xs font-black">
+                          📊 الإحصائيات
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-bold mt-1">
+                          نظرة سريعة على النشاط العام داخل الشات.
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                        <div className="p-3 bg-black/40 rounded-xl border border-blue-500/10 text-center">
+                          <div className="text-sm font-black text-blue-300">
+                            {chatMembers.filter((m) => m.status === "online")
+                              .length}
+                          </div>
+                          <div className="text-[8.5px] text-gray-400 font-extrabold">
+                            المتصلين الآن
+                          </div>
+                        </div>
+                        <div className="p-3 bg-black/40 rounded-xl border border-emerald-500/10 text-center">
+                          <div className="text-sm font-black text-emerald-400">
+                            {(roomMessages?.[activeRoomId] || []).length}
+                          </div>
+                          <div className="text-[8.5px] text-gray-400 font-extrabold">
+                            رسائل الغرفة الحالية
+                          </div>
+                        </div>
+                        <div className="p-3 bg-black/40 rounded-xl border border-yellow-500/10 text-center">
+                          <div className="text-sm font-black text-yellow-500">
+                            {openRooms.length}
+                          </div>
+                          <div className="text-[8.5px] text-gray-400 font-extrabold">
+                            الغرف المفتوحة
+                          </div>
+                        </div>
+                        <div className="p-3 bg-black/40 rounded-xl border border-red-500/10 text-center">
+                          <div className="text-sm font-black text-red-400">
+                            {bannedUsersList.length}
+                          </div>
+                          <div className="text-[8.5px] text-gray-400 font-extrabold">
+                            العقوبات/الحظر
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
               </div>
             </div>
           </motion.div>
@@ -10804,10 +11471,7 @@ export default function ChatScreen({
                   <div className="flex gap-2 items-center">
                     <button
                       onClick={() => {
-                        const u = window.location.origin.replace(
-                          "ais-dev-",
-                          "ais-pre-",
-                        );
+                        const u = appLink;
                         try {
                           if (
                             navigator.clipboard &&
@@ -10841,10 +11505,7 @@ export default function ChatScreen({
                     <input
                       type="text"
                       readOnly
-                      value={window.location.origin.replace(
-                        "ais-dev-",
-                        "ais-pre-",
-                      )}
+                      value={appLink}
                       onClick={(e) => {
                         (e.target as HTMLInputElement).select();
                       }}
@@ -10866,7 +11527,7 @@ export default function ChatScreen({
                   <div className="bg-white p-2.5 rounded-2xl inline-block border-2 border-[#a3e635]/30">
                     <img
                       loading="lazy"
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(window.location.origin.replace("ais-dev-", "ais-pre-"))}`}
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(appLink)}`}
                       alt="QR Code"
                       className="w-[140px] h-[140px]"
                       referrerPolicy="no-referrer"

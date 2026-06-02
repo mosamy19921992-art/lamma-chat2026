@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import AMLogo from "./AMLogo.tsx";
+import { supabase } from "../lib/supabase.ts";
 
 interface LoginScreenProps {
   onLogin: (
@@ -29,6 +30,8 @@ interface LoginScreenProps {
     role: string,
     color: string,
     uid?: string,
+    email?: string,
+    authProvider?: "supabase" | "guest",
   ) => void;
   primaryTheme: "dark" | "amoled";
   setPrimaryTheme: (theme: "dark" | "amoled") => void;
@@ -65,10 +68,12 @@ export default function LoginScreen({
   primaryTheme,
   setPrimaryTheme,
 }: LoginScreenProps) {
-  const [email, setEmail] = useState("example@email.com");
-  const [password, setPassword] = useState("•••••••••");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [authLoading, setAuthLoading] = useState(false);
 
   // Sound feedback preferences
   const [soundOn, setSoundOn] = useState(true);
@@ -105,6 +110,7 @@ export default function LoginScreen({
   const [copiedLink, setCopiedLink] = useState(false);
 
   const [customLogoUrl, setCustomLogoUrl] = useState<string | null>(null);
+  const appLink = import.meta.env.VITE_APP_URL || window.location.origin;
 
   useEffect(() => {
     const savedLogo = localStorage.getItem("lamma_custom_logo_url");
@@ -182,14 +188,80 @@ export default function LoginScreen({
 
   const handleFormLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-    const cleanNick = email.split("@")[0] || "مستخدم_لمة";
+
+    if (!email.trim()) {
+      showToast("اكتب البريد الإلكتروني الأول.", "error");
+      return;
+    }
+    if (!password.trim()) {
+      showToast("اكتب كلمة المرور الأول.", "error");
+      return;
+    }
+
+    if (!supabase) {
+      showToast("⚠️ إعدادات السيرفر غير مكتملة حالياً. راجع إعدادات Supabase.", "error");
+      return;
+    }
+
     const assignedColor =
       NICKNAME_COLORS[Math.floor(Math.random() * NICKNAME_COLORS.length)];
-    const assumedRole = email.includes("admin") ? "admin" : "user";
 
-    playBeepSound(520, "sine");
-    onLogin(cleanNick, assumedRole, assignedColor);
+    setAuthLoading(true);
+    const doAuth =
+      authMode === "signup"
+        ? supabase.auth.signUp({
+            email: email.trim(),
+            password,
+            options: {
+              data: {
+                nickname: email.trim().split("@")[0] || "مستخدم_لمة",
+              },
+            },
+          })
+        : supabase.auth.signInWithPassword({ email: email.trim(), password });
+
+    doAuth
+      .then(({ data, error }) => {
+        if (error) {
+          showToast(error.message || "فشل تسجيل الدخول.", "error");
+          return;
+        }
+
+        if (authMode === "signup") {
+          showToast(
+            "✅ تم إنشاء الحساب. لو مشروع Supabase مفعل تأكيد الإيميل، راجع بريدك وبعدين سجل دخول.",
+            "success",
+          );
+          setAuthMode("login");
+          setPassword("");
+          return;
+        }
+
+        if (!data?.user) {
+          showToast("فشل تسجيل الدخول.", "error");
+          return;
+        }
+
+        const nick =
+          data.user.user_metadata?.nickname ||
+          data.user.user_metadata?.name ||
+          (data.user.email ? data.user.email.split("@")[0] : null) ||
+          "مستخدم_لمة";
+
+        playBeepSound(520, "sine");
+        if (!rememberMe) {
+          localStorage.removeItem("lamma_user_session");
+        }
+        onLogin(
+          nick,
+          "user",
+          assignedColor,
+          data.user.id,
+          data.user.email,
+          "supabase",
+        );
+      })
+      .finally(() => setAuthLoading(false));
   };
 
   const handleCopyLink = () => {
@@ -229,17 +301,32 @@ export default function LoginScreen({
     playBeepSound(440, "sine");
     showToast("🚀 تم الدخول السريع بأمان بوضع الزائر المحلي!", "success");
     setTimeout(() => {
-      onLogin(guestId, "guest", assignedColor);
+      onLogin(guestId, "guest", assignedColor, undefined, undefined, "guest");
     }, 200);
   };
 
   const handleGoogleLogin = async () => {
-    showToast("⚠️ تسجيل الدخول باستخدام Google غير متاح حالياً.", "error");
+    try {
+      setAuthLoading(true);
+      if (!supabase) {
+        showToast("⚠️ إعدادات Supabase غير مكتملة حالياً.", "error");
+        return;
+      }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) {
+        showToast(error.message, "error");
+      }
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   return (
     <div
-      className={`h-screen w-full relative overflow-y-auto overflow-x-hidden transition-colors duration-500 font-sans ${
+      className={`min-h-[100dvh] w-full relative overflow-y-auto overflow-x-hidden transition-colors duration-500 font-sans ${
         primaryTheme === "amoled"
           ? "bg-black text-gray-100"
           : "bg-[#040805] text-[#e2e8f0]"
@@ -259,20 +346,20 @@ export default function LoginScreen({
       <div className="absolute top-[40%] right-[10%] w-1 h-1 bg-yellow-300 rounded-full animate-pulse" />
 
       {/* Dynamic Scrollable Wrapper with centering behavior */}
-      <div className="min-h-full w-full flex items-center justify-center p-3 sm:p-4 md:p-6 lg:py-10">
+      <div className="min-h-[100dvh] w-full flex items-start 2xl:items-center justify-center p-3 sm:p-4 md:p-6 2xl:py-10">
         {/* Main Grid Wrapper */}
-        <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 items-start relative z-10">
+        <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 2xl:grid-cols-12 gap-5 items-start 2xl:items-center relative z-10">
           {/* COLUMN 1: BRANDING & SYSTEM STATS (LEFT) */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
-            className="lg:col-span-3 flex flex-col gap-3 rounded-[24px] bg-black/40 border border-green-500/10 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.03)] h-auto w-full p-4"
+            className="hidden 2xl:col-span-3 2xl:flex flex-col gap-3 rounded-[24px] bg-black/40 border border-green-500/10 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.03)] h-auto w-full p-4"
           >
             {/* Branding Header */}
             <div className="flex flex-col items-center text-center pb-2">
               <img
-                src={customLogoUrl || "/images/lamma-logo.png"}
+                src={customLogoUrl || "/images/lamma-wordmark.svg"}
                 alt="LAMMA CHAT"
                 className="w-[180px] max-w-full drop-shadow-xl my-2"
               />
@@ -395,11 +482,11 @@ export default function LoginScreen({
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="lg:col-span-5 flex flex-col justify-start items-center h-auto w-full relative z-20"
+            className="w-full 2xl:col-span-6 flex flex-col justify-start items-center h-auto relative z-20"
           >
             {/* Rounded glass container with green neon border shadow */}
             <div
-              className={`w-full max-w-[460px] h-auto relative rounded-[32px] p-6 md:p-8 border overflow-hidden shadow-2xl transition-all duration-300 flex flex-col ${
+              className={`w-full max-w-[460px] 2xl:max-w-[520px] h-auto relative rounded-[32px] p-4 sm:p-6 md:p-8 border overflow-hidden shadow-2xl transition-all duration-300 flex flex-col ${
                 primaryTheme === "amoled"
                   ? "bg-neutral-950/90 border-green-500/20 shadow-[0_0_30px_rgba(16,185,129,0.1)]"
                   : "bg-white/[0.02] border-green-500/15 backdrop-blur-xl shadow-[0_0_30px_rgba(16,185,129,0.08)]"
@@ -418,7 +505,7 @@ export default function LoginScreen({
               <div className="text-center mb-4">
                 <div className="mx-auto flex justify-center mb-2 mt-0">
                   <img
-                    src={customLogoUrl || "/images/lamma-logo.png"}
+                    src={customLogoUrl || "/images/lamma-wordmark.svg"}
                     alt="LAMMA CHAT"
                     className="w-[200px] sm:w-[260px] max-w-full h-auto drop-shadow-2xl"
                   />
@@ -510,12 +597,33 @@ export default function LoginScreen({
 
                   <button
                     type="button"
-                    onClick={() =>
-                      showToast(
-                        "📧 سيتم توجيه رمز إعادة تعيين كلمة المرور إلى بريدك الإلكتروني قريباً.",
-                        "info",
-                      )
-                    }
+                    onClick={() => {
+                      const targetEmail = email.trim();
+                      if (!targetEmail) {
+                        showToast("اكتب البريد الإلكتروني الأول.", "error");
+                        return;
+                      }
+                      if (!supabase) {
+                        showToast("⚠️ إعدادات Supabase غير مكتملة حالياً.", "error");
+                        return;
+                      }
+                      setAuthLoading(true);
+                      supabase.auth
+                        .resetPasswordForEmail(targetEmail, {
+                          redirectTo: window.location.origin,
+                        })
+                        .then(({ error }) => {
+                          if (error) {
+                            showToast(error.message, "error");
+                            return;
+                          }
+                          showToast(
+                            "📧 تم إرسال رسالة إعادة تعيين كلمة المرور. راجع بريدك.",
+                            "success",
+                          );
+                        })
+                        .finally(() => setAuthLoading(false));
+                    }}
                     className="text-green-400 hover:text-green-300 font-extrabold transition-all"
                   >
                     نسيت كلمة المرور؟
@@ -525,10 +633,29 @@ export default function LoginScreen({
                 {/* Glowing Luminous green submit button matching button in login screen picture */}
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-gradient-to-l from-emerald-600 via-green-500 to-[#a3e635] text-black rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(16,185,129,0.3)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.55)] transition-all cursor-pointer border border-[#a3e635]/30"
+                  disabled={authLoading}
+                  className="w-full py-2.5 bg-gradient-to-l from-emerald-600 via-green-500 to-[#a3e635] text-black rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(16,185,129,0.3)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.55)] transition-all cursor-pointer border border-[#a3e635]/30 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <span>تسجيل الدخول</span>
+                  <span>
+                    {authLoading
+                      ? "جاري التنفيذ..."
+                      : authMode === "signup"
+                        ? "إنشاء حساب"
+                        : "تسجيل الدخول"}
+                  </span>
                   <ChevronRight size={16} className="rotate-180" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAuthMode((p) => (p === "login" ? "signup" : "login"))
+                  }
+                  className="w-full text-[11px] text-gray-400 hover:text-green-300 font-black transition-all"
+                >
+                  {authMode === "login"
+                    ? "مش عندك حساب؟ اعمل حساب جديد"
+                    : "عندك حساب؟ سجل دخول"}
                 </button>
               </form>
 
@@ -590,9 +717,9 @@ export default function LoginScreen({
                   سيتم إنشاء اسم مستخدم ورقم تلقائياً والدخول فوراً
                 </p>
 
-                <div className="grid grid-cols-12 gap-3 items-center">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
                   {/* Robot/User representation */}
-                  <div className="col-span-3 flex justify-center">
+                  <div className="sm:col-span-3 flex justify-center">
                     <div className="relative w-12 h-12 rounded-2xl bg-black/60 border border-green-500/20 flex items-center justify-center text-2xl shadow-[0_0_10px_rgba(16,185,129,0.1)]">
                       <span>🤖</span>
                       <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-green-500 border border-black animate-pulse" />
@@ -600,7 +727,7 @@ export default function LoginScreen({
                   </div>
 
                   {/* Proposed Guest username with Copy & Regenerate tools */}
-                  <div className="col-span-9 space-y-2">
+                  <div className="sm:col-span-9 space-y-2">
                     <div className="flex items-center gap-1.5">
                       <input
                         id="guest-id-display"
@@ -644,6 +771,51 @@ export default function LoginScreen({
                 >
                   🚀 دخول مباشر بالاسم المقترح
                 </button>
+
+                {import.meta.env.DEV && !supabase ? (
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const assignedColor =
+                          NICKNAME_COLORS[
+                            Math.floor(Math.random() * NICKNAME_COLORS.length)
+                          ];
+                        onLogin(
+                          guestId,
+                          "owner",
+                          assignedColor,
+                          undefined,
+                          undefined,
+                          "guest",
+                        );
+                      }}
+                      className="py-2 bg-red-500/5 hover:bg-red-500/15 border border-red-500/20 hover:border-red-500/60 text-xs font-black rounded-xl text-red-300 hover:text-white transition-all cursor-pointer"
+                    >
+                      👑 دخول كمالك (Demo)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const assignedColor =
+                          NICKNAME_COLORS[
+                            Math.floor(Math.random() * NICKNAME_COLORS.length)
+                          ];
+                        onLogin(
+                          guestId,
+                          "admin",
+                          assignedColor,
+                          undefined,
+                          undefined,
+                          "guest",
+                        );
+                      }}
+                      className="py-2 bg-blue-500/5 hover:bg-blue-500/15 border border-blue-500/20 hover:border-blue-500/60 text-xs font-black rounded-xl text-blue-200 hover:text-white transition-all cursor-pointer"
+                    >
+                      🛡️ دخول كأدمن (Demo)
+                    </button>
+                  </div>
+                ) : null}
               </div>
 
               {/* Bottom link as Guest */}
@@ -684,7 +856,7 @@ export default function LoginScreen({
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
-            className="lg:col-span-4 flex flex-col gap-3 rounded-[24px] bg-black/40 border border-green-500/10 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.03)] h-auto w-full p-4"
+            className="hidden 2xl:col-span-3 2xl:flex flex-col gap-3 rounded-[24px] bg-black/40 border border-green-500/10 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.03)] h-auto w-full p-4"
           >
             {/* Intro Highlights */}
             <div className="flex flex-col gap-2 space-y-1">
@@ -848,10 +1020,7 @@ export default function LoginScreen({
                   <div className="flex gap-2 items-center">
                     <button
                       onClick={() => {
-                        const u = window.location.origin.replace(
-                          "ais-dev-",
-                          "ais-pre-",
-                        );
+                        const u = appLink;
                         try {
                           if (
                             navigator.clipboard &&
@@ -883,10 +1052,7 @@ export default function LoginScreen({
                     <input
                       type="text"
                       readOnly
-                      value={window.location.origin.replace(
-                        "ais-dev-",
-                        "ais-pre-",
-                      )}
+                      value={appLink}
                       onClick={(e) => {
                         (e.target as HTMLInputElement).select();
                       }}
@@ -907,7 +1073,7 @@ export default function LoginScreen({
                   </span>
                   <div className="bg-white p-2.5 rounded-2xl inline-block border-2 border-[#a3e635]/30">
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(window.location.origin.replace("ais-dev-", "ais-pre-"))}`}
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(appLink)}`}
                       alt="QR Code"
                       className="w-[140px] h-[140px]"
                       referrerPolicy="no-referrer"
