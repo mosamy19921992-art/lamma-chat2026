@@ -355,7 +355,7 @@ export default function LoginScreen({
       {/* Dynamic Scrollable Wrapper with centering behavior */}
       <div className="min-h-[100dvh] w-full flex items-start 2xl:items-center justify-center p-3 sm:p-4 md:p-6 2xl:py-10">
         {/* Main Grid Wrapper */}
-        <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-5 items-start md:items-stretch 2xl:items-center relative z-10">
+        <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-5 items-start md:items-start 2xl:items-center relative z-10">
           {/* COLUMN 1: BRANDING & SYSTEM STATS (LEFT) */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
