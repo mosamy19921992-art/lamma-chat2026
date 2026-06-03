@@ -54,8 +54,8 @@ body {
 
 .lamma-glass {
   background: linear-gradient(180deg, rgba(18, 24, 20, 0.88), rgba(8, 12, 10, 0.72));
-  backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
+  backdrop-filter: blur(30px);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 32px;
   position: relative;
