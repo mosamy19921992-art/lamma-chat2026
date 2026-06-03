@@ -579,6 +579,9 @@ export default function LoginScreen({
                       </div>
                     ))}
                   </div>
+                  <div className="mt-3 pt-3 border-t border-white/10 text-[10px] text-gray-300 font-semibold leading-relaxed">
+                    هدفنا إن كل عمود يبقى متوازن… من غير فراغات مزعجة.
+                  </div>
                 </div>
               </div>
             </div>
@@ -984,53 +987,17 @@ export default function LoginScreen({
             <div className="w-full max-w-[420px]">
               <div className="lamma-column-frame">
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
-                      <div className="w-full flex items-center justify-center">
-                        <div className="w-full rounded-3xl bg-black/55 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_45px_rgba(0,0,0,0.65)] overflow-hidden h-[320px] xl:h-[340px]">
-                          <img
-                            src={amMarkSrc}
-                            alt="AM"
-                            className="w-full h-full object-cover object-center opacity-95"
-                            loading="eager"
-                            decoding="async"
-                            draggable={false}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
-                      <div className="w-full rounded-3xl bg-black/35 border border-white/10 h-[320px] xl:h-[340px] p-4 flex flex-col">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[11px] font-black text-white truncate">
-                            مفاجأة
-                          </span>
-                          <span
-                            className="text-[8px] font-mono text-gray-500"
-                            dir="ltr"
-                          >
-                            الآن
-                          </span>
-                        </div>
-                        <div className="mt-2 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
-                          كل حاجة واضحة وسريعة… من غير زحمة ولا لف كتير.
-                        </div>
-                        <div className="mt-2 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
-                          شكل ثابت وعمودين منسّقين جنب التسجيل.
-                        </div>
-                        <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-                          <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
-                            <Zap
-                              size={12}
-                              className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)]"
-                            />
-                            <span>جاهز للدخول</span>
-                          </div>
-                          <span className="text-[9px] text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] px-2 py-0.5 rounded-full font-bold">
-                            ثابت
-                          </span>
-                        </div>
+                  <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                    <div className="w-full flex items-center justify-center">
+                      <div className="w-full rounded-3xl bg-black/55 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_45px_rgba(0,0,0,0.65)] overflow-hidden aspect-square">
+                        <img
+                          src={amMarkSrc}
+                          alt="AM"
+                          className="w-full h-full object-cover object-center opacity-95"
+                          loading="eager"
+                          decoding="async"
+                          draggable={false}
+                        />
                       </div>
                     </div>
                   </div>
