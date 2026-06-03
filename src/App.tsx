@@ -10,6 +10,8 @@ interface UserSession {
   role: string;
   color: string;
   uid?: string;
+  email?: string | null;
+  authProvider?: 'supabase' | 'guest';
 }
 
 export default function App() {
@@ -22,11 +24,17 @@ export default function App() {
     // 1) محاولة جلب الجلسة الحالية
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
+        const nick =
+          (session.user.user_metadata as any)?.nickname ||
+          (session.user.user_metadata as any)?.name ||
+          (session.user.email ?? 'User');
         setUser({
-          nickname: session.user.email ?? 'User',
+          nickname: nick,
           role: 'user',
           color: 'white',
           uid: session.user.id,
+          email: session.user.email ?? null,
+          authProvider: 'supabase',
         });
       }
     });
@@ -38,20 +46,39 @@ export default function App() {
       setUser(
         session?.user
           ? {
-              nickname: session.user.email ?? 'User',
+              nickname:
+                (session.user.user_metadata as any)?.nickname ||
+                (session.user.user_metadata as any)?.name ||
+                (session.user.email ?? 'User'),
               role: 'user',
               color: 'white',
               uid: session.user.id,
+              email: session.user.email ?? null,
+              authProvider: 'supabase',
             }
-          : null
+          : null,
       );
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogin = (nickname: string, role: string, color: string, uid?: string) => {
-    setUser({ nickname, role, color, uid });
+  const handleLogin = (
+    nickname: string,
+    role: string,
+    color: string,
+    uid?: string,
+    email?: string,
+    authProvider?: 'supabase' | 'guest',
+  ) => {
+    setUser({
+      nickname,
+      role,
+      color,
+      uid,
+      email: email ?? null,
+      authProvider,
+    });
   };
 
   const handleLogout = () => {

@@ -21,7 +21,6 @@ import {
   Hash,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import AMLogo from "./AMLogo.tsx";
 import { supabase } from "../lib/supabase.ts";
 
 interface LoginScreenProps {
@@ -68,12 +67,24 @@ export default function LoginScreen({
   primaryTheme,
   setPrimaryTheme,
 }: LoginScreenProps) {
+  type WallTheme = "fire" | "ice" | "violet";
+  const amMarkSrc = "/images/lamma-logo.png";
+
+  const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(() =>
+    localStorage.getItem("lamma_custom_logo_url"),
+  );
+  const [wallTheme, setWallTheme] = useState<WallTheme>(() => {
+    const saved = localStorage.getItem("lamma_wall_theme");
+    if (saved === "fire" || saved === "ice" || saved === "violet") return saved;
+    return "fire";
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [authLoading, setAuthLoading] = useState(false);
+  const [showExtraOptions, setShowExtraOptions] = useState(false);
 
   // Sound feedback preferences
   const [soundOn, setSoundOn] = useState(true);
@@ -110,6 +121,25 @@ export default function LoginScreen({
   const [copiedLink, setCopiedLink] = useState(false);
 
   const appLink = import.meta.env.VITE_APP_URL || window.location.origin;
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== "lamma_custom_logo_url") return;
+      setBrandLogoUrl(e.newValue);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== "lamma_wall_theme") return;
+      const v = e.newValue;
+      if (v === "fire" || v === "ice" || v === "violet") setWallTheme(v);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   // Simulated live active users list
   const activeMembers = [
@@ -318,26 +348,28 @@ export default function LoginScreen({
 
   return (
     <div
-      className="min-h-[100dvh] w-full relative overflow-y-auto overflow-x-hidden font-sans bg-transparent text-[color:var(--text-primary)]"
+      className="min-h-[100dvh] w-full relative overflow-y-auto overflow-x-hidden font-sans bg-transparent text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app"
       dir="rtl"
+      data-lamma-wall={wallTheme}
     >
       {/* Dynamic Scrollable Wrapper with centering behavior */}
       <div className="min-h-[100dvh] w-full flex items-start 2xl:items-center justify-center p-3 sm:p-4 md:p-6 2xl:py-10">
         {/* Main Grid Wrapper */}
-        <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 2xl:grid-cols-12 gap-5 items-start 2xl:items-center relative z-10">
+        <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 items-start 2xl:items-center relative z-10">
           {/* COLUMN 1: BRANDING & SYSTEM STATS (LEFT) */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
-            className="hidden 2xl:col-span-3 2xl:flex flex-col gap-3 rounded-[24px] bg-black/40 border border-green-500/10 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.03)] h-auto w-full p-4"
+            className="hidden"
           >
             {/* Branding Header */}
             <div className="flex flex-col items-center text-center pb-2">
               <img
-                src="/images/lamma-wordmark.svg"
+                src={brandLogoUrl || "/images/lamma-wordmark.svg"}
                 alt="LAMMA CHAT"
                 className="w-[180px] max-w-full drop-shadow-xl my-2"
+                draggable={false}
               />
               <div className="mt-1 flex items-center justify-center p-2 rounded-full bg-emerald-950/60 border border-green-500/30 text-green-400 shadow-[0_0_15px_rgba(16,185,129,0.2)] animate-pulse">
                 <MessageCircle size={18} />
@@ -453,37 +485,102 @@ export default function LoginScreen({
             </div>
           </motion.div>
 
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="hidden lg:flex lg:col-span-4 w-full items-center justify-center"
+          >
+            <div className="w-full max-w-[360px] flex flex-col gap-3">
+              {[
+                {
+                  name: "مستخدم",
+                  quote: "مفيش تجديد… كله كلام فاضي ومكرر طول اليوم.",
+                  icon: <MessageCircle size={16} />,
+                  tone: "text-red-300 border-red-500/15 bg-red-500/5",
+                },
+                {
+                  name: "عضو قديم",
+                  quote: "الناس بتتخانق على الفاضي… ومحدش بيلحق على الكلام.",
+                  icon: <AlertCircle size={16} />,
+                  tone: "text-yellow-300 border-yellow-500/15 bg-yellow-500/5",
+                },
+                {
+                  name: "صاحب شات",
+                  quote: "الموضوع محتاج شكل جديد… يخلّي الدردشة محترمة وممتعة.",
+                  icon: <Sparkles size={16} />,
+                  tone: "text-sky-200 border-sky-500/15 bg-sky-500/5",
+                },
+              ].map((item, idx) => (
+                <motion.div
+                  key={item.name}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: [0, -4, 0] }}
+                  transition={{
+                    duration: 4.4,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: 0.15 * idx,
+                  }}
+                  className="lamma-glass rounded-3xl p-3 overflow-hidden"
+                >
+                  <div className="flex items-start gap-2">
+                    <div
+                      className={`w-9 h-9 rounded-2xl flex items-center justify-center border ${item.tone} shrink-0`}
+                    >
+                      {item.icon}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-black text-white truncate">
+                          {item.name}
+                        </span>
+                        <span className="text-[8px] font-mono text-gray-500" dir="ltr">
+                          الآن
+                        </span>
+                      </div>
+                      <div className="mt-1 text-[10px] text-gray-300 font-semibold leading-relaxed">
+                        {item.quote}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
           {/* ================= COLUMN 2 (MIDDLE COLUMN): THE LOGIN CARD ================= */}
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="w-full 2xl:col-span-6 flex flex-col justify-start items-center h-auto relative z-20"
+            className="w-full lg:col-span-4 flex flex-col justify-start items-center h-auto relative z-20"
           >
             {/* Rounded glass container with green neon border shadow */}
             <div
               className={`w-full max-w-[460px] 2xl:max-w-[520px] h-auto relative rounded-[32px] p-4 sm:p-6 md:p-8 border overflow-hidden shadow-2xl transition-all duration-300 flex flex-col ${
                 primaryTheme === "amoled"
-                  ? "bg-neutral-950/90 border-green-500/20 shadow-[0_0_30px_rgba(16,185,129,0.1)]"
-                  : "bg-white/[0.02] border-green-500/15 backdrop-blur-xl shadow-[0_0_30px_rgba(16,185,129,0.08)]"
+                  ? "bg-neutral-950/90 border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_34px_rgba(0,0,0,0.55)]"
+                  : "bg-white/[0.02] border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.18)] backdrop-blur-xl shadow-[0_0_34px_rgba(0,0,0,0.48)]"
               }`}
             >
               {/* Horizontal neon neon ambient line at the top rim of card */}
-              <div className="absolute top-0 right-0 left-0 h-[2.5px] bg-gradient-to-r from-transparent via-green-500 to-transparent animate-pulse" />
+              <div className="absolute top-0 right-0 left-0 h-[2.5px] bg-gradient-to-r from-transparent via-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.75)] to-transparent animate-pulse" />
 
               {/* Glowing corner beads */}
               <div className="absolute top-3 left-3 flex gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#a3e635] animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] animate-ping" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.65)] animate-pulse" />
               </div>
 
               {/* Header logo & headings */}
               <div className="text-center mb-4">
                 <div className="mx-auto flex justify-center mb-2 mt-0">
                   <img
-                    src="/images/lamma-wordmark.svg"
+                    src={brandLogoUrl || "/images/lamma-wordmark.svg"}
                     alt="LAMMA CHAT"
-                    className="w-[200px] sm:w-[260px] max-w-full h-auto drop-shadow-2xl"
+                    className="w-[190px] sm:w-[240px] max-w-full h-auto drop-shadow-2xl"
+                    draggable={false}
                   />
                 </div>
                 <h2 className="text-[20px] md:text-2xl font-black text-white m-0 mt-2">
@@ -505,7 +602,7 @@ export default function LoginScreen({
                     البريد الإلكتروني
                   </label>
                   <div className="relative">
-                    <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-green-500 pointer-events-none">
+                    <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
                       <Mail size={16} />
                     </span>
                     <input
@@ -515,9 +612,10 @@ export default function LoginScreen({
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pr-11 pl-4 py-2.5 bg-black/60 border border-green-500/15 focus:border-green-400 rounded-2xl text-xs focus:ring-1 focus:ring-green-400/30 focus:outline-none text-white transition-all font-mono"
+                      className="w-full pr-11 pl-4 py-2.5 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] focus:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] rounded-2xl text-xs focus:ring-1 focus:ring-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] focus:outline-none text-white transition-all text-left"
                       placeholder="example@email.com"
                       autoComplete="email"
+                      dir="ltr"
                     />
                   </div>
                 </div>
@@ -531,7 +629,7 @@ export default function LoginScreen({
                     كلمة المرور
                   </label>
                   <div className="relative">
-                    <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-green-500 pointer-events-none">
+                    <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
                       <Lock size={16} />
                     </span>
                     <input
@@ -541,13 +639,14 @@ export default function LoginScreen({
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pr-11 pl-12 py-2.5 bg-black/60 border border-green-500/15 focus:border-green-400 rounded-2xl text-xs focus:ring-1 focus:ring-green-400/30 focus:outline-none text-white transition-all font-mono"
+                      className="w-full pr-11 pl-12 py-2.5 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] focus:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] rounded-2xl text-xs focus:ring-1 focus:ring-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] focus:outline-none text-white transition-all text-left"
                       autoComplete="current-password"
+                      dir="ltr"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500 hover:text-green-400 transition-colors"
+                      className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500 hover:text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] transition-colors"
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -566,7 +665,7 @@ export default function LoginScreen({
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 rounded border-green-500/20 bg-black/50 text-green-500 accent-green-600 focus:ring-0"
+                      className="w-4 h-4 rounded border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] bg-black/50 text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] accent-[rgb(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b))] focus:ring-0"
                     />
                     <span>تذكرني</span>
                   </label>
@@ -600,17 +699,16 @@ export default function LoginScreen({
                         })
                         .finally(() => setAuthLoading(false));
                     }}
-                    className="text-green-400 hover:text-green-300 font-extrabold transition-all"
+                  className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] hover:text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.75)] font-extrabold transition-all"
                   >
                     نسيت كلمة المرور؟
                   </button>
                 </div>
 
-                {/* Glowing Luminous green submit button matching button in login screen picture */}
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full py-2.5 bg-gradient-to-l from-emerald-600 via-green-500 to-[#a3e635] text-black rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(16,185,129,0.3)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.55)] transition-all cursor-pointer border border-[#a3e635]/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full py-2.5 bg-black/45 hover:bg-black/35 text-white rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-[0_0_18px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.18)] hover:shadow-[0_0_28px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.26)] transition-all cursor-pointer border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.28)] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <span>
                     {authLoading
@@ -627,7 +725,7 @@ export default function LoginScreen({
                   onClick={() =>
                     setAuthMode((p) => (p === "login" ? "signup" : "login"))
                   }
-                  className="w-full text-[11px] text-gray-400 hover:text-green-300 font-black transition-all"
+                  className="w-full text-[11px] text-gray-400 hover:text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.75)] font-black transition-all"
                 >
                   {authMode === "login"
                     ? "مش عندك حساب؟ اعمل حساب جديد"
@@ -637,16 +735,16 @@ export default function LoginScreen({
 
               {/* Divider */}
               <div className="flex items-center gap-3.5 my-3 text-gray-400 text-[11px] font-bold">
-                <span className="flex-1 h-[1px] bg-gradient-to-l from-green-500/10 to-transparent" />
+                <span className="flex-1 h-[1px] bg-gradient-to-l from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
                 <span>أو</span>
-                <span className="flex-1 h-[1px] bg-gradient-to-r from-green-500/10 to-transparent" />
+                <span className="flex-1 h-[1px] bg-gradient-to-r from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
               </div>
 
               {/* Google Authentication row button */}
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full py-2.5 bg-black/40 hover:bg-white/[0.04] border border-green-500/10 hover:border-green-500/30 rounded-2xl text-[11px] font-black flex items-center justify-between px-4 transition-all text-gray-300 hover:text-white"
+                className="w-full py-2.5 bg-black/40 hover:bg-white/[0.04] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.12)] hover:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.30)] rounded-2xl text-[11px] font-black flex items-center justify-between px-4 transition-all text-gray-300 hover:text-white"
               >
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -672,19 +770,31 @@ export default function LoginScreen({
                 <ChevronRight size={13} className="rotate-180 opacity-60" />
               </button>
 
-              {/* Fast login as guest box styled exactly like the bottom grid in middle card */}
-              <div className="mt-4 p-3 rounded-xl bg-gradient-to-br from-green-500/[0.04] to-emerald-950/[0.04] border border-green-500/10">
+              <button
+                type="button"
+                onClick={() => setShowExtraOptions((p) => !p)}
+                className="mt-4 w-full py-2.5 rounded-2xl bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] text-[11px] font-black text-gray-300 hover:text-white transition-all flex items-center justify-between px-4"
+              >
+                <span>خيارات إضافية</span>
+                <ChevronRight
+                  size={13}
+                  className={`rotate-180 opacity-60 transition-transform ${showExtraOptions ? "-rotate-90" : ""}`}
+                />
+              </button>
+
+              {showExtraOptions && (
+                <div className="mt-3 p-3 rounded-xl bg-[linear-gradient(135deg,rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.07),rgba(0,0,0,0.08))] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.12)]">
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-1">
                     <Sparkles
                       size={13}
-                      className="text-green-400 animate-spin duration-3000"
+                      className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] animate-pulse"
                     />
                     <span className="text-[11px] font-black text-white">
                       دخول سريع باستخدام Lamma Chat
                     </span>
                   </div>
-                  <span className="text-[9px] text-[#a3e635] bg-green-500/10 px-2 py-0.5 rounded-full font-bold">
+                  <span className="text-[9px] text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] px-2 py-0.5 rounded-full font-bold">
                     تلقائي
                   </span>
                 </div>
@@ -696,9 +806,9 @@ export default function LoginScreen({
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
                   {/* Robot/User representation */}
                   <div className="sm:col-span-3 flex justify-center">
-                    <div className="relative w-12 h-12 rounded-2xl bg-black/60 border border-green-500/20 flex items-center justify-center text-2xl shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                    <div className="relative w-12 h-12 rounded-2xl bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-2xl shadow-[0_0_12px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)]">
                       <span>🤖</span>
-                      <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-green-500 border border-black animate-pulse" />
+                      <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] border border-black animate-pulse" />
                     </div>
                   </div>
 
@@ -711,14 +821,14 @@ export default function LoginScreen({
                         type="text"
                         readOnly
                         value={guestId}
-                        className="flex-1 bg-black/60 border border-green-500/15 text-xs px-2.5 py-2 rounded-xl text-green-300 font-mono text-center focus:outline-none"
+                        className="flex-1 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] text-xs px-2.5 py-2 rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] font-mono text-center focus:outline-none"
                         autoComplete="off"
                       />
 
                       <button
                         type="button"
                         onClick={handleCopyGuestId}
-                        className="p-2 rounded-lg bg-black/60 hover:bg-black text-gray-400 hover:text-white border border-green-500/10 hover:border-green-500/30 transition-all"
+                        className="p-2 rounded-lg bg-black/60 hover:bg-black text-gray-400 hover:text-white border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.12)] hover:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.30)] transition-all"
                         title="نسخ المعرف"
                       >
                         <Copy size={13} />
@@ -727,7 +837,7 @@ export default function LoginScreen({
                       <button
                         type="button"
                         onClick={handleRegenerateGuestId}
-                        className="p-2 rounded-lg bg-black/60 hover:bg-black text-gray-400 hover:text-white border border-green-500/10 hover:border-green-500/30 transition-all group"
+                        className="p-2 rounded-lg bg-black/60 hover:bg-black text-gray-400 hover:text-white border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.12)] hover:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.30)] transition-all group"
                         title="توليد معرف جديد"
                       >
                         <RefreshCw
@@ -743,7 +853,7 @@ export default function LoginScreen({
                 <button
                   type="button"
                   onClick={handleSwiftGuestLogin}
-                  className="w-full mt-3 py-2.5 bg-[#a3e635]/5 hover:bg-[#a3e635]/15 border border-[#a3e635]/25 hover:border-[#a3e635] text-xs font-black rounded-xl text-[#a3e635] hover:text-white transition-all cursor-pointer"
+                  className="w-full mt-3 py-2.5 bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.06)] hover:bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.20)] hover:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] text-xs font-black rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] hover:text-white transition-all cursor-pointer"
                 >
                   🚀 دخول مباشر بالاسم المقترح
                 </button>
@@ -792,7 +902,8 @@ export default function LoginScreen({
                     </button>
                   </div>
                 ) : null}
-              </div>
+                </div>
+              )}
 
               {/* Bottom link as Guest */}
               <div className="mt-4 text-center space-y-3">
@@ -801,9 +912,9 @@ export default function LoginScreen({
                   id="continue-as-guest-btn"
                   name="continueAsGuest"
                   onClick={handleSwiftGuestLogin}
-                  className="text-xs text-gray-400 hover:text-green-300 flex items-center justify-center gap-1.5 mx-auto font-black transition-all"
+                  className="text-xs text-gray-400 hover:text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.75)] flex items-center justify-center gap-1.5 mx-auto font-black transition-all"
                 >
-                  <span>Continue as Guest</span>
+                  <span>متابعة كضيف</span>
                   <ChevronRight size={13} className="rotate-180 opacity-60" />
                 </button>
 
@@ -826,6 +937,198 @@ export default function LoginScreen({
               <span className="text-green-500">💚</span>
             </div>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="hidden lg:flex lg:col-span-4 w-full items-center justify-center"
+          >
+            <div className="w-full max-w-[360px] relative">
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: [0, -8, 0] }}
+                transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -top-10 left-1/2 -translate-x-1/2 z-20"
+              >
+                <div className="w-24 h-24 rounded-3xl bg-black/70 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_40px_rgba(0,0,0,0.75)] flex items-center justify-center">
+                    <img
+                      src={amMarkSrc}
+                      alt="AM"
+                      className="w-[84px] h-[84px] object-cover object-[50%_22%] scale-[1.12] opacity-95"
+                      draggable={false}
+                    />
+                </div>
+              </motion.div>
+
+              <div className="lamma-column-frame">
+                <div className="lamma-glass rounded-3xl p-3 pt-12 overflow-hidden">
+                  <div className="grid grid-rows-2 gap-3">
+                    <div className="p-3 rounded-2xl bg-black/35 border border-white/10">
+                      <div className="flex items-center gap-2">
+                        <div className="w-9 h-9 rounded-xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)]">
+                          <Hash size={16} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-black text-white truncate">
+                            اللي فاهم بيريّح
+                          </div>
+                          <div className="text-[9.5px] text-gray-400 font-bold leading-snug">
+                            ومن غير كلام كتير
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-black/35 border border-white/10">
+                      <div className="flex items-center gap-2">
+                        <div className="w-9 h-9 rounded-xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)]">
+                          <Shield size={16} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-black text-white truncate">
+                            الشات تجربتك
+                          </div>
+                          <div className="text-[9.5px] text-gray-400 font-bold leading-snug">
+                            لحل أي روتين
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-white/10 text-[10px] text-gray-300 font-semibold leading-relaxed">
+                    <span className="text-white font-black">لمة شات</span> مش
+                    مجرد فكرة… ده مشروع كله{" "}
+                    <span className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] font-black">
+                      مفاجآت
+                    </span>
+                    ، وأهمها السهولة وتنقية العين، مع اكتشافات مش هتتخيلها يا
+                    مان.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          <div className="lg:hidden w-full flex flex-col items-center gap-4 mt-4">
+            <div className="w-full max-w-[520px] grid gap-4">
+              <div className="grid gap-3">
+                {[
+                  {
+                    name: "مستخدم",
+                    quote: "مفيش تجديد… كله كلام فاضي ومكرر طول اليوم.",
+                    icon: <MessageCircle size={16} />,
+                    tone: "text-red-300 border-red-500/15 bg-red-500/5",
+                  },
+                  {
+                    name: "عضو قديم",
+                    quote: "الناس بتتخانق على الفاضي… ومحدش بيلحق على الكلام.",
+                    icon: <AlertCircle size={16} />,
+                    tone: "text-yellow-300 border-yellow-500/15 bg-yellow-500/5",
+                  },
+                  {
+                    name: "صاحب شات",
+                    quote: "الموضوع محتاج شكل جديد… يخلّي الدردشة محترمة وممتعة.",
+                    icon: <Sparkles size={16} />,
+                    tone: "text-sky-200 border-sky-500/15 bg-sky-500/5",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.name}
+                    className="lamma-glass rounded-3xl p-3 overflow-hidden"
+                  >
+                    <div className="flex items-start gap-2">
+                      <div
+                        className={`w-9 h-9 rounded-2xl flex items-center justify-center border ${item.tone} shrink-0`}
+                      >
+                        {item.icon}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-black text-white truncate">
+                            {item.name}
+                          </span>
+                          <span className="text-[8px] font-mono text-gray-500" dir="ltr">
+                            الآن
+                          </span>
+                        </div>
+                        <div className="mt-1 text-[10px] text-gray-300 font-semibold leading-relaxed">
+                          {item.quote}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="w-full relative">
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: [0, -8, 0] }}
+                  transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute -top-10 left-1/2 -translate-x-1/2 z-20"
+                >
+                  <div className="w-24 h-24 rounded-3xl bg-black/70 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_40px_rgba(0,0,0,0.75)] flex items-center justify-center">
+                    <img
+                      src={amMarkSrc}
+                      alt="AM"
+                      className="w-[84px] h-[84px] object-cover object-[50%_22%] scale-[1.12] opacity-95"
+                      draggable={false}
+                    />
+                  </div>
+                </motion.div>
+
+                <div className="lamma-column-frame">
+                  <div className="lamma-glass rounded-3xl p-3 pt-12 overflow-hidden">
+                    <div className="grid grid-rows-2 gap-3">
+                      <div className="p-3 rounded-2xl bg-black/35 border border-white/10">
+                        <div className="flex items-center gap-2">
+                          <div className="w-9 h-9 rounded-xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)]">
+                            <Hash size={16} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[11px] font-black text-white truncate">
+                              اللي فاهم بيريّح
+                            </div>
+                            <div className="text-[9.5px] text-gray-400 font-bold leading-snug">
+                              ومن غير كلام كتير
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-black/35 border border-white/10">
+                        <div className="flex items-center gap-2">
+                          <div className="w-9 h-9 rounded-xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)]">
+                            <Shield size={16} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[11px] font-black text-white truncate">
+                              الشات تجربتك
+                            </div>
+                            <div className="text-[9.5px] text-gray-400 font-bold leading-snug">
+                              لحل أي روتين
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-white/10 text-[10px] text-gray-300 font-semibold leading-relaxed">
+                      <span className="text-white font-black">لمة شات</span> مش
+                      مجرد فكرة… ده مشروع كله{" "}
+                      <span className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] font-black">
+                        مفاجآت
+                      </span>
+                      ، وأهمها السهولة وتنقية العين، مع اكتشافات مش هتتخيلها يا
+                      مان.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* COLUMN 3: LIVE MEMBERS & INFO */}
           <motion.div
