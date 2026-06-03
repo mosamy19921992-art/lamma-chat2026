@@ -596,6 +596,8 @@ export default function ChatScreen({
   onLogout,
   primaryTheme,
 }: ChatScreenProps) {
+  type WallTheme = "fire" | "ice" | "violet";
+
   const [ownerBgImage, setOwnerBgImage] = useState<string | null>(() =>
     localStorage.getItem("lamma_owner_bg_image"),
   );
@@ -604,6 +606,11 @@ export default function ChatScreen({
   );
   const [glowColor, setGlowColor] = useState<string>(() => {
     return localStorage.getItem("lamma_glow_color") || "#10b981";
+  });
+  const [wallTheme, setWallTheme] = useState<WallTheme>(() => {
+    const saved = localStorage.getItem("lamma_wall_theme");
+    if (saved === "fire" || saved === "ice" || saved === "violet") return saved;
+    return "fire";
   });
   const [roomBgMap, setRoomBgMap] = useState<Record<string, string>>(() => {
     const raw = localStorage.getItem("lamma_room_bg_map");
@@ -3400,8 +3407,9 @@ export default function ChatScreen({
 
   return (
     <div
-      className="h-[100dvh] flex flex-col justify-between overflow-hidden relative font-sans text-[color:var(--text-primary)]"
+      className="h-[100dvh] flex flex-col justify-between overflow-hidden relative font-sans text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app"
       dir="rtl"
+      data-lamma-wall={wallTheme}
     >
       {activeRoomBg ? (
         <>
@@ -3507,19 +3515,46 @@ export default function ChatScreen({
                 openModal("leadership");
               }}
             >
-              {myActiveSession.frame ? (
+              <div className="relative shrink-0">
                 <div
-                  className={`p-[1.5px] rounded-full bg-gradient-to-r ${myActiveSession.frame} animate-[pulse_1.5s_infinite] shadow-[0_0_8px_rgba(234,179,8,0.3)] shrink-0`}
+                  className={`p-[2px] rounded-full ${
+                    myActiveSession.frame
+                      ? `bg-gradient-to-r ${myActiveSession.frame}`
+                      : "bg-gradient-to-r from-yellow-500/50 via-orange-500/35 to-yellow-500/50"
+                  }`}
+                  style={{
+                    boxShadow:
+                      "0 0 18px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.20)",
+                  }}
                 >
-                  <div className="w-6 h-6 rounded-full bg-[#050806] flex items-center justify-center text-xs">
-                    👤
+                  <div className="w-7 h-7 rounded-full bg-[#050806] border border-white/10 flex items-center justify-center text-[13px] overflow-hidden">
+                    {myActiveSession.avatar || "👤"}
                   </div>
                 </div>
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xs shrink-0 text-gray-400">
-                  👤
-                </div>
-              )}
+                {(myActiveSession.role === "owner" ||
+                  myActiveSession.role === "admin" ||
+                  myActiveSession.role === "vip" ||
+                  myActiveSession.role === "platinum_vip") && (
+                  <div
+                    className={`absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full flex items-center justify-center border ${
+                      myActiveSession.role === "admin"
+                        ? "bg-blue-500/15 border-blue-500/35 text-blue-300"
+                        : myActiveSession.role === "vip"
+                          ? "bg-green-500/15 border-green-500/35 text-green-300"
+                          : myActiveSession.role === "platinum_vip"
+                            ? "bg-yellow-500/15 border-yellow-500/35 text-yellow-300"
+                            : "bg-yellow-500/15 border-yellow-500/35 text-yellow-300"
+                    }`}
+                    style={{
+                      boxShadow:
+                        "0 0 14px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.22)",
+                    }}
+                    aria-hidden="true"
+                  >
+                    <Crown size={10} />
+                  </div>
+                )}
+              </div>
               <div className="flex flex-col items-start leading-none gap-0.5">
                 <span
                   className={`text-[11px] font-black flex items-center gap-1 truncate max-w-[45vw] sm:max-w-none ${myActiveSession.role === "platinum_vip" ? "animate-[pulse_1.5s_infinite] text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400 font-extrabold" : ""}`}
@@ -4339,7 +4374,7 @@ export default function ChatScreen({
           className={`hidden xl:flex xl:order-3 flex-col overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isLeftColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
-              : "w-[300px] 2xl:w-[340px] p-3 opacity-100 border-r border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)]"
+              : "w-[300px] 2xl:w-[340px] p-3 opacity-100 border-r border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] lamma-column-frame"
           }`}
         >
           <div
@@ -4620,7 +4655,7 @@ export default function ChatScreen({
           </div>
 
           {/* Tab lists content */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-4">
+          <div className="flex-1 overflow-y-auto py-3 pr-3 pl-5 space-y-4 lamma-fire-scroll">
             {activeSidebarTab === "rooms" && (
               <div className="space-y-3">
                 {/* Feature: Create room button */}
@@ -4879,7 +4914,7 @@ export default function ChatScreen({
         <div
           className={`flex-1 flex flex-col min-w-0 bg-[rgba(5,8,6,0.28)] backdrop-blur-xl xl:order-2 ${
             mobileTab === "chat" ? "flex" : "hidden md:flex"
-          } ${isLeftColumnCollapsed ? "xl:border-l xl:border-[rgba(163,230,53,0.12)]" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-[rgba(163,230,53,0.12)]" : ""}`}
+          } ${isLeftColumnCollapsed ? "xl:border-l xl:border-[rgba(163,230,53,0.12)]" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-[rgba(163,230,53,0.12)]" : ""} lamma-column-frame`}
         >
           {/* Room Top Bar: Topic & System Actions */}
           <div className="flex items-stretch justify-between bg-[#040705] min-h-[38px] border-b border-green-500/10 shrink-0 lamma-fire-underline">
@@ -5360,7 +5395,10 @@ export default function ChatScreen({
           </div>
 
           {/* Messages Feed Viewport */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" dir="rtl">
+          <div
+            className="flex-1 overflow-y-auto py-4 space-y-4 lamma-fire-scroll pr-4 pl-6"
+            dir="rtl"
+          >
             {/* Owner Control Alerts Block */}
             {isMaintenanceMode && (
               <div
@@ -5754,7 +5792,7 @@ export default function ChatScreen({
           {/* Scrolling Commercial ad banner */}
           {isAdsEnabled && !isAdBannerDismissed && (
             <div
-              className="w-full bg-gradient-to-r from-[#1a1400] via-black to-[#1a1400] border-t border-yellow-500/30 px-3 py-1 sm:py-1.5 flex items-center justify-between text-yellow-500 text-[10px] sm:text-[11px] font-bold z-[40] relative"
+              className="w-full bg-gradient-to-r from-[#1a1400] via-black to-[#1a1400] border-t border-yellow-500/30 px-3 py-1 sm:py-1.5 flex items-center justify-between text-yellow-500 text-[10px] sm:text-[11px] font-bold z-[40] relative lamma-fire-overline"
               dir="rtl"
             >
               <div className="flex items-center gap-2 flex-1 overflow-hidden">
@@ -5791,7 +5829,7 @@ export default function ChatScreen({
           {/* Restore ad banner pill if dismissed */}
           {isAdsEnabled && isAdBannerDismissed && (
             <div
-              className="w-full bg-black/80 border-t border-yellow-500/10 px-3 py-1 flex items-center justify-center z-[40] relative cursor-pointer hover:bg-yellow-900/30 transition-colors text-[9px] text-yellow-600/70 hover:text-yellow-500 font-bold"
+              className="w-full bg-black/80 border-t border-yellow-500/10 px-3 py-1 flex items-center justify-center z-[40] relative cursor-pointer hover:bg-yellow-900/30 transition-colors text-[9px] text-yellow-600/70 hover:text-yellow-500 font-bold lamma-fire-overline"
               dir="rtl"
               onClick={() => setIsAdBannerDismissed(false)}
             >
@@ -6402,7 +6440,7 @@ export default function ChatScreen({
           className={`hidden xl:flex xl:order-1 flex-col gap-3 overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isRightColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
-              : "w-[320px] 2xl:w-[340px] p-3 opacity-100 border-l border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)]"
+              : "w-[320px] 2xl:w-[340px] p-3 opacity-100 border-l border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] lamma-column-frame"
           }`}
         >
           <div
@@ -6423,7 +6461,7 @@ export default function ChatScreen({
                     {ROOMS_DEF.length}
                   </span>
                 </div>
-                <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+                <div className="flex-1 overflow-y-auto pr-1 pl-2 space-y-3 lamma-fire-scroll">
                   {(isOwnerRole ||
                     memberCustomPermissions[currentUser.nickname]
                       ?.roomCreationAllowed) && (
@@ -6550,7 +6588,7 @@ export default function ChatScreen({
                     {chatMembers.length}
                   </span>
                 </div>
-                <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+                <div className="flex-1 overflow-y-auto pr-1 pl-2 space-y-4 lamma-fire-scroll">
                   {[
                     {
                       key: "owner",
@@ -9969,6 +10007,73 @@ export default function ChatScreen({
                           الواجهة.
                         </div>
                       </div>
+
+                      {isOwnerRole && (
+                        <div className="p-4 bg-black/40 border border-white/10 rounded-2xl space-y-3">
+                          <div className="text-[11px] text-cyan-300 font-black">
+                            ألوان الجدران
+                          </div>
+                          <div className="text-[10px] text-gray-400 font-bold">
+                            تبديل لون الفواصل والفريم والماسورة داخل الشات بالكامل.
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setWallTheme("fire");
+                                localStorage.setItem("lamma_wall_theme", "fire");
+                              }}
+                              className={`p-3 rounded-xl border transition-all ${
+                                wallTheme === "fire"
+                                  ? "bg-cyan-500/10 border-cyan-500/30"
+                                  : "bg-black/30 border-white/10 hover:bg-white/5"
+                              }`}
+                            >
+                              <div className="h-3 rounded-full bg-gradient-to-r from-yellow-500/30 via-orange-500/40 to-yellow-500/30 border border-yellow-500/25" />
+                              <div className="text-[10px] font-black text-yellow-400 mt-2">
+                                ناري
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setWallTheme("ice");
+                                localStorage.setItem("lamma_wall_theme", "ice");
+                              }}
+                              className={`p-3 rounded-xl border transition-all ${
+                                wallTheme === "ice"
+                                  ? "bg-cyan-500/10 border-cyan-500/30"
+                                  : "bg-black/30 border-white/10 hover:bg-white/5"
+                              }`}
+                            >
+                              <div className="h-3 rounded-full bg-gradient-to-r from-sky-400/25 via-cyan-400/35 to-sky-400/25 border border-sky-400/25" />
+                              <div className="text-[10px] font-black text-sky-300 mt-2">
+                                ثلجي
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setWallTheme("violet");
+                                localStorage.setItem(
+                                  "lamma_wall_theme",
+                                  "violet",
+                                );
+                              }}
+                              className={`p-3 rounded-xl border transition-all ${
+                                wallTheme === "violet"
+                                  ? "bg-cyan-500/10 border-cyan-500/30"
+                                  : "bg-black/30 border-white/10 hover:bg-white/5"
+                              }`}
+                            >
+                              <div className="h-3 rounded-full bg-gradient-to-r from-fuchsia-500/20 via-violet-500/35 to-fuchsia-500/20 border border-violet-500/25" />
+                              <div className="text-[10px] font-black text-violet-300 mt-2">
+                                بنفسجي
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="p-4 bg-black/40 border border-white/10 rounded-2xl space-y-3">
                         <div className="text-[11px] text-cyan-300 font-black">
