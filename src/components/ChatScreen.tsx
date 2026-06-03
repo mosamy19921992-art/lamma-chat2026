@@ -153,10 +153,7 @@ function renderTextMessageWithMedia(text: string) {
       }
 
       // 2. Image Link Detection
-      const isImg =
-        url.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) ||
-        url.includes("images.unsplash.com") ||
-        url.includes("img");
+      const isImg = url.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) || url.includes("img");
       if (isImg) {
         mediaPreviews.push(
           <div
@@ -3174,7 +3171,7 @@ export default function ChatScreen({
       mediaUrl =
         inputUrl.trim() !== ""
           ? inputUrl.trim()
-          : "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=60";
+          : "/images/lamma-logo.png";
     }
     if (type === "video") {
       const inputUrl = prompt(
@@ -4179,7 +4176,7 @@ export default function ChatScreen({
           {!isZenMode && (
             <div className="absolute left-1/2 top-9 sm:top-11 md:top-[38px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center max-w-[240px] md:max-w-xs text-center group/welcome z-30 pointer-events-none w-full">
               <img
-                src={brandLogoUrl || "/images/lamma-wordmark.svg"}
+                src="/images/lamma-wordmark.svg"
                 alt="LAMMA CHAT"
                 className="h-6 sm:h-7 w-auto drop-shadow-lg pointer-events-auto select-none"
                 draggable={false}

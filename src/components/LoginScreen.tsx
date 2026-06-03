@@ -326,25 +326,9 @@ export default function LoginScreen({
 
   return (
     <div
-      className={`min-h-[100dvh] w-full relative overflow-y-auto overflow-x-hidden transition-colors duration-500 font-sans ${
-        primaryTheme === "amoled"
-          ? "bg-black text-gray-100"
-          : "bg-[#040805] text-[#e2e8f0]"
-      }`}
+      className="min-h-[100dvh] w-full relative overflow-y-auto overflow-x-hidden font-sans bg-transparent text-[color:var(--text-primary)]"
       dir="rtl"
     >
-      {/* Background radial glowing gradients of emerald green */}
-      <div className="absolute top-[10%] left-[5%] w-[450px] h-[450px] bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-[10%] right-[5%] w-[500px] h-[500px] bg-green-500/5 rounded-full blur-[160px] pointer-events-none" />
-
-      {/* Grid of sparks overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.03),transparent)] pointer-events-none" />
-
-      {/* Floating Sparkles decorative layers */}
-      <div className="absolute top-24 left-[15%] w-1.5 h-1.5 bg-green-400 rounded-full animate-ping" />
-      <div className="absolute bottom-32 right-[20%] w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-      <div className="absolute top-[40%] right-[10%] w-1 h-1 bg-yellow-300 rounded-full animate-pulse" />
-
       {/* Dynamic Scrollable Wrapper with centering behavior */}
       <div className="min-h-[100dvh] w-full flex items-start 2xl:items-center justify-center p-3 sm:p-4 md:p-6 2xl:py-10">
         {/* Main Grid Wrapper */}
