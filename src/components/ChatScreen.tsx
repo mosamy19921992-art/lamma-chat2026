@@ -3390,21 +3390,22 @@ export default function ChatScreen({
 
   return (
     <div
-      className={`h-[100dvh] flex flex-col justify-between overflow-hidden relative font-sans ${
-        primaryTheme === "amoled"
-          ? "bg-black text-gray-100"
-          : "bg-[#050906] text-[#cbd5e1]"
-      }`}
+      className="h-[100dvh] flex flex-col justify-between overflow-hidden relative font-sans text-[color:var(--text-primary)]"
       dir="rtl"
-      style={{
-        backgroundImage: activeRoomBg ? `url(${activeRoomBg})` : "none",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
     >
-      {activeRoomBg && (
-        <div className="absolute inset-0 bg-black/60 z-0 pointer-events-none" />
-      )}
+      {activeRoomBg ? (
+        <>
+          <div
+            className="absolute inset-0 z-0 pointer-events-none"
+            style={{
+              backgroundImage: `url(${activeRoomBg})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+          <div className="absolute inset-0 bg-black/60 z-0 pointer-events-none" />
+        </>
+      ) : null}
       {/* Background radial soft light particles */}
       <div
         className="absolute inset-0 pointer-events-none z-0"
@@ -3439,7 +3440,14 @@ export default function ChatScreen({
 
       {/* ================= HEADER BAR ================= */}
       {!isZenMode && (
-        <header className="h-[56px] sm:h-[75px] bg-gradient-to-r from-[#0c120d] via-[#0f1811] to-[#0c120d] border-b border-green-500/20 px-2 sm:px-4 md:px-6 flex items-center justify-between relative z-20 backdrop-blur-xl shadow-[0_5px_40px_rgba(16,185,129,0.05),0_1px_3px_rgba(0,0,0,0.5)] shrink-0">
+        <header className="lamma-header px-2 sm:px-4 md:px-6 flex items-center justify-between relative z-20 shrink-0">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+            <img
+              src="/images/lamma-wordmark.svg"
+              alt="LAMMA CHAT"
+              className="h-6 sm:h-7 opacity-90 drop-shadow-[0_0_18px_rgba(16,185,129,0.2)]"
+            />
+          </div>
           {/* Right side controls (User account & actions - Now in the visual start "اول الصفحة" due to RTL) */}
           <div className="flex items-center gap-2 md:gap-3">
             {/* User badge */}
@@ -4301,15 +4309,108 @@ export default function ChatScreen({
 
       {/* ================= FOUR-PANEL BODY ================= */}
       <div className="flex-1 flex overflow-hidden relative min-h-0">
+        <aside className="hidden xl:flex w-[320px] 2xl:w-[360px] flex-col gap-3 p-3 overflow-hidden border-r border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] backdrop-blur-xl">
+          <div className="lamma-glass rounded-3xl p-4 lamma-soft-glow overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div className="text-right">
+                <div className="text-[12px] font-black text-[color:var(--accent-secondary)]">
+                  VIP GOLD
+                </div>
+                <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1">
+                  خصم محدود على الباقات
+                </div>
+              </div>
+              <div className="text-3xl">👑</div>
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => openModal("store")}
+                className="flex-1 py-2 rounded-xl bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.25)] text-[color:var(--accent-primary)] text-[11px] font-black hover:bg-[rgba(16,185,129,0.18)] transition-all cursor-pointer"
+              >
+                احصل عليه الآن
+              </button>
+              <button
+                type="button"
+                onClick={() => openModal("store")}
+                className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                title="المتجر"
+              >
+                <Gift size={16} className="text-[color:var(--accent-secondary)]" />
+              </button>
+            </div>
+          </div>
+
+          <div className="lamma-glass rounded-3xl p-4 overflow-hidden flex flex-col min-h-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[color:var(--text-primary)]">
+                <Radio size={16} className="text-[color:var(--accent-secondary)]" />
+                <span className="text-[12px] font-black">راديو لمة</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggleDropdown("music" as any)}
+                className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                title="فتح الراديو"
+              >
+                <Play size={16} className="text-[color:var(--accent-primary)]" />
+              </button>
+            </div>
+            <div className="mt-3 flex-1 min-h-0 overflow-hidden">
+              <div className="rounded-2xl bg-black/30 border border-white/5 p-3 h-full flex flex-col justify-between">
+                <div className="text-right">
+                  <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
+                    الآن على الهواء
+                  </div>
+                  <div className="text-[12px] text-white font-extrabold mt-1 truncate">
+                    أغاني وطرب
+                  </div>
+                  <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1 truncate">
+                    راديو لمة • جودة HD
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => toggleDropdown("music" as any)}
+                    className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                    title="تشغيل/إيقاف"
+                  >
+                    <Pause size={16} className="text-[color:var(--accent-primary)]" />
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleDropdown("music" as any)}
+                      className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                      title="السابق"
+                    >
+                      <ChevronRight size={16} className="text-gray-300" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleDropdown("music" as any)}
+                      className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                      title="التالي"
+                    >
+                      <ChevronLeft size={16} className="text-gray-300" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
         <div
-          className={`absolute inset-0 bg-black/70 z-30 transition-opacity ${
+          className={`xl:hidden absolute inset-0 bg-black/70 z-30 transition-opacity ${
             isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
           onClick={() => setIsSidebarOpen(false)}
         />
         {/* ----------------- OVERLAY SIDEBAR PANEL (ROOMS & MEMBERS TABBED) ----------------- */}
         <aside
-          className={`sidebar-container w-full sm:w-[420px] border-l border-green-500/10 bg-[#060a07]/98 flex flex-col justify-between flex-shrink-0 z-40 absolute inset-y-0 right-0 h-full shadow-[0_0_25px_rgba(0,0,0,0.85)] max-w-[92vw] ${
+          className={`xl:hidden sidebar-container w-full sm:w-[420px] border-l border-green-500/10 bg-[#060a07]/98 flex flex-col justify-between flex-shrink-0 z-40 absolute inset-y-0 right-0 h-full shadow-[0_0_25px_rgba(0,0,0,0.85)] max-w-[92vw] ${
             isSidebarOpen ? "flex animate-fade-in" : "hidden"
           }`}
         >
@@ -4605,7 +4706,7 @@ export default function ChatScreen({
 
         {/* ----------------- PANEL 3: MAIN ACTIVE MESSAGE LOG (3rd column / Center) ----------------- */}
         <div
-          className={`flex-1 flex flex-col border-l border-green-500/10 bg-[#060a07] min-w-0 md:order-2 ${
+          className={`flex-1 flex flex-col min-w-0 md:order-2 bg-[rgba(5,8,6,0.28)] backdrop-blur-xl ${
             mobileTab === "chat" ? "flex" : "hidden md:flex"
           }`}
         >
@@ -6117,6 +6218,198 @@ export default function ChatScreen({
 
           {/* End of content */}
         </div>
+
+        <aside className="hidden xl:flex w-[320px] 2xl:w-[360px] flex-col gap-3 p-3 overflow-hidden border-l border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] backdrop-blur-xl">
+          <div className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 text-[color:var(--accent-secondary)]">
+                <span className="text-base">🗂️</span>
+                <span className="text-[12px] font-black">الغرف</span>
+              </div>
+              <span className="text-[10px] text-[color:var(--text-secondary)] font-mono">
+                {ROOMS_DEF.length}
+              </span>
+            </div>
+            <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+              {(isOwnerRole ||
+                memberCustomPermissions[currentUser.nickname]?.roomCreationAllowed) && (
+                <button
+                  type="button"
+                  onClick={() => setIsCreateRoomModalOpen(true)}
+                  className="w-full p-2.5 bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.25)] rounded-2xl flex items-center justify-center gap-2 text-[color:var(--accent-primary)] font-extrabold text-[11px] hover:bg-[rgba(16,185,129,0.18)] transition-all cursor-pointer"
+                >
+                  <Plus size={14} />
+                  <span>إنشاء غرفة</span>
+                </button>
+              )}
+
+              {(() => {
+                const visibleRooms = ROOMS_DEF.filter((room) => {
+                  if (room.id === "admin" && !isAdminRole && !isOwnerRole) {
+                    return false;
+                  }
+                  return true;
+                });
+
+                return ROOM_CATEGORIES.map((category) => {
+                  const rooms = visibleRooms.filter(
+                    (r: any) => r.category === category.id,
+                  );
+                  if (rooms.length === 0) return null;
+
+                  return (
+                    <div key={category.id} className="space-y-2">
+                      <div className="text-[10px] text-[color:var(--accent-secondary)] font-extrabold tracking-widest uppercase pb-1 border-b border-white/5 flex items-center gap-2">
+                        <span>{category.icon}</span>
+                        <span>{category.name}</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {rooms.map((room: any) => (
+                          <button
+                            key={room.id}
+                            type="button"
+                            onClick={() => {
+                              if (!openRooms.find((r) => r.id === room.id)) {
+                                setOpenRooms((prev) => [
+                                  ...prev,
+                                  { id: room.id, name: room.name, flag: room.icon },
+                                ]);
+                              }
+                              handleSwitchRoom(room.id);
+                            }}
+                            className={`w-full p-2.5 rounded-2xl border transition-all text-xs font-black cursor-pointer flex items-center justify-between ${
+                              room.id === activeRoomId
+                                ? "bg-[rgba(16,185,129,0.10)] border-[rgba(16,185,129,0.35)] text-[color:var(--accent-primary)] lamma-soft-glow"
+                                : "bg-black/20 border-white/5 hover:bg-white/5 text-gray-200"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">{room.icon}</span>
+                              <span>{room.name}</span>
+                            </div>
+                            <span className="bg-black/50 px-2 py-0.5 rounded-full border border-white/10 text-[9px] text-[color:var(--accent-secondary)] font-black font-mono">
+                              {room.count}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+
+          <div className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 text-[color:var(--accent-secondary)]">
+                <span className="text-base">👥</span>
+                <span className="text-[12px] font-black">المتصلون</span>
+              </div>
+              <span className="text-[10px] text-[color:var(--text-secondary)] font-mono">
+                {chatMembers.length}
+              </span>
+            </div>
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+              {[
+                {
+                  key: "owner",
+                  title: "👑 Owner",
+                  border: "border-yellow-500/10",
+                  bg: "bg-yellow-500/5",
+                  text: "text-yellow-500",
+                  crownRole: "owner" as const,
+                },
+                {
+                  key: "admin",
+                  title: "🛡️ Admin",
+                  border: "border-blue-500/10",
+                  bg: "bg-blue-500/5",
+                  text: "text-blue-400",
+                  crownRole: "admin" as const,
+                },
+                {
+                  key: "vip",
+                  title: "💎 VIP",
+                  border: "border-green-500/10",
+                  bg: "bg-green-500/5",
+                  text: "text-green-400",
+                  crownRole: "vip" as const,
+                },
+                {
+                  key: "user",
+                  title: "👤 Members",
+                  border: "border-white/5",
+                  bg: "bg-white/[0.02]",
+                  text: "text-gray-300",
+                  crownRole: "none" as const,
+                },
+              ].map((group) => {
+                const members =
+                  group.key === "admin"
+                    ? chatMembers.filter((m) => m.role === "admin" || m.role === "mod")
+                    : group.key === "user"
+                      ? chatMembers.filter((m) => m.role === "user" || m.role === "guest")
+                      : chatMembers.filter((m) => m.role === group.key);
+                if (members.length === 0) return null;
+                return (
+                  <div key={group.key} className="space-y-2">
+                    <div className={`text-[10px] font-black flex items-center justify-between uppercase tracking-widest ${group.text}`}>
+                      <span>{group.title}</span>
+                      <span className="text-[9px] font-mono text-[color:var(--text-secondary)]">
+                        {members.length}
+                      </span>
+                    </div>
+                    <div className={`space-y-0 rounded-2xl overflow-hidden border ${group.border} ${group.bg}`}>
+                      {members.slice(0, 24).map((m, idx) => (
+                        <div
+                          key={m.id}
+                          onClick={() => openMemberProfile(m.nickname)}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            openMemberProfile(m.nickname);
+                          }}
+                          className={`p-2 px-2.5 hover:bg-white/5 flex items-center justify-between cursor-pointer transition-all ${idx !== Math.min(members.length, 24) - 1 ? "border-b border-white/5" : ""}`}
+                        >
+                          <div className={`flex items-center gap-2 font-black ${group.text} overflow-hidden`}>
+                            {group.key === "user" ? (
+                              <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-white/5 rounded-full border border-white/10 text-[20px]">
+                                {m.avatar}
+                              </div>
+                            ) : (
+                              <div className="flex-shrink-0 flex items-center justify-center">
+                                <AMLogo
+                                  size={24}
+                                  variant="circular"
+                                  glow={false}
+                                  crownRole={group.crownRole}
+                                />
+                              </div>
+                            )}
+                            <div className="flex flex-col truncate">
+                              <span className="font-bold text-[12px] truncate leading-tight text-white">
+                                {m.nickname}
+                              </span>
+                              <span className="text-[8px] font-black text-[color:var(--text-secondary)]">
+                                {m.role}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+                        </div>
+                      ))}
+                      {members.length > 24 ? (
+                        <div className="p-2 text-[10px] text-[color:var(--text-secondary)] font-bold text-center bg-black/20">
+                          +{members.length - 24} المزيد
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </aside>
 
         {/* ----------------- PANEL 5: FLOATING PRIVATE CONVERSATION WINDOW WITH SARAH (5th column) ----------------- */}
         <motion.aside

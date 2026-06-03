@@ -6,6 +6,20 @@
   --font-mono: "Space Grotesk", monospace;
 }
 
+:root {
+  --bg-primary: #050806;
+  --bg-secondary: #0b120d;
+  --accent-primary: #10b981;
+  --accent-secondary: #a3e635;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glow-color: rgba(16, 185, 129, 0.18);
+}
+
 html,
 body,
 #root {
@@ -14,6 +28,35 @@ body,
   margin: 0;
   padding: 0;
   overflow: hidden;
+}
+
+body {
+  background:
+    radial-gradient(
+      circle at top center,
+      rgba(16, 185, 129, 0.12),
+      transparent 45%
+    ),
+    linear-gradient(180deg, var(--bg-primary), var(--bg-secondary));
+  color: var(--text-primary);
+}
+
+.lamma-glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(14px);
+}
+
+.lamma-header {
+  height: 64px;
+  backdrop-filter: blur(18px);
+  background: rgba(5, 8, 6, 0.75);
+  border-bottom: 1px solid rgba(163, 230, 53, 0.12);
+  box-shadow: 0 1px 30px rgba(16, 185, 129, 0.08);
+}
+
+.lamma-soft-glow {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
 }
 
 /* =========================
@@ -122,4 +165,3 @@ body,
 .animate-marquee {
   animation: marquee 25s linear infinite;
 }
-

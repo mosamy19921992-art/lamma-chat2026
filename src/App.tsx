@@ -17,6 +17,8 @@ export default function App() {
   const [primaryTheme, setPrimaryTheme] = useState<Theme>('dark');
 
   useEffect(() => {
+    if (!supabase) return;
+
     // 1) محاولة جلب الجلسة الحالية
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -54,7 +56,7 @@ export default function App() {
 
   const handleLogout = () => {
     setUser(null);
-    supabase.auth.signOut();
+    supabase?.auth.signOut();
   };
 
   return (
