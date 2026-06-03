@@ -642,6 +642,11 @@ export default function ChatScreen({
     radio: 33.333,
     music: 33.334,
   });
+  const rightColumnLayoutRef = useRef<HTMLDivElement | null>(null);
+  const [rightColumnSectionsPct, setRightColumnSectionsPct] = useState({
+    rooms: 50,
+    members: 50,
+  });
   const [isCompactView, setIsCompactView] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [showPmListDropdown, setShowPmListDropdown] = useState(false);
@@ -4877,7 +4882,7 @@ export default function ChatScreen({
           } ${isLeftColumnCollapsed ? "xl:border-l xl:border-[rgba(163,230,53,0.12)]" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-[rgba(163,230,53,0.12)]" : ""}`}
         >
           {/* Room Top Bar: Topic & System Actions */}
-          <div className="flex items-stretch justify-between bg-[#040705] min-h-[38px] border-b border-green-500/10 shrink-0">
+          <div className="flex items-stretch justify-between bg-[#040705] min-h-[38px] border-b border-green-500/10 shrink-0 lamma-fire-underline">
             {/* Topic Side (Right) */}
             <div
               className="flex-1 flex flex-col justify-center px-3 border-l border-green-500/10 group/topic cursor-pointer relative"
@@ -4973,7 +4978,7 @@ export default function ChatScreen({
 
           {/* Header section replicating the top of chat log / Room Tabs - matching Ad Banner size & width */}
           <div
-            className="w-full bg-[#030604] border-b border-green-500/10 px-2 flex items-center justify-between shadow-[0_2px_15px_rgba(16,185,129,0.05)] shrink-0 z-10 h-[36px]"
+            className="w-full bg-[#030604] border-b border-green-500/10 px-2 flex items-center justify-between shadow-[0_2px_15px_rgba(16,185,129,0.05)] shrink-0 z-10 h-[36px] lamma-fire-underline"
             dir="rtl"
           >
             {/* Tabs Container */}
@@ -6400,193 +6405,260 @@ export default function ChatScreen({
               : "w-[320px] 2xl:w-[340px] p-3 opacity-100 border-l border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)]"
           }`}
         >
-          <div className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-[color:var(--accent-secondary)]">
-                <span className="text-base">🗂️</span>
-                <span className="text-[12px] font-black">الغرف</span>
-              </div>
-              <span className="text-[10px] text-[color:var(--text-secondary)] font-mono">
-                {ROOMS_DEF.length}
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto pr-1 space-y-3">
-              {(isOwnerRole ||
-                memberCustomPermissions[currentUser.nickname]?.roomCreationAllowed) && (
-                <button
-                  type="button"
-                  onClick={() => setIsCreateRoomModalOpen(true)}
-                  className="w-full p-2.5 bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.25)] rounded-2xl flex items-center justify-center gap-2 text-[color:var(--accent-primary)] font-extrabold text-[11px] hover:bg-[rgba(16,185,129,0.18)] transition-all cursor-pointer"
-                >
-                  <Plus size={14} />
-                  <span>إنشاء غرفة</span>
-                </button>
-              )}
-
-              {(() => {
-                const visibleRooms = ROOMS_DEF.filter((room) => {
-                  if (room.id === "admin" && !isAdminRole && !isOwnerRole) {
-                    return false;
-                  }
-                  return true;
-                });
-
-                return ROOM_CATEGORIES.map((category) => {
-                  const rooms = visibleRooms.filter(
-                    (r: any) => r.category === category.id,
-                  );
-                  if (rooms.length === 0) return null;
-
-                  return (
-                    <div key={category.id} className="space-y-2">
-                      <div className="text-[10px] text-[color:var(--accent-secondary)] font-extrabold tracking-widest uppercase pb-1 border-b border-white/5 flex items-center gap-2">
-                        <span>{category.icon}</span>
-                        <span>{category.name}</span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {rooms.map((room: any) => (
-                          <button
-                            key={room.id}
-                            type="button"
-                            onClick={() => {
-                              if (!openRooms.find((r) => r.id === room.id)) {
-                                setOpenRooms((prev) => [
-                                  ...prev,
-                                  { id: room.id, name: room.name, flag: room.icon },
-                                ]);
-                              }
-                              handleSwitchRoom(room.id);
-                            }}
-                            className={`w-full p-2.5 rounded-2xl border transition-all text-xs font-black cursor-pointer flex items-center justify-between ${
-                              room.id === activeRoomId
-                                ? "bg-[rgba(16,185,129,0.10)] border-[rgba(16,185,129,0.35)] text-[color:var(--accent-primary)] lamma-soft-glow"
-                                : "bg-black/20 border-white/5 hover:bg-white/5 text-gray-200"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm">{room.icon}</span>
-                              <span>{room.name}</span>
-                            </div>
-                            <span className="bg-black/50 px-2 py-0.5 rounded-full border border-white/10 text-[9px] text-[color:var(--accent-secondary)] font-black font-mono">
-                              {room.count}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
-          </div>
-
-          <div className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-[color:var(--accent-secondary)]">
-                <span className="text-base">👥</span>
-                <span className="text-[12px] font-black">المتصلون</span>
-              </div>
-              <span className="text-[10px] text-[color:var(--text-secondary)] font-mono">
-                {chatMembers.length}
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto pr-1 space-y-4">
-              {[
-                {
-                  key: "owner",
-                  title: "👑 Owner",
-                  border: "border-yellow-500/10",
-                  bg: "bg-yellow-500/5",
-                  text: "text-yellow-500",
-                  crownRole: "owner" as const,
-                },
-                {
-                  key: "admin",
-                  title: "🛡️ Admin",
-                  border: "border-blue-500/10",
-                  bg: "bg-blue-500/5",
-                  text: "text-blue-400",
-                  crownRole: "admin" as const,
-                },
-                {
-                  key: "vip",
-                  title: "💎 VIP",
-                  border: "border-green-500/10",
-                  bg: "bg-green-500/5",
-                  text: "text-green-400",
-                  crownRole: "vip" as const,
-                },
-                {
-                  key: "user",
-                  title: "👤 Members",
-                  border: "border-white/5",
-                  bg: "bg-white/[0.02]",
-                  text: "text-gray-300",
-                  crownRole: "none" as const,
-                },
-              ].map((group) => {
-                const members =
-                  group.key === "admin"
-                    ? chatMembers.filter((m) => m.role === "admin" || m.role === "mod")
-                    : group.key === "user"
-                      ? chatMembers.filter((m) => m.role === "user" || m.role === "guest")
-                      : chatMembers.filter((m) => m.role === group.key);
-                if (members.length === 0) return null;
-                return (
-                  <div key={group.key} className="space-y-2">
-                    <div className={`text-[10px] font-black flex items-center justify-between uppercase tracking-widest ${group.text}`}>
-                      <span>{group.title}</span>
-                      <span className="text-[9px] font-mono text-[color:var(--text-secondary)]">
-                        {members.length}
-                      </span>
-                    </div>
-                    <div className={`space-y-0 rounded-2xl overflow-hidden border ${group.border} ${group.bg}`}>
-                      {members.slice(0, 24).map((m, idx) => (
-                        <div
-                          key={m.id}
-                          onClick={() => openMemberProfile(m.nickname)}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            openMemberProfile(m.nickname);
-                          }}
-                          className={`p-2 px-2.5 hover:bg-white/5 flex items-center justify-between cursor-pointer transition-all ${idx !== Math.min(members.length, 24) - 1 ? "border-b border-white/5" : ""}`}
-                        >
-                          <div className={`flex items-center gap-2 font-black ${group.text} overflow-hidden`}>
-                            {group.key === "user" ? (
-                              <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-white/5 rounded-full border border-white/10 text-[20px]">
-                                {m.avatar}
-                              </div>
-                            ) : (
-                              <div className="flex-shrink-0 flex items-center justify-center">
-                                <AMLogo
-                                  size={24}
-                                  variant="circular"
-                                  glow={false}
-                                  crownRole={group.crownRole}
-                                />
-                              </div>
-                            )}
-                            <div className="flex flex-col truncate">
-                              <span className="font-bold text-[12px] truncate leading-tight text-white">
-                                {m.nickname}
-                              </span>
-                              <span className="text-[8px] font-black text-[color:var(--text-secondary)]">
-                                {m.role}
-                              </span>
-                            </div>
-                          </div>
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
-                        </div>
-                      ))}
-                      {members.length > 24 ? (
-                        <div className="p-2 text-[10px] text-[color:var(--text-secondary)] font-bold text-center bg-black/20">
-                          +{members.length - 24} المزيد
-                        </div>
-                      ) : null}
-                    </div>
+          <div
+            ref={rightColumnLayoutRef}
+            className="flex-1 min-h-0 grid gap-0"
+            style={{
+              gridTemplateRows: `${rightColumnSectionsPct.rooms}fr 12px ${rightColumnSectionsPct.members}fr`,
+            }}
+          >
+            <div className="min-h-0">
+              <div className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 text-[color:var(--accent-secondary)]">
+                    <span className="text-base">🗂️</span>
+                    <span className="text-[12px] font-black">الغرف</span>
                   </div>
-                );
-              })}
+                  <span className="text-[10px] text-[color:var(--text-secondary)] font-mono">
+                    {ROOMS_DEF.length}
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+                  {(isOwnerRole ||
+                    memberCustomPermissions[currentUser.nickname]
+                      ?.roomCreationAllowed) && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCreateRoomModalOpen(true)}
+                      className="w-full p-2.5 bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.25)] rounded-2xl flex items-center justify-center gap-2 text-[color:var(--accent-primary)] font-extrabold text-[11px] hover:bg-[rgba(16,185,129,0.18)] transition-all cursor-pointer"
+                    >
+                      <Plus size={14} />
+                      <span>إنشاء غرفة</span>
+                    </button>
+                  )}
+
+                  {(() => {
+                    const visibleRooms = ROOMS_DEF.filter((room) => {
+                      if (room.id === "admin" && !isAdminRole && !isOwnerRole) {
+                        return false;
+                      }
+                      return true;
+                    });
+
+                    return ROOM_CATEGORIES.map((category) => {
+                      const rooms = visibleRooms.filter(
+                        (r: any) => r.category === category.id,
+                      );
+                      if (rooms.length === 0) return null;
+
+                      return (
+                        <div key={category.id} className="space-y-2">
+                          <div className="text-[10px] text-[color:var(--accent-secondary)] font-extrabold tracking-widest uppercase pb-1 border-b border-white/5 flex items-center gap-2">
+                            <span>{category.icon}</span>
+                            <span>{category.name}</span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {rooms.map((room: any) => (
+                              <button
+                                key={room.id}
+                                type="button"
+                                onClick={() => {
+                                  if (
+                                    !openRooms.find((r) => r.id === room.id)
+                                  ) {
+                                    setOpenRooms((prev) => [
+                                      ...prev,
+                                      {
+                                        id: room.id,
+                                        name: room.name,
+                                        flag: room.icon,
+                                      },
+                                    ]);
+                                  }
+                                  handleSwitchRoom(room.id);
+                                }}
+                                className={`w-full p-2.5 rounded-2xl border transition-all text-xs font-black cursor-pointer flex items-center justify-between ${
+                                  room.id === activeRoomId
+                                    ? "bg-[rgba(16,185,129,0.10)] border-[rgba(16,185,129,0.35)] text-[color:var(--accent-primary)] lamma-soft-glow"
+                                    : "bg-black/20 border-white/5 hover:bg-white/5 text-gray-200"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm">{room.icon}</span>
+                                  <span>{room.name}</span>
+                                </div>
+                                <span className="bg-black/50 px-2 py-0.5 rounded-full border border-white/10 text-[9px] text-[color:var(--accent-secondary)] font-black font-mono">
+                                  {room.count}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="lamma-fire-divider"
+              onPointerDown={(e) => {
+                if (!rightColumnLayoutRef.current) return;
+                e.preventDefault();
+                const rect = rightColumnLayoutRef.current.getBoundingClientRect();
+                const startY = e.clientY;
+                const start = { ...rightColumnSectionsPct };
+                const minPct = 22;
+                const onMove = (ev: PointerEvent) => {
+                  const dy = ev.clientY - startY;
+                  const deltaPct = (dy / rect.height) * 100;
+                  let rooms = start.rooms + deltaPct;
+                  let members = start.members - deltaPct;
+                  if (rooms < minPct) {
+                    members -= minPct - rooms;
+                    rooms = minPct;
+                  }
+                  if (members < minPct) {
+                    rooms -= minPct - members;
+                    members = minPct;
+                  }
+                  const total = rooms + members;
+                  const scale = 100 / total;
+                  setRightColumnSectionsPct({
+                    rooms: rooms * scale,
+                    members: members * scale,
+                  });
+                };
+                const onUp = () => {
+                  window.removeEventListener("pointermove", onMove);
+                  window.removeEventListener("pointerup", onUp);
+                };
+                window.addEventListener("pointermove", onMove);
+                window.addEventListener("pointerup", onUp);
+              }}
+            />
+
+            <div className="min-h-0">
+              <div className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 text-[color:var(--accent-secondary)]">
+                    <span className="text-base">👥</span>
+                    <span className="text-[12px] font-black">المتصلون</span>
+                  </div>
+                  <span className="text-[10px] text-[color:var(--text-secondary)] font-mono">
+                    {chatMembers.length}
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+                  {[
+                    {
+                      key: "owner",
+                      title: "👑 Owner",
+                      border: "border-yellow-500/10",
+                      bg: "bg-yellow-500/5",
+                      text: "text-yellow-500",
+                      crownRole: "owner" as const,
+                    },
+                    {
+                      key: "admin",
+                      title: "🛡️ Admin",
+                      border: "border-blue-500/10",
+                      bg: "bg-blue-500/5",
+                      text: "text-blue-400",
+                      crownRole: "admin" as const,
+                    },
+                    {
+                      key: "vip",
+                      title: "💎 VIP",
+                      border: "border-green-500/10",
+                      bg: "bg-green-500/5",
+                      text: "text-green-400",
+                      crownRole: "vip" as const,
+                    },
+                    {
+                      key: "user",
+                      title: "👤 Members",
+                      border: "border-white/5",
+                      bg: "bg-white/[0.02]",
+                      text: "text-gray-300",
+                      crownRole: "none" as const,
+                    },
+                  ].map((group) => {
+                    const members =
+                      group.key === "admin"
+                        ? chatMembers.filter(
+                            (m) => m.role === "admin" || m.role === "mod",
+                          )
+                        : group.key === "user"
+                          ? chatMembers.filter(
+                              (m) => m.role === "user" || m.role === "guest",
+                            )
+                          : chatMembers.filter((m) => m.role === group.key);
+                    if (members.length === 0) return null;
+                    return (
+                      <div key={group.key} className="space-y-2">
+                        <div
+                          className={`text-[10px] font-black flex items-center justify-between uppercase tracking-widest ${group.text}`}
+                        >
+                          <span>{group.title}</span>
+                          <span className="text-[9px] font-mono text-[color:var(--text-secondary)]">
+                            {members.length}
+                          </span>
+                        </div>
+                        <div
+                          className={`space-y-0 rounded-2xl overflow-hidden border ${group.border} ${group.bg}`}
+                        >
+                          {members.slice(0, 24).map((m, idx) => (
+                            <div
+                              key={m.id}
+                              onClick={() => openMemberProfile(m.nickname)}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                openMemberProfile(m.nickname);
+                              }}
+                              className={`p-2 px-2.5 hover:bg-white/5 flex items-center justify-between cursor-pointer transition-all ${idx !== Math.min(members.length, 24) - 1 ? "border-b border-white/5" : ""}`}
+                            >
+                              <div
+                                className={`flex items-center gap-2 font-black ${group.text} overflow-hidden`}
+                              >
+                                {group.key === "user" ? (
+                                  <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-white/5 rounded-full border border-white/10 text-[20px]">
+                                    {m.avatar}
+                                  </div>
+                                ) : (
+                                  <div className="flex-shrink-0 flex items-center justify-center">
+                                    <AMLogo
+                                      size={24}
+                                      variant="circular"
+                                      glow={false}
+                                      crownRole={group.crownRole}
+                                    />
+                                  </div>
+                                )}
+                                <div className="flex flex-col truncate">
+                                  <span className="font-bold text-[12px] truncate leading-tight text-white">
+                                    {m.nickname}
+                                  </span>
+                                  <span className="text-[8px] font-black text-[color:var(--text-secondary)]">
+                                    {m.role}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+                            </div>
+                          ))}
+                          {members.length > 24 ? (
+                            <div className="p-2 text-[10px] text-[color:var(--text-secondary)] font-bold text-center bg-black/20">
+                              +{members.length - 24} المزيد
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </aside>
