@@ -4175,12 +4175,6 @@ export default function ChatScreen({
           {/* Center Room Info Display (Absolutely Centered Layout) */}
           {!isZenMode && (
             <div className="absolute left-1/2 top-9 sm:top-11 md:top-[38px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center max-w-[240px] md:max-w-xs text-center group/welcome z-30 pointer-events-none w-full">
-              <img
-                src="/images/lamma-wordmark.svg"
-                alt="LAMMA CHAT"
-                className="h-6 sm:h-7 w-auto drop-shadow-lg pointer-events-auto select-none"
-                draggable={false}
-              />
               <div className="flex items-center gap-2 pointer-events-auto">
                 {isEditingWelcome ? (
                   <input
@@ -5791,7 +5785,7 @@ export default function ChatScreen({
                     setShopTab("vip");
                     openModal("store");
                   }}
-                  className="w-8 h-8 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 flex items-center justify-center text-emerald-400 transition-all flex-shrink-0 border border-emerald-500/30 animate-pulse relative select-none cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 flex items-center justify-center text-emerald-400 transition-all flex-shrink-0 border border-emerald-500/30 animate-pulse relative select-none cursor-pointer xl:hidden"
                   title="المتجر والاشتراكات التلقائية"
                 >
                   <span className="text-sm">💰</span>
@@ -5829,7 +5823,7 @@ export default function ChatScreen({
               </div>
 
               {/* Radio Dropdown Container */}
-              <div className="relative dropdown-container">
+              <div className="relative dropdown-container xl:hidden">
                 <button
                   type="button"
                   onClick={() => {
@@ -5948,7 +5942,7 @@ export default function ChatScreen({
               </div>
 
               {/* Music Dropdown Container */}
-              <div className="relative dropdown-container">
+              <div className="relative dropdown-container xl:hidden">
                 <button
                   type="button"
                   onClick={() => {
