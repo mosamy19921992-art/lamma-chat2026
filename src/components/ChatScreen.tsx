@@ -4309,7 +4309,7 @@ export default function ChatScreen({
 
       {/* ================= FOUR-PANEL BODY ================= */}
       <div className="flex-1 flex overflow-hidden relative min-h-0">
-        <aside className="hidden xl:flex w-[320px] 2xl:w-[360px] flex-col gap-3 p-3 overflow-hidden border-r border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] backdrop-blur-xl">
+        <aside className="hidden xl:flex w-[300px] 2xl:w-[340px] flex-col gap-3 p-3 overflow-hidden border-r border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] backdrop-blur-xl">
           <div className="lamma-glass rounded-3xl p-4 lamma-soft-glow overflow-hidden">
             <div className="flex items-center justify-between">
               <div className="text-right">
@@ -5189,7 +5189,7 @@ export default function ChatScreen({
           </div>
 
           {/* Messages Feed Viewport */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" dir="rtl">
             {/* Owner Control Alerts Block */}
             {isMaintenanceMode && (
               <div
@@ -5317,10 +5317,10 @@ export default function ChatScreen({
               return (
                 <div
                   key={msg.id}
-                  className={`flex items-start ${isCompactView ? "gap-0.5 py-0 px-1" : "gap-1.5 py-0.5 px-2"} max-w-full hover:bg-white/5 rounded transition-colors ${
+                  className={`flex items-start ${isCompactView ? "gap-1 py-0 px-1" : "gap-2 py-0.5 px-2"} max-w-full rounded transition-colors ${
                     isSystem
-                      ? "bg-green-500/[0.03] border-r-2 border-green-500/80 pr-3 my-1 shadow-[0_0_15px_rgba(34,197,94,0.02)]"
-                      : ""
+                      ? "my-1"
+                      : "hover:bg-white/5"
                   }`}
                 >
                   {/* Author Avatar */}
@@ -5476,94 +5476,102 @@ export default function ChatScreen({
                   </div>
 
                   {/* Message Content */}
-                  <div
-                    className={`${isCompactView ? "text-[10px]" : "text-[11px]"} leading-snug text-gray-100 flex-1 break-words pt-0.5`}
-                  >
-                    {msg.type === "text" &&
-                      renderTextMessageWithMedia(msg.text)}
+                  <div className="flex-1 min-w-0 pt-0.5">
+                    <div
+                      className={`lamma-message ${isCompactView ? "text-[10px] px-3 py-2" : "text-[11px]"} leading-snug text-gray-100 break-words max-w-[min(820px,100%)] ${
+                        isSystem
+                          ? "bg-[rgba(16,185,129,0.08)] border-[rgba(16,185,129,0.20)]"
+                          : msg.author === myActiveSession.nickname
+                            ? "border-[rgba(16,185,129,0.18)]"
+                            : ""
+                      }`}
+                    >
+                      {msg.type === "text" &&
+                        renderTextMessageWithMedia(msg.text)}
 
-                    {/* Reaction Bar (only if there are reactions) */}
-                    {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                      <div className="flex gap-1 mt-1 items-center">
-                        {Object.entries(msg.reactions).map(([emoji, count]) => (
-                          <span
-                            key={emoji}
-                            className="text-[9px] bg-white/10 rounded px-1 select-none flex items-center gap-0.5"
-                          >
-                            {emoji} {count}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {isSystem && (
-                      <div className="text-right leading-relaxed font-semibold text-[10px] text-gray-200 mt-0.5 select-none font-mono">
-                        <span className="text-green-400 font-extrabold flex items-center gap-1 mb-1 text-[11px]">
-                          🛡️{" "}
-                          {msg.author === "🛡️ بوت الحماية الذكي"
-                            ? "إشعار حماية تلقائي:"
-                            : "إشعار نظام:"}
-                        </span>
-                        <div className="whitespace-pre-line text-xs font-sans text-gray-300 leading-normal">
-                          {msg.text}
+                      {/* Reaction Bar (only if there are reactions) */}
+                      {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                        <div className="flex gap-1 mt-2 items-center">
+                          {Object.entries(msg.reactions).map(([emoji, count]) => (
+                            <span
+                              key={emoji}
+                              className="text-[9px] bg-white/10 rounded px-1 select-none flex items-center gap-0.5"
+                            >
+                              {emoji} {count}
+                            </span>
+                          ))}
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {msg.type === "gift" && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-lg animate-bounce">
-                          {msg.giftIcon}
-                        </span>
-                        <span className="font-bold text-white text-[9px]">
-                          {msg.text}
-                        </span>
-                      </div>
-                    )}
-
-                    {msg.type === "image" && (
-                      <div className="mt-1">
-                        <img
-                          loading="lazy"
-                          src={msg.mediaUrl}
-                          alt="Attachment"
-                          className="rounded-lg max-w-[130px] object-cover border border-white/10"
-                        />
-                      </div>
-                    )}
-
-                    {msg.type === "video" && (
-                      <div className="mt-1">
-                        {getYoutubeId(msg.mediaUrl) ? (
-                          <div className="relative pb-[56.25%] h-0 w-[260px] max-w-full rounded-xl overflow-hidden border border-red-500/20 shadow-lg">
-                            <iframe
-                              title="Attached YouTube Video Player"
-                              src={`https://www.youtube.com/embed/${getYoutubeId(msg.mediaUrl)}`}
-                              frameBorder="0"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                              className="absolute top-0 left-0 w-full h-full"
-                            />
+                      {isSystem && (
+                        <div className="text-right leading-relaxed font-semibold text-[10px] text-gray-200 mt-0.5 select-none font-mono">
+                          <span className="text-green-400 font-extrabold flex items-center gap-1 mb-1 text-[11px]">
+                            🛡️{" "}
+                            {msg.author === "🛡️ بوت الحماية الذكي"
+                              ? "إشعار حماية تلقائي:"
+                              : "إشعار نظام:"}
+                          </span>
+                          <div className="whitespace-pre-line text-xs font-sans text-gray-300 leading-normal">
+                            {msg.text}
                           </div>
-                        ) : (
-                          <video
+                        </div>
+                      )}
+
+                      {msg.type === "gift" && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-lg animate-bounce">
+                            {msg.giftIcon}
+                          </span>
+                          <span className="font-bold text-white text-[9px]">
+                            {msg.text}
+                          </span>
+                        </div>
+                      )}
+
+                      {msg.type === "image" && (
+                        <div className="mt-2">
+                          <img
+                            loading="lazy"
+                            src={msg.mediaUrl}
+                            alt="Attachment"
+                            className="rounded-xl max-w-[280px] object-cover border border-white/10"
+                          />
+                        </div>
+                      )}
+
+                      {msg.type === "video" && (
+                        <div className="mt-2">
+                          {getYoutubeId(msg.mediaUrl) ? (
+                            <div className="relative pb-[56.25%] h-0 w-[360px] max-w-full rounded-2xl overflow-hidden border border-red-500/20 shadow-lg">
+                              <iframe
+                                title="Attached YouTube Video Player"
+                                src={`https://www.youtube.com/embed/${getYoutubeId(msg.mediaUrl)}`}
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                className="absolute top-0 left-0 w-full h-full"
+                              />
+                            </div>
+                          ) : (
+                            <video
+                              src={msg.mediaUrl}
+                              controls
+                              className="rounded-2xl max-w-[360px] border border-white/10"
+                            />
+                          )}
+                        </div>
+                      )}
+
+                      {msg.type === "audio" && (
+                        <div className="mt-2">
+                          <audio
                             src={msg.mediaUrl}
                             controls
-                            className="rounded-lg max-w-[200px] border border-white/10"
+                            className="h-8 max-w-[320px] rounded-xl"
                           />
-                        )}
-                      </div>
-                    )}
-
-                    {msg.type === "audio" && (
-                      <div className="mt-1">
-                        <audio
-                          src={msg.mediaUrl}
-                          controls
-                          className="h-7 max-w-[160px] rounded"
-                        />
-                      </div>
-                    )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -6219,7 +6227,7 @@ export default function ChatScreen({
           {/* End of content */}
         </div>
 
-        <aside className="hidden xl:flex w-[320px] 2xl:w-[360px] flex-col gap-3 p-3 overflow-hidden border-l border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] backdrop-blur-xl">
+        <aside className="hidden xl:flex w-[320px] 2xl:w-[340px] flex-col gap-3 p-3 overflow-hidden border-l border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] backdrop-blur-xl">
           <div className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 text-[color:var(--accent-secondary)]">
