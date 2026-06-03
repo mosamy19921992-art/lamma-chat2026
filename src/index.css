@@ -206,7 +206,7 @@ body {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border-radius: 18px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
 }
 

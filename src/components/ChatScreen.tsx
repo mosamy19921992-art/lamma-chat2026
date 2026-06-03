@@ -673,6 +673,7 @@ export default function ChatScreen({
     currentUser.role === "Malek";
   const isAdminRole = roleLower === "admin";
   const activeRoomBg = roomBgMap[activeRoomId] || ownerBgImage;
+  const isChatColumnExpanded = isLeftColumnCollapsed || isRightColumnCollapsed;
 
   const performSearch = async () => {
     if (!searchQuery) return;
@@ -5526,7 +5527,7 @@ export default function ChatScreen({
               return (
                 <div
                   key={msg.id}
-                  className={`flex items-start ${isCompactView ? "gap-1 py-0 px-1" : "gap-2 py-0.5 px-2"} max-w-full rounded transition-colors ${
+                  className={`flex items-start ${isCompactView ? "gap-1 py-0 px-1" : "gap-2 py-0 px-2"} max-w-full rounded transition-colors ${
                     isSystem
                       ? "my-1"
                       : "hover:bg-white/5"
@@ -5553,7 +5554,7 @@ export default function ChatScreen({
 
                   {/* Author Name and Time Column */}
                   <div
-                    className="flex flex-col items-start cursor-pointer group/author shrink-0 pt-0.5"
+                    className="flex flex-col items-start cursor-pointer group/author shrink-0 pt-0"
                     onClick={() => openMemberProfile(msg.author)}
                   >
                     {(() => {
@@ -5617,7 +5618,7 @@ export default function ChatScreen({
                         </div>
                       );
                     })()}
-                    <div className="flex items-center gap-1.5 mt-0.5 relative group/msgactions">
+                    <div className="flex items-center gap-1.5 mt-0 relative group/msgactions">
                       <span
                         className="text-gray-500 text-[8px] font-mono"
                         dir="ltr"
@@ -5685,9 +5686,13 @@ export default function ChatScreen({
                   </div>
 
                   {/* Message Content */}
-                  <div className="flex-1 min-w-0 pt-0.5">
+                  <div className="flex-1 min-w-0 pt-0">
                     <div
-                      className={`lamma-message ${isCompactView ? "text-[10px] px-3 py-2" : "text-[11px]"} leading-snug text-gray-100 break-words max-w-[min(820px,100%)] ${
+                      className={`lamma-message ${isCompactView ? "text-[10px] px-3 py-2" : "text-[11px]"} leading-snug text-gray-100 break-words ${
+                        isChatColumnExpanded
+                          ? "max-w-full"
+                          : "max-w-[min(820px,100%)]"
+                      } ${
                         isSystem
                           ? "bg-[rgba(16,185,129,0.08)] border-[rgba(16,185,129,0.20)]"
                           : msg.author === myActiveSession.nickname
