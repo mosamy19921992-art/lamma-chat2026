@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Mail,
   Lock,
@@ -7,17 +7,12 @@ import {
   ChevronRight,
   RefreshCw,
   Copy,
-  Volume2,
-  VolumeX,
-  Info,
-  Bell,
   Sparkles,
   AlertCircle,
   Share2,
   MessageCircle,
   Shield,
   Zap,
-  Users,
   Hash,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -1219,121 +1214,6 @@ export default function LoginScreen({
             </div>
           </div>
 
-          {/* COLUMN 3: LIVE MEMBERS & INFO */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="hidden 2xl:col-span-3 2xl:flex flex-col gap-3 rounded-[24px] bg-black/40 border border-green-500/10 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.03)] h-auto w-full p-4"
-          >
-            {/* Intro Highlights */}
-            <div className="flex flex-col gap-2 space-y-1">
-              {/* Privacy Item */}
-              <div className="p-2.5 rounded-xl bg-black/40 border border-green-500/10 hover:border-green-500/30 transition-all text-right flex items-center gap-3">
-                <span className="text-sm bg-green-500/10 w-8 h-8 flex items-center justify-center rounded-lg border border-green-500/20 flex-shrink-0 text-green-400">
-                  <Shield size={16} />
-                </span>
-                <div className="flex-1">
-                  <span className="text-[12px] font-black text-white block">
-                    آمن وخصوصي
-                  </span>
-                  <span className="text-[10px] text-gray-400 leading-none block font-semibold mt-1">
-                    نحمي بياناتك وخصوصيتك بأعلى معايير الأمان
-                  </span>
-                </div>
-              </div>
-
-              {/* Speed Item */}
-              <div className="p-2.5 rounded-xl bg-black/40 border border-green-500/10 hover:border-green-500/30 transition-all text-right flex items-center gap-3">
-                <span className="text-sm bg-yellow-500/10 w-8 h-8 flex items-center justify-center rounded-lg border border-yellow-500/20 flex-shrink-0 text-yellow-400">
-                  <Zap size={16} />
-                </span>
-                <div className="flex-1">
-                  <span className="text-[12px] font-black text-white block">
-                    سريع وسهل
-                  </span>
-                  <span className="text-[10px] text-gray-400 leading-none block font-semibold mt-1">
-                    تواصل مباشرة بدون تعقيد وبأسرع استجابة
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-black/50 border border-green-500/10 backdrop-blur-md rounded-xl space-y-3 mt-1">
-              <div className="flex justify-between items-center border-b border-green-500/10 pb-2">
-                <span className="text-[10px] uppercase font-bold text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">
-                  Live النشط الآن
-                </span>
-                <h3 className="text-xs font-black text-white flex items-center gap-1.5">
-                  مين موجود؟ <Users size={12} className="text-green-400" />
-                </h3>
-              </div>
-              <div className="space-y-2">
-                {activeMembers.map((member, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-2 hover:bg-black/40 border border-transparent hover:border-green-500/10 transition-all cursor-default rounded-xl"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl drop-shadow-md">
-                        {member.avatar}
-                      </span>
-                      <div className="text-right">
-                        <span
-                          className="text-xs font-black block"
-                          style={{ color: member.color }}
-                        >
-                          {member.name}
-                        </span>
-                        <span className="text-[9px] text-gray-400 font-bold block mt-0.5">
-                          {member.role}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_#22c55e] animate-pulse"></span>
-                  </div>
-                ))}
-                <div className="text-center text-[10px] text-gray-500 font-bold mt-2 pt-1 border-t border-white/5">
-                  وأكثر من <span className="text-green-400">12,000+</span> عضو
-                  آخر...
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-black/50 border border-green-500/10 backdrop-blur-md rounded-xl space-y-3 mt-1">
-              <div className="flex justify-between items-center border-b border-green-500/10 pb-2">
-                <h3 className="text-xs font-black text-white flex items-center gap-1.5 w-full justify-end">
-                  الغرف الشائعة <Hash size={12} className="text-green-400" />
-                </h3>
-              </div>
-              <div className="space-y-1.5 text-right font-semibold">
-                <div className="flex justify-between items-center p-2 rounded-lg bg-black/30 border border-green-500/5">
-                  <span className="text-[10px] text-gray-300">
-                    💬 العام والتعارف
-                  </span>
-                  <span className="text-green-400 font-bold text-[9px] bg-green-500/10 px-1.5 py-0.5 rounded">
-                    4.2k نشط
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-2 rounded-lg bg-black/30 border border-green-500/5">
-                  <span className="text-[10px] text-gray-300">
-                    🎮 ملتقى الجيمرز
-                  </span>
-                  <span className="text-green-400 font-bold text-[9px] bg-green-500/10 px-1.5 py-0.5 rounded">
-                    1.8k نشط
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-2 rounded-lg bg-black/30 border border-green-500/5">
-                  <span className="text-[10px] text-gray-300">
-                    🎙️ الصالون العائلي الصوتي
-                  </span>
-                  <span className="text-green-400 font-bold text-[9px] bg-green-500/10 px-1.5 py-0.5 rounded">
-                    920 نشط
-                  </span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
         </div>
       </div>
 
