@@ -491,61 +491,68 @@ export default function LoginScreen({
             transition={{ duration: 0.5 }}
             className="hidden lg:flex lg:col-span-4 w-full items-center justify-center"
           >
-            <div className="w-full max-w-[360px] flex flex-col gap-3">
-              {[
-                {
-                  name: "مستخدم",
-                  quote: "مفيش تجديد… كله كلام فاضي ومكرر طول اليوم.",
-                  icon: <MessageCircle size={16} />,
-                  tone: "text-red-300 border-red-500/15 bg-red-500/5",
-                },
-                {
-                  name: "عضو قديم",
-                  quote: "الناس بتتخانق على الفاضي… ومحدش بيلحق على الكلام.",
-                  icon: <AlertCircle size={16} />,
-                  tone: "text-yellow-300 border-yellow-500/15 bg-yellow-500/5",
-                },
-                {
-                  name: "صاحب شات",
-                  quote: "الموضوع محتاج شكل جديد… يخلّي الدردشة محترمة وممتعة.",
-                  icon: <Sparkles size={16} />,
-                  tone: "text-sky-200 border-sky-500/15 bg-sky-500/5",
-                },
-              ].map((item, idx) => (
-                <motion.div
-                  key={item.name}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: [0, -4, 0] }}
-                  transition={{
-                    duration: 4.4,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 0.15 * idx,
-                  }}
-                  className="lamma-glass rounded-3xl p-3 overflow-hidden"
-                >
-                  <div className="flex items-start gap-2">
-                    <div
-                      className={`w-9 h-9 rounded-2xl flex items-center justify-center border ${item.tone} shrink-0`}
-                    >
-                      {item.icon}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-black text-white truncate">
-                          {item.name}
-                        </span>
-                        <span className="text-[8px] font-mono text-gray-500" dir="ltr">
-                          الآن
-                        </span>
-                      </div>
-                      <div className="mt-1 text-[10px] text-gray-300 font-semibold leading-relaxed">
-                        {item.quote}
-                      </div>
-                    </div>
+            <div className="w-full max-w-[420px]">
+              <div className="lamma-column-frame">
+                <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                  <div className="space-y-3">
+                    {[
+                      {
+                        name: "مستخدم",
+                        quote: "مفيش تجديد… كله كلام فاضي ومكرر طول اليوم.",
+                        icon: <MessageCircle size={16} />,
+                        tone:
+                          "text-red-300 border-red-500/15 bg-red-500/5 shadow-[0_0_24px_rgba(239,68,68,0.08)]",
+                      },
+                      {
+                        name: "عضو قديم",
+                        quote: "الناس بتتخانق على الفاضي… ومحدش بيلحق على الكلام.",
+                        icon: <AlertCircle size={16} />,
+                        tone:
+                          "text-yellow-200 border-yellow-500/15 bg-yellow-500/5 shadow-[0_0_24px_rgba(245,158,11,0.08)]",
+                      },
+                      {
+                        name: "صاحب شات",
+                        quote: "الموضوع محتاج شكل جديد… يخلّي الدردشة محترمة وممتعة.",
+                        icon: <Sparkles size={16} />,
+                        tone:
+                          "text-sky-200 border-sky-500/15 bg-sky-500/5 shadow-[0_0_24px_rgba(56,189,248,0.08)]",
+                      },
+                    ].map((item, idx) => (
+                      <motion.div
+                        key={item.name}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: [0, -3, 0] }}
+                        transition={{
+                          duration: 4.2,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: 0.18 * idx,
+                        }}
+                        className="flex items-start gap-3"
+                      >
+                        <div
+                          className={`w-10 h-10 rounded-2xl flex items-center justify-center border ${item.tone} shrink-0`}
+                        >
+                          {item.icon}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-black text-white truncate">
+                              {item.name}
+                            </span>
+                            <span className="text-[8px] font-mono text-gray-500" dir="ltr">
+                              الآن
+                            </span>
+                          </div>
+                          <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                            {item.quote}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
                   </div>
-                </motion.div>
-              ))}
+                </div>
+              </div>
             </div>
           </motion.div>
 
@@ -558,7 +565,7 @@ export default function LoginScreen({
           >
             {/* Rounded glass container with green neon border shadow */}
             <div
-              className={`w-full max-w-[460px] 2xl:max-w-[520px] h-auto relative rounded-[32px] p-4 sm:p-6 md:p-8 border overflow-hidden shadow-2xl transition-all duration-300 flex flex-col ${
+              className={`w-full max-w-[420px] h-auto relative rounded-[32px] p-4 sm:p-6 md:p-8 border overflow-hidden shadow-2xl transition-all duration-300 flex flex-col ${
                 primaryTheme === "amoled"
                   ? "bg-neutral-950/90 border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_34px_rgba(0,0,0,0.55)]"
                   : "bg-white/[0.02] border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.18)] backdrop-blur-xl shadow-[0_0_34px_rgba(0,0,0,0.48)]"
@@ -934,7 +941,9 @@ export default function LoginScreen({
             {/* Footer Rights */}
             <div className="text-center mt-auto pt-4 text-xs text-gray-400/80 font-bold">
               © 2026 Lamma Chat. جميع الحقوق محفوظة{" "}
-              <span className="text-green-500">💚</span>
+              <span className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)]">
+                💚
+              </span>
             </div>
           </motion.div>
 
@@ -944,67 +953,71 @@ export default function LoginScreen({
             transition={{ duration: 0.5 }}
             className="hidden lg:flex lg:col-span-4 w-full items-center justify-center"
           >
-            <div className="w-full max-w-[360px] relative">
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: [0, -8, 0] }}
-                transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -top-10 left-1/2 -translate-x-1/2 z-20"
-              >
-                <div className="w-24 h-24 rounded-3xl bg-black/70 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_40px_rgba(0,0,0,0.75)] flex items-center justify-center">
-                    <img
-                      src={amMarkSrc}
-                      alt="AM"
-                      className="w-[84px] h-[84px] object-cover object-[50%_22%] scale-[1.12] opacity-95"
-                      draggable={false}
-                    />
-                </div>
-              </motion.div>
-
+            <div className="w-full max-w-[420px]">
               <div className="lamma-column-frame">
-                <div className="lamma-glass rounded-3xl p-3 pt-12 overflow-hidden">
-                  <div className="grid grid-rows-2 gap-3">
-                    <div className="p-3 rounded-2xl bg-black/35 border border-white/10">
-                      <div className="flex items-center gap-2">
-                        <div className="w-9 h-9 rounded-xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)]">
-                          <Hash size={16} />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-[11px] font-black text-white truncate">
-                            اللي فاهم بيريّح
-                          </div>
-                          <div className="text-[9.5px] text-gray-400 font-bold leading-snug">
-                            ومن غير كلام كتير
-                          </div>
-                        </div>
+                <div className="space-y-3">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: [0, -5, 0] }}
+                    transition={{ duration: 4.6, repeat: Infinity, ease: "easeInOut" }}
+                    className="lamma-glass rounded-3xl p-4 overflow-hidden"
+                  >
+                    <div className="w-full flex items-center justify-center">
+                      <div className="w-full rounded-3xl bg-black/55 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_45px_rgba(0,0,0,0.65)] flex items-center justify-center p-4">
+                        <img
+                          src={amMarkSrc}
+                          alt="AM"
+                          className="w-full max-w-[260px] h-[160px] object-contain drop-shadow-[0_0_18px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)]"
+                          draggable={false}
+                        />
                       </div>
                     </div>
+                  </motion.div>
 
-                    <div className="p-3 rounded-2xl bg-black/35 border border-white/10">
-                      <div className="flex items-center gap-2">
-                        <div className="w-9 h-9 rounded-xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)]">
-                          <Shield size={16} />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-[11px] font-black text-white truncate">
-                            الشات تجربتك
+                  <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                    <div className="space-y-3">
+                      {[
+                        {
+                          name: "الحل",
+                          quote: "اللي فاهم بيريّح ومن غير كلام كتير",
+                          icon: <Hash size={16} />,
+                        },
+                        {
+                          name: "الحل",
+                          quote: "الشات تجربتك لحل أي روتين",
+                          icon: <Shield size={16} />,
+                        },
+                      ].map((item, idx) => (
+                        <div key={`${item.quote}-${idx}`} className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0">
+                            {item.icon}
                           </div>
-                          <div className="text-[9.5px] text-gray-400 font-bold leading-snug">
-                            لحل أي روتين
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-black text-white truncate">
+                                {item.name}
+                              </span>
+                              <span className="text-[8px] font-mono text-gray-500" dir="ltr">
+                                الآن
+                              </span>
+                            </div>
+                            <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                              {item.quote}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  </div>
 
-                  <div className="mt-3 pt-3 border-t border-white/10 text-[10px] text-gray-300 font-semibold leading-relaxed">
-                    <span className="text-white font-black">لمة شات</span> مش
-                    مجرد فكرة… ده مشروع كله{" "}
-                    <span className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] font-black">
-                      مفاجآت
-                    </span>
-                    ، وأهمها السهولة وتنقية العين، مع اكتشافات مش هتتخيلها يا
-                    مان.
+                    <div className="mt-3 pt-3 border-t border-white/10 text-[10px] text-gray-300 font-semibold leading-relaxed">
+                      <span className="text-white font-black">لمة شات</span> مش
+                      مجرد فكرة… ده مشروع كله{" "}
+                      <span className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] font-black">
+                        مفاجآت
+                      </span>
+                      ، وأهمها السهولة وتنقية العين، مع اكتشافات مش هتتخيلها يا
+                      مان.
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1013,106 +1026,121 @@ export default function LoginScreen({
 
           <div className="lg:hidden w-full flex flex-col items-center gap-4 mt-4">
             <div className="w-full max-w-[520px] grid gap-4">
-              <div className="grid gap-3">
-                {[
-                  {
-                    name: "مستخدم",
-                    quote: "مفيش تجديد… كله كلام فاضي ومكرر طول اليوم.",
-                    icon: <MessageCircle size={16} />,
-                    tone: "text-red-300 border-red-500/15 bg-red-500/5",
-                  },
-                  {
-                    name: "عضو قديم",
-                    quote: "الناس بتتخانق على الفاضي… ومحدش بيلحق على الكلام.",
-                    icon: <AlertCircle size={16} />,
-                    tone: "text-yellow-300 border-yellow-500/15 bg-yellow-500/5",
-                  },
-                  {
-                    name: "صاحب شات",
-                    quote: "الموضوع محتاج شكل جديد… يخلّي الدردشة محترمة وممتعة.",
-                    icon: <Sparkles size={16} />,
-                    tone: "text-sky-200 border-sky-500/15 bg-sky-500/5",
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.name}
-                    className="lamma-glass rounded-3xl p-3 overflow-hidden"
-                  >
-                    <div className="flex items-start gap-2">
-                      <div
-                        className={`w-9 h-9 rounded-2xl flex items-center justify-center border ${item.tone} shrink-0`}
+              <div className="lamma-column-frame">
+                <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                  <div className="space-y-3">
+                    {[
+                      {
+                        name: "مستخدم",
+                        quote: "مفيش تجديد… كله كلام فاضي ومكرر طول اليوم.",
+                        icon: <MessageCircle size={16} />,
+                        tone:
+                          "text-red-300 border-red-500/15 bg-red-500/5 shadow-[0_0_24px_rgba(239,68,68,0.08)]",
+                      },
+                      {
+                        name: "عضو قديم",
+                        quote: "الناس بتتخانق على الفاضي… ومحدش بيلحق على الكلام.",
+                        icon: <AlertCircle size={16} />,
+                        tone:
+                          "text-yellow-200 border-yellow-500/15 bg-yellow-500/5 shadow-[0_0_24px_rgba(245,158,11,0.08)]",
+                      },
+                      {
+                        name: "صاحب شات",
+                        quote: "الموضوع محتاج شكل جديد… يخلّي الدردشة محترمة وممتعة.",
+                        icon: <Sparkles size={16} />,
+                        tone:
+                          "text-sky-200 border-sky-500/15 bg-sky-500/5 shadow-[0_0_24px_rgba(56,189,248,0.08)]",
+                      },
+                    ].map((item, idx) => (
+                      <motion.div
+                        key={item.name}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: [0, -3, 0] }}
+                        transition={{
+                          duration: 4.2,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: 0.18 * idx,
+                        }}
+                        className="flex items-start gap-3"
                       >
-                        {item.icon}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[11px] font-black text-white truncate">
-                            {item.name}
-                          </span>
-                          <span className="text-[8px] font-mono text-gray-500" dir="ltr">
-                            الآن
-                          </span>
+                        <div
+                          className={`w-10 h-10 rounded-2xl flex items-center justify-center border ${item.tone} shrink-0`}
+                        >
+                          {item.icon}
                         </div>
-                        <div className="mt-1 text-[10px] text-gray-300 font-semibold leading-relaxed">
-                          {item.quote}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-black text-white truncate">
+                              {item.name}
+                            </span>
+                            <span className="text-[8px] font-mono text-gray-500" dir="ltr">
+                              الآن
+                            </span>
+                          </div>
+                          <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                            {item.quote}
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      </motion.div>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
 
-              <div className="w-full relative">
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: [0, -8, 0] }}
-                  transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute -top-10 left-1/2 -translate-x-1/2 z-20"
-                >
-                  <div className="w-24 h-24 rounded-3xl bg-black/70 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_40px_rgba(0,0,0,0.75)] flex items-center justify-center">
-                    <img
-                      src={amMarkSrc}
-                      alt="AM"
-                      className="w-[84px] h-[84px] object-cover object-[50%_22%] scale-[1.12] opacity-95"
-                      draggable={false}
-                    />
-                  </div>
-                </motion.div>
+              <div className="lamma-column-frame">
+                <div className="space-y-3">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: [0, -5, 0] }}
+                    transition={{ duration: 4.6, repeat: Infinity, ease: "easeInOut" }}
+                    className="lamma-glass rounded-3xl p-4 overflow-hidden"
+                  >
+                    <div className="w-full flex items-center justify-center">
+                      <div className="w-full rounded-3xl bg-black/55 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_45px_rgba(0,0,0,0.65)] flex items-center justify-center p-4">
+                        <img
+                          src={amMarkSrc}
+                          alt="AM"
+                          className="w-full max-w-[260px] h-[160px] object-contain drop-shadow-[0_0_18px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)]"
+                          draggable={false}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
 
-                <div className="lamma-column-frame">
-                  <div className="lamma-glass rounded-3xl p-3 pt-12 overflow-hidden">
-                    <div className="grid grid-rows-2 gap-3">
-                      <div className="p-3 rounded-2xl bg-black/35 border border-white/10">
-                        <div className="flex items-center gap-2">
-                          <div className="w-9 h-9 rounded-xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)]">
-                            <Hash size={16} />
+                  <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                    <div className="space-y-3">
+                      {[
+                        {
+                          name: "الحل",
+                          quote: "اللي فاهم بيريّح ومن غير كلام كتير",
+                          icon: <Hash size={16} />,
+                        },
+                        {
+                          name: "الحل",
+                          quote: "الشات تجربتك لحل أي روتين",
+                          icon: <Shield size={16} />,
+                        },
+                      ].map((item, idx) => (
+                        <div key={`${item.quote}-${idx}`} className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0">
+                            {item.icon}
                           </div>
-                          <div className="min-w-0">
-                            <div className="text-[11px] font-black text-white truncate">
-                              اللي فاهم بيريّح
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-black text-white truncate">
+                                {item.name}
+                              </span>
+                              <span className="text-[8px] font-mono text-gray-500" dir="ltr">
+                                الآن
+                              </span>
                             </div>
-                            <div className="text-[9.5px] text-gray-400 font-bold leading-snug">
-                              ومن غير كلام كتير
+                            <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                              {item.quote}
                             </div>
                           </div>
                         </div>
-                      </div>
-
-                      <div className="p-3 rounded-2xl bg-black/35 border border-white/10">
-                        <div className="flex items-center gap-2">
-                          <div className="w-9 h-9 rounded-xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)]">
-                            <Shield size={16} />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-[11px] font-black text-white truncate">
-                              الشات تجربتك
-                            </div>
-                            <div className="text-[9.5px] text-gray-400 font-bold leading-snug">
-                              لحل أي روتين
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      ))}
                     </div>
 
                     <div className="mt-3 pt-3 border-t border-white/10 text-[10px] text-gray-300 font-semibold leading-relaxed">
