@@ -636,6 +636,12 @@ export default function ChatScreen({
   const [isZenMode, setIsZenMode] = useState(false);
   const [isLeftColumnCollapsed, setIsLeftColumnCollapsed] = useState(false);
   const [isRightColumnCollapsed, setIsRightColumnCollapsed] = useState(false);
+  const leftColumnLayoutRef = useRef<HTMLDivElement | null>(null);
+  const [leftColumnSectionsPct, setLeftColumnSectionsPct] = useState({
+    store: 33.333,
+    radio: 33.333,
+    music: 33.334,
+  });
   const [isCompactView, setIsCompactView] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [showPmListDropdown, setShowPmListDropdown] = useState(false);
@@ -3440,12 +3446,48 @@ export default function ChatScreen({
       {/* ================= HEADER BAR ================= */}
       {!isZenMode && (
         <header className="lamma-header px-2 sm:px-4 md:px-6 flex items-center justify-between relative z-20 shrink-0">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none select-none">
             <img
               src="/images/lamma-wordmark.svg"
               alt="LAMMA CHAT"
               className="h-6 sm:h-7 opacity-90 drop-shadow-[0_0_18px_rgba(16,185,129,0.2)]"
             />
+            <div className="flex items-center gap-2 pointer-events-auto">
+              {isEditingWelcome ? (
+                <input
+                  type="text"
+                  id="welcome-message-input"
+                  name="welcome-message"
+                  autoComplete="off"
+                  value={welcomeMessage}
+                  onChange={(e) => setWelcomeMessage(e.target.value)}
+                  onBlur={() => setIsEditingWelcome(false)}
+                  onKeyDown={(e) => e.key === "Enter" && setIsEditingWelcome(false)}
+                  className="text-[9px] md:text-[10px] bg-black/50 text-white font-medium truncate w-32 md:w-48 border border-green-500/30 rounded px-1.5"
+                  autoFocus
+                />
+              ) : (
+                <p
+                  className="text-[9px] md:text-[10px] text-gray-400 font-medium truncate max-w-[160px] md:max-w-[240px] drop-shadow-md"
+                  title={welcomeMessage}
+                >
+                  {welcomeMessage}
+                </p>
+              )}
+
+              {(currentUser.role === "admin" ||
+                currentUser.role === "owner" ||
+                currentUser.role === "Owner") &&
+                !isEditingWelcome && (
+                  <button
+                    onClick={() => setIsEditingWelcome(true)}
+                    className="opacity-100 transition-opacity text-gray-500 hover:text-green-400 p-0.5 bg-black/40 rounded shadow-md"
+                    title="تعديل ترحيب الشات"
+                  >
+                    <SettingsIcon size={9} />
+                  </button>
+                )}
+            </div>
           </div>
           {/* Right side controls (User account & actions - Now in the visual start "اول الصفحة" due to RTL) */}
           <div className="flex items-center gap-2 md:gap-3">
@@ -4172,51 +4214,7 @@ export default function ChatScreen({
             </div>
           </div>
 
-          {/* Space reserved for centering if needed, but since it's absolute we can just put it outside header or keep it here */}
-
-          {/* Center Room Info Display (Absolutely Centered Layout) */}
-          {!isZenMode && (
-            <div className="absolute left-1/2 top-9 sm:top-11 md:top-[38px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center max-w-[240px] md:max-w-xs text-center group/welcome z-30 pointer-events-none w-full">
-              <div className="flex items-center gap-2 pointer-events-auto">
-                {isEditingWelcome ? (
-                  <input
-                    type="text"
-                    id="welcome-message-input"
-                    name="welcome-message"
-                    autoComplete="off"
-                    value={welcomeMessage}
-                    onChange={(e) => setWelcomeMessage(e.target.value)}
-                    onBlur={() => setIsEditingWelcome(false)}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && setIsEditingWelcome(false)
-                    }
-                    className="text-[9px] md:text-[10px] bg-black/50 text-white font-medium truncate w-32 md:w-48 mt-0.5 border border-green-500/30 rounded px-1.5"
-                    autoFocus
-                  />
-                ) : (
-                  <p
-                    className="text-[9px] md:text-[10px] text-gray-400 font-medium truncate max-w-[120px] md:max-w-[200px] mt-0.5 drop-shadow-md"
-                    title={welcomeMessage}
-                  >
-                    {welcomeMessage}
-                  </p>
-                )}
-
-                {(currentUser.role === "admin" ||
-                  currentUser.role === "owner" ||
-                  currentUser.role === "Owner") &&
-                  !isEditingWelcome && (
-                    <button
-                      onClick={() => setIsEditingWelcome(true)}
-                      className="opacity-100 md:opacity-0 group-hover/welcome:opacity-100 transition-opacity text-gray-500 hover:text-green-400 p-0.5 bg-black/40 rounded shadow-md"
-                      title="تعديل ترحيب الشات"
-                    >
-                      <SettingsIcon size={9} />
-                    </button>
-                  )}
-              </div>
-            </div>
-          )}
+          {/* Center welcome moved into header wordmark container */}
 
           {/* Left indicators (Branding and Home button - Now visually on the left side) */}
           <div className="flex items-center gap-3">
@@ -4306,7 +4304,7 @@ export default function ChatScreen({
           <button
             type="button"
             onClick={() => setIsLeftColumnCollapsed((v) => !v)}
-            className="hidden xl:flex absolute left-0 top-1/2 -translate-y-1/2 z-40 h-16 w-7 items-center justify-center rounded-r-xl bg-black/35 border border-green-500/10 text-gray-300 hover:text-white hover:bg-black/55 transition-all cursor-pointer"
+            className="hidden xl:flex absolute left-0 top-1/2 -translate-y-1/2 z-40 h-16 w-7 items-center justify-center rounded-r-xl bg-black/35 border border-green-500/10 text-gray-300 hover:text-white hover:bg-black/55 transition-all cursor-pointer lamma-fire-border"
             title={isLeftColumnCollapsed ? "إظهار العمود" : "إخفاء العمود"}
           >
             {isLeftColumnCollapsed ? (
@@ -4321,7 +4319,7 @@ export default function ChatScreen({
           <button
             type="button"
             onClick={() => setIsRightColumnCollapsed((v) => !v)}
-            className="hidden xl:flex absolute right-0 top-1/2 -translate-y-1/2 z-40 h-16 w-7 items-center justify-center rounded-l-xl bg-black/35 border border-green-500/10 text-gray-300 hover:text-white hover:bg-black/55 transition-all cursor-pointer"
+            className="hidden xl:flex absolute right-0 top-1/2 -translate-y-1/2 z-40 h-16 w-7 items-center justify-center rounded-l-xl bg-black/35 border border-green-500/10 text-gray-300 hover:text-white hover:bg-black/55 transition-all cursor-pointer lamma-fire-border"
             title={isRightColumnCollapsed ? "إظهار العمود" : "إخفاء العمود"}
           >
             {isRightColumnCollapsed ? (
@@ -4333,134 +4331,239 @@ export default function ChatScreen({
         )}
 
         <aside
-          className={`hidden xl:flex xl:order-3 flex-col gap-3 overflow-hidden backdrop-blur-xl transition-all duration-300 ${
+          className={`hidden xl:flex xl:order-3 flex-col overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isLeftColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
               : "w-[300px] 2xl:w-[340px] p-3 opacity-100 border-r border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)]"
           }`}
         >
-          <div className="lamma-glass rounded-3xl p-4 lamma-soft-glow overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div className="text-right">
-                <div className="text-[12px] font-black text-[color:var(--accent-secondary)]">
-                  VIP GOLD
+          <div
+            ref={leftColumnLayoutRef}
+            className="flex-1 min-h-0 grid gap-0"
+            style={{
+              gridTemplateRows: `${leftColumnSectionsPct.store}fr 12px ${leftColumnSectionsPct.radio}fr 12px ${leftColumnSectionsPct.music}fr`,
+            }}
+          >
+            <div className="min-h-0">
+              <div className="lamma-glass rounded-3xl p-4 lamma-soft-glow overflow-hidden h-full flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <div className="text-right">
+                    <div className="text-[12px] font-black text-[color:var(--accent-secondary)]">
+                      VIP GOLD
+                    </div>
+                    <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1">
+                      خصم محدود على الباقات
+                    </div>
+                  </div>
+                  <div className="text-3xl">👑</div>
                 </div>
-                <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1">
-                  خصم محدود على الباقات
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openModal("store")}
+                    className="flex-1 py-2 rounded-xl bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.25)] text-[color:var(--accent-primary)] text-[11px] font-black hover:bg-[rgba(16,185,129,0.18)] transition-all cursor-pointer"
+                  >
+                    احصل عليه الآن
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openModal("store")}
+                    className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                    title="المتجر"
+                  >
+                    <Gift
+                      size={16}
+                      className="text-[color:var(--accent-secondary)]"
+                    />
+                  </button>
                 </div>
               </div>
-              <div className="text-3xl">👑</div>
             </div>
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => openModal("store")}
-                className="flex-1 py-2 rounded-xl bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.25)] text-[color:var(--accent-primary)] text-[11px] font-black hover:bg-[rgba(16,185,129,0.18)] transition-all cursor-pointer"
-              >
-                احصل عليه الآن
-              </button>
-              <button
-                type="button"
-                onClick={() => openModal("store")}
-                className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
-                title="المتجر"
-              >
-                <Gift size={16} className="text-[color:var(--accent-secondary)]" />
-              </button>
-            </div>
-          </div>
 
-          <div className="lamma-glass rounded-3xl p-4 overflow-hidden flex flex-col min-h-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[color:var(--text-primary)]">
-                <Radio size={16} className="text-[color:var(--accent-secondary)]" />
-                <span className="text-[12px] font-black">راديو لمة</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => toggleDropdown("radio" as any)}
-                className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
-                title="فتح الراديو"
-              >
-                <Play size={16} className="text-[color:var(--accent-primary)]" />
-              </button>
-            </div>
-            <div className="mt-3 flex-1 min-h-0 overflow-hidden">
-              <div className="rounded-2xl bg-black/30 border border-white/5 p-3 h-full flex flex-col justify-between">
-                <div className="text-right">
-                  <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
-                    الآن على الهواء
+            <div
+              className="lamma-fire-divider"
+              onPointerDown={(e) => {
+                if (!leftColumnLayoutRef.current) return;
+                e.preventDefault();
+                const rect = leftColumnLayoutRef.current.getBoundingClientRect();
+                const startY = e.clientY;
+                const start = { ...leftColumnSectionsPct };
+                const minPct = 18;
+                const onMove = (ev: PointerEvent) => {
+                  const dy = ev.clientY - startY;
+                  const deltaPct = (dy / rect.height) * 100;
+                  let store = start.store + deltaPct;
+                  let radio = start.radio - deltaPct;
+                  const music = start.music;
+                  if (store < minPct) {
+                    radio -= minPct - store;
+                    store = minPct;
+                  }
+                  if (radio < minPct) {
+                    store -= minPct - radio;
+                    radio = minPct;
+                  }
+                  const total = store + radio + music;
+                  const scale = 100 / total;
+                  setLeftColumnSectionsPct({
+                    store: store * scale,
+                    radio: radio * scale,
+                    music: music * scale,
+                  });
+                };
+                const onUp = () => {
+                  window.removeEventListener("pointermove", onMove);
+                  window.removeEventListener("pointerup", onUp);
+                };
+                window.addEventListener("pointermove", onMove);
+                window.addEventListener("pointerup", onUp);
+              }}
+            />
+
+            <div className="min-h-0">
+              <div className="lamma-glass rounded-3xl p-4 overflow-hidden flex flex-col min-h-0 h-full">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[color:var(--text-primary)]">
+                    <Radio
+                      size={16}
+                      className="text-[color:var(--accent-secondary)]"
+                    />
+                    <span className="text-[12px] font-black">راديو لمة</span>
                   </div>
-                  <div className="text-[12px] text-white font-extrabold mt-1 truncate">
-                    أغاني وطرب
-                  </div>
-                  <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1 truncate">
-                    راديو لمة • جودة HD
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center justify-between">
                   <button
                     type="button"
                     onClick={() => toggleDropdown("radio" as any)}
                     className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
-                    title="تشغيل/إيقاف"
+                    title="فتح الراديو"
                   >
-                    <Pause size={16} className="text-[color:var(--accent-primary)]" />
+                    <Play size={16} className="text-[color:var(--accent-primary)]" />
                   </button>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleDropdown("radio" as any)}
-                      className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
-                      title="السابق"
-                    >
-                      <ChevronRight size={16} className="text-gray-300" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => toggleDropdown("radio" as any)}
-                      className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
-                      title="التالي"
-                    >
-                      <ChevronLeft size={16} className="text-gray-300" />
-                    </button>
+                </div>
+                <div className="mt-3 flex-1 min-h-0 overflow-hidden">
+                  <div className="rounded-2xl bg-black/30 border border-white/5 p-3 h-full flex flex-col justify-between">
+                    <div className="text-right">
+                      <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
+                        الآن على الهواء
+                      </div>
+                      <div className="text-[12px] text-white font-extrabold mt-1 truncate">
+                        أغاني وطرب
+                      </div>
+                      <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1 truncate">
+                        راديو لمة • جودة HD
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => toggleDropdown("radio" as any)}
+                        className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                        title="تشغيل/إيقاف"
+                      >
+                        <Pause size={16} className="text-[color:var(--accent-primary)]" />
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleDropdown("radio" as any)}
+                          className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                          title="السابق"
+                        >
+                          <ChevronRight size={16} className="text-gray-300" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleDropdown("radio" as any)}
+                          className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                          title="التالي"
+                        >
+                          <ChevronLeft size={16} className="text-gray-300" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[color:var(--text-primary)]">
-                <Music size={16} className="text-[color:var(--accent-secondary)]" />
-                <span className="text-[12px] font-black">موسيقى وغناء</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => toggleDropdown("music" as any)}
-                className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
-                title="فتح الموسيقى"
-              >
-                <Play size={16} className="text-[color:var(--accent-primary)]" />
-              </button>
-            </div>
-            <div className="mt-3 rounded-2xl bg-black/30 border border-white/5 p-3 flex items-center justify-between">
-              <div className="text-right">
-                <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
-                  مكتبة لمة
+            <div
+              className="lamma-fire-divider"
+              onPointerDown={(e) => {
+                if (!leftColumnLayoutRef.current) return;
+                e.preventDefault();
+                const rect = leftColumnLayoutRef.current.getBoundingClientRect();
+                const startY = e.clientY;
+                const start = { ...leftColumnSectionsPct };
+                const minPct = 18;
+                const onMove = (ev: PointerEvent) => {
+                  const dy = ev.clientY - startY;
+                  const deltaPct = (dy / rect.height) * 100;
+                  const store = start.store;
+                  let radio = start.radio + deltaPct;
+                  let music = start.music - deltaPct;
+                  if (radio < minPct) {
+                    music -= minPct - radio;
+                    radio = minPct;
+                  }
+                  if (music < minPct) {
+                    radio -= minPct - music;
+                    music = minPct;
+                  }
+                  const total = store + radio + music;
+                  const scale = 100 / total;
+                  setLeftColumnSectionsPct({
+                    store: store * scale,
+                    radio: radio * scale,
+                    music: music * scale,
+                  });
+                };
+                const onUp = () => {
+                  window.removeEventListener("pointermove", onMove);
+                  window.removeEventListener("pointerup", onUp);
+                };
+                window.addEventListener("pointermove", onMove);
+                window.addEventListener("pointerup", onUp);
+              }}
+            />
+
+            <div className="min-h-0">
+              <div className="lamma-glass rounded-3xl p-4 overflow-hidden h-full flex flex-col">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[color:var(--text-primary)]">
+                    <Music
+                      size={16}
+                      className="text-[color:var(--accent-secondary)]"
+                    />
+                    <span className="text-[12px] font-black">موسيقى وغناء</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleDropdown("music" as any)}
+                    className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                    title="فتح الموسيقى"
+                  >
+                    <Play size={16} className="text-[color:var(--accent-primary)]" />
+                  </button>
                 </div>
-                <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1 truncate">
-                  اختر تراك وشغّل فورًا
+                <div className="mt-3 flex-1 min-h-0">
+                  <div className="rounded-2xl bg-black/30 border border-white/5 p-3 h-full flex items-center justify-between">
+                    <div className="text-right">
+                      <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
+                        مكتبة لمة
+                      </div>
+                      <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1 truncate">
+                        اختر تراك وشغّل فورًا
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleDropdown("music" as any)}
+                      className="px-3 py-2 rounded-xl bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.25)] text-[color:var(--accent-primary)] text-[10px] font-black hover:bg-[rgba(16,185,129,0.18)] transition-all cursor-pointer"
+                    >
+                      فتح
+                    </button>
+                  </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => toggleDropdown("music" as any)}
-                className="px-3 py-2 rounded-xl bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.25)] text-[color:var(--accent-primary)] text-[10px] font-black hover:bg-[rgba(16,185,129,0.18)] transition-all cursor-pointer"
-              >
-                فتح
-              </button>
             </div>
           </div>
         </aside>
