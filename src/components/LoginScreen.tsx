@@ -553,60 +553,6 @@ export default function LoginScreen({
                   </div>
                 </div>
               </div>
-
-              <div className="lamma-column-frame">
-                <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
-                  <div className="space-y-3">
-                    {[
-                      {
-                        name: "صاحب شات",
-                        quote: "عايز ناس تتكلم بوضوح… من غير زحمة ولا تشتيت.",
-                        icon: <Users size={16} />,
-                      },
-                      {
-                        name: "مستخدم",
-                        quote: "نفسي الشات يبقى مريح للعين… وكلامه كبير وواضح.",
-                        icon: <Eye size={16} />,
-                      },
-                      {
-                        name: "عضو قديم",
-                        quote: "عايز دخول سريع… ومن غير ما الصفحة تبقى فاضية.",
-                        icon: <Zap size={16} />,
-                      },
-                    ].map((item, idx) => (
-                      <motion.div
-                        key={`${item.name}-${idx}`}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: [0, -2, 0] }}
-                        transition={{
-                          duration: 4.3,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: 0.12 * idx,
-                        }}
-                        className="flex items-start gap-3"
-                      >
-                        <div className="w-10 h-10 rounded-2xl bg-black/55 border border-white/10 flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] shrink-0">
-                          {item.icon}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[11px] font-black text-white truncate">
-                              {item.name}
-                            </span>
-                            <span className="text-[8px] font-mono text-gray-500" dir="ltr">
-                              الآن
-                            </span>
-                          </div>
-                          <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
-                            {item.quote}
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </div>
           </motion.div>
 
@@ -619,7 +565,7 @@ export default function LoginScreen({
           >
             {/* Rounded glass container with green neon border shadow */}
             <div
-              className={`w-full max-w-[420px] h-auto relative rounded-[32px] p-4 sm:p-6 md:p-8 border overflow-hidden shadow-2xl transition-all duration-300 flex flex-col ${
+              className={`w-full max-w-[420px] h-auto relative rounded-[32px] p-4 sm:p-5 md:p-6 border overflow-hidden shadow-2xl transition-all duration-300 flex flex-col ${
                 primaryTheme === "amoled"
                   ? "bg-neutral-950/90 border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_34px_rgba(0,0,0,0.55)]"
                   : "bg-white/[0.02] border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.18)] backdrop-blur-xl shadow-[0_0_34px_rgba(0,0,0,0.48)]"
@@ -635,30 +581,30 @@ export default function LoginScreen({
               </div>
 
               {/* Header logo & headings */}
-              <div className="text-center mb-4">
+              <div className="text-center mb-3">
                 <div className="mx-auto flex justify-center mb-2 mt-0">
                   <img
                     src={brandLogoUrl || "/images/lamma-wordmark.svg"}
                     alt="LAMMA CHAT"
-                    className="w-[190px] sm:w-[240px] max-w-full h-auto drop-shadow-2xl"
+                    className="w-[170px] sm:w-[215px] max-w-full h-auto drop-shadow-2xl"
                     draggable={false}
                   />
                 </div>
-                <h2 className="text-[20px] md:text-2xl font-black text-white m-0 mt-2">
+                <h2 className="text-[18px] md:text-[22px] font-black text-white m-0 mt-1.5">
                   تسجيل الدخول
                 </h2>
-                <p className="text-[11px] text-gray-400 mt-1">
+                <p className="text-[10px] text-gray-400 mt-1">
                   مرحباً بك! الرجاء تسجيل الدخول للمتابعة
                 </p>
               </div>
 
               {/* Input credentials forms */}
-              <form onSubmit={handleFormLogin} className="space-y-3">
+              <form onSubmit={handleFormLogin} className="space-y-2.5">
                 {/* Email / Username field */}
                 <div className="space-y-1">
                   <label
                     htmlFor="email"
-                    className="block text-[11px] font-black text-gray-400 mr-1 text-right"
+                    className="block text-[10px] font-black text-gray-400 mr-1 text-right"
                   >
                     البريد الإلكتروني
                   </label>
@@ -673,7 +619,7 @@ export default function LoginScreen({
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pr-11 pl-4 py-2.5 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] focus:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] rounded-2xl text-xs focus:ring-1 focus:ring-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] focus:outline-none text-white transition-all text-left"
+                      className="w-full pr-11 pl-4 py-2 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] focus:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] rounded-2xl text-[11px] focus:ring-1 focus:ring-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] focus:outline-none text-white transition-all text-left"
                       placeholder="example@email.com"
                       autoComplete="email"
                       dir="ltr"
@@ -685,7 +631,7 @@ export default function LoginScreen({
                 <div className="space-y-1">
                   <label
                     htmlFor="password"
-                    className="block text-[11px] font-black text-gray-400 mr-1 text-right"
+                    className="block text-[10px] font-black text-gray-400 mr-1 text-right"
                   >
                     كلمة المرور
                   </label>
@@ -700,7 +646,7 @@ export default function LoginScreen({
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pr-11 pl-12 py-2.5 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] focus:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] rounded-2xl text-xs focus:ring-1 focus:ring-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] focus:outline-none text-white transition-all text-left"
+                      className="w-full pr-11 pl-12 py-2 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] focus:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] rounded-2xl text-[11px] focus:ring-1 focus:ring-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] focus:outline-none text-white transition-all text-left"
                       autoComplete="current-password"
                       dir="ltr"
                     />
@@ -715,7 +661,7 @@ export default function LoginScreen({
                 </div>
 
                 {/* Custom remember state & forgot links */}
-                <div className="flex justify-between items-center text-[11px] pt-1 select-none">
+                <div className="flex justify-between items-center text-[10px] pt-0.5 select-none">
                   <label
                     htmlFor="rememberMe"
                     className="flex items-center gap-2 cursor-pointer text-gray-300 hover:text-white"
@@ -726,7 +672,7 @@ export default function LoginScreen({
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 rounded border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] bg-black/50 text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] accent-[rgb(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b))] focus:ring-0"
+                      className="w-3.5 h-3.5 rounded border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] bg-black/50 text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] accent-[rgb(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b))] focus:ring-0"
                     />
                     <span>تذكرني</span>
                   </label>
@@ -769,7 +715,7 @@ export default function LoginScreen({
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full py-2.5 bg-black/45 hover:bg-black/35 text-white rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-[0_0_18px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.18)] hover:shadow-[0_0_28px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.26)] transition-all cursor-pointer border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.28)] disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full py-2 bg-black/45 hover:bg-black/35 text-white rounded-xl font-black text-[11px] flex items-center justify-center gap-2 shadow-[0_0_18px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.18)] hover:shadow-[0_0_28px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.26)] transition-all cursor-pointer border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.28)] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <span>
                     {authLoading
@@ -795,7 +741,7 @@ export default function LoginScreen({
               </form>
 
               {/* Divider */}
-              <div className="flex items-center gap-3.5 my-3 text-gray-400 text-[11px] font-bold">
+              <div className="flex items-center gap-3 my-2.5 text-gray-400 text-[10px] font-bold">
                 <span className="flex-1 h-[1px] bg-gradient-to-l from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
                 <span>أو</span>
                 <span className="flex-1 h-[1px] bg-gradient-to-r from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
@@ -1010,23 +956,20 @@ export default function LoginScreen({
             <div className="w-full max-w-[420px]">
               <div className="lamma-column-frame">
                 <div className="space-y-3">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: [0, -5, 0] }}
-                    transition={{ duration: 4.6, repeat: Infinity, ease: "easeInOut" }}
-                    className="lamma-glass rounded-3xl p-4 overflow-hidden"
-                  >
+                  <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
                     <div className="w-full flex items-center justify-center">
                       <div className="w-full rounded-3xl bg-black/55 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_45px_rgba(0,0,0,0.65)] overflow-hidden aspect-square">
                         <img
                           src={amMarkSrc}
                           alt="AM"
                           className="w-full h-full object-cover object-center opacity-95"
+                          loading="eager"
+                          decoding="async"
                           draggable={false}
                         />
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
 
                   <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
                     <div className="space-y-3">
@@ -1196,23 +1139,20 @@ export default function LoginScreen({
 
               <div className="lamma-column-frame">
                 <div className="space-y-3">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: [0, -5, 0] }}
-                    transition={{ duration: 4.6, repeat: Infinity, ease: "easeInOut" }}
-                    className="lamma-glass rounded-3xl p-4 overflow-hidden"
-                  >
+                  <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
                     <div className="w-full flex items-center justify-center">
                       <div className="w-full rounded-3xl bg-black/55 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_45px_rgba(0,0,0,0.65)] overflow-hidden aspect-square">
                         <img
                           src={amMarkSrc}
                           alt="AM"
                           className="w-full h-full object-cover object-center opacity-95"
+                          loading="eager"
+                          decoding="async"
                           draggable={false}
                         />
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
 
                   <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
                     <div className="space-y-3">
