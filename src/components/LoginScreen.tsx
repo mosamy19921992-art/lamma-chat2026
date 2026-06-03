@@ -109,15 +109,7 @@ export default function LoginScreen({
   const [showShareModal, setShowShareModal] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const [customLogoUrl, setCustomLogoUrl] = useState<string | null>(null);
   const appLink = import.meta.env.VITE_APP_URL || window.location.origin;
-
-  useEffect(() => {
-    const savedLogo = localStorage.getItem("lamma_custom_logo_url");
-    if (savedLogo) {
-      setCustomLogoUrl(savedLogo);
-    }
-  }, []);
 
   // Simulated live active users list
   const activeMembers = [
@@ -343,7 +335,7 @@ export default function LoginScreen({
             {/* Branding Header */}
             <div className="flex flex-col items-center text-center pb-2">
               <img
-                src={customLogoUrl || "/images/lamma-wordmark.svg"}
+                src="/images/lamma-wordmark.svg"
                 alt="LAMMA CHAT"
                 className="w-[180px] max-w-full drop-shadow-xl my-2"
               />
@@ -489,7 +481,7 @@ export default function LoginScreen({
               <div className="text-center mb-4">
                 <div className="mx-auto flex justify-center mb-2 mt-0">
                   <img
-                    src={customLogoUrl || "/images/lamma-wordmark.svg"}
+                    src="/images/lamma-wordmark.svg"
                     alt="LAMMA CHAT"
                     className="w-[200px] sm:w-[260px] max-w-full h-auto drop-shadow-2xl"
                   />
