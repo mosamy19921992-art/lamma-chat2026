@@ -634,6 +634,8 @@ export default function ChatScreen({
   );
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
+  const [isLeftColumnCollapsed, setIsLeftColumnCollapsed] = useState(false);
+  const [isRightColumnCollapsed, setIsRightColumnCollapsed] = useState(false);
   const [isCompactView, setIsCompactView] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [showPmListDropdown, setShowPmListDropdown] = useState(false);
@@ -4300,7 +4302,43 @@ export default function ChatScreen({
 
       {/* ================= FOUR-PANEL BODY ================= */}
       <div className="flex-1 flex overflow-hidden relative min-h-0">
-        <aside className="hidden xl:flex xl:order-3 w-[300px] 2xl:w-[340px] flex-col gap-3 p-3 overflow-hidden border-r border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] backdrop-blur-xl">
+        {!isZenMode && (
+          <button
+            type="button"
+            onClick={() => setIsLeftColumnCollapsed((v) => !v)}
+            className="hidden xl:flex absolute left-0 top-1/2 -translate-y-1/2 z-40 h-16 w-7 items-center justify-center rounded-r-xl bg-black/35 border border-green-500/10 text-gray-300 hover:text-white hover:bg-black/55 transition-all cursor-pointer"
+            title={isLeftColumnCollapsed ? "إظهار العمود" : "إخفاء العمود"}
+          >
+            {isLeftColumnCollapsed ? (
+              <ChevronRight size={18} />
+            ) : (
+              <ChevronLeft size={18} />
+            )}
+          </button>
+        )}
+
+        {!isZenMode && (
+          <button
+            type="button"
+            onClick={() => setIsRightColumnCollapsed((v) => !v)}
+            className="hidden xl:flex absolute right-0 top-1/2 -translate-y-1/2 z-40 h-16 w-7 items-center justify-center rounded-l-xl bg-black/35 border border-green-500/10 text-gray-300 hover:text-white hover:bg-black/55 transition-all cursor-pointer"
+            title={isRightColumnCollapsed ? "إظهار العمود" : "إخفاء العمود"}
+          >
+            {isRightColumnCollapsed ? (
+              <ChevronLeft size={18} />
+            ) : (
+              <ChevronRight size={18} />
+            )}
+          </button>
+        )}
+
+        <aside
+          className={`hidden xl:flex xl:order-3 flex-col gap-3 overflow-hidden backdrop-blur-xl transition-all duration-300 ${
+            isLeftColumnCollapsed
+              ? "w-0 p-0 opacity-0 pointer-events-none border-none"
+              : "w-[300px] 2xl:w-[340px] p-3 opacity-100 border-r border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)]"
+          }`}
+        >
           <div className="lamma-glass rounded-3xl p-4 lamma-soft-glow overflow-hidden">
             <div className="flex items-center justify-between">
               <div className="text-right">
@@ -6218,7 +6256,13 @@ export default function ChatScreen({
           {/* End of content */}
         </div>
 
-        <aside className="hidden xl:flex xl:order-1 w-[320px] 2xl:w-[340px] flex-col gap-3 p-3 overflow-hidden border-l border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] backdrop-blur-xl">
+        <aside
+          className={`hidden xl:flex xl:order-1 flex-col gap-3 overflow-hidden backdrop-blur-xl transition-all duration-300 ${
+            isRightColumnCollapsed
+              ? "w-0 p-0 opacity-0 pointer-events-none border-none"
+              : "w-[320px] 2xl:w-[340px] p-3 opacity-100 border-l border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)]"
+          }`}
+        >
           <div className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 text-[color:var(--accent-secondary)]">
