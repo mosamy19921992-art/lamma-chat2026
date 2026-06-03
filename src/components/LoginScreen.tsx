@@ -355,7 +355,7 @@ export default function LoginScreen({
       {/* Dynamic Scrollable Wrapper with centering behavior */}
       <div className="min-h-[100dvh] w-full flex items-start 2xl:items-center justify-center p-3 sm:p-4 md:p-6 2xl:py-10">
         {/* Main Grid Wrapper */}
-        <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 items-start 2xl:items-center relative z-10">
+        <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 items-start lg:items-stretch 2xl:items-center relative z-10">
           {/* COLUMN 1: BRANDING & SYSTEM STATS (LEFT) */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
@@ -489,9 +489,9 @@ export default function LoginScreen({
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
-            className="hidden lg:flex lg:col-span-4 w-full items-center justify-center"
+            className="hidden lg:flex lg:col-span-4 w-full items-start justify-center"
           >
-            <div className="w-full max-w-[420px]">
+            <div className="w-full max-w-[420px] flex flex-col gap-3">
               <div className="lamma-column-frame">
                 <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
                   <div className="space-y-3">
@@ -533,6 +533,60 @@ export default function LoginScreen({
                         <div
                           className={`w-10 h-10 rounded-2xl flex items-center justify-center border ${item.tone} shrink-0`}
                         >
+                          {item.icon}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-black text-white truncate">
+                              {item.name}
+                            </span>
+                            <span className="text-[8px] font-mono text-gray-500" dir="ltr">
+                              الآن
+                            </span>
+                          </div>
+                          <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                            {item.quote}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="lamma-column-frame">
+                <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                  <div className="space-y-3">
+                    {[
+                      {
+                        name: "صاحب شات",
+                        quote: "عايز ناس تتكلم بوضوح… من غير زحمة ولا تشتيت.",
+                        icon: <Users size={16} />,
+                      },
+                      {
+                        name: "مستخدم",
+                        quote: "نفسي الشات يبقى مريح للعين… وكلامه كبير وواضح.",
+                        icon: <Eye size={16} />,
+                      },
+                      {
+                        name: "عضو قديم",
+                        quote: "عايز دخول سريع… ومن غير ما الصفحة تبقى فاضية.",
+                        icon: <Zap size={16} />,
+                      },
+                    ].map((item, idx) => (
+                      <motion.div
+                        key={`${item.name}-${idx}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: [0, -2, 0] }}
+                        transition={{
+                          duration: 4.3,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: 0.12 * idx,
+                        }}
+                        className="flex items-start gap-3"
+                      >
+                        <div className="w-10 h-10 rounded-2xl bg-black/55 border border-white/10 flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] shrink-0">
                           {item.icon}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -951,7 +1005,7 @@ export default function LoginScreen({
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
-            className="hidden lg:flex lg:col-span-4 w-full items-center justify-center"
+            className="hidden lg:flex lg:col-span-4 w-full items-start justify-center"
           >
             <div className="w-full max-w-[420px]">
               <div className="lamma-column-frame">
@@ -963,11 +1017,11 @@ export default function LoginScreen({
                     className="lamma-glass rounded-3xl p-4 overflow-hidden"
                   >
                     <div className="w-full flex items-center justify-center">
-                      <div className="w-full rounded-3xl bg-black/55 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_45px_rgba(0,0,0,0.65)] flex items-center justify-center p-4">
+                      <div className="w-full rounded-3xl bg-black/55 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_45px_rgba(0,0,0,0.65)] overflow-hidden aspect-square">
                         <img
                           src={amMarkSrc}
                           alt="AM"
-                          className="w-full max-w-[260px] h-[160px] object-contain drop-shadow-[0_0_18px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)]"
+                          className="w-full h-full object-cover object-center opacity-95"
                           draggable={false}
                         />
                       </div>
@@ -1017,6 +1071,58 @@ export default function LoginScreen({
                       </span>
                       ، وأهمها السهولة وتنقية العين، مع اكتشافات مش هتتخيلها يا
                       مان.
+                    </div>
+                  </div>
+
+                  <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                    <div className="space-y-3">
+                      {[
+                        {
+                          name: "النظام",
+                          quote: "الأمان شغال… والدخول بيتم بسلاسة من غير تعقيد.",
+                          icon: <Shield size={16} />,
+                        },
+                        {
+                          name: "التجربة",
+                          quote: "الشكل متناسق… والألوان ماشية مع “الجدران”.",
+                          icon: <Sparkles size={16} />,
+                        },
+                        {
+                          name: "السرعة",
+                          quote: "تدخل وتتكلم فورًا… من غير خطوات كتير.",
+                          icon: <Zap size={16} />,
+                        },
+                      ].map((item, idx) => (
+                        <motion.div
+                          key={`${item.name}-${idx}`}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: [0, -2, 0] }}
+                          transition={{
+                            duration: 4.4,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: 0.14 * idx,
+                          }}
+                          className="flex items-start gap-3"
+                        >
+                          <div className="w-10 h-10 rounded-2xl bg-black/55 border border-white/10 flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] shrink-0">
+                            {item.icon}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-black text-white truncate">
+                                {item.name}
+                              </span>
+                              <span className="text-[8px] font-mono text-gray-500" dir="ltr">
+                                الآن
+                              </span>
+                            </div>
+                            <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                              {item.quote}
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -1097,11 +1203,11 @@ export default function LoginScreen({
                     className="lamma-glass rounded-3xl p-4 overflow-hidden"
                   >
                     <div className="w-full flex items-center justify-center">
-                      <div className="w-full rounded-3xl bg-black/55 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_45px_rgba(0,0,0,0.65)] flex items-center justify-center p-4">
+                      <div className="w-full rounded-3xl bg-black/55 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_45px_rgba(0,0,0,0.65)] overflow-hidden aspect-square">
                         <img
                           src={amMarkSrc}
                           alt="AM"
-                          className="w-full max-w-[260px] h-[160px] object-contain drop-shadow-[0_0_18px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)]"
+                          className="w-full h-full object-cover object-center opacity-95"
                           draggable={false}
                         />
                       </div>
