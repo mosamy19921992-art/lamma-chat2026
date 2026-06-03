@@ -4306,7 +4306,7 @@ export default function ChatScreen({
 
       {/* ================= FOUR-PANEL BODY ================= */}
       <div className="flex-1 flex overflow-hidden relative min-h-0">
-        <aside className="hidden xl:flex w-[300px] 2xl:w-[340px] flex-col gap-3 p-3 overflow-hidden border-r border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] backdrop-blur-xl">
+        <aside className="hidden xl:flex xl:order-3 w-[300px] 2xl:w-[340px] flex-col gap-3 p-3 overflow-hidden border-r border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] backdrop-blur-xl">
           <div className="lamma-glass rounded-3xl p-4 lamma-soft-glow overflow-hidden">
             <div className="flex items-center justify-between">
               <div className="text-right">
@@ -4703,7 +4703,7 @@ export default function ChatScreen({
 
         {/* ----------------- PANEL 3: MAIN ACTIVE MESSAGE LOG (3rd column / Center) ----------------- */}
         <div
-          className={`flex-1 flex flex-col min-w-0 md:order-2 bg-[rgba(5,8,6,0.28)] backdrop-blur-xl ${
+          className={`flex-1 flex flex-col min-w-0 bg-[rgba(5,8,6,0.28)] backdrop-blur-xl xl:order-2 ${
             mobileTab === "chat" ? "flex" : "hidden md:flex"
           }`}
         >
@@ -6224,7 +6224,7 @@ export default function ChatScreen({
           {/* End of content */}
         </div>
 
-        <aside className="hidden xl:flex w-[320px] 2xl:w-[340px] flex-col gap-3 p-3 overflow-hidden border-l border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] backdrop-blur-xl">
+        <aside className="hidden xl:flex xl:order-1 w-[320px] 2xl:w-[340px] flex-col gap-3 p-3 overflow-hidden border-l border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] backdrop-blur-xl">
           <div className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 text-[color:var(--accent-secondary)]">
