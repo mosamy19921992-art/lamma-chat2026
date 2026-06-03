@@ -3520,7 +3520,7 @@ export default function ChatScreen({
                 {/* Icons bar under the name and role */}
                 <div className="flex items-center gap-1.5 mt-1">
                   {/* Rooms selector button */}
-                  <div className="relative dropdown-container flex items-center">
+                  <div className="relative dropdown-container flex items-center xl:hidden">
                     <button
                       onClick={() => {
                         toggleDropdown("rooms" as any);
@@ -3539,7 +3539,7 @@ export default function ChatScreen({
                   </div>
 
                   {/* Members selector button */}
-                  <div className="relative dropdown-container flex items-center">
+                  <div className="relative dropdown-container flex items-center xl:hidden">
                     <button
                       onClick={() => {
                         toggleDropdown("members" as any);
@@ -4378,7 +4378,7 @@ export default function ChatScreen({
               </div>
               <button
                 type="button"
-                onClick={() => toggleDropdown("music" as any)}
+                onClick={() => toggleDropdown("radio" as any)}
                 className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
                 title="فتح الراديو"
               >
@@ -4401,7 +4401,7 @@ export default function ChatScreen({
                 <div className="mt-3 flex items-center justify-between">
                   <button
                     type="button"
-                    onClick={() => toggleDropdown("music" as any)}
+                    onClick={() => toggleDropdown("radio" as any)}
                     className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
                     title="تشغيل/إيقاف"
                   >
@@ -4410,7 +4410,7 @@ export default function ChatScreen({
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => toggleDropdown("music" as any)}
+                      onClick={() => toggleDropdown("radio" as any)}
                       className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
                       title="السابق"
                     >
@@ -4418,7 +4418,7 @@ export default function ChatScreen({
                     </button>
                     <button
                       type="button"
-                      onClick={() => toggleDropdown("music" as any)}
+                      onClick={() => toggleDropdown("radio" as any)}
                       className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
                       title="التالي"
                     >
@@ -4427,6 +4427,40 @@ export default function ChatScreen({
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[color:var(--text-primary)]">
+                <Music size={16} className="text-[color:var(--accent-secondary)]" />
+                <span className="text-[12px] font-black">موسيقى وغناء</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggleDropdown("music" as any)}
+                className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                title="فتح الموسيقى"
+              >
+                <Play size={16} className="text-[color:var(--accent-primary)]" />
+              </button>
+            </div>
+            <div className="mt-3 rounded-2xl bg-black/30 border border-white/5 p-3 flex items-center justify-between">
+              <div className="text-right">
+                <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
+                  مكتبة لمة
+                </div>
+                <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1 truncate">
+                  اختر تراك وشغّل فورًا
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggleDropdown("music" as any)}
+                className="px-3 py-2 rounded-xl bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.25)] text-[color:var(--accent-primary)] text-[10px] font-black hover:bg-[rgba(16,185,129,0.18)] transition-all cursor-pointer"
+              >
+                فتح
+              </button>
             </div>
           </div>
         </aside>
@@ -4737,7 +4771,7 @@ export default function ChatScreen({
         <div
           className={`flex-1 flex flex-col min-w-0 bg-[rgba(5,8,6,0.28)] backdrop-blur-xl xl:order-2 ${
             mobileTab === "chat" ? "flex" : "hidden md:flex"
-          }`}
+          } ${isLeftColumnCollapsed ? "xl:border-l xl:border-[rgba(163,230,53,0.12)]" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-[rgba(163,230,53,0.12)]" : ""}`}
         >
           {/* Room Top Bar: Topic & System Actions */}
           <div className="flex items-stretch justify-between bg-[#040705] min-h-[38px] border-b border-green-500/10 shrink-0">
