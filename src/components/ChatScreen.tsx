@@ -47,6 +47,7 @@ import {
   Gift,
   Trophy,
   AlertCircle,
+  Link as LinkIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import AMLogo from "./AMLogo.tsx";
@@ -1282,7 +1283,10 @@ export default function ChatScreen({
   const [showPrivacyDropdown, setShowPrivacyDropdown] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const pmImageUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  // Rate limit: max 3 media uploads per 60s per user (rooms + pm combined)
+  const mediaRateStateRef = useRef<{ times: number[] }>({ times: [] });
 
   const toggleDropdown = (
     dropdown:
@@ -2654,9 +2658,11 @@ export default function ChatScreen({
   };
 
   const sendMediaMessage = (
-    type: "image" | "video" | "audio",
+    type: "image" | "imageUrl" | "video" | "audio",
     mediaUrl: string,
   ) => {
+    const finalType: "image" | "video" | "audio" =
+      type === "imageUrl" ? "image" : type;
     const timeStr = new Date().toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "numeric",
@@ -2701,7 +2707,7 @@ export default function ChatScreen({
         minute: "numeric",
         hour12: true,
       }),
-      type: type,
+      type: finalType,
       mediaUrl: mediaUrl,
     };
     const updatedMessages = [...(roomMessages[activeRoomId] || []), newMessage];
@@ -2724,7 +2730,7 @@ export default function ChatScreen({
             author: currentUser.nickname,
             text: "",
             color: currentUser.color || "#10b981",
-            type: type,
+            type: finalType,
             media_url: mediaUrl,
             sender_uid: senderUid,
           },
@@ -2745,6 +2751,11 @@ export default function ChatScreen({
 
     if (currentUser.authProvider !== "supabase") {
       alert("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.");
+      return;
+    }
+
+    if (!canSendMediaByRate()) {
+      alert("⏳ بعت وسائط كتير بسرعة. استنى دقيقة وجرب تاني.");
       return;
     }
 
@@ -2802,7 +2813,90 @@ export default function ChatScreen({
     await uploadAndSendImage(file);
   };
 
-  const handleSendAttachment = (type: "image" | "video" | "audio") => {
+  const canSendMediaByRate = () => {
+    const now = Date.now();
+    const windowMs = 60_000;
+    const max = 3;
+    const arr = mediaRateStateRef.current.times.filter(
+      (t) => now - t < windowMs,
+    );
+    if (arr.length >= max) return false;
+    arr.push(now);
+    mediaRateStateRef.current.times = arr;
+    return true;
+  };
+
+  const handlePmImageUploadChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!canSendMediaByRate()) {
+      alert("⏳ بعت وسائط كتير بسرعة. استنى دقيقة وجرب تاني.");
+      return;
+    }
+    if (currentUser.authProvider !== "supabase") {
+      alert("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.");
+      return;
+    }
+    if (!supabase) {
+      alert("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      alert("⚠️ الملف اللي اخترته مش صورة.");
+      return;
+    }
+    const maxBytes = 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      alert("⚠️ حجم الصورة كبير. الحد الأقصى 5MB.");
+      return;
+    }
+    try {
+      setIsUploadingImage(true);
+      const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
+      const target =
+        pmTarget?.nickname?.replace(/[^\w.\-]+/g, "_") || "unknown";
+      const objectPath = `pm/${target}/${Date.now()}_${crypto.randomUUID()}_${safeName}`;
+      const { error: uploadError } = await supabase.storage
+        .from("chat-media")
+        .upload(objectPath, file, {
+          cacheControl: "3600",
+          contentType: file.type,
+          upsert: false,
+        });
+      if (uploadError) {
+        alert(`❌ فشل رفع الصورة: ${uploadError.message}`);
+        return;
+      }
+      const { data: publicData } = supabase.storage
+        .from("chat-media")
+        .getPublicUrl(objectPath);
+      const publicUrl = publicData?.publicUrl;
+      if (!publicUrl) {
+        alert("❌ حصل خطأ في توليد رابط الصورة بعد الرفع.");
+        return;
+      }
+      const timeStr = new Date().toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+      });
+      const targetNickname = pmTarget.nickname;
+      setPmThreads((prev) => ({
+        ...prev,
+        [targetNickname]: [
+          ...(prev[targetNickname] || []),
+          { text: "", isOwn: true, time: timeStr, mediaUrl: publicUrl, type: "image" },
+        ],
+      }));
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleSendAttachment = (type: "image" | "imageUrl" | "video" | "audio") => {
     const isOwnerOrAdmin =
       currentUser.role === "owner" ||
       currentUser.role === "admin" ||
@@ -2857,6 +2951,22 @@ export default function ChatScreen({
       setShowAttachmentDropdown(false);
       imageUploadInputRef.current?.click();
       return;
+    }
+    if (type === "imageUrl") {
+      const inputUrl = prompt(
+        "🔗 أدخل رابط صورة (jpg/png/webp/gif) لمشاركتها في الغرفة:",
+      );
+      if (inputUrl === null) {
+        setShowAttachmentDropdown(false);
+        return;
+      }
+      const trimmed = inputUrl.trim();
+      if (!trimmed) {
+        setShowAttachmentDropdown(false);
+        return;
+      }
+      mediaUrl = trimmed;
+      setShowAttachmentDropdown(false);
     }
     if (type === "video") {
       const inputUrl = prompt(
@@ -5476,7 +5586,16 @@ export default function ChatScreen({
                         <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
                           <Image size={14} />
                         </div>
-                        <span>صورة</span>
+                        <span>رفع صورة</span>
+                      </button>
+                      <button
+                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer"
+                        onClick={() => handleSendAttachment("imageUrl")}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                          <LinkIcon size={14} />
+                        </div>
+                        <span>رابط صورة</span>
                       </button>
                       <button
                         className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer"
@@ -6467,7 +6586,15 @@ export default function ChatScreen({
                       : "bg-black/50 border border-green-500/5 text-gray-100 rounded-tl-none"
                   }`}
                 >
-                  <p className="m-0 text-right">{msg.text}</p>
+                  {msg.mediaUrl ? (
+                    <img
+                      src={msg.mediaUrl}
+                      alt="مرفق"
+                      className="max-w-[220px] max-h-[220px] rounded-xl mb-1.5 object-cover"
+                      loading="lazy"
+                    />
+                  ) : null}
+                  {msg.text ? <p className="m-0 text-right">{msg.text}</p> : null}
                 </div>
                 <div className="flex items-center gap-1 mt-0.5">
                   <span className="text-[8px] text-gray-500 font-mono">
@@ -6546,7 +6673,15 @@ export default function ChatScreen({
                 >
                   <button
                     className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right"
-                    onClick={() => setShowPmAttachment(false)}
+                    onClick={() => {
+                      setShowPmAttachment(false);
+                      if (isUploadingImage) return;
+                      if (currentUser.authProvider !== "supabase") {
+                        alert("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.");
+                        return;
+                      }
+                      pmImageUploadInputRef.current?.click();
+                    }}
                   >
                     <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
                       <Image size={14} />
@@ -6626,6 +6761,13 @@ export default function ChatScreen({
                 <Send size={11} className="rotate-180" />
               </button>
             </div>
+            <input
+              ref={pmImageUploadInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePmImageUploadChange}
+            />
           </div>
         </motion.aside>
       </div>
