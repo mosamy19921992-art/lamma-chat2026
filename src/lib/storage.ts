@@ -54,7 +54,7 @@ export const storage = {
   update<T>(key: string, fallback: T, updater: (prev: T | null) => T): T {
     const prev = this.get<T | null>(key, null);
     const next = updater(prev);
-    this.set(key, next);
+    storage.set(key, next);
     return next ?? fallback;
   },
 };
