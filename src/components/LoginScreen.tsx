@@ -73,6 +73,7 @@ export default function LoginScreen({
     if (saved === "fire" || saved === "ice" || saved === "violet") return saved;
     return "fire";
   });
+  const [signupNickname, setSignupNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -80,6 +81,13 @@ export default function LoginScreen({
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [authLoading, setAuthLoading] = useState(false);
   const [showExtraOptions, setShowExtraOptions] = useState(false);
+  const [pendingProfileUser, setPendingProfileUser] = useState<any | null>(null);
+  const [pendingProfileColor, setPendingProfileColor] = useState<string | null>(
+    null,
+  );
+  const [profileNickname, setProfileNickname] = useState("");
+  const [showProfileNicknameModal, setShowProfileNicknameModal] =
+    useState(false);
 
   // Sound feedback preferences
   const [soundOn, setSoundOn] = useState(true);
@@ -206,6 +214,10 @@ export default function LoginScreen({
   const handleFormLogin = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (authMode === "signup" && !signupNickname.trim()) {
+      showToast("اكتب اسم المستخدم الأول.", "error");
+      return;
+    }
     if (!email.trim()) {
       showToast("اكتب البريد الإلكتروني الأول.", "error");
       return;
@@ -231,7 +243,7 @@ export default function LoginScreen({
             password,
             options: {
               data: {
-                nickname: email.trim().split("@")[0] || "مستخدم_لمة",
+                nickname: signupNickname.trim(),
               },
             },
           })
@@ -251,6 +263,7 @@ export default function LoginScreen({
           );
           setAuthMode("login");
           setPassword("");
+          setSignupNickname("");
           return;
         }
 
@@ -259,18 +272,22 @@ export default function LoginScreen({
           return;
         }
 
-        const nick =
-          data.user.user_metadata?.nickname ||
-          data.user.user_metadata?.name ||
-          (data.user.email ? data.user.email.split("@")[0] : null) ||
-          "مستخدم_لمة";
+        const metaNick = data.user.user_metadata?.nickname || data.user.user_metadata?.name;
+        if (!metaNick) {
+          setPendingProfileUser(data.user);
+          setPendingProfileColor(assignedColor);
+          setProfileNickname("");
+          setShowProfileNicknameModal(true);
+          showToast("اختار اسم مستخدم للمتابعة.", "info");
+          return;
+        }
 
         playBeepSound(520, "sine");
         if (!rememberMe) {
           localStorage.removeItem("lamma_user_session");
         }
         onLogin(
-          nick,
+          metaNick,
           "user",
           assignedColor,
           data.user.id,
@@ -279,6 +296,46 @@ export default function LoginScreen({
         );
       })
       .finally(() => setAuthLoading(false));
+  };
+
+  const handleSaveProfileNickname = async () => {
+    const nick = profileNickname.trim();
+    if (!nick) {
+      showToast("اكتب اسم المستخدم الأول.", "error");
+      return;
+    }
+    if (!supabase || !pendingProfileUser || !pendingProfileColor) {
+      showToast("⚠️ إعدادات Supabase غير مكتملة حالياً.", "error");
+      return;
+    }
+    setAuthLoading(true);
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: { nickname: nick },
+      });
+      if (error) {
+        showToast(error.message, "error");
+        return;
+      }
+      const user = data.user || pendingProfileUser;
+      setShowProfileNicknameModal(false);
+      setPendingProfileUser(null);
+      setPendingProfileColor(null);
+      playBeepSound(520, "sine");
+      if (!rememberMe) {
+        localStorage.removeItem("lamma_user_session");
+      }
+      onLogin(
+        nick,
+        "user",
+        pendingProfileColor,
+        user.id,
+        user.email,
+        "supabase",
+      );
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleCopyLink = () => {
@@ -709,6 +766,33 @@ export default function LoginScreen({
                     />
                   </div>
                 </div>
+
+                {authMode === "signup" && (
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="nickname"
+                      className="block text-[10px] font-black text-gray-400 mr-1 text-right"
+                    >
+                      اسم المستخدم
+                    </label>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
+                        <Hash size={16} />
+                      </span>
+                      <input
+                        id="nickname-field"
+                        name="nickname"
+                        type="text"
+                        required
+                        value={signupNickname}
+                        onChange={(e) => setSignupNickname(e.target.value)}
+                        className="w-full pr-11 pl-4 py-2 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] focus:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] rounded-2xl text-[11px] focus:ring-1 focus:ring-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] focus:outline-none text-white transition-all text-right"
+                        placeholder="مثال: لَمّة_محمد"
+                        autoComplete="nickname"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Password field */}
                 <div className="space-y-1">
@@ -1273,6 +1357,77 @@ export default function LoginScreen({
       </div>
 
       <AnimatePresence>
+        {showProfileNicknameModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100000] flex items-center justify-center p-4 overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="w-full max-w-md bg-[#050a06] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] rounded-[28px] p-6 text-right relative shadow-[0_0_50px_rgba(0,0,0,0.55)] my-8"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] animate-pulse" />
+                  <h3 className="text-base font-black text-white">
+                    اختيار اسم المستخدم
+                  </h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowProfileNicknameModal(false);
+                    setPendingProfileUser(null);
+                    setPendingProfileColor(null);
+                    if (supabase) supabase.auth.signOut();
+                    showToast("تم إلغاء الدخول.", "info");
+                  }}
+                  className="text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all cursor-pointer"
+                  disabled={authLoading}
+                >
+                  إلغاء
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-300 leading-relaxed">
+                علشان يظهر اسمك بدل الإيميل، اكتب اسم مستخدم واحد وهنحفظه على
+                الحساب.
+              </p>
+
+              <div className="mt-3 space-y-1">
+                <label className="block text-[10px] text-gray-400 font-bold mb-1.5">
+                  اسم المستخدم:
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
+                    <Hash size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    value={profileNickname}
+                    onChange={(e) => setProfileNickname(e.target.value)}
+                    className="w-full pr-11 pl-4 py-2 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] focus:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] rounded-2xl text-[11px] focus:ring-1 focus:ring-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] focus:outline-none text-white transition-all text-right"
+                    placeholder="مثال: لَمّة_محمد"
+                    autoComplete="nickname"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSaveProfileNickname}
+                disabled={authLoading}
+                className="mt-4 w-full py-2.5 rounded-lg font-black text-xs transition-all cursor-pointer bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.14)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.28)] text-white hover:bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.18)] disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                حفظ
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+
         {showShareModal && (
           <motion.div
             initial={{ opacity: 0 }}
