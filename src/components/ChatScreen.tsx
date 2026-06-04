@@ -49,489 +49,31 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import AMLogo from "./AMLogo.tsx";
-import { OperationType } from "../lib/types.ts";
+import ShareModal from "./modals/ShareModal.tsx";
+import CreateRoomModal from "./modals/CreateRoomModal.tsx";
+import UserContextPopup from "./modals/UserContextPopup.tsx";
+import UserProfileBioPopup from "./modals/UserProfileBioPopup.tsx";
 import { getClientUid, supabase, SupabaseMessage } from "../lib/supabase.ts";
-
-interface ChatScreenProps {
-  currentUser: {
-    nickname: string;
-    role: string;
-    color: string;
-    uid?: string | null;
-    email?: string | null;
-    authProvider?: "supabase" | "guest";
-  };
-  onLogout: () => void;
-  primaryTheme: "dark" | "amoled";
-}
-
-interface Message {
-  id: string;
-  author: string;
-  text: string;
-  color: string;
-  isOwn: boolean;
-  time: string;
-  type:
-    | "text"
-    | "image"
-    | "video"
-    | "audio"
-    | "system"
-    | "join"
-    | "leave"
-    | "gift"
-    | "youtube";
-  mediaUrl?: string;
-  giftIcon?: string;
-  giftName?: string;
-  youtubeId?: string;
-  reactions?: Record<string, number>;
-}
-
-function getYoutubeId(url: string | undefined): string | null {
-  if (!url) return null;
-  const regExp =
-    /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-  const match = url.match(regExp);
-  return match && match[2].length === 11 ? match[2] : null;
-}
-
-function renderTextMessageWithMedia(text: string) {
-  if (!text) return null;
-
-  // Regex to find URLs
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const urls = text.match(urlRegex);
-
-  // Split text to make URLs clickable first
-  const parts = text.split(urlRegex);
-  const clickableText = parts.map((part, index) => {
-    if (part.match(urlRegex)) {
-      return (
-        <a
-          key={index}
-          href={part}
-          target="_blank"
-          referrerPolicy="no-referrer"
-          rel="noopener noreferrer"
-          className="text-cyan-400 hover:text-cyan-300 underline font-semibold break-all"
-        >
-          {part}
-        </a>
-      );
-    }
-    return <span key={index}>{part}</span>;
-  });
-
-  // Now, parse and extract media previews to render UNDER the text
-  const mediaPreviews: React.ReactNode[] = [];
-
-  if (urls) {
-    urls.forEach((url, idx) => {
-      // 1. YouTube Link Extraction
-      const yid = getYoutubeId(url);
-      if (yid) {
-        mediaPreviews.push(
-          <div
-            key={`yt-${idx}`}
-            className="mt-2.5 max-w-[280px] overflow-hidden rounded-xl border border-red-500/20 shadow-lg bg-black/80"
-          >
-            <div className="relative pb-[56.25%] h-0">
-              <iframe
-                title="YouTube Video Player"
-                src={`https://www.youtube.com/embed/${yid}`}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="absolute top-0 left-0 w-full h-full rounded-xl"
-              />
-            </div>
-          </div>,
-        );
-        return; // don't render it as double if it matches Youtube
-      }
-
-      // 2. Image Link Detection
-      const isImg = url.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) || url.includes("img");
-      if (isImg) {
-        mediaPreviews.push(
-          <div
-            key={`img-${idx}`}
-            className="mt-2.5 max-w-[160px] overflow-hidden rounded-xl border border-green-500/10 shadow-lg bg-black/40 group relative"
-          >
-            <img
-              loading="lazy"
-              src={url}
-              alt="Embedded Link Attachment"
-              referrerPolicy="no-referrer"
-              className="w-full max-h-40 object-cover rounded-xl hover:scale-105 transition-all duration-300 cursor-pointer"
-            />
-          </div>,
-        );
-        return;
-      }
-
-      // 3. Video Link Detection
-      const isVid =
-        url.match(/\.(mp4|webm|ogg|mov)/i) || url.includes("assets.mixkit.co");
-      if (isVid) {
-        mediaPreviews.push(
-          <div
-            key={`vid-${idx}`}
-            className="mt-2.5 max-w-[180px] overflow-hidden rounded-xl border border-blue-500/15 shadow-lg bg-black/50"
-          >
-            <video
-              src={url}
-              controls
-              preload="metadata"
-              className="w-full max-h-40 rounded-xl"
-            />
-          </div>,
-        );
-        return;
-      }
-    });
-  }
-
-  return (
-    <div className="flex flex-col gap-1 text-right">
-      <div className="leading-snug text-[11px] text-gray-100 break-words whitespace-pre-line">
-        {clickableText}
-      </div>
-      {mediaPreviews.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-1">{mediaPreviews}</div>
-      )}
-    </div>
-  );
-}
-
-const getRoleFromAuthor = (
-  author: string,
-  currentUserObj: any,
-): "owner" | "admin" | "platinum_vip" | "vip" | "none" => {
-  if (author === currentUserObj.nickname) {
-    const roleLower = currentUserObj.role.toLowerCase();
-    if (
-      roleLower === "owner" ||
-      roleLower === "malek" ||
-      roleLower === "المالك"
-    )
-      return "owner";
-    if (roleLower === "admin" || roleLower === "أدمن" || roleLower === "مشرف")
-      return "admin";
-    if (roleLower === "platinum_vip") return "platinum_vip";
-    if (roleLower === "vip") return "vip";
-    return "none";
-  }
-
-  if (
-    author.includes("تاج المالك") ||
-    author.includes("(المالك)") ||
-    author.includes("المالك") ||
-    author.includes("Owner")
-  )
-    return "owner";
-  if (
-    author.includes("(أدمن)") ||
-    author.includes("أدمن") ||
-    author.includes("Admin")
-  )
-    return "admin";
-  if (author.includes("بلاتيني") || author.includes("platinum"))
-    return "platinum_vip";
-  if (
-    author.includes("(VIP)") ||
-    author.includes("VIP") ||
-    author.includes("vip")
-  )
-    return "vip";
-
-  return "none";
-};
-
-const getFrameFromAuthor = (author: string, currentUserObj: any): string => {
-  if (author === currentUserObj.nickname) {
-    return currentUserObj.frame || "";
-  }
-  const role = getRoleFromAuthor(author, currentUserObj);
-  if (role === "platinum_vip") {
-    return "from-yellow-400 via-amber-500 to-yellow-600";
-  }
-  return "";
-};
-
-function hexToRgba(hex: string, alpha: number) {
-  const raw = hex.replace("#", "").trim();
-  const value = raw.length === 3 ? raw.split("").map((c) => c + c).join("") : raw;
-  if (value.length !== 6) return `rgba(16,185,129,${alpha})`;
-  const r = parseInt(value.slice(0, 2), 16);
-  const g = parseInt(value.slice(2, 4), 16);
-  const b = parseInt(value.slice(4, 6), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
-const ROOMS_DEF = [
-  { id: "egypt", name: "مصر", icon: "🇪🇬", count: 128, category: "social" },
-  { id: "arab", name: "كل العرب", icon: "🌍", count: 99, category: "social" },
-  { id: "youth", name: "لمة شباب وبنات", icon: "👫", count: 85, category: "social" },
-  { id: "palestine", name: "فلسطين", icon: "🇵🇸", count: 54, category: "social" },
-  { id: "fun", name: "فرفشة", icon: "🥳", count: 65, category: "fun" },
-  { id: "games", name: "ألعاب", icon: "🎮", count: 41, category: "fun" },
-  { id: "romance", name: "رومانسية", icon: "💖", count: 76, category: "relations" },
-  { id: "admin", name: "الإدارة", icon: "🛡️", count: 3, category: "private" },
-];
-
-const ROOM_CATEGORIES = [
-  { id: "social", name: "اجتماعي", icon: "👥" },
-  { id: "fun", name: "ترفيه", icon: "🎮" },
-  { id: "relations", name: "علاقات", icon: "💖" },
-  { id: "private", name: "خاصة", icon: "🛡️" },
-];
-
-const GIFT_TYPES = [
-  { icon: "🌹", name: "وردة", color: "#ef4444" },
-  { icon: "💖", name: "قلب", color: "#f43f5e" },
-  { icon: "☕", name: "قهوة", color: "#b45309" },
-  { icon: "💎", name: "الماس", color: "#38bdf8" },
-  { icon: "👑", name: "تاج", color: "#eab308" },
-  { icon: "🏆", name: "كأس", color: "#f59e0b" },
-  { icon: "🔥", name: "شعلة", color: "#f97316" },
-];
-
-const EMOTICONS = [
-  "😀",
-  "😃",
-  "😄",
-  "😁",
-  "😆",
-  "😅",
-  "😂",
-  "🤣",
-  "🥲",
-  "☺️",
-  "😊",
-  "😇",
-  "🙂",
-  "🙃",
-  "😉",
-  "😌",
-  "😍",
-  "🥰",
-  "😘",
-  "😗",
-  "😙",
-  "😚",
-  "😋",
-  "😛",
-  "😝",
-  "😜",
-  "🤪",
-  "🤨",
-  "🧐",
-  "🤓",
-  "😎",
-  "🥸",
-  "🤩",
-  "🥳",
-  "😏",
-  "😒",
-  "😞",
-  "😔",
-  "😟",
-  "😕",
-  "🙁",
-  "☹️",
-  "😣",
-  "😖",
-  "😫",
-  "😩",
-  "🥺",
-  "😢",
-  "😭",
-  "😤",
-  "😠",
-  "😡",
-  "🤬",
-  "🤯",
-  "😳",
-  "🥵",
-  "🥶",
-  "😱",
-  "😨",
-  "😰",
-  "😥",
-  "😓",
-  "🤗",
-  "🤔",
-  "🤭",
-  "🤫",
-  "🤥",
-  "😶",
-  "😐",
-  "😑",
-  "😬",
-  "🙄",
-  "😯",
-  "😦",
-  "😧",
-  "😮",
-  "😲",
-  "🥱",
-  "😴",
-  "🤤",
-  "😪",
-  "😵",
-  "🤐",
-  "🥴",
-  "🤢",
-  "🤮",
-  "🤧",
-  "😷",
-  "🤒",
-  "🤕",
-  "🤑",
-  "🤠",
-  "😈",
-  "👿",
-  "👹",
-  "👺",
-  "🤡",
-  "💩",
-  "👻",
-  "💀",
-  "☠️",
-  "👽",
-  "👾",
-  "🤖",
-  "🎃",
-  "😺",
-  "😸",
-  "😹",
-  "😻",
-  "😼",
-  "😽",
-  "🙀",
-  "😿",
-  "😾",
-  "👋",
-  "🤚",
-  "🖐",
-  "✋",
-  "🖖",
-  "👌",
-  "🤌",
-  "🤏",
-  "✌️",
-  "🤞",
-  "🤟",
-  "🤘",
-  "🤙",
-  "👈",
-  "👉",
-  "👆",
-  "🖕",
-  "👇",
-  "☝️",
-  "👍",
-  "👎",
-  "✊",
-  "👊",
-  "🤛",
-  "🤜",
-  "👏",
-  "🙌",
-  "👐",
-  "🤲",
-  "🤝",
-  "🙏",
-  "✍️",
-  "💅",
-  "🤳",
-  "💪",
-  "🦾",
-  "🦿",
-  "🦵",
-  "🦶",
-  "👂",
-  "🦻",
-  "👃",
-  "🧠",
-  "🫀",
-  "🫁",
-  "🦷",
-  "骨",
-  "👀",
-  "👁",
-  "👅",
-  "👄",
-  "💋",
-  "🩸",
-  "❤️",
-  "🧡",
-  "💛",
-  "💚",
-  "💙",
-  "💜",
-  "🖤",
-  "🤍",
-  "🤎",
-  "💔",
-  "❣️",
-  "💕",
-  "💞",
-  "💓",
-  "💗",
-  "💖",
-  "💘",
-  "💝",
-];
-
-const SIMULATED_REPLIES = [
-  "أهلاً وسهلاً بالجميع، نورتم غرفتنا الكبرى! 🌹",
-  "يرجى الالتزام بالقواعد العامة واحترام الأعضاء 👍",
-  "البث التوجيهي والمكالمات وتصميم الشات روعة بجد 😍",
-  "هل جربتم تفعيل ميزة مميز VIP؟ تمنح دروع وتلوين فريد",
-  "سرعة استجابة التطبيق خارقة!",
-];
-
-export interface ChatMember {
-  id: string;
-  nickname: string;
-  role: "guest" | "user" | "vip" | "mod" | "admin" | "owner";
-  color: string;
-  avatar: string;
-  status: "online" | "offline" | "idle";
-  email?: string;
-  fingerprint: string;
-  browserSignature: string;
-  ip: string;
-  localStorageId: string;
-}
-
-export interface BanInfo {
-  id: string;
-  nickname: string;
-  email?: string;
-  fingerprint: string;
-  browserSignature: string;
-  ip: string;
-  localStorageId: string;
-  type: "mute" | "kick" | "ban" | "megaban" | "shadow" | "room";
-  roomId?: string; // For room ban
-  banner: string; // admin nickname who banned them
-  reason: string;
-  time: string;
-}
-
-export interface ActivityLog {
-  id: string;
-  time: string;
-  type: "login" | "logout" | "ban" | "promote" | "demote";
-  userNickname: string;
-  operatorNickname: string;
-  details: string;
-}
+import {
+  ROOMS_DEF,
+  ROOM_CATEGORIES,
+  GIFT_TYPES,
+  EMOTICONS,
+  SIMULATED_REPLIES,
+} from "../lib/chatConstants.ts";
+import {
+  type Message,
+  type ChatMember,
+  type BanInfo,
+  type ActivityLog,
+} from "../lib/chatTypes.ts";
+import {
+  hexToRgba,
+  getRoleFromAuthor,
+  getFrameFromAuthor,
+  getYoutubeId,
+} from "../lib/chatHelpers.ts";
+import { renderTextMessageWithMedia } from "../lib/chatMessageRender.tsx";
 
 function MobileBottomSheet({
   isOpen,
@@ -769,10 +311,6 @@ export default function ChatScreen({
     /* State for Create Room */
   }
   const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false);
-  const [newRoomDetails, setNewRoomDetails] = useState({
-    name: "",
-    password: "",
-  });
   const [userStatus, setUserStatus] = useState("");
   const [isStatusHidden, setIsStatusHidden] = useState(false);
 
@@ -909,33 +447,9 @@ export default function ChatScreen({
 
   // Stateful invite/share modal
   const [showShareModalInChat, setShowShareModalInChat] = useState(false);
-  const [copiedLinkInChat, setCopiedLinkInChat] = useState(false);
 
   const handleCopyLink = () => {
     setShowShareModalInChat(true);
-  };
-
-  const fallbackCopyInChat = (text: string) => {
-    try {
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      textArea.style.top = "0";
-      textArea.style.left = "0";
-      textArea.style.position = "fixed";
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      const successful = document.execCommand("copy");
-      document.body.removeChild(textArea);
-      if (successful) {
-        setCopiedLinkInChat(true);
-        setTimeout(() => setCopiedLinkInChat(false), 3000);
-      } else {
-        throw new Error("fallback prompt");
-      }
-    } catch (err) {
-      prompt("يرجى نسخ الرابط يدوياً من المربع أدناه:", text);
-    }
   };
 
   const [showStatus, setShowStatus] = useState(false);
@@ -11194,71 +10708,15 @@ export default function ChatScreen({
       </AnimatePresence>
 
       {/* Modal for Creating Room */}
-      <AnimatePresence>
-        {isCreateRoomModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
-          >
-            <div className="bg-[#0a0f0c] p-6 rounded-3xl border border-green-500/30 w-full max-w-sm space-y-4 shadow-2xl">
-              <h2 className="text-sm font-black text-white">
-                إنشاء غرفة خاصة جديدة
-              </h2>
-              <input
-                type="text"
-                id="createRoomName"
-                name="createRoomName"
-                autoComplete="off"
-                placeholder="اسم الغرفة"
-                value={newRoomDetails.name}
-                onChange={(e) =>
-                  setNewRoomDetails((prev) => ({
-                    ...prev,
-                    name: e.target.value,
-                  }))
-                }
-                className="w-full p-3 rounded-xl bg-black border border-white/10 text-white text-xs"
-              />
-              <input
-                type="password"
-                id="createRoomPassword"
-                name="createRoomPassword"
-                autoComplete="off"
-                placeholder="كلمة المرور (اختياري)"
-                value={newRoomDetails.password}
-                onChange={(e) =>
-                  setNewRoomDetails((prev) => ({
-                    ...prev,
-                    password: e.target.value,
-                  }))
-                }
-                className="w-full p-3 rounded-xl bg-black border border-white/10 text-white text-xs"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setIsCreateRoomModalOpen(false)}
-                  className="flex-1 p-2 rounded-xl bg-red-500/10 text-red-400 text-xs font-bold"
-                >
-                  إلغاء
-                </button>
-                <button
-                  onClick={() => {
-                    // Logic to create room (simplified for demo)
-                    alert(`تم إنشاء الغرفة: ${newRoomDetails.name}`);
-                    setIsCreateRoomModalOpen(false);
-                    setNewRoomDetails({ name: "", password: "" });
-                  }}
-                  className="flex-1 p-2 rounded-xl bg-green-500 text-black text-xs font-bold"
-                >
-                  إنشاء
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <CreateRoomModal
+        isOpen={isCreateRoomModalOpen}
+        onClose={() => setIsCreateRoomModalOpen(false)}
+        onCreate={(details) => {
+          // Logic to create room (simplified for demo)
+          alert(`تم إنشاء الغرفة: ${details.name}`);
+          setIsCreateRoomModalOpen(false);
+        }}
+      />
 
       {/* --- Newly Installed Client-Side Fast Search Pop-up --- */}
       {showSearchPop && (
@@ -11420,611 +10878,182 @@ export default function ChatScreen({
       )}
 
       {/* --- User Options Custom Context/Dropdown Menu --- */}
-      <AnimatePresence>
-        {showUserContextPop && userContextTarget && (
-          <motion.div
-            drag
-            dragMomentum={false}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.12 }}
-            className="fixed top-24 left-4 md:left-auto md:right-1/3 w-[260px] bg-[#0a0f0c]/98 border border-green-500/30 rounded-2xl overflow-hidden shadow-[0_15px_60px_rgba(16,185,129,0.3)] flex flex-col z-[101] cursor-move text-right"
-            style={{
-              resize: "both",
-              overflow: "hidden",
-              minWidth: "220px",
-              minHeight: "250px",
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-            }}
-            dir="rtl"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-3 border-b border-green-500/10 bg-black/40 select-none">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs">{userContextTarget.avatar}</span>
-                <h3 className="font-black text-white text-[11px] truncate max-w-[140px]">
-                  خيارات العضو {userContextTarget.nickname}
-                </h3>
-              </div>
-              <button
-                onClick={() => {
-                  setShowUserContextPop(false);
-                  setUserContextTarget(null);
-                }}
-                className="p-1 rounded-lg bg-red-400/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
-              >
-                <X size={12} />
-              </button>
-            </div>
-
-            {/* Options */}
-            <div
-              className="p-3 flex-1 flex flex-col gap-1.5 overflow-y-auto text-right"
-              onPointerDownCapture={(e) => e.stopPropagation()}
-            >
-              <div className="text-center py-1.5 bg-black/30 rounded-lg border border-white/5 select-none compact-header shrink-0">
-                <div className="text-[10px] font-black text-white">
-                  {userContextTarget.nickname}
-                </div>
-                <div className="text-[8px] text-gray-500 font-bold mt-0.5">
-                  الحالة:{" "}
-                  {userContextTarget.status === "online"
-                    ? "🟢 متصل الآن"
-                    : "⚫ غير متصل"}
-                </div>
-              </div>
-
-              {/* Send Private message (الخاص) */}
-              {userContextTarget.nickname !== currentUser.nickname && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPmTarget({
-                      nickname: userContextTarget.nickname,
-                      role: userContextTarget.role || "member",
-                      avatar: userContextTarget.avatar || "👤",
-                    });
-                    if (!pmThreads[userContextTarget.nickname]) {
-                      setPmThreads((prev) => ({
-                        ...prev,
-                        [userContextTarget.nickname]: [
-                          {
-                            text: `مرحباً بك! أنا ${userContextTarget.nickname} 😇`,
-                            isOwn: false,
-                            time: new Date().toLocaleTimeString("en-US", {
-                              hour: "numeric",
-                              minute: "numeric",
-                              hour12: true,
-                            }),
-                          },
-                        ],
-                      }));
-                    }
-                    if (window.innerWidth < 1280) {
-                      setMobileTab("private");
-                    } else {
-                      // Close other menus first
-                      setShowRoomsLists(false);
-                      setShowMembersList(false);
-                      setShowFeaturesTray(false);
-                      setShowNotificationsDropdown(false);
-                      setShowGamesDropdown(false);
-                      setShowAttachmentDropdown(false);
-                      setShowMusicDropdown(false);
-                      setShowEmojiPicker(false);
-                      setShowCommandsDropdown(false);
-                      setShowPrivacyDropdown(false);
-                      setShowSettingsDropdown(false);
-                      setShowSearchPop(false);
-                      setIsPmOpen(true);
-                    }
-                    setShowUserContextPop(false);
-                  }}
-                  className="w-full flex items-center gap-2 p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-xl text-right text-[10px] font-black transition-all border border-blue-500/25 cursor-pointer shadow-sm animate-pulse"
-                >
-                  💬 محادثة خاصة (الخاص)
-                </button>
-              )}
-
-              {/* Get profile user Bio Info */}
-              <button
-                type="button"
-                onClick={() => {
-                  setUserProfileBioTarget(userContextTarget);
-                  setShowUserProfileBioPop(true);
-                  setShowUserContextPop(false);
-                }}
-                className="w-full flex items-center gap-2 p-2 bg-emerald-500/5 hover:bg-emerald-500/15 text-emerald-400 rounded-xl text-right text-[10px] font-black transition-all border border-emerald-500/10 cursor-pointer"
-              >
-                👤 معلومات الشخص وبياناته الشخصية
-              </button>
-
-              {/* Add Friend action */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (friendsList.includes(userContextTarget.nickname)) {
-                    alert(
-                      `العضو [${userContextTarget.nickname}] موجود بالفعل في قائمة أصدقائك! 🌟`,
-                    );
-                  } else {
-                    setFriendsList((prev) => [
-                      ...prev,
-                      userContextTarget.nickname,
-                    ]);
-                    triggerGiftFlying("💚");
-                    alert(
-                      `🎉 تم إضافة [${userContextTarget.nickname}] إلى قائمة الأصدقاء المفضلة لديك بنجاح!`,
-                    );
-                  }
-                  setShowUserContextPop(false);
-                }}
-                className="w-full flex items-center gap-2 p-2 bg-pink-500/5 hover:bg-pink-500/15 text-pink-400 rounded-xl text-right text-[10px] font-black transition-all border border-pink-500/10 cursor-pointer"
-              >
-                💚 إضافه كصديق مقرب
-              </button>
-
-              {/* Ignore action */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (ignoredUsers.includes(userContextTarget.nickname)) {
-                    setIgnoredUsers((prev) =>
-                      prev.filter((u) => u !== userContextTarget.nickname),
-                    );
-                    alert(
-                      `🔊 تم إلغاء كتم/تجاهل العضو [${userContextTarget.nickname}].`,
-                    );
-                  } else {
-                    setIgnoredUsers((prev) => [
-                      ...prev,
-                      userContextTarget.nickname,
-                    ]);
-                    // Auto remove from friends list
-                    setFriendsList((prev) =>
-                      prev.filter((u) => u !== userContextTarget.nickname),
-                    );
-                    alert(
-                      `🔕 تم تجاهل [${userContextTarget.nickname}] وتصفية رسائله وغرفته تلقائياً!`,
-                    );
-                  }
-                  setShowUserContextPop(false);
-                }}
-                className="w-full flex items-center gap-2 p-2 bg-yellow-500/5 hover:bg-yellow-500/15 text-yellow-400 rounded-xl text-right text-[10px] font-black transition-all border border-yellow-500/10 cursor-pointer"
-              >
-                {ignoredUsers.includes(userContextTarget.nickname)
-                  ? "🔊 إلغاء تجاهل العضو"
-                  : "🔕 تجاهل رسائل هذا العضو"}
-              </button>
-
-              {/* Block action */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (blockedUsers.includes(userContextTarget.nickname)) {
-                    setBlockedUsers((prev) =>
-                      prev.filter((u) => u !== userContextTarget.nickname),
-                    );
-                    alert(
-                      `🔓 تم إلغاء حظر العضو [${userContextTarget.nickname}].`,
-                    );
-                  } else {
-                    setBlockedUsers((prev) => [
-                      ...prev,
-                      userContextTarget.nickname,
-                    ]);
-                    setFriendsList((prev) =>
-                      prev.filter((u) => u !== userContextTarget.nickname),
-                    );
-                    alert(
-                      `🚫 تم حظر العضو [${userContextTarget.nickname}] بالكامل وتجميد محادثاته فوسفورياً!`,
-                    );
-                  }
-                  setShowUserContextPop(false);
-                }}
-                className="w-full flex items-center gap-2 p-2 bg-red-500/5 hover:bg-red-500/15 text-red-400 rounded-xl text-right text-[10px] font-black transition-all border border-red-500/10 cursor-pointer"
-              >
-                {blockedUsers.includes(userContextTarget.nickname)
-                  ? "🔓 إلغاء الحظر والمنع"
-                  : "🚫 حظر العضو ومنعه نهائياً"}
-              </button>
-
-              {/* If caller is owner or admin or mod, show the security panel option */}
-              {(currentUser.role === "owner" ||
-                currentUser.role === "admin" ||
-                currentUser.role === "mod") && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedProfileMember(userContextTarget);
-                    setShowProfileModal(true);
-                    setShowUserContextPop(false);
-                  }}
-                  className="w-full flex items-center justify-center gap-1.5 p-2 bg-red-500/15 hover:bg-red-500/25 text-white rounded-xl text-center text-[10px] font-black transition-all border border-red-500/30 shadow-[inset_0_0_10px_rgba(239,68,68,0.2)] mt-1 cursor-pointer animate-pulse"
-                >
-                  🛡️ الرقابة والتحكم الأمني للأدمن
-                </button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <UserContextPopup
+        isOpen={showUserContextPop}
+        target={userContextTarget}
+        currentUser={currentUser}
+        friendsList={friendsList}
+        ignoredUsers={ignoredUsers}
+        blockedUsers={blockedUsers}
+        handlers={{
+          onSendPM: (target) => {
+            setPmTarget({
+              nickname: target.nickname,
+              role: target.role || "member",
+              avatar: target.avatar || "👤",
+            });
+            if (!pmThreads[target.nickname]) {
+              setPmThreads((prev) => ({
+                ...prev,
+                [target.nickname]: [
+                  {
+                    text: `مرحباً بك! أنا ${target.nickname} 😇`,
+                    isOwn: false,
+                    time: new Date().toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "numeric",
+                      hour12: true,
+                    }),
+                  },
+                ],
+              }));
+            }
+            if (window.innerWidth < 1280) {
+              setMobileTab("private");
+            } else {
+              setShowRoomsLists(false);
+              setShowMembersList(false);
+              setShowFeaturesTray(false);
+              setShowNotificationsDropdown(false);
+              setShowGamesDropdown(false);
+              setShowAttachmentDropdown(false);
+              setShowMusicDropdown(false);
+              setShowEmojiPicker(false);
+              setShowCommandsDropdown(false);
+              setShowPrivacyDropdown(false);
+              setShowSettingsDropdown(false);
+              setShowSearchPop(false);
+              setIsPmOpen(true);
+            }
+            setShowUserContextPop(false);
+          },
+          onViewProfile: (target) => {
+            setUserProfileBioTarget(target);
+            setShowUserProfileBioPop(true);
+            setShowUserContextPop(false);
+          },
+          onToggleFriend: (target) => {
+            if (friendsList.includes(target.nickname)) {
+              alert(
+                `العضو [${target.nickname}] موجود بالفعل في قائمة أصدقائك! 🌟`,
+              );
+            } else {
+              setFriendsList((prev) => [...prev, target.nickname]);
+              triggerGiftFlying("💚");
+              alert(
+                `🎉 تم إضافة [${target.nickname}] إلى قائمة الأصدقاء المفضلة لديك بنجاح!`,
+              );
+            }
+            setShowUserContextPop(false);
+          },
+          onToggleIgnore: (target) => {
+            if (ignoredUsers.includes(target.nickname)) {
+              setIgnoredUsers((prev) =>
+                prev.filter((u) => u !== target.nickname),
+              );
+              alert(`🔊 تم إلغاء كتم/تجاهل العضو [${target.nickname}].`);
+            } else {
+              setIgnoredUsers((prev) => [...prev, target.nickname]);
+              setFriendsList((prev) =>
+                prev.filter((u) => u !== target.nickname),
+              );
+              alert(
+                `🔕 تم تجاهل [${target.nickname}] وتصفية رسائله وغرفته تلقائياً!`,
+              );
+            }
+            setShowUserContextPop(false);
+          },
+          onToggleBlock: (target) => {
+            if (blockedUsers.includes(target.nickname)) {
+              setBlockedUsers((prev) =>
+                prev.filter((u) => u !== target.nickname),
+              );
+              alert(`🔓 تم إلغاء حظر العضو [${target.nickname}].`);
+            } else {
+              setBlockedUsers((prev) => [...prev, target.nickname]);
+              setFriendsList((prev) =>
+                prev.filter((u) => u !== target.nickname),
+              );
+              alert(
+                `🚫 تم حظر العضو [${target.nickname}] بالكامل وتجميد محادثاته فوسفورياً!`,
+              );
+            }
+            setShowUserContextPop(false);
+          },
+          onOpenAdminPanel: (target) => {
+            setSelectedProfileMember(target);
+            setShowProfileModal(true);
+            setShowUserContextPop(false);
+          },
+          onClose: () => {
+            setShowUserContextPop(false);
+            setUserContextTarget(null);
+          },
+        }}
+      />
 
       {/* --- User Profile Info/Bio Popup --- */}
-      <AnimatePresence>
-        {showUserProfileBioPop && userProfileBioTarget && (
-          <motion.div
-            drag
-            dragMomentum={false}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="fixed top-24 left-4 md:left-auto md:right-1/4 w-[300px] bg-[#070b09]/98 border border-green-500/30 rounded-3xl overflow-hidden shadow-[0_10px_50px_rgba(16,185,129,0.25)] flex flex-col z-[101] cursor-move text-right"
-            style={{
-              resize: "both",
-              overflow: "hidden",
-              minWidth: "260px",
-              minHeight: "365px",
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-            }}
-            dir="rtl"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-3 border-b border-green-500/10 bg-black/40 select-none">
-              <div className="flex items-center gap-2">
-                <span className="text-sm">📝</span>
-                <h3 className="font-sans font-black text-white text-xs">
-                  الملف الشخصي والبيانات
-                </h3>
-              </div>
-              <button
-                onClick={() => {
-                  setShowUserProfileBioPop(false);
-                  setUserProfileBioTarget(null);
-                }}
-                className="p-1.5 rounded-xl bg-red-400/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div
-              className="p-4 flex-1 flex flex-col gap-3 overflow-y-auto text-right"
-              onPointerDownCapture={(e) => e.stopPropagation()}
-            >
-              {/* Visual card */}
-              <div
-                className="p-3 bg-black/40 rounded-2xl border border-white/5 flex flex-col items-center text-center gap-2 select-none shrink-0"
-                onPointerDownCapture={(e) => e.stopPropagation()}
-              >
-                <div className="w-14 h-14 bg-green-500/10 border border-green-500/20 rounded-2xl flex items-center justify-center text-3xl font-bold">
-                  {userProfileBioTarget.avatar || "👤"}
-                </div>
-                <div>
-                  <div className="text-xs font-black text-white">
-                    {userProfileBioTarget.nickname}
-                  </div>
-                  <div
-                    className={`text-[8.5px] px-2 py-0.5 mt-1 rounded tracking-wider inline-block font-black uppercase ${
-                      userProfileBioTarget.role === "platinum_vip"
-                        ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/30"
-                        : userProfileBioTarget.role === "owner"
-                          ? "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20"
-                          : userProfileBioTarget.role === "admin"
-                            ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                            : userProfileBioTarget.role === "mod"
-                              ? "bg-purple-500/15 text-purple-500 border border-purple-500/20"
-                              : userProfileBioTarget.role === "vip"
-                                ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                                : userProfileBioTarget.role === "user"
-                                  ? "bg-gray-500/15 text-gray-400 border border-gray-500/20"
-                                  : "bg-slate-500/15 text-slate-400 border border-slate-500/20"
-                    }`}
-                  >
-                    {userProfileBioTarget.role === "platinum_vip"
-                      ? "PLATINUM VIP"
-                      : userProfileBioTarget.role === "owner"
-                        ? "OWNER"
-                        : userProfileBioTarget.role === "admin"
-                          ? "ADMIN"
-                          : userProfileBioTarget.role === "mod"
-                            ? "MODERATOR"
-                            : userProfileBioTarget.role === "vip"
-                              ? "VIP"
-                              : userProfileBioTarget.role === "guest"
-                                ? "GUEST"
-                                : "MEMBER"}
-                  </div>
-                </div>
-              </div>
-
-              {/* Bio area */}
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-[#a3e635] uppercase select-none">
-                  السيرة الذاتية والبيانات الشخصية (Bio):
-                </label>
-
-                {userProfileBioTarget.nickname === currentUser.nickname ? (
-                  <div className="space-y-2">
-                    <textarea
-                      id="my-custom-bio-input"
-                      name="myCustomBio"
-                      autoComplete="off"
-                      value={myCustomBio}
-                      onChange={(e) => setMyCustomBio(e.target.value)}
-                      placeholder="اكتب شيئاً تعريفيًا مميزًا عنك ليراه الآخرون هنا..."
-                      className="w-full h-20 p-2 bg-black/50 border border-green-500/20 rounded-xl text-[10px] text-white focus:outline-none focus:border-green-500/50 resize-none text-right placeholder-gray-600 font-bold"
-                    />
-                    <div className="text-[8px] text-gray-500 font-bold select-none">
-                      * هذه سيرتك الذاتية المعتمدة، يمكنك تعديلها مباشرةً وتظهر
-                      للأعضاء الآخرين فوراً 💾!
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-3 bg-black/35 rounded-xl border border-white/5 text-[10px] text-gray-300 leading-relaxed break-words font-semibold text-right">
-                    {(() => {
-                      const lowerName =
-                        userProfileBioTarget.nickname.toLowerCase();
-                      if (
-                        lowerName.includes("سارة") ||
-                        lowerName.includes("sara")
-                      ) {
-                        return "عضوة نشطة من الجيل الذهبي، أعشق الدردشة الرائعة وتصميم غرف الاستقبال 🌸. متواجدة دائماً للمساعدة!";
-                      }
-                      if (
-                        lowerName.includes("محمد") ||
-                        lowerName.includes("mohamed")
-                      ) {
-                        return "مطور ويب من عشاق الهدوء والموسيقى، أبحث عن تبادل الكلمات الطيبة والأصدقاء الأوفياء 🎧.";
-                      }
-                      if (
-                        lowerName.includes("أحمد") ||
-                        lowerName.includes("ahmed")
-                      ) {
-                        return "المالك التأسيسي لموقع شات لمة الرائد 👑. نرحب بجميع الضيوف الكرام ونتمنى لهم أسعد الأوقات الهادفة.";
-                      }
-                      if (
-                        lowerName.includes("علي") ||
-                        lowerName.includes("ali")
-                      ) {
-                        return "مشرف أمني أول 🛡️. يرجى الحفاظ على الآداب العامة والتقيد بالقوانين لراحة الجميع.";
-                      }
-                      if (
-                        lowerName.includes("نور") ||
-                        lowerName.includes("nour")
-                      ) {
-                        return "عاشق السفر وتبادل الثقافات العربية بوقار 🗺️. مرحباً بكل من يسأل أو يريد الصداقة!";
-                      }
-                      if (
-                        lowerName.includes("guest") ||
-                        lowerName.includes("زائر")
-                      ) {
-                        return "زائر مميز يستمتع بالحديث وغرف الدردشة الفورية الآمنة في شات لمة المتكامل 💫.";
-                      }
-                      return "عضو مميز مسجل بملف شخصي مكتمل في شات لمة الرائع 🌟. أهلاً وسهلاً بالجميع.";
-                    })()}
-                  </div>
-                )}
-              </div>
-
-              {/* Extra Simulated Metadata of Profile details */}
-              <div className="space-y-1 mt-1">
-                <label className="text-[9px] font-black text-gray-400 uppercase select-none">
-                  تفاصيل العضوية المعتمدة:
-                </label>
-                <div className="p-2 bg-black/20 rounded-xl border border-white/5 space-y-1.5 text-[9px] font-mono text-gray-400 select-none">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500">حالة الصداقة:</span>{" "}
-                    <span
-                      className={
-                        friendsList.includes(userProfileBioTarget.nickname)
-                          ? "text-pink-400 font-bold"
-                          : "text-gray-500 font-bold"
-                      }
-                    >
-                      {friendsList.includes(userProfileBioTarget.nickname)
-                        ? "💚 صديق مفضل"
-                        : "👤 لا يوجد علاقة"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500">حالة التفاعل:</span>{" "}
-                    <span className="text-green-400 font-extrabold">
-                      مشارك نشط بالتجانس
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500">الرقم الفريد:</span>{" "}
-                    <span className="text-gray-500">
-                      {userProfileBioTarget.id || "N/A"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Private Message direct trigger if not self */}
-              {userProfileBioTarget.nickname !== currentUser.nickname && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPmTarget({
-                      nickname: userProfileBioTarget.nickname,
-                      role: userProfileBioTarget.role || "member",
-                      avatar: userProfileBioTarget.avatar || "👤",
-                    });
-                    if (!pmThreads[userProfileBioTarget.nickname]) {
-                      setPmThreads((prev) => ({
-                        ...prev,
-                        [userProfileBioTarget.nickname]: [
-                          {
-                            text: `مرحباً بك! أنا ${userProfileBioTarget.nickname} 😇`,
-                            isOwn: false,
-                            time: new Date().toLocaleTimeString("en-US", {
-                              hour: "numeric",
-                              minute: "numeric",
-                              hour12: true,
-                            }),
-                          },
-                        ],
-                      }));
-                    }
-                    if (window.innerWidth < 1280) {
-                      setMobileTab("private");
-                    } else {
-                      // Close other menus first
-                      setShowRoomsLists(false);
-                      setShowMembersList(false);
-                      setShowFeaturesTray(false);
-                      setShowNotificationsDropdown(false);
-                      setShowGamesDropdown(false);
-                      setShowAttachmentDropdown(false);
-                      setShowMusicDropdown(false);
-                      setShowEmojiPicker(false);
-                      setShowCommandsDropdown(false);
-                      setShowPrivacyDropdown(false);
-                      setShowSettingsDropdown(false);
-                      setShowSearchPop(false);
-                      setIsPmOpen(true);
-                    }
-                    setShowUserProfileBioPop(false);
-                    setUserProfileBioTarget(null);
-                  }}
-                  className="w-full flex items-center justify-center gap-1.5 p-2 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 rounded-xl text-center text-[10px] font-black transition-all border border-blue-500/30 cursor-pointer shadow-md select-none shrink-0"
-                >
-                  💬 فتح محادثة خاصة (الخاص)
-                </button>
-              )}
-
-              {/* Quick actions inside bio pop details */}
-              <div className="flex gap-2 select-none mt-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Back to context menu
-                    setUserContextTarget(userProfileBioTarget);
-                    setShowUserContextPop(true);
-                    setShowUserProfileBioPop(false);
-                  }}
-                  className="flex-1 py-1.5 px-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-lg text-[9px] font-bold border border-green-500/20 text-center transition-all cursor-pointer"
-                >
-                  🔙 رجوع لخيارات العضو
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowUserProfileBioPop(false);
-                    setUserProfileBioTarget(null);
-                  }}
-                  className="py-1.5 px-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-[9px] font-bold border border-red-500/20 text-center transition-all cursor-pointer"
-                >
-                  إغلاق الغلاف
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* --- Newly Installed Client-Side Draggable Commands Dropdown --- */}
-      <AnimatePresence>
-        {showCommandsDropdown && (
-          <motion.div
-            drag
-            dragMomentum={false}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="fixed top-24 left-4 md:left-auto md:right-1/4 w-[280px] bg-[#070b09]/98 border border-green-500/30 rounded-3xl overflow-hidden shadow-[0_10px_50px_rgba(34,197,94,0.15)] flex flex-col z-[100] cursor-move text-right"
-            style={{
-              resize: "both",
-              overflow: "hidden",
-              minWidth: "240px",
-              minHeight: "280px",
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-            }}
-            dir="rtl"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-3 border-b border-green-500/10 bg-black/40 select-none">
-              <div className="flex items-center gap-2">
-                <span className="text-sm">⌨️</span>
-                <h3 className="font-sans font-black text-white text-xs">
-                  نظام الأوامر (Commands)
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowCommandsDropdown(false)}
-                className="p-1.5 rounded-xl bg-red-400/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div
-              className="p-4 flex-1 flex flex-col gap-3 overflow-hidden text-right"
-              onPointerDownCapture={(e) => e.stopPropagation()}
-            >
-              <p className="text-[10px] text-gray-400 font-bold select-none">
-                انقر فوق أي أمر تكتيكي لنسخه وتعبئته فوراً بمدخل الدردشة:
-              </p>
-
-              <div className="flex-1 overflow-y-auto space-y-1.5 scroller-soft text-right">
-                {[
+      <UserProfileBioPopup
+        isOpen={showUserProfileBioPop}
+        target={userProfileBioTarget}
+        currentUserNickname={currentUser.nickname}
+        myCustomBio={myCustomBio}
+        friendsList={friendsList}
+        handlers={{
+          onSendPM: (target) => {
+            setPmTarget({
+              nickname: target.nickname,
+              role: target.role || "member",
+              avatar: target.avatar || "👤",
+            });
+            if (!pmThreads[target.nickname]) {
+              setPmThreads((prev) => ({
+                ...prev,
+                [target.nickname]: [
                   {
-                    code: "/help",
-                    label: "📖 مساعدة الشات وتقارير الدعم الفني",
+                    text: `مرحباً بك! أنا ${target.nickname} 😇`,
+                    isOwn: false,
+                    time: new Date().toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "numeric",
+                      hour12: true,
+                    }),
                   },
-                  {
-                    code: "/join egypt",
-                    label: "🇪🇬 دخول سريع ومباشر إلى غرفة مصر الكبرى",
-                  },
-                  {
-                    code: "/clear",
-                    label: "🧹 مسح وتطهير الشات بالكامل (خاص للأدمن)",
-                  },
-                  {
-                    code: "/status",
-                    label: "🤖 تقرير حارس الخدمة وحالة البوت المطور",
-                  },
-                  {
-                    code: "/gift [user] [gift]",
-                    label: "🎁 إرسال هدية ممتازة لعضو نشط بالمتجر",
-                  },
-                  {
-                    code: "/play [url]",
-                    label: "🎵 تشغيل مقطع صوتي ممتد للأعضاء",
-                  },
-                ].map((cmd) => (
-                  <button
-                    key={cmd.code}
-                    type="button"
-                    onClick={() => {
-                      setInputText(cmd.code);
-                      setShowCommandsDropdown(false);
-                    }}
-                    className="w-full p-2.5 rounded-xl bg-[#0d130e] hover:bg-green-500/10 border border-green-500/15 hover:border-green-400/30 transition-all font-mono text-[9.5px] text-green-300 text-right font-black cursor-pointer flex flex-col gap-0.5"
-                  >
-                    <span className="text-white font-extrabold">
-                      {cmd.code}
-                    </span>
-                    <span className="text-gray-500 text-[8.5px] font-sans">
-                      {cmd.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                ],
+              }));
+            }
+            if (window.innerWidth < 1280) {
+              setMobileTab("private");
+            } else {
+              setShowRoomsLists(false);
+              setShowMembersList(false);
+              setShowFeaturesTray(false);
+              setShowNotificationsDropdown(false);
+              setShowGamesDropdown(false);
+              setShowAttachmentDropdown(false);
+              setShowMusicDropdown(false);
+              setShowEmojiPicker(false);
+              setShowCommandsDropdown(false);
+              setShowPrivacyDropdown(false);
+              setShowSettingsDropdown(false);
+              setShowSearchPop(false);
+              setIsPmOpen(true);
+            }
+            setShowUserProfileBioPop(false);
+            setUserProfileBioTarget(null);
+          },
+          onBackToContext: (target) => {
+            setUserContextTarget(target);
+            setShowUserContextPop(true);
+            setShowUserProfileBioPop(false);
+          },
+          onClose: () => {
+            setShowUserProfileBioPop(false);
+            setUserProfileBioTarget(null);
+          },
+          onBioChange: (newBio) => setMyCustomBio(newBio),
+        }}
+      />
 
       {/* HA WebRTC Calling UI */}
       <AnimatePresence>
@@ -12155,128 +11184,11 @@ export default function ChatScreen({
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showShareModalInChat && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[99999] flex items-center justify-center p-4 overflow-y-auto"
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="w-full max-w-md bg-[#050a06] border border-green-500/20 rounded-[28px] p-6 text-right relative shadow-[0_0_50px_rgba(16,185,129,0.1)] my-8"
-            >
-              <div className="flex items-center justify-between border-b border-green-500/10 pb-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
-                  <h3 className="text-base font-black text-white">
-                    طريقة الدخول ومشاركة شات لمة 💚
-                  </h3>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowShareModalInChat(false);
-                    setCopiedLinkInChat(false);
-                  }}
-                  className="text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all cursor-pointer"
-                >
-                  إغلاق
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <p className="text-xs text-gray-300 leading-relaxed">
-                  💡{" "}
-                  <strong className="text-green-400 font-black">
-                    ليه شات لمة مش بيظهر بالبحث على جوجل؟
-                  </strong>
-                  <br />
-                  شات لمة بيشتغل بخصوصية تامة ومشفر لتوفير غرف آمنة وسريعة لك
-                  ولأصدقائك. محركات البحث مثل جوجل لا تقوم بأرشفة هذه الروابط
-                  لحماية خصوصيتك وسرية غرفتك من الغرباء أو المتسللين.
-                </p>
-
-                <div className="p-3 bg-white/5 border border-green-500/15 rounded-xl">
-                  <label className="block text-[10px] text-gray-400 font-bold mb-1.5">
-                    رابط الدخول المباشر للغرفة:
-                  </label>
-                  <div className="flex gap-2 items-center">
-                    <button
-                      onClick={() => {
-                        const u = appLink;
-                        try {
-                          if (
-                            navigator.clipboard &&
-                            navigator.clipboard.writeText
-                          ) {
-                            navigator.clipboard
-                              .writeText(u)
-                              .then(() => {
-                                setCopiedLinkInChat(true);
-                                setTimeout(
-                                  () => setCopiedLinkInChat(false),
-                                  3000,
-                                );
-                              })
-                              .catch(() => fallbackCopyInChat(u));
-                          } else {
-                            fallbackCopyInChat(u);
-                          }
-                        } catch (err) {
-                          fallbackCopyInChat(u);
-                        }
-                      }}
-                      className={`px-4 py-2.5 rounded-lg font-black text-xs transition-all flex-shrink-0 cursor-pointer ${
-                        copiedLinkInChat
-                          ? "bg-green-500/20 text-green-300 border border-green-500/30 animate-pulse"
-                          : "bg-[#a3e635] text-black hover:bg-[#a3e635]/90"
-                      }`}
-                    >
-                      {copiedLinkInChat ? "✅ تم النسخ!" : "إنسخ الرابط"}
-                    </button>
-                    <input
-                      type="text"
-                      readOnly
-                      value={appLink}
-                      onClick={(e) => {
-                        (e.target as HTMLInputElement).select();
-                      }}
-                      className="w-full bg-black/60 border border-green-500/10 rounded-lg p-2 text-center text-xs text-gray-200 font-mono select-all focus:outline-none focus:border-green-500/30"
-                    />
-                  </div>
-                  <span className="block text-[9px] text-gray-500 mt-1.5">
-                    💡 تلميح: لو كبس الزرار مش مدعوم في متصفحك بسبب الحماية،
-                    اضغط داخل المربع الفوقاني لتحديد العنوان كله ثم انسخه بنفسك
-                    يدوياً.
-                  </span>
-                </div>
-
-                <div className="flex flex-col items-center justify-center p-4 bg-black/40 border border-green-500/10 rounded-xl text-center">
-                  <span className="text-[10px] text-gray-400 font-bold mb-2">
-                    أو وجّه كاميرا موبايلك (أو موبايل صديقك) نحو الكود ده للدخول
-                    فوراً:
-                  </span>
-                  <div className="bg-white p-2.5 rounded-2xl inline-block border-2 border-[#a3e635]/30">
-                    <img
-                      loading="lazy"
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(appLink)}`}
-                      alt="QR Code"
-                      className="w-[140px] h-[140px]"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                  <span className="text-[9px] text-green-400 mt-2 font-black">
-                    🟢 اتصال مباشر آمن ومفعل بالكامل
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ShareModal
+        isOpen={showShareModalInChat}
+        onClose={() => setShowShareModalInChat(false)}
+        appLink={appLink}
+      />
 
       {/* Real audio elements for Radio and Music streaming/playback */}
       <audio ref={radioAudioRef} src={currentRadioStation.url} preload="none" />

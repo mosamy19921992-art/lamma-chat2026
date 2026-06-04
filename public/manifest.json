@@ -1,0 +1,66 @@
+{
+  "name": "Lamma Chat | شات لمة",
+  "short_name": "شات لمة",
+  "description": "شات عربي متكامل وآمن - غرف دردشة فورية، راديو، موسيقى، وميزات VIP",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "id": "/?source=pwa",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "theme_color": "#10b981",
+  "background_color": "#0a0f0c",
+  "categories": ["social", "entertainment", "communication"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/images/lamma-logo.png",
+      "sizes": "1536x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/lamma-wordmark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/lamma-favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "غرفة مصر",
+      "short_name": "مصر",
+      "url": "/?room=egypt",
+      "icons": [{ "src": "/images/lamma-favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "كل العرب",
+      "short_name": "العرب",
+      "url": "/?room=arab",
+      "icons": [{ "src": "/images/lamma-favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "الراديو",
+      "short_name": "راديو",
+      "url": "/?feature=radio",
+      "icons": [{ "src": "/images/lamma-favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ],
+  "share_target": {
+    "action": "/?share=true",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}

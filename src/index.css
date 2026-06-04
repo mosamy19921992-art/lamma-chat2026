@@ -23,6 +23,21 @@
   --lamma-wall-b: 11;
 }
 
+/* Theme variables — overridden at runtime by useTheme().
+   The defaults below match the original Lamma green theme so the
+   app looks correct on first paint before React hydrates. */
+:root {
+  --theme-primary: #10b981;
+  --theme-accent: #a3e635;
+  --theme-bg-1: #0a0f0c;
+  --theme-bg-2: #0c120d;
+  --theme-bg-3: #0e1810;
+  --theme-text: #ffffff;
+  --theme-text-muted: #9ca3af;
+  --theme-primary-rgb: 16, 185, 129;
+  --theme-accent-rgb: 163, 230, 53;
+}
+
 [data-lamma-wall="fire"] {
   --lamma-wall-r: 245;
   --lamma-wall-g: 158;
