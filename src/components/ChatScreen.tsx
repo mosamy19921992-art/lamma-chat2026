@@ -1766,6 +1766,8 @@ export default function ChatScreen({
   const [showCommandsDropdown, setShowCommandsDropdown] = useState(false);
   const [showPrivacyDropdown, setShowPrivacyDropdown] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const toggleDropdown = (
     dropdown:
@@ -3136,6 +3138,155 @@ export default function ChatScreen({
     }
   };
 
+  const sendMediaMessage = (
+    type: "image" | "video" | "audio",
+    mediaUrl: string,
+  ) => {
+    const timeStr = new Date().toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "numeric",
+      hour12: true,
+    });
+
+    if (false) {
+      const localMsg = {
+        id: "local-media-" + Date.now(),
+        author: currentUser.nickname,
+        text: "",
+        color: currentUser.color || "#10b981",
+        isOwn: true,
+        time: new Date().toLocaleTimeString("ar-EG", {
+          hour: "numeric",
+          minute: "numeric",
+          hour12: true,
+        }),
+        type: type,
+        mediaUrl: mediaUrl,
+      };
+
+      setRoomMessages((prev) => {
+        const currentMsgs = prev[activeRoomId] || [];
+        return {
+          ...prev,
+          [activeRoomId]: [...currentMsgs, localMsg],
+        };
+      });
+      return;
+    }
+
+    const newUuid = crypto.randomUUID();
+    const newMessage = {
+      id: newUuid,
+      author: currentUser.nickname,
+      text: "",
+      color: currentUser.color,
+      isOwn: true,
+      time: new Date().toLocaleTimeString("ar-EG", {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+      }),
+      type: type,
+      mediaUrl: mediaUrl,
+    };
+    const updatedMessages = [...(roomMessages[activeRoomId] || []), newMessage];
+    setRoomMessages((prev) => ({
+      ...prev,
+      [activeRoomId]: updatedMessages,
+    }));
+    localStorage.setItem(
+      `lamma_messages_${activeRoomId}`,
+      JSON.stringify(updatedMessages),
+    );
+
+    if (supabase) {
+      supabase
+        .from("messages")
+        .insert([
+          {
+            id: newUuid,
+            room_id: activeRoomId,
+            author: currentUser.nickname,
+            text: "",
+            color: currentUser.color || "#10b981",
+            type: type,
+            media_url: mediaUrl,
+            sender_uid: senderUid,
+          },
+        ])
+        .then(({ error }) => {
+          if (error) console.error("Error sending media to Supabase:", error);
+        });
+    }
+
+    setShowAttachmentDropdown(false);
+  };
+
+  const uploadAndSendImage = async (file: File) => {
+    if (!supabase) {
+      alert("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.");
+      return;
+    }
+
+    if (currentUser.authProvider !== "supabase") {
+      alert("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.");
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      alert("⚠️ الملف اللي اخترته مش صورة.");
+      return;
+    }
+
+    const maxBytes = 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      alert("⚠️ حجم الصورة كبير. الحد الأقصى 5MB.");
+      return;
+    }
+
+    try {
+      setIsUploadingImage(true);
+      const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
+      const objectPath = `rooms/${activeRoomId}/${Date.now()}_${crypto.randomUUID()}_${safeName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("chat-media")
+        .upload(objectPath, file, {
+          cacheControl: "3600",
+          contentType: file.type,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        alert(`❌ فشل رفع الصورة: ${uploadError.message}`);
+        return;
+      }
+
+      const { data: publicData } = supabase.storage
+        .from("chat-media")
+        .getPublicUrl(objectPath);
+
+      const publicUrl = publicData?.publicUrl;
+      if (!publicUrl) {
+        alert("❌ حصل خطأ في توليد رابط الصورة بعد الرفع.");
+        return;
+      }
+
+      sendMediaMessage("image", publicUrl);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleImageUploadChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    await uploadAndSendImage(file);
+  };
+
   const handleSendAttachment = (type: "image" | "video" | "audio") => {
     const isOwnerOrAdmin =
       currentUser.role === "owner" ||
@@ -3175,24 +3326,22 @@ export default function ChatScreen({
       return;
     }
 
-    const timeStr = new Date().toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "numeric",
-      hour12: true,
-    });
     let mediaUrl = "";
     if (type === "image") {
-      const inputUrl = prompt(
-        "📸 أدخل رابط الصورة التي تريد مشاركتها:\n(يمكنك ترك الحقل فارغاً وموافق لعرض صورة تجريبية رائعة)",
-      );
-      if (inputUrl === null) {
+      if (isUploadingImage) return;
+      if (currentUser.authProvider !== "supabase") {
+        alert("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.");
         setShowAttachmentDropdown(false);
         return;
       }
-      mediaUrl =
-        inputUrl.trim() !== ""
-          ? inputUrl.trim()
-          : "/images/lamma-logo.png";
+      if (!supabase) {
+        alert("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.");
+        setShowAttachmentDropdown(false);
+        return;
+      }
+      setShowAttachmentDropdown(false);
+      imageUploadInputRef.current?.click();
+      return;
     }
     if (type === "video") {
       const inputUrl = prompt(
@@ -3220,83 +3369,7 @@ export default function ChatScreen({
           ? inputUrl.trim()
           : "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
     }
-
-    if (false) {
-      // Local fallback mode when Firebase Auth anonymous sign-ins are restricted or unconfigured in Firebase Console
-      const localMsg = {
-        id: "local-media-" + Date.now(),
-        author: currentUser.nickname,
-        text: "",
-        color: currentUser.color || "#10b981",
-        isOwn: true,
-        time: new Date().toLocaleTimeString("ar-EG", {
-          hour: "numeric",
-          minute: "numeric",
-          hour12: true,
-        }),
-        type: type, // "image", "video", or "audio"
-        mediaUrl: mediaUrl,
-      };
-
-      setRoomMessages((prev) => {
-        const currentMsgs = prev[activeRoomId] || [];
-        return {
-          ...prev,
-          [activeRoomId]: [...currentMsgs, localMsg],
-        };
-      });
-    } else {
-      // Standard Firebase live production mode
-      const newUuid = crypto.randomUUID();
-      const newMessage = {
-        id: newUuid,
-        author: currentUser.nickname,
-        text: "",
-        color: currentUser.color,
-        isOwn: true,
-        time: new Date().toLocaleTimeString("ar-EG", {
-          hour: "numeric",
-          minute: "numeric",
-          hour12: true,
-        }),
-        type: type, // "image", "video", or "audio"
-        mediaUrl: mediaUrl,
-      };
-      const updatedMessages = [
-        ...(roomMessages[activeRoomId] || []),
-        newMessage,
-      ];
-      setRoomMessages((prev) => ({
-        ...prev,
-        [activeRoomId]: updatedMessages,
-      }));
-      localStorage.setItem(
-        `lamma_messages_${activeRoomId}`,
-        JSON.stringify(updatedMessages),
-      );
-
-      if (supabase) {
-        supabase
-          .from("messages")
-          .insert([
-            {
-              id: newUuid,
-              room_id: activeRoomId,
-              author: currentUser.nickname,
-              text: "",
-              color: currentUser.color || "#10b981",
-              type: type,
-              media_url: mediaUrl,
-              sender_uid: senderUid,
-            },
-          ])
-          .then(({ error }) => {
-            if (error) console.error("Error sending media to Supabase:", error);
-          });
-      }
-    }
-
-    setShowAttachmentDropdown(false);
+    sendMediaMessage(type, mediaUrl);
   };
 
   const formatSecs = (total: number) => {
@@ -5903,6 +5976,13 @@ export default function ChatScreen({
                   )}
                 </AnimatePresence>
               </div>
+              <input
+                ref={imageUploadInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUploadChange}
+              />
 
               {/* Games Dropdown Container */}
               <div className="relative dropdown-container">
