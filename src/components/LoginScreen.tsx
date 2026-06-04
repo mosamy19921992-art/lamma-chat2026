@@ -584,6 +584,32 @@ export default function LoginScreen({
                   </div>
                 </div>
               </div>
+
+              <div className="lamma-column-frame">
+                <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0">
+                      <Shield size={16} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-black text-white truncate">
+                          ثبات
+                        </span>
+                        <span className="text-[8px] font-mono text-gray-500" dir="ltr">
+                          الآن
+                        </span>
+                      </div>
+                      <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                        شكل ثابت… ومفيش عمود هيطلع أقصر من التاني.
+                      </div>
+                      <div className="mt-2 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                        دخول سريع + كروت واضحة من غير زحمة.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </motion.div>
 
