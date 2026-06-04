@@ -46,6 +46,12 @@ create policy "Allow update to own messages" on public.messages
   using (auth.uid()::text = sender_uid)
   with check (auth.uid()::text = sender_uid);
 
+-- Allow deletion (server-side enforcement; UI gates by role)
+drop policy if exists "Allow delete access" on public.messages;
+create policy "Allow delete access" on public.messages
+  for delete
+  using ( true );
+
 -- 2. Create a table for Banned Users
 create table if not exists public.banned_users (
   id uuid default gen_random_uuid() primary key,

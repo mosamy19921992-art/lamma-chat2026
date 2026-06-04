@@ -500,6 +500,47 @@ export default function ChatScreen({
     });
   };
 
+  const canDeleteMessage = (msg: any): boolean => {
+    if (!msg) return false;
+    if (msg.type === "system") return false;
+    const isOwner =
+      currentUser.role === "owner" || myActiveSession.role === "owner";
+    const isAdmin =
+      currentUser.role === "admin" || myActiveSession.role === "admin";
+    if (isOwner || isAdmin) return true;
+    const cleanAuthor = msg.author
+      .replace(/\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g, "")
+      .trim();
+    return cleanAuthor === currentUser.nickname;
+  };
+
+  const deleteMessage = (msg: any) => {
+    if (!msg?.id) return;
+    setRoomMessages((prev) => {
+      const messagesInRoom = prev[activeRoomId] || [];
+      const next = messagesInRoom.filter((m) => m.id !== msg.id);
+      try {
+        localStorage.setItem(
+          `lamma_messages_${activeRoomId}`,
+          JSON.stringify(next),
+        );
+      } catch (e) {
+        // ignore
+      }
+      return { ...prev, [activeRoomId]: next };
+    });
+    if (supabase) {
+      supabase
+        .from("messages")
+        .delete()
+        .eq("id", msg.id)
+        .then(({ error }) => {
+          if (error)
+            console.error("Error deleting message from Supabase:", error);
+        });
+    }
+  };
+
   // Dynamic products list stored inside the owner's reactive system
   const [storeProducts, setStoreProducts] = useState<any[]>(() => {
     const saved = localStorage.getItem("lamma_store_products");
@@ -1287,6 +1328,54 @@ export default function ChatScreen({
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   // Rate limit: max 3 media uploads per 60s per user (rooms + pm combined)
   const mediaRateStateRef = useRef<{ times: number[] }>({ times: [] });
+  // Notifications: incoming PMs and mentions
+  const [notifications, setNotifications] = useState<
+    {
+      id: string;
+      kind: "pm" | "mention" | "system";
+      title: string;
+      body: string;
+      at: number;
+      read: boolean;
+    }[]
+  >(() => {
+    try {
+      const raw = localStorage.getItem("lamma_notifications");
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      // ignore
+    }
+    return [];
+  });
+  // In-app sound for new incoming messages
+  const messageAudioCtxRef = useRef<AudioContext | null>(null);
+  const playMessageSound = () => {
+    try {
+      const Ctx =
+        (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!Ctx) return;
+      if (!messageAudioCtxRef.current) messageAudioCtxRef.current = new Ctx();
+      const ctx = messageAudioCtxRef.current;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(880, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(
+        440,
+        ctx.currentTime + 0.18,
+      );
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start();
+      o.stop(ctx.currentTime + 0.27);
+    } catch (e) {
+      // ignore
+    }
+  };
+  const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
   const toggleDropdown = (
     dropdown:
@@ -1887,6 +1976,36 @@ export default function ChatScreen({
               [activeRoomId]: [...current, newLocalMsg],
             };
           });
+
+          // Notify + sound for incoming messages from others
+          if (sMsg.author !== currentUser.nickname && sMsg.author) {
+            const mentionMatch =
+              typeof sMsg.text === "string" &&
+              sMsg.text.includes(`@${currentUser.nickname}`);
+            const newNotif = {
+              id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              kind: mentionMatch ? ("mention" as const) : ("system" as const),
+              title: mentionMatch
+                ? `${sMsg.author} ذكرك في ${activeRoomId}`
+                : `رسالة جديدة من ${sMsg.author}`,
+              body: (sMsg.text || sMsg.media_url || "[مرفق]").slice(0, 120),
+              at: Date.now(),
+              read: false,
+            };
+            setNotifications((prevN) => {
+              const next = [newNotif, ...prevN].slice(0, 30);
+              try {
+                localStorage.setItem(
+                  "lamma_notifications",
+                  JSON.stringify(next),
+                );
+              } catch (e) {
+                // ignore
+              }
+              return next;
+            });
+            if (document.hidden) playMessageSound();
+          }
         },
       )
       .subscribe();
@@ -3755,7 +3874,15 @@ export default function ChatScreen({
                       title="الإشعارات"
                     >
                       <span className="text-xs">🔔</span>
-                      <span className="absolute -top-0.5 -right-0.5 bg-red-500 w-1.5 h-1.5 rounded-full border border-black animate-pulse"></span>
+                      {unreadNotificationsCount > 0 ? (
+                        <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[8px] font-mono px-1 min-w-[14px] h-[14px] rounded-full border border-black flex items-center justify-center">
+                          {unreadNotificationsCount > 9
+                            ? "9+"
+                            : unreadNotificationsCount}
+                        </span>
+                      ) : (
+                        <span className="absolute -top-0.5 -right-0.5 bg-red-500 w-1.5 h-1.5 rounded-full border border-black animate-pulse"></span>
+                      )}
                     </button>
 
                     <AnimatePresence>
@@ -3802,72 +3929,125 @@ export default function ChatScreen({
                           </div>
 
                           <div className="p-3 bg-transparent text-right space-y-2 flex-1 overflow-y-auto w-full h-full">
-                            <p className="text-[11px] text-gray-400 font-bold border-b border-green-500/10 pb-2">
-                              أحدث التنبيهات والأحداث الخاصة بك في البرنامج.
-                            </p>
-
-                            <div className="grid gap-2">
-                              <div className="p-2.5 bg-black/40 rounded-xl border border-green-500/20 flex items-start gap-2.5 relative z-40 pointer-events-none cursor-default">
-                                <div className="w-7 h-7 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center flex-shrink-0">
-                                  <Heart size={12} />
-                                </div>
-                                <div className="flex-1">
-                                  <h4 className="text-[11px] font-black text-white">
-                                    إعجاب بملفك الشخصي
-                                  </h4>
-                                  <p className="text-[9px] text-gray-400 mt-0.5">
-                                    قام <strong>عمر</strong> بتسجيل إعجابه بملفك
-                                    الشخصي.
-                                  </p>
-                                  <span className="text-[8px] text-gray-500 font-mono mt-1 block">
-                                    منذ 5 دقائق
+                            <div className="flex items-center justify-between border-b border-green-500/10 pb-2">
+                              <p className="text-[11px] text-gray-400 font-bold">
+                                أحدث الإشعارات والرسائل.
+                              </p>
+                              <div className="flex items-center gap-1.5">
+                                {unreadNotificationsCount > 0 && (
+                                  <span className="text-[8px] bg-red-500 text-white px-1.5 py-0.5 rounded font-mono">
+                                    {unreadNotificationsCount} جديد
                                   </span>
-                                </div>
-                              </div>
-
-                              <div className="p-2.5 bg-black/40 rounded-xl border border-green-500/10 flex items-start gap-2.5 opacity-80 relative z-40">
-                                <div className="w-7 h-7 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0 pointer-events-none">
-                                  <Users size={12} />
-                                </div>
-                                <div className="flex-1">
-                                  <h4 className="text-[11px] font-black text-white pointer-events-none">
-                                    طلب صداقة جديد
-                                  </h4>
-                                  <p className="text-[9px] text-gray-400 mt-0.5 pointer-events-none">
-                                    أرسل لك <strong>سارة</strong> طلب صداقة.
-                                  </p>
-                                  <div className="flex gap-1.5 mt-1.5">
-                                    <button className="px-2.5 py-1 bg-green-500 text-black font-bold text-[8px] rounded-md cursor-pointer relative z-50">
-                                      قبول
-                                    </button>
-                                    <button className="px-2.5 py-1 bg-white/10 text-white font-bold text-[8px] rounded-md hover:bg-red-500 cursor-pointer relative z-50">
-                                      رفض
-                                    </button>
-                                  </div>
-                                  <span className="text-[8px] text-gray-500 font-mono mt-1 block pointer-events-none">
-                                    منذ 3 ساعات
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="p-2.5 bg-black/40 rounded-xl border border-yellow-500/10 flex items-start gap-2.5 opacity-60 relative z-40 pointer-events-none">
-                                <div className="w-7 h-7 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center flex-shrink-0">
-                                  <Crown size={12} />
-                                </div>
-                                <div className="flex-1">
-                                  <h4 className="text-[11px] font-black text-white">
-                                    ترقية الحساب
-                                  </h4>
-                                  <p className="text-[9px] text-gray-400 mt-0.5">
-                                    انتهى اشتراك VIP الخاص بك. جدد الآن للحصول
-                                    على الشارات.
-                                  </p>
-                                  <span className="text-[8px] text-gray-500 font-mono mt-1 block">
-                                    الأمس
-                                  </span>
-                                </div>
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setNotifications((prevN) => {
+                                      const next = prevN.map((n) => ({
+                                        ...n,
+                                        read: true,
+                                      }));
+                                      try {
+                                        localStorage.setItem(
+                                          "lamma_notifications",
+                                          JSON.stringify(next),
+                                        );
+                                      } catch (err) {
+                                        // ignore
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                  className="text-[9px] text-gray-300 hover:text-white px-2 py-0.5 rounded border border-white/10 hover:border-white/30 cursor-pointer relative z-50"
+                                >
+                                  تحديد الكل كمقروء
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setNotifications([]);
+                                    try {
+                                      localStorage.removeItem(
+                                        "lamma_notifications",
+                                      );
+                                    } catch (err) {
+                                      // ignore
+                                    }
+                                  }}
+                                  className="text-[9px] text-red-400 hover:text-red-300 px-2 py-0.5 rounded border border-red-500/20 hover:border-red-500/40 cursor-pointer relative z-50"
+                                >
+                                  مسح الكل
+                                </button>
                               </div>
                             </div>
+
+                            {notifications.length === 0 ? (
+                              <div className="p-6 text-center text-[11px] text-gray-500">
+                                مفيش إشعارات لسه 💤
+                              </div>
+                            ) : (
+                              <div className="grid gap-2">
+                                {notifications.map((n) => (
+                                  <div
+                                    key={n.id}
+                                    className={`p-2.5 rounded-xl border flex items-start gap-2.5 relative z-40 cursor-pointer ${
+                                      n.read
+                                        ? "bg-black/30 border-white/5 opacity-70"
+                                        : "bg-black/50 border-green-500/30"
+                                    }`}
+                                    onClick={() => {
+                                      setNotifications((prevN) => {
+                                        const next = prevN.map((x) =>
+                                          x.id === n.id
+                                            ? { ...x, read: true }
+                                            : x,
+                                        );
+                                        try {
+                                          localStorage.setItem(
+                                            "lamma_notifications",
+                                            JSON.stringify(next),
+                                          );
+                                        } catch (err) {
+                                          // ignore
+                                        }
+                                        return next;
+                                      });
+                                    }}
+                                  >
+                                    <div
+                                      className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                        n.kind === "mention"
+                                          ? "bg-yellow-500/20 text-yellow-400"
+                                          : n.kind === "pm"
+                                            ? "bg-blue-500/20 text-blue-400"
+                                            : "bg-green-500/20 text-green-400"
+                                      }`}
+                                    >
+                                      <Bell size={12} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <h4 className="text-[11px] font-black text-white truncate">
+                                        {n.title}
+                                      </h4>
+                                      <p className="text-[9px] text-gray-400 mt-0.5 break-words">
+                                        {n.body}
+                                      </p>
+                                      <span className="text-[8px] text-gray-500 font-mono mt-1 block">
+                                        {new Date(n.at).toLocaleString("ar-EG", {
+                                          hour: "numeric",
+                                          minute: "numeric",
+                                          day: "2-digit",
+                                          month: "2-digit",
+                                        })}
+                                      </span>
+                                    </div>
+                                    {!n.read && (
+                                      <span className="w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </motion.div>
                       )}
@@ -5379,6 +5559,27 @@ export default function ChatScreen({
                         >
                           ترجمة
                         </button>
+                        {canDeleteMessage(msg) && (
+                          <>
+                            <div className="w-[1px] h-3 bg-white/20 mx-0.5"></div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (
+                                  confirm(
+                                    "🗑️ حذف الرسالة؟\n\nلو الرسالة مرفوعة على Supabase هتتمسح هناك كمان.",
+                                  )
+                                ) {
+                                  deleteMessage(msg);
+                                }
+                              }}
+                              className="text-[10px] text-red-400 hover:text-red-300 font-bold px-1 cursor-pointer"
+                              title="حذف الرسالة"
+                            >
+                              🗑️
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
