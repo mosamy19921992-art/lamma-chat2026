@@ -52,7 +52,7 @@ export const storage = {
    * if it was missing/corrupt) and must return the next value.
    */
   update<T>(key: string, fallback: T, updater: (prev: T | null) => T): T {
-    const prev = this.get<T | null>(key, null);
+    const prev = storage.get<T | null>(key, null);
     const next = updater(prev);
     storage.set(key, next);
     return next ?? fallback;

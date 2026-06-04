@@ -19,6 +19,14 @@ export class ErrorBoundary extends React.Component<
   ErrorBoundaryProps,
   ErrorBoundaryState
 > {
+  declare state: ErrorBoundaryState;
+  declare props: ErrorBoundaryProps;
+  declare setState: (
+    updater:
+      | Partial<ErrorBoundaryState>
+      | ((prev: ErrorBoundaryState) => Partial<ErrorBoundaryState>),
+  ) => void;
+
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = {
