@@ -490,38 +490,12 @@ export default function LoginScreen({
 
               <div className="relative z-10 mt-6 flex flex-col gap-3">
                 <h1 className="text-[22px] sm:text-[26px] md:text-[30px] font-black leading-tight text-white">
-                  شات عربي سريع وآمن
+                  شات عربي
                 </h1>
                 <p className="text-[12px] sm:text-[13px] leading-relaxed text-gray-200/90">
                   غرف عامة وخاصّة، ودخول سريع من غير خطوات كتير. نفس ستايل الشات من
                   أول صفحة.
                 </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="rounded-3xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-xl">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-black text-white">
-                        غرف فورية
-                      </span>
-                      <Zap size={14} className="text-white/80" />
-                    </div>
-                    <p className="mt-1 text-[9px] leading-relaxed text-gray-300">
-                      ادخل أو اعمل حساب… وبعدها شات مباشر.
-                    </p>
-                  </div>
-
-                  <div className="rounded-3xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-xl">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-black text-white">
-                        خصوصية أعلى
-                      </span>
-                      <Lock size={14} className="text-white/80" />
-                    </div>
-                    <p className="mt-1 text-[9px] leading-relaxed text-gray-300">
-                      تسجيل منظم + Google + ضيف من غير ما يبوّظ الشكل.
-                    </p>
-                  </div>
-                </div>
               </div>
             </motion.div>
 
