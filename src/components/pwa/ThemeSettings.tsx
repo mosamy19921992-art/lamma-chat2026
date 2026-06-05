@@ -2,7 +2,7 @@
 // themes OR build their own custom palette via color pickers. Live
 // preview at the top of the modal reflects the current choice.
 
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Palette, Check, Sparkles, RotateCcw } from "lucide-react";
 import { useTheme } from "../../hooks/useTheme";
@@ -26,12 +26,17 @@ interface ColorFieldProps {
 }
 
 function ColorField({ label, value, onChange, hint }: ColorFieldProps) {
+  const textInputId = useId();
+
   return (
-    <label className="block">
+    <div className="block">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">
+        <label
+          htmlFor={textInputId}
+          className="text-[10px] font-black text-gray-400 uppercase tracking-wider"
+        >
           {label}
-        </span>
+        </label>
         <span className="text-[9px] font-mono text-gray-500 uppercase">
           {value}
         </span>
@@ -42,20 +47,22 @@ function ColorField({ label, value, onChange, hint }: ColorFieldProps) {
             type="color"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="w-12 h-10 rounded-lg border border-white/10 cursor-pointer appearance-none bg-transparent"
+            aria-label={label}
+            className="w-12 h-10 rounded-lg cursor-pointer appearance-none bg-transparent lamma-input-shell"
             style={{ backgroundColor: value }}
           />
           <div
-            className="absolute inset-0.5 rounded-md pointer-events-none border border-black/20"
+          className="absolute inset-0.5 rounded-md pointer-events-none border border-black/20"
             aria-hidden
           />
         </div>
         <input
+            id={textInputId}
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           maxLength={7}
-          className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-[11px] text-white font-mono focus:outline-none focus:border-[var(--theme-primary)]"
+          className="flex-1 min-w-0 px-3 py-2 rounded-lg text-[11px] text-white font-mono focus:outline-none lamma-input-shell"
         />
       </div>
       {hint && (
@@ -63,7 +70,7 @@ function ColorField({ label, value, onChange, hint }: ColorFieldProps) {
           {hint}
         </p>
       )}
-    </label>
+    </div>
   );
 }
 
@@ -126,11 +133,11 @@ export function ThemeSettings({ isOpen, onClose }: ThemeSettingsProps) {
             exit={{ y: "100%", scale: 0.95 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-b from-[var(--theme-bg-2)] to-[var(--theme-bg-1)] border border-white/10 sm:rounded-3xl rounded-t-3xl shadow-2xl"
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto sm:rounded-3xl rounded-t-3xl lamma-modal-shell"
             dir="rtl"
           >
             {/* Header */}
-            <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-white/10 bg-[var(--theme-bg-2)]/95 backdrop-blur-xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between p-5 backdrop-blur-xl lamma-modal-header">
               <div className="flex items-center gap-3">
                 <div
                   className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg"
@@ -153,7 +160,7 @@ export function ThemeSettings({ isOpen, onClose }: ThemeSettingsProps) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleReset}
-                  className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-[10px] font-bold flex items-center gap-1.5 transition-all"
+                  className="px-3 py-1.5 rounded-xl text-gray-300 text-[10px] font-bold flex items-center gap-1.5 transition-all lamma-soft-action"
                   title="إرجاع للثيم الافتراضي"
                 >
                   <RotateCcw size={11} />
@@ -161,7 +168,7 @@ export function ThemeSettings({ isOpen, onClose }: ThemeSettingsProps) {
                 </button>
                 <button
                   onClick={onClose}
-                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white transition-colors lamma-soft-action"
                   aria-label="إغلاق"
                 >
                   <X size={16} />
@@ -172,7 +179,7 @@ export function ThemeSettings({ isOpen, onClose }: ThemeSettingsProps) {
             {/* Live Preview */}
             <div className="p-5">
               <div
-                className="rounded-2xl border border-white/10 p-4 mb-5 relative overflow-hidden"
+                className="rounded-2xl p-4 mb-5 relative overflow-hidden lamma-section-card"
                 style={{
                   background: `linear-gradient(135deg, ${theme.palette.bg2}, ${theme.palette.bg1})`,
                 }}
@@ -245,7 +252,7 @@ export function ThemeSettings({ isOpen, onClose }: ThemeSettingsProps) {
               </div>
 
               {/* Tabs */}
-              <div className="flex items-center gap-1 mb-4 bg-black/30 p-1 rounded-2xl">
+              <div className="flex items-center gap-1 mb-4 p-1 rounded-2xl lamma-section-card">
                 <button
                   onClick={() => setCustomMode(false)}
                   className={`flex-1 py-2 rounded-xl text-[11px] font-black transition-all ${
@@ -335,7 +342,7 @@ export function ThemeSettings({ isOpen, onClose }: ThemeSettingsProps) {
 
               {/* Custom Color Picker */}
               {customMode && (
-                <div className="space-y-4 bg-black/30 p-4 rounded-2xl border border-white/10">
+                <div className="space-y-4 p-4 rounded-2xl lamma-section-card">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles
                       size={14}
@@ -394,7 +401,7 @@ export function ThemeSettings({ isOpen, onClose }: ThemeSettingsProps) {
             </div>
 
             {/* Footer */}
-            <div className="sticky bottom-0 p-4 border-t border-white/10 bg-[var(--theme-bg-2)]/95 backdrop-blur-xl">
+            <div className="sticky bottom-0 p-4 backdrop-blur-xl lamma-modal-header">
               <button
                 onClick={onClose}
                 className="w-full py-3 rounded-2xl text-white text-sm font-black transition-all active:scale-95"

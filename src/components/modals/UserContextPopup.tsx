@@ -59,7 +59,7 @@ export function UserContextPopup({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[260px] bg-[#070b09]/98 border border-green-500/30 rounded-3xl overflow-hidden shadow-[0_10px_50px_rgba(16,185,129,0.25)] flex flex-col z-[100] cursor-move text-right"
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[260px] rounded-3xl overflow-hidden flex flex-col z-[100] cursor-move text-right lamma-modal-shell"
           style={{
             resize: "both",
             overflow: "hidden",
@@ -71,7 +71,7 @@ export function UserContextPopup({
           dir="rtl"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-3 border-b border-green-500/10 bg-black/40 select-none">
+          <div className="flex items-center justify-between p-3 select-none lamma-modal-header">
             <div className="flex items-center gap-1.5">
               <span className="text-xs">{target.avatar}</span>
               <h3 className="font-black text-white text-[11px] truncate max-w-[140px]">
@@ -80,7 +80,7 @@ export function UserContextPopup({
             </div>
             <button
               onClick={handlers.onClose}
-              className="p-1 rounded-lg bg-red-400/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
+              className="p-1 rounded-lg transition-all cursor-pointer lamma-danger-btn"
             >
               <X size={12} />
             </button>
@@ -91,7 +91,7 @@ export function UserContextPopup({
             className="p-3 flex-1 flex flex-col gap-1.5 overflow-y-auto text-right"
             onPointerDownCapture={(e) => e.stopPropagation()}
           >
-            <div className="text-center py-1.5 bg-black/30 rounded-lg border border-white/5 select-none compact-header shrink-0">
+            <div className="text-center py-1.5 rounded-lg select-none compact-header shrink-0 lamma-section-card">
               <div className="text-[10px] font-black text-white">
                 {target.nickname}
               </div>
@@ -107,7 +107,7 @@ export function UserContextPopup({
               <button
                 type="button"
                 onClick={() => handlers.onSendPM(target)}
-                className="w-full flex items-center gap-2 p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-xl text-right text-[10px] font-black transition-all border border-blue-500/25 cursor-pointer shadow-sm animate-pulse"
+                className="w-full flex items-center gap-2 p-2 rounded-xl text-right text-[10px] font-black transition-all cursor-pointer shadow-sm lamma-accent-btn"
               >
                 💬 محادثة خاصة (الخاص)
               </button>
@@ -116,7 +116,7 @@ export function UserContextPopup({
             <button
               type="button"
               onClick={() => handlers.onViewProfile(target)}
-              className="w-full flex items-center gap-2 p-2 bg-emerald-500/5 hover:bg-emerald-500/15 text-emerald-400 rounded-xl text-right text-[10px] font-black transition-all border border-emerald-500/10 cursor-pointer"
+              className="w-full flex items-center gap-2 p-2 rounded-xl text-right text-[10px] font-black transition-all cursor-pointer lamma-list-item"
             >
               👤 معلومات الشخص وبياناته الشخصية
             </button>
@@ -124,7 +124,7 @@ export function UserContextPopup({
             <button
               type="button"
               onClick={() => handlers.onToggleFriend(target)}
-              className="w-full flex items-center gap-2 p-2 bg-pink-500/5 hover:bg-pink-500/15 text-pink-400 rounded-xl text-right text-[10px] font-black transition-all border border-pink-500/10 cursor-pointer"
+              className="w-full flex items-center gap-2 p-2 rounded-xl text-right text-[10px] font-black transition-all cursor-pointer lamma-list-item"
             >
               {friendsList.includes(target.nickname)
                 ? "🌟 صديق بالفعل"
@@ -134,7 +134,7 @@ export function UserContextPopup({
             <button
               type="button"
               onClick={() => handlers.onToggleIgnore(target)}
-              className="w-full flex items-center gap-2 p-2 bg-yellow-500/5 hover:bg-yellow-500/15 text-yellow-400 rounded-xl text-right text-[10px] font-black transition-all border border-yellow-500/10 cursor-pointer"
+              className="w-full flex items-center gap-2 p-2 rounded-xl text-right text-[10px] font-black transition-all cursor-pointer lamma-list-item"
             >
               {ignoredUsers.includes(target.nickname)
                 ? "🔊 إلغاء تجاهل العضو"
@@ -144,7 +144,7 @@ export function UserContextPopup({
             <button
               type="button"
               onClick={() => handlers.onToggleBlock(target)}
-              className="w-full flex items-center gap-2 p-2 bg-red-500/5 hover:bg-red-500/15 text-red-400 rounded-xl text-right text-[10px] font-black transition-all border border-red-500/10 cursor-pointer"
+              className="w-full flex items-center gap-2 p-2 rounded-xl text-right text-[10px] font-black transition-all cursor-pointer lamma-list-item"
             >
               {blockedUsers.includes(target.nickname)
                 ? "🔓 إلغاء الحظر والمنع"
@@ -157,7 +157,7 @@ export function UserContextPopup({
               <button
                 type="button"
                 onClick={() => handlers.onOpenAdminPanel(target)}
-                className="w-full flex items-center justify-center gap-1.5 p-2 bg-red-500/15 hover:bg-red-500/25 text-white rounded-xl text-center text-[10px] font-black transition-all border border-red-500/30 shadow-[inset_0_0_10px_rgba(239,68,68,0.2)] mt-1 cursor-pointer animate-pulse"
+                className="w-full flex items-center justify-center gap-1.5 p-2 rounded-xl text-center text-[10px] font-black transition-all mt-1 cursor-pointer lamma-danger-btn"
               >
                 🛡️ الرقابة والتحكم الأمني للأدمن
               </button>

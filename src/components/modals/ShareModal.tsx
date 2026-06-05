@@ -72,18 +72,18 @@ export function ShareModal({ isOpen, onClose, appLink }: ShareModalProps) {
             initial={{ scale: 0.95, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.95, y: 20 }}
-            className="w-full max-w-md bg-[#050a06] border border-green-500/20 rounded-[28px] p-6 text-right relative shadow-[0_0_50px_rgba(16,185,129,0.1)] my-8"
+            className="w-full max-w-md rounded-[28px] p-6 text-right relative my-8 lamma-modal-shell"
           >
-            <div className="flex items-center justify-between border-b border-green-500/10 pb-4 mb-4">
+            <div className="flex items-center justify-between pb-4 mb-4 lamma-modal-header -mx-6 px-6 pt-0">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+                <span className="lamma-icon-dot" />
                 <h3 className="text-base font-black text-white">
                   طريقة الدخول ومشاركة شات لمة 💚
                 </h3>
               </div>
               <button
                 onClick={handleClose}
-                className="text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all cursor-pointer"
+                className="text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded-full transition-all cursor-pointer lamma-soft-action"
               >
                 إغلاق
               </button>
@@ -101,8 +101,11 @@ export function ShareModal({ isOpen, onClose, appLink }: ShareModalProps) {
                 لحماية خصوصيتك وسرية غرفتك من الغرباء أو المتسللين.
               </p>
 
-              <div className="p-3 bg-white/5 border border-green-500/15 rounded-xl">
-                <label className="block text-[10px] text-gray-400 font-bold mb-1.5">
+              <div className="p-3 rounded-xl lamma-section-card">
+                <label
+                  htmlFor="share-modal-app-link-input"
+                  className="block text-[10px] text-gray-400 font-bold mb-1.5"
+                >
                   رابط الدخول المباشر للغرفة:
                 </label>
                 <div className="flex gap-2 items-center">
@@ -110,20 +113,21 @@ export function ShareModal({ isOpen, onClose, appLink }: ShareModalProps) {
                     onClick={handleCopy}
                     className={`px-4 py-2.5 rounded-lg font-black text-xs transition-all flex-shrink-0 cursor-pointer ${
                       copiedLink
-                        ? "bg-green-500/20 text-green-300 border border-green-500/30 animate-pulse"
-                        : "bg-[#a3e635] text-black hover:bg-[#a3e635]/90"
+                        ? "lamma-feature-primary"
+                        : "lamma-feature-primary"
                     }`}
                   >
                     {copiedLink ? "✅ تم النسخ!" : "إنسخ الرابط"}
                   </button>
                   <input
+                    id="share-modal-app-link-input"
                     type="text"
                     readOnly
                     value={appLink}
                     onClick={(e) => {
                       (e.target as HTMLInputElement).select();
                     }}
-                    className="w-full bg-black/60 border border-green-500/10 rounded-lg p-2 text-center text-xs text-gray-200 font-mono select-all focus:outline-none focus:border-green-500/30"
+                    className="w-full rounded-lg p-2 text-center text-xs text-gray-200 font-mono select-all focus:outline-none lamma-input-shell"
                   />
                 </div>
                 <span className="block text-[9px] text-gray-500 mt-1.5">
@@ -133,12 +137,12 @@ export function ShareModal({ isOpen, onClose, appLink }: ShareModalProps) {
                 </span>
               </div>
 
-              <div className="flex flex-col items-center justify-center p-4 bg-black/40 border border-green-500/10 rounded-xl text-center">
+              <div className="flex flex-col items-center justify-center p-4 rounded-xl text-center lamma-section-card">
                 <span className="text-[10px] text-gray-400 font-bold mb-2">
                   أو وجّه كاميرا موبايلك (أو موبايل صديقك) نحو الكود ده للدخول
                   فوراً:
                 </span>
-                <div className="bg-white p-2.5 rounded-2xl inline-block border-2 border-[#a3e635]/30">
+                <div className="bg-white p-2.5 rounded-2xl inline-block border-2 border-[#a3e635]/20 shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
                   <img
                     loading="lazy"
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(appLink)}`}

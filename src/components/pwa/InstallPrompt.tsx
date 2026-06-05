@@ -79,7 +79,7 @@ export function InstallPrompt({
           role="dialog"
           aria-live="polite"
         >
-          <div className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-[#0a1a10]/95 via-[#0c120d]/95 to-[#0a0f0c]/95 backdrop-blur-2xl shadow-[0_20px_60px_rgba(16,185,129,0.25)]">
+          <div className="relative overflow-hidden rounded-3xl lamma-pwa-card">
             {/* Decorative gradient orbs */}
             <div
               className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/30 rounded-full blur-3xl pointer-events-none"
@@ -94,7 +94,7 @@ export function InstallPrompt({
               {/* Close */}
               <button
                 onClick={handleDismiss}
-                className="absolute top-3 left-3 w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                className="absolute top-3 left-3 w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-white transition-colors lamma-soft-action"
                 aria-label="إغلاق"
               >
                 <X size={14} />
@@ -105,7 +105,7 @@ export function InstallPrompt({
                 <motion.div
                   animate={{ rotate: [0, -8, 8, 0] }}
                   transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-                  className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30"
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg lamma-feature-primary"
                 >
                   <Smartphone size={22} className="text-white" />
                 </motion.div>
@@ -126,13 +126,13 @@ export function InstallPrompt({
 
               {/* Feature chips */}
               <div className="flex flex-wrap gap-1.5 mb-4">
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 text-[9.5px] font-bold border border-emerald-500/20 flex items-center gap-1">
+                <span className="px-2.5 py-1 rounded-full text-[9.5px] font-bold flex items-center gap-1 lamma-role-chip lamma-role-vip">
                   <Zap size={9} /> سرعة فائقة
                 </span>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 text-[9.5px] font-bold border border-emerald-500/20 flex items-center gap-1">
+                <span className="px-2.5 py-1 rounded-full text-[9.5px] font-bold flex items-center gap-1 lamma-role-chip lamma-role-vip">
                   <Bell size={9} /> إشعارات لحظية
                 </span>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 text-[9.5px] font-bold border border-emerald-500/20 flex items-center gap-1">
+                <span className="px-2.5 py-1 rounded-full text-[9.5px] font-bold flex items-center gap-1 lamma-role-chip lamma-role-vip">
                   📡 أوفلاين
                 </span>
               </div>
@@ -142,7 +142,7 @@ export function InstallPrompt({
                 <button
                   onClick={handleInstall}
                   disabled={installing}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white text-xs font-black shadow-lg shadow-emerald-500/30 transition-all active:scale-95 disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-2xl text-white text-xs font-black transition-all active:scale-95 disabled:opacity-50 lamma-feature-primary"
                 >
                   {installing ? (
                     <>
@@ -158,7 +158,7 @@ export function InstallPrompt({
                 </button>
                 <button
                   onClick={handleDismiss}
-                  className="px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-bold border border-white/5 transition-all"
+                  className="px-4 py-2.5 rounded-2xl text-gray-300 text-xs font-bold transition-all lamma-soft-action"
                 >
                   ليس الآن
                 </button>

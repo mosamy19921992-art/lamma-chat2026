@@ -309,7 +309,7 @@ export default function AMLogo({
             cy="100"
             r="85"
             fill="url(#auroraGlow)"
-            className="animate-pulse duration-[4000ms]"
+              className="animate-pulse duration-[5200ms]"
           />
         )}
 
@@ -335,27 +335,27 @@ export default function AMLogo({
 
         {/* ================= FLOATING SPARKLES (MATCHES THE IMAGE BEAUTIFULLY) ================= */}
         {glow && (
-          <g opacity="0.9">
+          <g opacity="0.72">
             {/* Sparkle 1 */}
             <path
               d="M 42 45 L 45 48 L 42 51 L 39 48 Z"
               fill="#a3e635"
-              className="animate-ping"
-              style={{ transformOrigin: "42px 48px", animationDuration: "3s" }}
+              className="animate-pulse"
+              style={{ transformOrigin: "42px 48px", animationDuration: "4.6s" }}
             />
             {/* Sparkle 2 */}
             <path
               d="M 165 135 L 167 137 L 165 139 L 163 137 Z"
               fill="#fef08a"
               className="animate-pulse"
-              style={{ transformOrigin: "165px 137px", animationDuration: "2.5s" }}
+              style={{ transformOrigin: "165px 137px", animationDuration: "4s" }}
             />
             {/* Sparkle 3 */}
             <path
               d="M 148 40 L 151 43 L 148 46 L 145 43 Z"
               fill="#ffffff"
               className="animate-pulse"
-              style={{ transformOrigin: "148px 43px", animationDuration: "2s" }}
+              style={{ transformOrigin: "148px 43px", animationDuration: "3.6s" }}
             />
           </g>
         )}

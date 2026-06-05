@@ -34,6 +34,20 @@ export function useServiceWorker(): ServiceWorkerState {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
+    if (import.meta.env.DEV) {
+      // Avoid stale cached shells during local development.
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) => {
+          registrations.forEach((registration) => {
+            void registration.unregister();
+          });
+        })
+        .catch((err) => {
+          console.warn("[SW] Dev unregister failed:", err);
+        });
+      return;
+    }
 
     // Register the service worker.
     navigator.serviceWorker

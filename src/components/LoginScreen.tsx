@@ -404,6 +404,43 @@ export default function LoginScreen({
       dir="rtl"
       data-lamma-wall={wallTheme}
     >
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <motion.div
+          className="absolute left-1/2 top-[6%] h-[18rem] w-[78rem] -translate-x-1/2 rounded-[50%] blur-3xl opacity-80"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.14) 0%, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.06) 38%, transparent 74%)",
+          }}
+          animate={{ x: [-24, 22, -24], scaleX: [1, 1.05, 1] }}
+          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute left-1/2 top-[18%] h-[14rem] w-[64rem] -translate-x-1/2 rounded-[50%] blur-[88px] opacity-75"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04) 20%, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12) 50%, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04) 80%, transparent 100%)",
+          }}
+          animate={{ x: [30, -26, 30], y: [0, 10, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute right-[9%] top-[10%] h-40 w-40 rounded-full blur-3xl opacity-50"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(255, 131, 61, 0.22) 0%, rgba(255, 131, 61, 0.08) 35%, transparent 72%)",
+          }}
+          animate={{ scale: [1, 1.08, 1], opacity: [0.35, 0.52, 0.35] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <div
+          className="absolute inset-x-0 bottom-[-10%] h-[20rem] opacity-50 blur-3xl"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, rgba(255, 151, 73, 0.08) 0%, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.03) 42%, transparent 78%)",
+          }}
+        />
+      </div>
+
       {/* Dynamic Scrollable Wrapper with centering behavior */}
       <div className="min-h-[100dvh] w-full flex items-start 2xl:items-center justify-center p-3 sm:p-4 md:p-6 2xl:py-10">
         {/* Main Grid Wrapper */}
@@ -545,7 +582,7 @@ export default function LoginScreen({
           >
             <div className="w-full max-w-[420px] flex flex-col gap-3">
               <div className="lamma-column-frame">
-                <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
                   <div className="space-y-3">
                     {[
                       {
@@ -596,7 +633,7 @@ export default function LoginScreen({
                               الآن
                             </span>
                           </div>
-                          <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                          <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
                             {item.quote}
                           </div>
                         </div>
@@ -607,7 +644,7 @@ export default function LoginScreen({
               </div>
 
               <div className="lamma-column-frame">
-                <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
                   <div className="space-y-3">
                     {[
                       {
@@ -617,7 +654,7 @@ export default function LoginScreen({
                       },
                     ].map((item, idx) => (
                       <div key={`${item.name}-${idx}`} className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-black/55 border border-white/10 flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] shrink-0">
+                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] shrink-0 lamma-admin-card">
                           {item.icon}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -629,7 +666,7 @@ export default function LoginScreen({
                               الآن
                             </span>
                           </div>
-                          <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                          <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
                             {item.quote}
                           </div>
                         </div>
@@ -643,7 +680,7 @@ export default function LoginScreen({
               </div>
 
               <div className="lamma-column-frame">
-                <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0">
                       <Shield size={16} />
@@ -657,10 +694,10 @@ export default function LoginScreen({
                           الآن
                         </span>
                       </div>
-                      <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                      <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
                         شكل ثابت… ومفيش عمود هيطلع أقصر من التاني.
                       </div>
-                      <div className="mt-2 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                      <div className="mt-2 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
                         دخول سريع + كروت واضحة من غير زحمة.
                       </div>
                     </div>
@@ -669,7 +706,7 @@ export default function LoginScreen({
               </div>
 
               <div className="lamma-column-frame">
-                <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0">
                       <Shield size={16} />
@@ -683,10 +720,10 @@ export default function LoginScreen({
                           الآن
                         </span>
                       </div>
-                      <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                      <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
                         شكل ثابت… ومفيش عمود هيطلع أقصر من التاني.
                       </div>
-                      <div className="mt-2 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                      <div className="mt-2 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
                         دخول سريع + كروت واضحة من غير زحمة.
                       </div>
                     </div>
@@ -705,10 +742,8 @@ export default function LoginScreen({
           >
             {/* Rounded glass container with green neon border shadow */}
             <div
-              className={`w-full max-w-[420px] h-auto relative rounded-[32px] p-4 sm:p-5 md:p-6 border overflow-hidden shadow-2xl transition-all duration-300 flex flex-col ${
-                primaryTheme === "amoled"
-                  ? "bg-neutral-950/90 border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_34px_rgba(0,0,0,0.55)]"
-                  : "bg-white/[0.02] border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.18)] backdrop-blur-xl shadow-[0_0_34px_rgba(0,0,0,0.48)]"
+              className={`w-full max-w-[420px] h-auto relative rounded-[32px] p-4 sm:p-5 md:p-6 overflow-hidden transition-all duration-300 flex flex-col lamma-login-shell ${
+                primaryTheme === "amoled" ? "bg-neutral-950/92" : ""
               }`}
             >
               {/* Horizontal neon neon ambient line at the top rim of card */}
@@ -721,21 +756,35 @@ export default function LoginScreen({
               </div>
 
               {/* Header logo & headings */}
-              <div className="text-center mb-3">
-                <div className="mx-auto flex justify-center mb-2 mt-0">
-                  <img
-                    src={brandLogoUrl || "/images/lamma-wordmark.svg"}
-                    alt="LAMMA CHAT"
-                    className="w-[170px] sm:w-[215px] max-w-full h-auto drop-shadow-2xl"
-                    draggable={false}
-                  />
+              <div className="text-center mb-4">
+                <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[9px] font-black text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] lamma-login-hero-badge">
+                  <Sparkles size={11} />
+                  <span>دخول هادي بنفس روح اللمة</span>
                 </div>
-                <h2 className="text-[18px] md:text-[22px] font-black text-white m-0 mt-1.5">
+                <div className="mx-auto mt-3 flex justify-center">
+                  <div className="rounded-[28px] px-5 py-3 lamma-login-panel">
+                    <img
+                      src={brandLogoUrl || "/images/lamma-wordmark.svg"}
+                      alt="LAMMA CHAT"
+                      className="w-[170px] sm:w-[215px] max-w-full h-auto drop-shadow-2xl"
+                      draggable={false}
+                    />
+                  </div>
+                </div>
+                <h2 className="text-[18px] md:text-[22px] font-black text-white m-0 mt-3">
                   تسجيل الدخول
                 </h2>
-                <p className="text-[10px] text-gray-400 mt-1">
-                  مرحباً بك! الرجاء تسجيل الدخول للمتابعة
+                <p className="text-[10px] sm:text-[11px] mt-2 px-2 lamma-login-subtext">
+                  واجهة سهلة ومريحة من أول ثانية, وكل القوة مستخبية بهدوء لحد ما تحتاجها.
                 </p>
+                <div className="mt-3 flex items-center justify-center gap-2 text-[9px] text-gray-300">
+                  <span className="px-2.5 py-1 rounded-full lamma-login-soft-link">
+                    دخول سريع
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full lamma-login-soft-link">
+                    خصوصية أعلى
+                  </span>
+                </div>
               </div>
 
               {/* Input credentials forms */}
@@ -743,7 +792,7 @@ export default function LoginScreen({
                 {/* Email / Username field */}
                 <div className="space-y-1">
                   <label
-                    htmlFor="email"
+                    htmlFor="email-field"
                     className="block text-[10px] font-black text-gray-400 mr-1 text-right"
                   >
                     البريد الإلكتروني
@@ -759,7 +808,7 @@ export default function LoginScreen({
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pr-11 pl-4 py-2 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] focus:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] rounded-2xl text-[11px] focus:ring-1 focus:ring-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] focus:outline-none text-white transition-all text-left"
+                      className="w-full pr-11 pl-4 py-2 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-left lamma-input-shell"
                       placeholder="example@email.com"
                       autoComplete="email"
                       dir="ltr"
@@ -770,7 +819,7 @@ export default function LoginScreen({
                 {authMode === "signup" && (
                   <div className="space-y-1">
                     <label
-                      htmlFor="nickname"
+                      htmlFor="nickname-field"
                       className="block text-[10px] font-black text-gray-400 mr-1 text-right"
                     >
                       اسم المستخدم
@@ -786,7 +835,7 @@ export default function LoginScreen({
                         required
                         value={signupNickname}
                         onChange={(e) => setSignupNickname(e.target.value)}
-                        className="w-full pr-11 pl-4 py-2 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] focus:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] rounded-2xl text-[11px] focus:ring-1 focus:ring-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] focus:outline-none text-white transition-all text-right"
+                        className="w-full pr-11 pl-4 py-2 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-right lamma-input-shell"
                         placeholder="مثال: لَمّة_محمد"
                         autoComplete="nickname"
                       />
@@ -797,7 +846,7 @@ export default function LoginScreen({
                 {/* Password field */}
                 <div className="space-y-1">
                   <label
-                    htmlFor="password"
+                    htmlFor="password-field"
                     className="block text-[10px] font-black text-gray-400 mr-1 text-right"
                   >
                     كلمة المرور
@@ -813,7 +862,7 @@ export default function LoginScreen({
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pr-11 pl-12 py-2 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] focus:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] rounded-2xl text-[11px] focus:ring-1 focus:ring-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] focus:outline-none text-white transition-all text-left"
+                      className="w-full pr-11 pl-12 py-2 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-left lamma-input-shell"
                       autoComplete="current-password"
                       dir="ltr"
                     />
@@ -873,7 +922,7 @@ export default function LoginScreen({
                         })
                         .finally(() => setAuthLoading(false));
                     }}
-                  className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] hover:text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.75)] font-extrabold transition-all"
+                    className="px-3 py-1.5 rounded-full font-extrabold transition-all lamma-login-soft-link"
                   >
                     نسيت كلمة المرور؟
                   </button>
@@ -882,7 +931,7 @@ export default function LoginScreen({
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full py-2 bg-black/45 hover:bg-black/35 text-white rounded-xl font-black text-[11px] flex items-center justify-center gap-2 shadow-[0_0_18px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.18)] hover:shadow-[0_0_28px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.26)] transition-all cursor-pointer border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.28)] disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full py-2 text-white rounded-xl font-black text-[11px] flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed lamma-primary-btn"
                 >
                   <span>
                     {authLoading
@@ -899,7 +948,7 @@ export default function LoginScreen({
                   onClick={() =>
                     setAuthMode((p) => (p === "login" ? "signup" : "login"))
                   }
-                  className="w-full text-[11px] text-gray-400 hover:text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.75)] font-black transition-all"
+                  className="w-full text-[11px] font-black transition-all rounded-full py-2 lamma-login-soft-link"
                 >
                   {authMode === "login"
                     ? "مش عندك حساب؟ اعمل حساب جديد"
@@ -918,7 +967,7 @@ export default function LoginScreen({
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full py-2.5 bg-black/40 hover:bg-white/[0.04] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.12)] hover:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.30)] rounded-2xl text-[11px] font-black flex items-center justify-between px-4 transition-all text-gray-300 hover:text-white"
+                className="w-full py-2.5 rounded-2xl text-[11px] font-black flex items-center justify-between px-4 transition-all text-gray-300 hover:text-white lamma-muted-btn lamma-login-panel"
               >
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -947,7 +996,7 @@ export default function LoginScreen({
               <button
                 type="button"
                 onClick={() => setShowExtraOptions((p) => !p)}
-                className="mt-4 w-full py-2.5 rounded-2xl bg-black/30 hover:bg-white/[0.04] border border-white/10 hover:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] text-[11px] font-black text-gray-300 hover:text-white transition-all flex items-center justify-between px-4"
+                className="mt-4 w-full py-2.5 rounded-2xl text-[11px] font-black text-gray-300 hover:text-white transition-all flex items-center justify-between px-4 lamma-muted-btn lamma-login-panel"
               >
                 <span>خيارات إضافية</span>
                 <ChevronRight
@@ -957,125 +1006,125 @@ export default function LoginScreen({
               </button>
 
               {showExtraOptions && (
-                <div className="mt-3 p-3 rounded-xl bg-[linear-gradient(135deg,rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.07),rgba(0,0,0,0.08))] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.12)]">
-                <div className="flex justify-between items-center mb-3">
-                  <div className="flex items-center gap-1">
-                    <Sparkles
-                      size={13}
-                      className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] animate-pulse"
-                    />
-                    <span className="text-[11px] font-black text-white">
-                      دخول سريع باستخدام Lamma Chat
+                <div className="mt-3 p-3 rounded-2xl lamma-login-panel">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center gap-2 rounded-full px-2.5 py-1 lamma-login-highlight">
+                      <Sparkles
+                        size={13}
+                        className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] animate-pulse"
+                      />
+                      <span className="text-[11px] font-black text-white">
+                        دخول سريع باستخدام Lamma Chat
+                      </span>
+                    </div>
+                    <span className="text-[9px] text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] px-2 py-0.5 rounded-full font-bold">
+                      تلقائي
                     </span>
                   </div>
-                  <span className="text-[9px] text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] px-2 py-0.5 rounded-full font-bold">
-                    تلقائي
-                  </span>
-                </div>
 
-                <p className="text-[10px] text-gray-400 mb-3 text-right">
-                  سيتم إنشاء اسم مستخدم ورقم تلقائياً والدخول فوراً
-                </p>
+                  <p className="text-[10px] mb-3 text-right lamma-login-subtext">
+                    هيتجهز لك اسم زائر تلقائي وتدخل فورًا من غير زحمة أو خطوات كتير.
+                  </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-                  {/* Robot/User representation */}
-                  <div className="sm:col-span-3 flex justify-center">
-                    <div className="relative w-12 h-12 rounded-2xl bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-2xl shadow-[0_0_12px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)]">
-                      <span>🤖</span>
-                      <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] border border-black animate-pulse" />
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                    <div className="sm:col-span-3 flex justify-center">
+                      <div className="relative w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-[0_0_12px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] lamma-login-orb">
+                        <span>🤖</span>
+                        <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] border border-black animate-pulse" />
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Proposed Guest username with Copy & Regenerate tools */}
-                  <div className="sm:col-span-9 space-y-2">
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        id="guest-id-display"
-                        name="guestId"
-                        type="text"
-                        readOnly
-                        value={guestId}
-                        className="flex-1 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] text-xs px-2.5 py-2 rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] font-mono text-center focus:outline-none"
-                        autoComplete="off"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={handleCopyGuestId}
-                        className="p-2 rounded-lg bg-black/60 hover:bg-black text-gray-400 hover:text-white border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.12)] hover:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.30)] transition-all"
-                        title="نسخ المعرف"
-                      >
-                        <Copy size={13} />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleRegenerateGuestId}
-                        className="p-2 rounded-lg bg-black/60 hover:bg-black text-gray-400 hover:text-white border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.12)] hover:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.30)] transition-all group"
-                        title="توليد معرف جديد"
-                      >
-                        <RefreshCw
-                          size={13}
-                          className="group-hover:rotate-180 transition-transform duration-500"
+                    <div className="sm:col-span-9 space-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          id="guest-id-display"
+                          name="guestId"
+                          type="text"
+                          readOnly
+                          value={guestId}
+                          className="flex-1 text-xs px-2.5 py-2 rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] font-mono text-center focus:outline-none lamma-input-shell"
+                          autoComplete="off"
                         />
-                      </button>
+
+                        <button
+                          type="button"
+                          onClick={handleCopyGuestId}
+                          className="p-2 rounded-lg text-gray-400 hover:text-white transition-all lamma-muted-btn"
+                          title="نسخ المعرف"
+                        >
+                          <Copy size={13} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleRegenerateGuestId}
+                          className="p-2 rounded-lg text-gray-400 hover:text-white transition-all group lamma-muted-btn"
+                          title="توليد معرف جديد"
+                        >
+                          <RefreshCw
+                            size={13}
+                            className="group-hover:rotate-180 transition-transform duration-500"
+                          />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Green swift guest button to sign in directly */}
-                <button
-                  type="button"
-                  onClick={handleSwiftGuestLogin}
-                  className="w-full mt-3 py-2.5 bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.06)] hover:bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.20)] hover:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] text-xs font-black rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] hover:text-white transition-all cursor-pointer"
-                >
-                  🚀 دخول مباشر بالاسم المقترح
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleSwiftGuestLogin}
+                    className="w-full mt-3 py-2.5 text-xs font-black rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] hover:text-white transition-all cursor-pointer lamma-primary-btn"
+                  >
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <Zap size={14} />
+                      <span>دخول مباشر بالاسم المقترح</span>
+                    </span>
+                  </button>
 
-                {import.meta.env.DEV && !supabase ? (
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const assignedColor =
-                          NICKNAME_COLORS[
-                            Math.floor(Math.random() * NICKNAME_COLORS.length)
-                          ];
-                        onLogin(
-                          guestId,
-                          "owner",
-                          assignedColor,
-                          undefined,
-                          undefined,
-                          "guest",
-                        );
-                      }}
-                      className="py-2 bg-red-500/5 hover:bg-red-500/15 border border-red-500/20 hover:border-red-500/60 text-xs font-black rounded-xl text-red-300 hover:text-white transition-all cursor-pointer"
-                    >
-                      👑 دخول كمالك (Demo)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const assignedColor =
-                          NICKNAME_COLORS[
-                            Math.floor(Math.random() * NICKNAME_COLORS.length)
-                          ];
-                        onLogin(
-                          guestId,
-                          "admin",
-                          assignedColor,
-                          undefined,
-                          undefined,
-                          "guest",
-                        );
-                      }}
-                      className="py-2 bg-blue-500/5 hover:bg-blue-500/15 border border-blue-500/20 hover:border-blue-500/60 text-xs font-black rounded-xl text-blue-200 hover:text-white transition-all cursor-pointer"
-                    >
-                      🛡️ دخول كأدمن (Demo)
-                    </button>
-                  </div>
-                ) : null}
+                  {import.meta.env.DEV && !supabase ? (
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const assignedColor =
+                            NICKNAME_COLORS[
+                              Math.floor(Math.random() * NICKNAME_COLORS.length)
+                            ];
+                          onLogin(
+                            guestId,
+                            "owner",
+                            assignedColor,
+                            undefined,
+                            undefined,
+                            "guest",
+                          );
+                        }}
+                        className="py-2 bg-red-500/5 hover:bg-red-500/15 border border-red-500/20 hover:border-red-500/60 text-xs font-black rounded-xl text-red-300 hover:text-white transition-all cursor-pointer"
+                      >
+                        👑 دخول كمالك (Demo)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const assignedColor =
+                            NICKNAME_COLORS[
+                              Math.floor(Math.random() * NICKNAME_COLORS.length)
+                            ];
+                          onLogin(
+                            guestId,
+                            "admin",
+                            assignedColor,
+                            undefined,
+                            undefined,
+                            "guest",
+                          );
+                        }}
+                        className="py-2 bg-blue-500/5 hover:bg-blue-500/15 border border-blue-500/20 hover:border-blue-500/60 text-xs font-black rounded-xl text-blue-200 hover:text-white transition-all cursor-pointer"
+                      >
+                        🛡️ دخول كأدمن (Demo)
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               )}
 
@@ -1086,7 +1135,7 @@ export default function LoginScreen({
                   id="continue-as-guest-btn"
                   name="continueAsGuest"
                   onClick={handleSwiftGuestLogin}
-                  className="text-xs text-gray-400 hover:text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.75)] flex items-center justify-center gap-1.5 mx-auto font-black transition-all"
+                  className="text-xs flex items-center justify-center gap-1.5 mx-auto font-black transition-all px-4 py-2 rounded-full lamma-login-soft-link"
                 >
                   <span>متابعة كضيف</span>
                   <ChevronRight size={13} className="rotate-180 opacity-60" />
@@ -1097,7 +1146,7 @@ export default function LoginScreen({
                   id="copy-app-link-btn"
                   name="copyAppLink"
                   onClick={handleCopyLink}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full text-[10px] text-gray-300 hover:text-white border border-white/5 transition-all cursor-pointer mx-auto"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] text-gray-300 hover:text-white transition-all cursor-pointer mx-auto lamma-muted-btn lamma-login-panel"
                 >
                   <Share2 size={12} />
                   <span>هات الرابط بتاعى (Get My App Link)</span>
@@ -1106,11 +1155,23 @@ export default function LoginScreen({
             </div>
 
             {/* Footer Rights */}
-            <div className="text-center mt-auto pt-4 text-xs text-gray-400/80 font-bold">
-              © 2026 Lamma Chat. جميع الحقوق محفوظة{" "}
-              <span className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)]">
-                💚
-              </span>
+            <div className="text-center mt-auto pt-4 space-y-1.5">
+              <div className="text-xs text-gray-400/80 font-bold">
+                © 2026 Lamma Chat. جميع الحقوق محفوظة{" "}
+                <span className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)]">
+                  💚
+                </span>
+              </div>
+              <div className="mx-auto max-w-[320px] rounded-2xl px-4 py-2.5 text-[10px] font-semibold lamma-footer-credit">
+                <div className="text-[9px] uppercase tracking-[0.2em] text-white/55">
+                  Official Credit
+                </div>
+                <div className="mt-1">
+                  توثيق وهوية خاصة:
+                  {" "}
+                  <strong>MR mohamed samy</strong>
+                </div>
+              </div>
             </div>
           </motion.div>
 
@@ -1123,9 +1184,9 @@ export default function LoginScreen({
             <div className="w-full max-w-[420px]">
               <div className="lamma-column-frame">
                 <div className="space-y-3">
-                  <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
-                    <div className="w-full flex items-center justify-center">
-                      <div className="w-full rounded-3xl bg-black/55 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_45px_rgba(0,0,0,0.65)] overflow-hidden aspect-square">
+                  <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
+                    <div className="w-full flex flex-col items-center gap-3">
+                      <div className="w-full rounded-3xl overflow-hidden aspect-square lamma-login-art-frame">
                         <img
                           src={amMarkSrc}
                           alt="AM"
@@ -1135,10 +1196,21 @@ export default function LoginScreen({
                           draggable={false}
                         />
                       </div>
+                      <div className="w-full rounded-3xl px-4 py-3 text-[10px] font-black lamma-gold-signature">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Sparkles size={11} />
+                          <span className="text-[9px] text-yellow-300/75">
+                            البطاقة الذهبية
+                          </span>
+                        </div>
+                        <strong className="block text-center text-[12px] mt-2 break-words">
+                          MR mohamed samy
+                        </strong>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                  <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
                     <div className="space-y-3">
                       {[
                         {
@@ -1153,7 +1225,7 @@ export default function LoginScreen({
                         },
                       ].map((item, idx) => (
                         <div key={`${item.quote}-${idx}`} className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-2xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0">
+                          <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0 lamma-login-orb">
                             {item.icon}
                           </div>
                           <div className="min-w-0 flex-1">
@@ -1165,7 +1237,7 @@ export default function LoginScreen({
                                 الآن
                               </span>
                             </div>
-                            <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                            <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
                               {item.quote}
                             </div>
                           </div>
@@ -1192,7 +1264,7 @@ export default function LoginScreen({
           <div className="md:hidden w-full flex flex-col items-center gap-4 mt-4">
             <div className="w-full max-w-[520px] grid gap-4">
               <div className="lamma-column-frame">
-                <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                <div className="lamma-glass lamma-login-panel rounded-3xl p-4 overflow-hidden">
                   <div className="space-y-3">
                     {[
                       {
@@ -1243,7 +1315,7 @@ export default function LoginScreen({
                               الآن
                             </span>
                           </div>
-                          <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                          <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
                             {item.quote}
                           </div>
                         </div>
@@ -1254,7 +1326,7 @@ export default function LoginScreen({
               </div>
 
               <div className="lamma-column-frame">
-                <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                <div className="lamma-glass lamma-login-panel rounded-3xl p-4 overflow-hidden">
                   <div className="space-y-3">
                     {[
                       {
@@ -1264,7 +1336,7 @@ export default function LoginScreen({
                       },
                     ].map((item, idx) => (
                       <div key={`${item.name}-${idx}`} className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-black/55 border border-white/10 flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] shrink-0">
+                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] shrink-0 lamma-admin-card">
                           {item.icon}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -1276,7 +1348,7 @@ export default function LoginScreen({
                               الآن
                             </span>
                           </div>
-                          <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                          <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
                             {item.quote}
                           </div>
                         </div>
@@ -1288,9 +1360,9 @@ export default function LoginScreen({
 
               <div className="lamma-column-frame">
                 <div className="space-y-3">
-                  <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
-                    <div className="w-full flex items-center justify-center">
-                      <div className="w-full rounded-3xl bg-black/55 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] shadow-[0_0_45px_rgba(0,0,0,0.65)] overflow-hidden aspect-square">
+                  <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
+                    <div className="w-full flex flex-col items-center gap-3">
+                      <div className="w-full rounded-3xl overflow-hidden aspect-square lamma-login-art-frame">
                         <img
                           src={amMarkSrc}
                           alt="AM"
@@ -1300,10 +1372,21 @@ export default function LoginScreen({
                           draggable={false}
                         />
                       </div>
+                      <div className="w-full rounded-3xl px-3 py-3 text-[10px] font-black lamma-gold-signature">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Sparkles size={10} />
+                          <span className="text-[8px] text-yellow-300/75">
+                            البطاقة الذهبية
+                          </span>
+                        </div>
+                        <strong className="block text-center text-[11px] mt-2 break-words">
+                          MR mohamed samy
+                        </strong>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="lamma-glass rounded-3xl p-4 overflow-hidden">
+                  <div className="lamma-glass lamma-login-panel rounded-3xl p-4 overflow-hidden">
                     <div className="space-y-3">
                       {[
                         {
@@ -1318,7 +1401,7 @@ export default function LoginScreen({
                         },
                       ].map((item, idx) => (
                         <div key={`${item.quote}-${idx}`} className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-2xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0">
+                          <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0 lamma-login-orb">
                             {item.icon}
                           </div>
                           <div className="min-w-0 flex-1">
@@ -1330,7 +1413,7 @@ export default function LoginScreen({
                                 الآن
                               </span>
                             </div>
-                            <div className="mt-1 rounded-2xl bg-black/35 border border-white/10 px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed">
+                            <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
                               {item.quote}
                             </div>
                           </div>
@@ -1368,9 +1451,9 @@ export default function LoginScreen({
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="w-full max-w-md bg-[#050a06] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] rounded-[28px] p-6 text-right relative shadow-[0_0_50px_rgba(0,0,0,0.55)] my-8"
+              className="w-full max-w-md rounded-[28px] p-6 text-right relative my-8 lamma-modal-shell"
             >
-              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+              <div className="flex items-center justify-between pb-4 mb-4 lamma-modal-header">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] animate-pulse" />
                   <h3 className="text-base font-black text-white">
@@ -1385,7 +1468,7 @@ export default function LoginScreen({
                     if (supabase) supabase.auth.signOut();
                     showToast("تم إلغاء الدخول.", "info");
                   }}
-                  className="text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all cursor-pointer"
+                  className="text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded-full transition-all cursor-pointer lamma-soft-action"
                   disabled={authLoading}
                 >
                   إلغاء
@@ -1398,7 +1481,10 @@ export default function LoginScreen({
               </p>
 
               <div className="mt-3 space-y-1">
-                <label className="block text-[10px] text-gray-400 font-bold mb-1.5">
+                <label
+                  htmlFor="profile-nickname-input"
+                  className="block text-[10px] text-gray-400 font-bold mb-1.5"
+                >
                   اسم المستخدم:
                 </label>
                 <div className="relative">
@@ -1406,10 +1492,11 @@ export default function LoginScreen({
                     <Hash size={16} />
                   </span>
                   <input
+                    id="profile-nickname-input"
                     type="text"
                     value={profileNickname}
                     onChange={(e) => setProfileNickname(e.target.value)}
-                    className="w-full pr-11 pl-4 py-2 bg-black/60 border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] focus:border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.35)] rounded-2xl text-[11px] focus:ring-1 focus:ring-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] focus:outline-none text-white transition-all text-right"
+                    className="w-full pr-11 pl-4 py-2 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-right lamma-input-shell"
                     placeholder="مثال: لَمّة_محمد"
                     autoComplete="nickname"
                   />
@@ -1420,7 +1507,7 @@ export default function LoginScreen({
                 type="button"
                 onClick={handleSaveProfileNickname}
                 disabled={authLoading}
-                className="mt-4 w-full py-2.5 rounded-lg font-black text-xs transition-all cursor-pointer bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.14)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.28)] text-white hover:bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.18)] disabled:opacity-60 disabled:cursor-not-allowed"
+                className="mt-4 w-full py-2.5 rounded-lg font-black text-xs transition-all cursor-pointer text-white disabled:opacity-60 disabled:cursor-not-allowed lamma-feature-primary"
               >
                 حفظ
               </button>
@@ -1439,9 +1526,9 @@ export default function LoginScreen({
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="w-full max-w-md bg-[#050a06] border border-green-500/20 rounded-[28px] p-6 text-right relative shadow-[0_0_50px_rgba(16,185,129,0.1)] my-8"
+              className="w-full max-w-md rounded-[28px] p-6 text-right relative my-8 lamma-modal-shell"
             >
-              <div className="flex items-center justify-between border-b border-green-500/10 pb-4 mb-4">
+              <div className="flex items-center justify-between pb-4 mb-4 lamma-modal-header">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
                   <h3 className="text-base font-black text-white">
@@ -1471,8 +1558,11 @@ export default function LoginScreen({
                   لحماية خصوصيتك وسرية غرفتك من الغرباء أو المتسللين.
                 </p>
 
-                <div className="p-3 bg-white/5 border border-green-500/15 rounded-xl">
-                  <label className="block text-[10px] text-gray-400 font-bold mb-1.5">
+                <div className="p-3 rounded-xl lamma-section-card">
+                  <label
+                    htmlFor="share-app-link-input"
+                    className="block text-[10px] text-gray-400 font-bold mb-1.5"
+                  >
                     رابط الدخول المباشر للغرفة:
                   </label>
                   <div className="flex gap-2 items-center">
@@ -1502,19 +1592,20 @@ export default function LoginScreen({
                       className={`px-4 py-2.5 rounded-lg font-black text-xs transition-all flex-shrink-0 cursor-pointer ${
                         copiedLink
                           ? "bg-green-500/20 text-green-300 border border-green-500/30 animate-pulse"
-                          : "bg-[#a3e635] text-black hover:bg-[#a3e635]/90"
+                          : "lamma-feature-primary"
                       }`}
                     >
                       {copiedLink ? "✅ تم النسخ!" : "إسحب الرابط"}
                     </button>
                     <input
+                      id="share-app-link-input"
                       type="text"
                       readOnly
                       value={appLink}
                       onClick={(e) => {
                         (e.target as HTMLInputElement).select();
                       }}
-                      className="w-full bg-black/60 border border-green-500/10 rounded-lg p-2 text-center text-xs text-gray-200 font-mono select-all focus:outline-none focus:border-green-500/30"
+                      className="w-full rounded-lg p-2 text-center text-xs text-gray-200 font-mono select-all focus:outline-none lamma-input-shell"
                     />
                   </div>
                   <span className="block text-[9px] text-gray-500 mt-1.5">
@@ -1524,7 +1615,7 @@ export default function LoginScreen({
                   </span>
                 </div>
 
-                <div className="flex flex-col items-center justify-center p-4 bg-black/40 border border-green-500/10 rounded-xl text-center">
+                <div className="flex flex-col items-center justify-center p-4 rounded-xl text-center lamma-section-card">
                   <span className="text-[10px] text-gray-400 font-bold mb-2">
                     أو وجّه كاميرا موبايلك (أو موبايل صديقك) نحو الكود ده للدخول
                     فوراً:

@@ -1,13 +1,29 @@
 // Chat types extracted from ChatScreen.tsx — pure refactor, no behavior change.
 
+export interface UserSession {
+  nickname: string;
+  role:
+    | "guest"
+    | "user"
+    | "vip"
+    | "platinum_vip"
+    | "mod"
+    | "admin"
+    | "owner"
+    | string;
+  color: string;
+  uid?: string;
+  email?: string | null;
+  authProvider?: "supabase" | "guest";
+  frame?: string;
+  title?: string;
+  badge?: string;
+  avatar?: string;
+  [key: string]: any;
+}
+
 export interface ChatScreenProps {
-  currentUser: {
-    nickname: string;
-    role: string;
-    uid: string;
-    frame?: string;
-    [key: string]: any;
-  };
+  currentUser: UserSession;
   onLogout: () => void;
   primaryTheme: "dark" | "amoled";
 }
@@ -28,7 +44,8 @@ export interface Message {
     | "join"
     | "leave"
     | "gift"
-    | "youtube";
+    | "youtube"
+    | "shadow_msg";
   mediaUrl?: string;
   giftIcon?: string;
   giftName?: string;
@@ -39,15 +56,38 @@ export interface Message {
 export interface ChatMember {
   id: string;
   nickname: string;
-  role: "guest" | "user" | "vip" | "mod" | "admin" | "owner";
+  role:
+    | "guest"
+    | "user"
+    | "vip"
+    | "platinum_vip"
+    | "mod"
+    | "admin"
+    | "owner";
   color: string;
   avatar: string;
   status: "online" | "offline" | "idle";
   email?: string;
+  badge?: string;
   fingerprint: string;
   browserSignature: string;
   ip: string;
   localStorageId: string;
+}
+
+export interface PMThreadMessage {
+  text: string;
+  isOwn: boolean;
+  time: string;
+  mediaUrl?: string;
+  type?: "text" | "image" | "video" | "audio";
+}
+
+export interface MemberCustomPermissions {
+  recordingAllowed: boolean;
+  callsAllowed: boolean;
+  musicRadioAllowed: boolean;
+  roomCreationAllowed: boolean;
 }
 
 export interface BanInfo {

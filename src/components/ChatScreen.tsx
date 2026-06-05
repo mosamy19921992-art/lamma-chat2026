@@ -40,6 +40,7 @@ import {
   Share2,
   Shield,
   Bell,
+  MessageCircle,
   Phone,
   Video as VideoIcon,
   Paperclip,
@@ -68,6 +69,8 @@ import {
   type ChatMember,
   type BanInfo,
   type ActivityLog,
+  type PMThreadMessage,
+  type MemberCustomPermissions,
 } from "../lib/chatTypes.ts";
 import {
   hexToRgba,
@@ -111,9 +114,9 @@ function MobileBottomSheet({
             animate={{ y: 0 }}
             exit={{ y: 520 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute inset-x-0 bottom-0 bg-[#0a0f0c]/98 border-t border-green-500/20 shadow-2xl rounded-t-3xl backdrop-blur-md overflow-hidden max-h-[80vh]"
+            className="absolute inset-x-0 bottom-0 rounded-t-3xl overflow-hidden max-h-[80vh] lamma-sheet-shell"
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-green-500/10 bg-black/40">
+            <div className="flex items-center justify-between px-4 py-3 lamma-sheet-header">
               <div className="flex items-center gap-2">
                 {icon}
                 <h3 className="font-black text-white text-sm">{title}</h3>
@@ -121,7 +124,7 @@ function MobileBottomSheet({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
+                className="p-2 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer lamma-danger-btn"
                 aria-label="إغلاق"
               >
                 <X size={14} />
@@ -140,6 +143,9 @@ export default function ChatScreen({
   onLogout,
   primaryTheme,
 }: ChatScreenProps) {
+  const DEFAULT_AMBIENT_BG =
+    "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=calm%20premium%20night%20rooftop%20lounge%2C%20cozy%20friends%20gathering%20atmosphere%2C%20elegant%20empty%20seating%2C%20warm%20amber%20lights%2C%20deep%20emerald%20shadows%2C%20subtle%20cairo%20city%20bokeh%20in%20the%20distance%2C%20wide%20cinematic%20composition%2C%20realistic%20high-end%20photography%2C%20minimal%20clutter%2C%20no%20people%2C%20no%20text%2C%20no%20logo&image_size=landscape_16_9";
+
   type WallTheme = "fire" | "ice" | "violet";
 
   const [ownerBgImage, setOwnerBgImage] = useState<string | null>(() =>
@@ -216,7 +222,7 @@ export default function ChatScreen({
     currentUser.role === "Owner" ||
     currentUser.role === "Malek";
   const isAdminRole = roleLower === "admin";
-  const activeRoomBg = roomBgMap[activeRoomId] || ownerBgImage;
+  const activeRoomBg = roomBgMap[activeRoomId] || ownerBgImage || DEFAULT_AMBIENT_BG;
   const isChatColumnExpanded = isLeftColumnCollapsed || isRightColumnCollapsed;
 
   const performSearch = async () => {
@@ -1104,15 +1110,7 @@ export default function ChatScreen({
 
   // Custom user permissions managed exclusively by the owner
   const [memberCustomPermissions, setMemberCustomPermissions] = useState<
-    Record<
-      string,
-      {
-        recordingAllowed: boolean;
-        callsAllowed: boolean;
-        musicRadioAllowed: boolean;
-        roomCreationAllowed: boolean;
-      }
-    >
+    Record<string, MemberCustomPermissions>
   >(() => {
     const saved = localStorage.getItem("lamma_custom_user_perms");
     if (saved) {
@@ -1127,21 +1125,25 @@ export default function ChatScreen({
         recordingAllowed: true,
         callsAllowed: true,
         musicRadioAllowed: true,
+        roomCreationAllowed: true,
       },
       عمر: {
         recordingAllowed: false,
         callsAllowed: false,
         musicRadioAllowed: false,
+        roomCreationAllowed: false,
       },
       ياسمين: {
         recordingAllowed: false,
         callsAllowed: false,
         musicRadioAllowed: false,
+        roomCreationAllowed: false,
       },
       خالد: {
         recordingAllowed: false,
         callsAllowed: false,
         musicRadioAllowed: false,
+        roomCreationAllowed: false,
       },
     };
   });
@@ -1731,9 +1733,7 @@ export default function ChatScreen({
   });
 
   // Deep private message threads map grouped by nickname
-  const [pmThreads, setPmThreads] = useState<
-    Record<string, { text: string; isOwn: boolean; time: string }[]>
-  >({
+  const [pmThreads, setPmThreads] = useState<Record<string, PMThreadMessage[]>>({
     سارة: [
       { text: "مرحباً 😇", isOwn: false, time: "10:40 PM" },
       { text: "مساء النور 🌹", isOwn: true, time: "10:40 PM" },
@@ -2561,7 +2561,7 @@ export default function ChatScreen({
 
     if (false) {
       // Local fallback mode when Firebase Auth anonymous sign-ins are restricted or unconfigured in Firebase Console
-      const localMsg = {
+      const localMsg: Message = {
         id: "local-" + Date.now(),
         author: userNick,
         text: cleanText,
@@ -2585,7 +2585,7 @@ export default function ChatScreen({
     } else {
       // Standard Firebase live production mode
       const newUuid = crypto.randomUUID();
-      const newMessage = {
+      const newMessage: Message = {
         id: newUuid,
         author: userNick,
         text: cleanText,
@@ -2789,7 +2789,7 @@ export default function ChatScreen({
     });
 
     if (false) {
-      const localMsg = {
+      const localMsg: Message = {
         id: "local-media-" + Date.now(),
         author: currentUser.nickname,
         text: "",
@@ -2800,7 +2800,7 @@ export default function ChatScreen({
           minute: "numeric",
           hour12: true,
         }),
-        type: type,
+        type: finalType,
         mediaUrl: mediaUrl,
       };
 
@@ -2815,7 +2815,7 @@ export default function ChatScreen({
     }
 
     const newUuid = crypto.randomUUID();
-    const newMessage = {
+    const newMessage: Message = {
       id: newUuid,
       author: currentUser.nickname,
       text: "",
@@ -3239,7 +3239,7 @@ export default function ChatScreen({
               backgroundPosition: "center",
             }}
           />
-          <div className="absolute inset-0 bg-black/60 z-0 pointer-events-none" />
+          <div className="absolute inset-0 bg-black/68 z-0 pointer-events-none" />
         </>
       ) : null}
       {/* Background radial soft light particles */}
@@ -3281,9 +3281,9 @@ export default function ChatScreen({
             <img
               src="/images/lamma-wordmark.svg"
               alt="LAMMA CHAT"
-              className="h-6 sm:h-7 opacity-90 drop-shadow-[0_0_18px_rgba(16,185,129,0.2)]"
+              className="h-6 sm:h-7 opacity-90 drop-shadow-[0_0_18px_rgba(24,181,123,0.14)]"
             />
-            <div className="flex items-center gap-2 pointer-events-auto">
+            <div className="flex items-center gap-1.5 pointer-events-auto lamma-header-center-badge">
               {isEditingWelcome ? (
                 <input
                   type="text"
@@ -3294,7 +3294,7 @@ export default function ChatScreen({
                   onChange={(e) => setWelcomeMessage(e.target.value)}
                   onBlur={() => setIsEditingWelcome(false)}
                   onKeyDown={(e) => e.key === "Enter" && setIsEditingWelcome(false)}
-                  className="text-[9px] md:text-[10px] bg-black/50 text-white font-medium truncate w-32 md:w-48 border border-green-500/30 rounded px-1.5"
+                  className="text-[9px] md:text-[10px] text-white font-medium truncate w-28 md:w-44 rounded-lg px-2 py-1 lamma-input-shell"
                   autoFocus
                 />
               ) : (
@@ -3312,7 +3312,7 @@ export default function ChatScreen({
                 !isEditingWelcome && (
                   <button
                     onClick={() => setIsEditingWelcome(true)}
-                    className="opacity-100 transition-opacity text-gray-500 hover:text-green-400 p-0.5 bg-black/40 rounded shadow-md"
+                    className="opacity-100 transition-opacity text-gray-500 hover:text-green-400 lamma-soft-action lamma-header-mini-btn"
                     title="تعديل ترحيب الشات"
                   >
                     <SettingsIcon size={9} />
@@ -3324,7 +3324,7 @@ export default function ChatScreen({
           <div className="flex items-center gap-2 md:gap-3">
             {/* User badge */}
             <div
-              className={`flex items-center gap-2 select-none max-w-[58vw] sm:max-w-none ${
+              className={`flex items-center gap-2 select-none max-w-[58vw] sm:max-w-none lamma-header-rail lamma-header-user-rail ${
                 isOwnerRole ? "cursor-pointer" : ""
               }`}
               onClick={() => {
@@ -3345,7 +3345,7 @@ export default function ChatScreen({
                       "0 0 18px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.20)",
                   }}
                 >
-                  <div className="w-7 h-7 rounded-full bg-[#050806] border border-white/10 flex items-center justify-center text-[13px] overflow-hidden">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-[13px] overflow-hidden lamma-admin-card">
                     {myActiveSession.avatar || "👤"}
                   </div>
                 </div>
@@ -3354,22 +3354,18 @@ export default function ChatScreen({
                   myActiveSession.role === "vip" ||
                   myActiveSession.role === "platinum_vip") && (
                   <div
-                    className={`absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full flex items-center justify-center border ${
+                    className={`absolute -top-0.5 left-1/2 -translate-x-1/2 lamma-prestige-seal ${
                       myActiveSession.role === "admin"
-                        ? "bg-blue-500/15 border-blue-500/35 text-blue-300"
+                        ? "lamma-prestige-admin"
                         : myActiveSession.role === "vip"
-                          ? "bg-green-500/15 border-green-500/35 text-green-300"
+                          ? "lamma-prestige-vip"
                           : myActiveSession.role === "platinum_vip"
-                            ? "bg-yellow-500/15 border-yellow-500/35 text-yellow-300"
-                            : "bg-yellow-500/15 border-yellow-500/35 text-yellow-300"
+                            ? "lamma-prestige-plat"
+                            : "lamma-prestige-owner"
                     }`}
-                    style={{
-                      boxShadow:
-                        "0 0 14px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.22)",
-                    }}
                     aria-hidden="true"
                   >
-                    <Crown size={10} />
+                    <Crown size={8} strokeWidth={2.2} />
                   </div>
                 )}
               </div>
@@ -3385,7 +3381,7 @@ export default function ChatScreen({
                 >
                   {myActiveSession.nickname}
                   {myActiveSession.badge && (
-                    <span className="text-[7px] bg-yellow-500/20 text-yellow-500 border border-yellow-500/20 px-0.5 py-0.2 rounded leading-none font-bold">
+                    <span className="text-[7px] lamma-badge-chip">
                       {myActiveSession.badge}
                     </span>
                   )}
@@ -3393,24 +3389,24 @@ export default function ChatScreen({
                 <div className="hidden sm:flex items-center gap-1.5 mt-0.5">
                   <div className="flex items-center gap-1">
                     {myActiveSession.role === "platinum_vip" ? (
-                      <span className="text-yellow-400 text-[8px] font-black bg-yellow-500/15 px-1 py-0.5 rounded leading-none border border-yellow-500/30 tracking-wider">
+                      <span className="text-[8px] lamma-role-chip lamma-role-plat">
                         PLATINUM VIP
                       </span>
                     ) : myActiveSession.role === "vip" ? (
-                      <span className="text-green-400 text-[8px] font-black bg-green-500/10 px-1 py-0.5 rounded leading-none border border-green-500/20 tracking-wider">
+                      <span className="text-[8px] lamma-role-chip lamma-role-vip">
                         VIP
                       </span>
                     ) : myActiveSession.role === "owner" ? (
-                      <span className="text-yellow-500 text-[8px] font-black bg-yellow-500/10 px-1 py-0.5 rounded leading-none border border-yellow-500/20 tracking-wider">
+                      <span className="text-[8px] lamma-role-chip lamma-role-owner">
                         OWNER
                       </span>
                     ) : myActiveSession.role === "admin" ? (
-                      <span className="text-blue-400 text-[8px] font-black bg-blue-500/10 px-1 py-0.5 rounded leading-none border border-blue-500/20 tracking-wider">
+                      <span className="text-[8px] lamma-role-chip lamma-role-admin">
                         ADMIN
                       </span>
                     ) : null}
                     {myActiveSession.title && (
-                      <span className="text-[8px] text-[#a3e635] font-black">
+                      <span className="text-[8px] lamma-title-chip">
                         [{myActiveSession.title}]
                       </span>
                     )}
@@ -3418,7 +3414,7 @@ export default function ChatScreen({
                 </div>
 
                 {/* Icons bar under the name and role */}
-                <div className="flex items-center gap-1.5 mt-1">
+                <div className="flex items-center gap-1 mt-1">
                   {/* Rooms selector button */}
                   <div className="relative dropdown-container flex items-center xl:hidden">
                     <button
@@ -3431,10 +3427,10 @@ export default function ChatScreen({
                           setActiveSidebarTab("rooms");
                         }
                       }}
-                      className={`flex items-center justify-center p-0.5 rounded-md hover:bg-white/10 transition-colors relative cursor-pointer ${isSidebarOpen && activeSidebarTab === "rooms" ? "text-green-400" : "text-gray-400"}`}
+                      className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${isSidebarOpen && activeSidebarTab === "rooms" ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
                       title="كل الغرف"
                     >
-                      <span className="text-[10px]">🏠</span>
+                        <Compass size={10} strokeWidth={2.2} />
                     </button>
                   </div>
 
@@ -3450,11 +3446,11 @@ export default function ChatScreen({
                           setActiveSidebarTab("members");
                         }
                       }}
-                      className={`flex items-center justify-center p-0.5 rounded-md hover:bg-white/10 transition-colors relative cursor-pointer ${isSidebarOpen && activeSidebarTab === "members" ? "text-green-400" : "text-gray-400"}`}
+                      className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${isSidebarOpen && activeSidebarTab === "members" ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
                       title="المتصلون"
                     >
                       <Users size={10} />
-                      <span className="absolute -top-0.5 -right-0.5 bg-green-500 w-1 h-1 rounded-full border border-black animate-pulse"></span>
+                      <span className="absolute -top-0.5 -right-0.5 lamma-icon-dot"></span>
                     </button>
                   </div>
 
@@ -3467,7 +3463,7 @@ export default function ChatScreen({
                           setLeadershipTab("quick");
                           openModal("leadership");
                         }}
-                        className="flex items-center justify-center p-0.5 rounded-md hover:bg-white/10 transition-colors relative cursor-pointer text-yellow-500"
+                        className="flex items-center justify-center transition-colors relative cursor-pointer text-yellow-400 lamma-toolbar-btn lamma-header-mini-btn"
                         title="غرفة القيادة"
                       >
                         <Crown size={10} />
@@ -3479,7 +3475,7 @@ export default function ChatScreen({
                   <div className="relative dropdown-container flex items-center">
                     <button
                       onClick={() => toggleDropdown("headerMenu")}
-                      className={`flex items-center justify-center p-0.5 rounded-md hover:bg-white/10 transition-colors relative cursor-pointer ${showHeaderMenu ? "text-green-400" : "text-gray-400"}`}
+                      className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${showHeaderMenu ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
                       title="القائمة والإعدادات"
                     >
                       <SettingsIcon size={10} />
@@ -3499,9 +3495,9 @@ export default function ChatScreen({
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           transition={{ duration: 0.15 }}
-                          className="hidden md:flex fixed top-20 right-4 md:right-10 w-[240px] bg-[#0a0f0c]/98 border border-green-500/30 shadow-2xl rounded-2xl z-[99] flex-col backdrop-blur-md pb-1"
+                          className="hidden md:flex fixed top-20 right-4 md:right-10 w-[240px] rounded-2xl z-[99] flex-col pb-1 lamma-popover-shell"
                         >
-                          <div className="flex items-center justify-between p-2.5 border-b border-green-500/20 bg-black/40 cursor-grab active:cursor-grabbing">
+                          <div className="flex items-center justify-between p-2.5 lamma-feature-header cursor-grab active:cursor-grabbing">
                             <div className="flex items-center gap-2 pointer-events-none">
                               <SettingsIcon
                                 size={14}
@@ -3516,7 +3512,7 @@ export default function ChatScreen({
                                 e.stopPropagation();
                                 setShowHeaderMenu(false);
                               }}
-                              className="p-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer relative z-50"
+                              className="p-1.5 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer relative z-50 lamma-feature-action"
                             >
                               <X size={12} />
                             </button>
@@ -3527,7 +3523,7 @@ export default function ChatScreen({
                                 setIsCompactView(!isCompactView);
                                 setShowHeaderMenu(false);
                               }}
-                              className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer"
+                              className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
                             >
                               <Grid
                                 size={16}
@@ -3548,9 +3544,9 @@ export default function ChatScreen({
                                 setIsPmOpen(false);
                                 setShowHeaderMenu(false);
                               }}
-                              className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer"
+                              className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
                             >
-                              <span className="text-xl leading-none">🌌</span>
+                              <Sparkles size={16} className="text-violet-300" />
                               <span>وضع التركيز (Zen)</span>
                             </button>
                             <button
@@ -3558,7 +3554,7 @@ export default function ChatScreen({
                                 handleCopyLink();
                                 setShowHeaderMenu(false);
                               }}
-                              className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer"
+                              className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
                             >
                               <Share2 size={16} />
                               <span>دعوة الأصدقاء</span>
@@ -3593,7 +3589,7 @@ export default function ChatScreen({
                           setIsCompactView(!isCompactView);
                           setShowHeaderMenu(false);
                         }}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl"
+                        className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
                       >
                         <Grid
                           size={16}
@@ -3612,9 +3608,9 @@ export default function ChatScreen({
                           setIsPmOpen(false);
                           setShowHeaderMenu(false);
                         }}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl"
+                        className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
                       >
-                        <span className="text-xl leading-none">🌌</span>
+                        <Sparkles size={16} className="text-violet-300" />
                         <span>وضع التركيز (Zen)</span>
                       </button>
                       <button
@@ -3622,7 +3618,7 @@ export default function ChatScreen({
                           handleCopyLink();
                           setShowHeaderMenu(false);
                         }}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl"
+                        className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
                       >
                         <Share2 size={16} />
                         <span>دعوة الأصدقاء</span>
@@ -3645,12 +3641,12 @@ export default function ChatScreen({
                   <div className="relative dropdown-container flex items-center">
                     <button
                       onClick={() => toggleDropdown("pmList")}
-                      className={`flex items-center justify-center p-0.5 rounded-md hover:bg-white/10 transition-colors relative cursor-pointer ${showPmListDropdown ? "text-green-400" : "text-gray-400"}`}
+                      className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${showPmListDropdown ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
                       title="الرسائل الخاصة"
                     >
-                      <span className="text-xs">💌</span>
+                      <MessageCircle size={11} strokeWidth={2.2} />
                       {Object.keys(pmThreads).length > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 bg-red-500 w-1.5 h-1.5 rounded-full border border-black animate-pulse"></span>
+                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border border-black/60 bg-red-500/80 shadow-[0_0_8px_rgba(239,68,68,0.14)]"></span>
                       )}
                     </button>
 
@@ -3669,7 +3665,7 @@ export default function ChatScreen({
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           transition={{ duration: 0.15 }}
-                          className="hidden md:flex fixed top-20 left-4 md:left-auto md:right-1/4 w-[280px] bg-[#0a0f0c]/98 border border-green-500/20 shadow-2xl rounded-2xl z-[99] flex-col backdrop-blur-md"
+                          className="hidden md:flex fixed top-20 left-4 md:left-auto md:right-1/4 w-[280px] rounded-2xl z-[99] flex-col lamma-popover-shell"
                           style={{
                             resize: "both",
                             overflow: "hidden",
@@ -3679,9 +3675,9 @@ export default function ChatScreen({
                             maxHeight: "80vh",
                           }}
                         >
-                          <div className="flex items-center justify-between p-3 border-b border-green-500/10 bg-black/40 cursor-grab active:cursor-grabbing">
+                          <div className="flex items-center justify-between p-3 lamma-feature-header cursor-grab active:cursor-grabbing">
                             <div className="flex items-center gap-2 pointer-events-none">
-                              <span className="text-lg">💌</span>
+                              <MessageCircle size={16} className="text-[rgb(148,163,184)]" />
                               <h3 className="font-black text-white text-sm">
                                 المحادثات الخاصة
                               </h3>
@@ -3691,7 +3687,7 @@ export default function ChatScreen({
                                 e.stopPropagation();
                                 setShowPmListDropdown(false);
                               }}
-                              className="p-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer z-50 relative"
+                              className="p-1.5 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer z-50 relative lamma-feature-action"
                             >
                               <X size={14} />
                             </button>
@@ -3721,10 +3717,10 @@ export default function ChatScreen({
                                       else setIsPmOpen(true);
                                       setShowPmListDropdown(false);
                                     }}
-                                    className="p-2.5 bg-black/40 hover:bg-white/5 rounded-xl border border-green-500/10 hover:border-green-500/30 transition-all flex items-center gap-2.5 cursor-pointer relative z-40"
+                                    className="p-2.5 rounded-xl transition-all flex items-center gap-2.5 cursor-pointer relative z-40 lamma-list-item"
                                   >
                                     <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 text-xl overflow-hidden shadow-inner relative pointer-events-none">
-                                      👤
+                                      <User size={16} className="text-gray-400" />
                                     </div>
                                     <div className="flex-1 min-w-0 pointer-events-none">
                                       <div className="flex items-center justify-between">
@@ -3739,25 +3735,25 @@ export default function ChatScreen({
                                           </h4>
                                           {(targetUser as any).role ===
                                             "platinum_vip" && (
-                                            <span className="text-yellow-400 text-[6px] font-black bg-yellow-500/15 px-1 py-0.5 rounded leading-none border border-yellow-500/30 tracking-wider">
+                                            <span className="text-[6px] lamma-role-chip lamma-role-plat">
                                               PLATINUM VIP
                                             </span>
                                           )}
                                           {(targetUser as any).role ===
                                             "vip" && (
-                                            <span className="text-green-400 text-[6px] font-black bg-green-500/10 px-1 py-0.5 rounded leading-none border border-green-500/20 tracking-wider">
+                                            <span className="text-[6px] lamma-role-chip lamma-role-vip">
                                               VIP
                                             </span>
                                           )}
                                           {(targetUser as any).role ===
                                             "admin" && (
-                                            <span className="text-blue-400 text-[6px] font-black bg-blue-500/10 px-1 py-0.5 rounded leading-none border border-blue-500/20 tracking-wider">
+                                            <span className="text-[6px] lamma-role-chip lamma-role-admin">
                                               ADMIN
                                             </span>
                                           )}
                                           {(targetUser as any).role ===
                                             "owner" && (
-                                            <span className="text-yellow-500 text-[6px] font-black bg-yellow-500/10 px-1 py-0.5 rounded leading-none border border-yellow-500/20 tracking-wider">
+                                            <span className="text-[6px] lamma-role-chip lamma-role-owner">
                                               OWNER
                                             </span>
                                           )}
@@ -3785,7 +3781,7 @@ export default function ChatScreen({
                     isOpen={showPmListDropdown}
                     onClose={() => setShowPmListDropdown(false)}
                     title="المحادثات الخاصة"
-                    icon={<span className="text-lg leading-none">💌</span>}
+                    icon={<MessageCircle size={16} className="text-[rgb(148,163,184)]" />}
                   >
                     <div className="bg-transparent text-right space-y-2">
                       {Object.keys(pmThreads).length === 0 ? (
@@ -3811,10 +3807,10 @@ export default function ChatScreen({
                                 else setIsPmOpen(true);
                                 setShowPmListDropdown(false);
                               }}
-                              className="p-2.5 bg-black/40 hover:bg-white/5 rounded-xl border border-green-500/10 hover:border-green-500/30 transition-all flex items-center gap-2.5 cursor-pointer"
+                              className="p-2.5 rounded-xl transition-all flex items-center gap-2.5 cursor-pointer lamma-list-item"
                             >
                               <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 text-xl overflow-hidden shadow-inner relative pointer-events-none">
-                                👤
+                                <User size={16} className="text-gray-400" />
                               </div>
                               <div className="flex-1 min-w-0 pointer-events-none">
                                 <div className="flex items-center justify-between">
@@ -3829,22 +3825,22 @@ export default function ChatScreen({
                                     </h4>
                                     {(targetUser as any).role ===
                                       "platinum_vip" && (
-                                      <span className="text-yellow-400 text-[6px] font-black bg-yellow-500/15 px-1 py-0.5 rounded leading-none border border-yellow-500/30 tracking-wider">
+                                      <span className="text-[6px] lamma-role-chip lamma-role-plat">
                                         PLATINUM VIP
                                       </span>
                                     )}
                                     {(targetUser as any).role === "vip" && (
-                                      <span className="text-green-400 text-[6px] font-black bg-green-500/10 px-1 py-0.5 rounded leading-none border border-green-500/20 tracking-wider">
+                                      <span className="text-[6px] lamma-role-chip lamma-role-vip">
                                         VIP
                                       </span>
                                     )}
                                     {(targetUser as any).role === "admin" && (
-                                      <span className="text-blue-400 text-[6px] font-black bg-blue-500/10 px-1 py-0.5 rounded leading-none border border-blue-500/20 tracking-wider">
+                                      <span className="text-[6px] lamma-role-chip lamma-role-admin">
                                         ADMIN
                                       </span>
                                     )}
                                     {(targetUser as any).role === "owner" && (
-                                      <span className="text-yellow-500 text-[6px] font-black bg-yellow-500/10 px-1 py-0.5 rounded leading-none border border-yellow-500/20 tracking-wider">
+                                      <span className="text-[6px] lamma-role-chip lamma-role-owner">
                                         OWNER
                                       </span>
                                     )}
@@ -3870,18 +3866,18 @@ export default function ChatScreen({
                   <div className="relative dropdown-container flex items-center">
                     <button
                       onClick={() => toggleDropdown("notifications")}
-                      className={`flex items-center justify-center p-0.5 rounded-md hover:bg-white/10 transition-colors relative cursor-pointer ml-2 ${showNotificationsDropdown ? "text-green-400" : "text-gray-400"}`}
+                      className={`flex items-center justify-center transition-colors relative cursor-pointer ml-1 sm:ml-2 lamma-header-mini-btn ${showNotificationsDropdown ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
                       title="الإشعارات"
                     >
-                      <span className="text-xs">🔔</span>
+                      <Bell size={11} strokeWidth={2.2} />
                       {unreadNotificationsCount > 0 ? (
-                        <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[8px] font-mono px-1 min-w-[14px] h-[14px] rounded-full border border-black flex items-center justify-center">
+                        <span className="absolute -top-0.5 -right-0.5 text-[8px] font-mono lamma-notify-pill">
                           {unreadNotificationsCount > 9
                             ? "9+"
                             : unreadNotificationsCount}
                         </span>
                       ) : (
-                        <span className="absolute -top-0.5 -right-0.5 bg-red-500 w-1.5 h-1.5 rounded-full border border-black animate-pulse"></span>
+                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border border-black/60 bg-red-500/80 shadow-[0_0_8px_rgba(239,68,68,0.14)]"></span>
                       )}
                     </button>
 
@@ -3900,7 +3896,7 @@ export default function ChatScreen({
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           transition={{ duration: 0.15 }}
-                          className="hidden md:flex fixed top-20 left-4 md:left-auto md:right-1/3 w-[280px] sm:w-[320px] bg-[#0a0f0c]/98 border border-green-500/20 shadow-2xl rounded-2xl z-[99] flex-col backdrop-blur-md"
+                          className="hidden md:flex fixed top-20 left-4 md:left-auto md:right-1/3 w-[280px] sm:w-[320px] rounded-2xl z-[99] flex-col lamma-popover-shell"
                           style={{
                             resize: "both",
                             overflow: "hidden",
@@ -3910,9 +3906,9 @@ export default function ChatScreen({
                             maxHeight: "80vh",
                           }}
                         >
-                          <div className="flex items-center justify-between p-3 border-b border-green-500/10 bg-black/40 cursor-grab active:cursor-grabbing">
+                          <div className="flex items-center justify-between p-3 lamma-feature-header cursor-grab active:cursor-grabbing">
                             <div className="flex items-center gap-2 pointer-events-none">
-                              <span className="text-lg">🔔</span>
+                              <Bell size={16} className="text-[rgb(148,163,184)]" />
                               <h3 className="font-black text-white text-sm">
                                 مركز الإشعارات
                               </h3>
@@ -3922,20 +3918,20 @@ export default function ChatScreen({
                                 e.stopPropagation();
                                 setShowNotificationsDropdown(false);
                               }}
-                              className="p-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer z-50 relative"
+                              className="p-1.5 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer z-50 relative lamma-feature-action"
                             >
                               <X size={14} />
                             </button>
                           </div>
 
                           <div className="p-3 bg-transparent text-right space-y-2 flex-1 overflow-y-auto w-full h-full">
-                            <div className="flex items-center justify-between border-b border-green-500/10 pb-2">
+                            <div className="flex items-center justify-between border-b border-white/5 pb-2">
                               <p className="text-[11px] text-gray-400 font-bold">
                                 أحدث الإشعارات والرسائل.
                               </p>
                               <div className="flex items-center gap-1.5">
                                 {unreadNotificationsCount > 0 && (
-                                  <span className="text-[8px] bg-red-500 text-white px-1.5 py-0.5 rounded font-mono">
+                                  <span className="text-[8px] px-1.5 py-0.5 font-mono lamma-notify-pill">
                                     {unreadNotificationsCount} جديد
                                   </span>
                                 )}
@@ -3958,7 +3954,7 @@ export default function ChatScreen({
                                       return next;
                                     });
                                   }}
-                                  className="text-[9px] text-gray-300 hover:text-white px-2 py-0.5 rounded border border-white/10 hover:border-white/30 cursor-pointer relative z-50"
+                                  className="text-[9px] text-gray-300 hover:text-white px-2 py-0.5 rounded cursor-pointer relative z-50 lamma-soft-action"
                                 >
                                   تحديد الكل كمقروء
                                 </button>
@@ -3974,7 +3970,7 @@ export default function ChatScreen({
                                       // ignore
                                     }
                                   }}
-                                  className="text-[9px] text-red-400 hover:text-red-300 px-2 py-0.5 rounded border border-red-500/20 hover:border-red-500/40 cursor-pointer relative z-50"
+                                  className="text-[9px] text-red-400 hover:text-red-300 px-2 py-0.5 rounded cursor-pointer relative z-50 lamma-soft-action"
                                 >
                                   مسح الكل
                                 </button>
@@ -3990,10 +3986,10 @@ export default function ChatScreen({
                                 {notifications.map((n) => (
                                   <div
                                     key={n.id}
-                                    className={`p-2.5 rounded-xl border flex items-start gap-2.5 relative z-40 cursor-pointer ${
+                                    className={`p-2.5 rounded-xl border flex items-start gap-2.5 relative z-40 cursor-pointer lamma-notification-card ${
                                       n.read
-                                        ? "bg-black/30 border-white/5 opacity-70"
-                                        : "bg-black/50 border-green-500/30"
+                                        ? "opacity-75"
+                                        : "lamma-notification-card-unread"
                                     }`}
                                     onClick={() => {
                                       setNotifications((prevN) => {
@@ -4042,7 +4038,7 @@ export default function ChatScreen({
                                       </span>
                                     </div>
                                     {!n.read && (
-                                      <span className="w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
+                                      <span className="w-2 h-2 rounded-full bg-red-500/90 mt-1.5 flex-shrink-0" />
                                     )}
                                   </div>
                                 ))}
@@ -4057,15 +4053,15 @@ export default function ChatScreen({
                     isOpen={showNotificationsDropdown}
                     onClose={() => setShowNotificationsDropdown(false)}
                     title="مركز الإشعارات"
-                    icon={<span className="text-lg leading-none">🔔</span>}
+                    icon={<Bell size={16} className="text-[rgb(148,163,184)]" />}
                   >
                     <div className="bg-transparent text-right space-y-2">
-                      <p className="text-[11px] text-gray-400 font-bold border-b border-green-500/10 pb-2">
+                      <p className="text-[11px] text-gray-400 font-bold border-b border-white/5 pb-2">
                         أحدث التنبيهات والأحداث الخاصة بك في البرنامج.
                       </p>
 
                       <div className="grid gap-2">
-                        <div className="p-2.5 bg-black/40 rounded-xl border border-green-500/20 flex items-start gap-2.5 pointer-events-none cursor-default">
+                        <div className="p-2.5 rounded-xl flex items-start gap-2.5 pointer-events-none cursor-default lamma-notification-card lamma-notification-card-unread">
                           <div className="w-7 h-7 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center flex-shrink-0">
                             <Heart size={12} />
                           </div>
@@ -4083,7 +4079,7 @@ export default function ChatScreen({
                           </div>
                         </div>
 
-                        <div className="p-2.5 bg-black/40 rounded-xl border border-green-500/10 flex items-start gap-2.5 opacity-80">
+                        <div className="p-2.5 rounded-xl flex items-start gap-2.5 opacity-80 lamma-notification-card">
                           <div className="w-7 h-7 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0 pointer-events-none">
                             <Users size={12} />
                           </div>
@@ -4095,10 +4091,10 @@ export default function ChatScreen({
                               أرسل لك <strong>سارة</strong> طلب صداقة.
                             </p>
                             <div className="flex gap-1.5 mt-1.5">
-                              <button className="px-2.5 py-1 bg-green-500 text-black font-bold text-[8px] rounded-md cursor-pointer">
+                              <button className="px-2.5 py-1 font-bold text-[8px] rounded-md cursor-pointer lamma-feature-primary">
                                 قبول
                               </button>
-                              <button className="px-2.5 py-1 bg-white/10 text-white font-bold text-[8px] rounded-md hover:bg-red-500 cursor-pointer">
+                              <button className="px-2.5 py-1 text-white font-bold text-[8px] rounded-md cursor-pointer lamma-soft-action">
                                 رفض
                               </button>
                             </div>
@@ -4108,7 +4104,7 @@ export default function ChatScreen({
                           </div>
                         </div>
 
-                        <div className="p-2.5 bg-black/40 rounded-xl border border-yellow-500/10 flex items-start gap-2.5 opacity-60 pointer-events-none">
+                        <div className="p-2.5 rounded-xl flex items-start gap-2.5 opacity-60 pointer-events-none lamma-notification-card">
                           <div className="w-7 h-7 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center flex-shrink-0">
                             <Crown size={12} />
                           </div>
@@ -4137,8 +4133,8 @@ export default function ChatScreen({
 
           {/* Left indicators (Branding and Home button - Now visually on the left side) */}
           <div className="flex items-center gap-3">
-            <div className="flex flex-col items-center justify-center h-full">
-              <div className="text-[13px] sm:text-[14px] font-black text-white tracking-[0.2em] leading-none mb-0.5 w-full text-center pl-1 translate-y-1">
+            <div className="flex flex-col items-center justify-center h-full lamma-header-rail lamma-header-brand-rail">
+              <div className="text-[13px] sm:text-[14px] font-black text-white leading-none mb-0.5 w-full text-center pl-1 translate-y-1 lamma-header-wordmark">
                 LAMMA CHAT
               </div>
               <div className="flex items-center gap-2">
@@ -4151,7 +4147,7 @@ export default function ChatScreen({
                   </span>
                 </div>
                 <button
-                  className="w-11 h-11 transition-transform hover:scale-105 active:scale-95 cursor-pointer object-contain flex items-center justify-center"
+                  className="transition-transform hover:scale-105 active:scale-95 cursor-pointer object-contain flex items-center justify-center lamma-brand-mark"
                   title="الرئيسية"
                   onClick={() => window.location.reload()}
                 >
@@ -4170,7 +4166,7 @@ export default function ChatScreen({
 
       {/* Mobile panel toggler header bar (Visible only on compact screens) */}
       {!isZenMode && (
-        <div className="md:hidden grid grid-cols-3 text-[10px] font-black bg-[#040605] border-b border-green-500/20 text-center select-none z-10 relative shrink-0 tracking-wider overflow-hidden">
+        <div className="md:hidden grid grid-cols-3 text-[10px] font-black text-center select-none z-10 relative shrink-0 tracking-wider overflow-hidden lamma-mobile-tabs">
           <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#040605] to-transparent pointer-events-none" />
           <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#040605] to-transparent pointer-events-none" />
           <button
@@ -4178,9 +4174,9 @@ export default function ChatScreen({
               setMobileTab("chat");
               setIsSidebarOpen(false);
             }}
-            className={`py-2.5 flex items-center justify-center gap-1.5 transition-all ${mobileTab === "chat" ? "text-green-400 bg-green-500/5 border-b-[3px] border-green-500" : "text-gray-400 hover:bg-white/5"}`}
+            className={`py-2.5 flex items-center justify-center gap-1.5 transition-all lamma-mobile-tab-btn ${mobileTab === "chat" ? "lamma-mobile-tab-btn-active" : "text-gray-400"}`}
           >
-            <span className="text-sm">📢</span> العام
+            <Flame size={13} strokeWidth={2.2} /> العام
           </button>
           <button
             onClick={() => {
@@ -4188,20 +4184,20 @@ export default function ChatScreen({
               setActiveSidebarTab("members");
               setIsSidebarOpen(true);
             }}
-            className={`py-2.5 flex items-center justify-center gap-1.5 transition-all ${mobileTab === "members" ? "text-green-400 bg-green-500/5 border-b-[3px] border-green-500" : "text-gray-400 hover:bg-white/5"}`}
+            className={`py-2.5 flex items-center justify-center gap-1.5 transition-all lamma-mobile-tab-btn ${mobileTab === "members" ? "lamma-mobile-tab-btn-active" : "text-gray-400"}`}
           >
-            <span className="text-sm">👥</span> المتصلين
+            <Users size={13} strokeWidth={2.2} /> المتصلين
           </button>
           <button
             onClick={() => {
               setMobileTab("private");
               setIsSidebarOpen(false);
             }}
-            className={`py-2.5 relative flex items-center justify-center gap-1.5 transition-all ${mobileTab === "private" ? "text-green-400 bg-green-500/5 border-b-[3px] border-green-500" : "text-gray-400 hover:bg-white/5"}`}
+            className={`py-2.5 relative flex items-center justify-center gap-1.5 transition-all lamma-mobile-tab-btn ${mobileTab === "private" ? "lamma-mobile-tab-btn-active" : "text-gray-400"}`}
           >
-            <span className="text-sm">💌</span> الخاص
+            <MessageCircle size={13} strokeWidth={2.2} /> الخاص
             {Object.keys(pmThreads).length > 0 && (
-              <span className="absolute top-[8px] right-[25%] w-2.5 h-2.5 rounded-full bg-red-500 border border-black animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+              <span className="absolute top-[8px] right-[25%] w-2.5 h-2.5 rounded-full bg-red-500/90 border border-black" />
             )}
           </button>
         </div>
@@ -4210,7 +4206,7 @@ export default function ChatScreen({
       {isZenMode && (
         <button
           onClick={() => setIsZenMode(false)}
-          className="absolute top-4 right-4 z-50 w-10 h-10 bg-black/50 hover:bg-black/80 backdrop-blur-md rounded-full border border-green-500/30 flex items-center justify-center text-gray-300 hover:text-white hover:scale-110 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+          className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:scale-110 transition-all lamma-soft-action"
           title="إنهاء وضع التركيز"
         >
           <X size={18} />
@@ -4253,7 +4249,7 @@ export default function ChatScreen({
           className={`hidden xl:flex xl:order-3 flex-col overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isLeftColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
-              : "w-[300px] 2xl:w-[340px] p-3 opacity-100 border-r border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] lamma-column-frame"
+              : "w-[300px] 2xl:w-[340px] p-3 opacity-100 border-r border-[rgba(163,230,53,0.10)] bg-[rgba(5,8,6,0.24)] lamma-column-frame"
           }`}
         >
           <div
@@ -4287,7 +4283,7 @@ export default function ChatScreen({
                   <button
                     type="button"
                     onClick={() => openModal("store")}
-                    className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                    className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
                     title="المتجر"
                   >
                     <Gift
@@ -4352,14 +4348,14 @@ export default function ChatScreen({
                   <button
                     type="button"
                     onClick={() => toggleDropdown("radio" as any)}
-                    className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                    className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
                     title="فتح الراديو"
                   >
                     <Play size={16} className="text-[color:var(--accent-primary)]" />
                   </button>
                 </div>
                 <div className="mt-3 flex-1 min-h-0 overflow-hidden">
-                  <div className="rounded-2xl bg-black/30 border border-white/5 p-3 h-full flex flex-col justify-between">
+                  <div className="rounded-2xl p-3 h-full flex flex-col justify-between lamma-section-card">
                     <div className="text-right">
                       <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
                         الآن على الهواء
@@ -4375,7 +4371,7 @@ export default function ChatScreen({
                       <button
                         type="button"
                         onClick={() => toggleDropdown("radio" as any)}
-                        className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                        className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
                         title="تشغيل/إيقاف"
                       >
                         <Pause size={16} className="text-[color:var(--accent-primary)]" />
@@ -4384,7 +4380,7 @@ export default function ChatScreen({
                         <button
                           type="button"
                           onClick={() => toggleDropdown("radio" as any)}
-                          className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                          className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
                           title="السابق"
                         >
                           <ChevronRight size={16} className="text-gray-300" />
@@ -4392,7 +4388,7 @@ export default function ChatScreen({
                         <button
                           type="button"
                           onClick={() => toggleDropdown("radio" as any)}
-                          className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                          className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
                           title="التالي"
                         >
                           <ChevronLeft size={16} className="text-gray-300" />
@@ -4457,14 +4453,14 @@ export default function ChatScreen({
                   <button
                     type="button"
                     onClick={() => toggleDropdown("music" as any)}
-                    className="p-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                    className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
                     title="فتح الموسيقى"
                   >
                     <Play size={16} className="text-[color:var(--accent-primary)]" />
                   </button>
                 </div>
                 <div className="mt-3 flex-1 min-h-0">
-                  <div className="rounded-2xl bg-black/30 border border-white/5 p-3 h-full flex items-center justify-between">
+                  <div className="rounded-2xl p-3 h-full flex items-center justify-between lamma-section-card">
                     <div className="text-right">
                       <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
                         مكتبة لمة
@@ -4476,7 +4472,7 @@ export default function ChatScreen({
                     <button
                       type="button"
                       onClick={() => toggleDropdown("music" as any)}
-                      className="px-3 py-2 rounded-xl bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.25)] text-[color:var(--accent-primary)] text-[10px] font-black hover:bg-[rgba(16,185,129,0.18)] transition-all cursor-pointer"
+                      className="px-3 py-2 rounded-xl text-[color:var(--accent-primary)] text-[10px] font-black transition-all cursor-pointer lamma-toggle-on"
                     >
                       فتح
                     </button>
@@ -4495,7 +4491,7 @@ export default function ChatScreen({
         />
         {/* ----------------- OVERLAY SIDEBAR PANEL (ROOMS & MEMBERS TABBED) ----------------- */}
         <aside
-          className={`xl:hidden sidebar-container w-full sm:w-[420px] border-l border-green-500/10 bg-[#060a07]/98 flex flex-col justify-between flex-shrink-0 z-40 absolute inset-y-0 right-0 h-full shadow-[0_0_25px_rgba(0,0,0,0.85)] max-w-[92vw] ${
+          className={`xl:hidden sidebar-container w-full sm:w-[420px] border-l border-green-500/10 bg-[#050907]/96 flex flex-col justify-between flex-shrink-0 z-40 absolute inset-y-0 right-0 h-full shadow-[0_0_25px_rgba(0,0,0,0.85)] max-w-[92vw] ${
             isSidebarOpen ? "flex animate-fade-in" : "hidden"
           }`}
         >
@@ -4544,7 +4540,7 @@ export default function ChatScreen({
                   <button
                     type="button"
                     onClick={() => setIsCreateRoomModalOpen(true)}
-                    className="w-full p-2.5 bg-green-500/15 border border-green-500/35 rounded-xl flex items-center justify-center gap-2 text-green-400 font-extrabold text-[11px] transition-all hover:bg-green-500/20 shadow-[0_0_12px_rgba(16,185,129,0.03)] cursor-pointer"
+                    className="w-full p-2.5 rounded-xl flex items-center justify-center gap-2 text-green-300 font-extrabold text-[11px] transition-all cursor-pointer lamma-primary-btn"
                   >
                     <Plus size={14} />
                     <span>إنشاء غرفة خاصة جديدة</span>
@@ -4589,10 +4585,10 @@ export default function ChatScreen({
                                 }
                                 setIsSidebarOpen(false);
                               }}
-                              className={`p-2.5 rounded-xl border transition-all text-xs font-black cursor-pointer flex items-center justify-between ${
+                              className={`p-2.5 rounded-xl border transition-all text-xs font-black cursor-pointer flex items-center justify-between lamma-list-item ${
                                 room.id === activeRoomId
                                   ? "bg-green-500/10 border-green-500/30 text-green-400 shadow-[0_0_10px_rgba(16,185,129,0.08)]"
-                                  : "bg-black/20 border-green-500/5 hover:bg-white/5 text-gray-300 hover:border-green-500/10"
+                                  : "bg-black/12 border-white/5 text-gray-300"
                               }`}
                             >
                               <div className="flex items-center gap-2">
@@ -4620,7 +4616,7 @@ export default function ChatScreen({
                     <span>👑</span>
                     <span>Owners</span>
                   </div>
-                  <div className="pl-1 space-y-0 font-sans border border-yellow-500/10 rounded-lg overflow-hidden bg-yellow-500/5">
+                  <div className="pl-1 space-y-1 font-sans rounded-2xl overflow-hidden bg-yellow-500/[0.03] lamma-list-panel p-1.5">
                     {chatMembers
                       .filter((m) => m.role === "owner")
                       .map((m, idx, arr) => (
@@ -4631,7 +4627,7 @@ export default function ChatScreen({
                             e.preventDefault();
                             openMemberProfile(m.nickname);
                           }}
-                          className={`p-1.5 px-2 hover:bg-yellow-500/10 flex items-center justify-between cursor-pointer transition-all ${idx !== arr.length - 1 ? "border-b border-white/5" : ""}`}
+                          className={`p-1.5 px-2 rounded-xl hover:bg-yellow-500/10 flex items-center justify-between cursor-pointer transition-all lamma-list-item ${idx !== arr.length - 1 ? "mb-1" : ""}`}
                         >
                           <div className="flex items-center gap-2 text-yellow-500 font-black">
                             <div className="flex-shrink-0 flex items-center justify-center">
@@ -4663,7 +4659,7 @@ export default function ChatScreen({
                     <span>🛡️</span>
                     <span>Admins</span>
                   </div>
-                  <div className="pl-1 space-y-0 font-sans border border-blue-500/10 rounded-lg overflow-hidden bg-blue-500/5">
+                  <div className="pl-1 space-y-1 font-sans rounded-2xl overflow-hidden bg-blue-500/[0.03] lamma-list-panel p-1.5">
                     {chatMembers
                       .filter((m) => m.role === "admin" || m.role === "mod")
                       .map((m, idx, arr) => (
@@ -4674,7 +4670,7 @@ export default function ChatScreen({
                             e.preventDefault();
                             openMemberProfile(m.nickname);
                           }}
-                          className={`p-1.5 px-2 hover:bg-blue-500/10 flex items-center justify-between cursor-pointer transition-all ${idx !== arr.length - 1 ? "border-b border-white/5" : ""}`}
+                          className={`p-1.5 px-2 rounded-xl hover:bg-blue-500/10 flex items-center justify-between cursor-pointer transition-all lamma-list-item ${idx !== arr.length - 1 ? "mb-1" : ""}`}
                         >
                           <div className="flex items-center gap-2 text-blue-400 font-black">
                             <div className="flex-shrink-0 flex items-center justify-center">
@@ -4689,12 +4685,12 @@ export default function ChatScreen({
                               <span className="font-bold text-[11px]">
                                 {m.nickname}
                               </span>
-                              <span className="text-blue-400 text-[6px] font-black bg-blue-500/10 px-1 py-0.5 rounded border border-blue-500/20 self-start mt-0.5 tracking-wider">
+                              <span className="text-[6px] self-start mt-0.5 lamma-role-chip lamma-role-admin">
                                 {m.role === "admin" ? "ADMIN" : "MODERATOR"}
                               </span>
                             </div>
                           </div>
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                          <span className="lamma-icon-dot" />
                         </div>
                       ))}
                   </div>
@@ -4706,7 +4702,7 @@ export default function ChatScreen({
                     <span>💎</span>
                     <span>VIP Members</span>
                   </div>
-                  <div className="pl-1 space-y-0 font-sans border border-green-500/10 rounded-lg overflow-hidden bg-green-500/5">
+                  <div className="pl-1 space-y-1 font-sans rounded-2xl overflow-hidden bg-green-500/[0.03] lamma-list-panel p-1.5">
                     {chatMembers
                       .filter((m) => m.role === "vip")
                       .map((m, idx, arr) => (
@@ -4717,7 +4713,7 @@ export default function ChatScreen({
                             e.preventDefault();
                             openMemberProfile(m.nickname);
                           }}
-                          className={`p-1.5 px-2 hover:bg-green-500/10 flex items-center justify-between cursor-pointer transition-all ${idx !== arr.length - 1 ? "border-b border-white/5" : ""}`}
+                          className={`p-1.5 px-2 rounded-xl hover:bg-green-500/10 flex items-center justify-between cursor-pointer transition-all lamma-list-item ${idx !== arr.length - 1 ? "mb-1" : ""}`}
                         >
                           <div className="flex items-center gap-2 text-green-400 font-black">
                             <div className="flex-shrink-0 flex items-center justify-center">
@@ -4732,12 +4728,12 @@ export default function ChatScreen({
                               <span className="font-bold text-[11px]">
                                 {m.nickname}
                               </span>
-                              <span className="text-green-400 text-[6px] font-black bg-green-500/10 px-1 py-0.5 rounded border border-green-500/20 self-start mt-0.5 tracking-wider">
+                              <span className="text-[6px] self-start mt-0.5 lamma-role-chip lamma-role-vip">
                                 VIP
                               </span>
                             </div>
                           </div>
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                          <span className="lamma-icon-dot" />
                         </div>
                       ))}
                   </div>
@@ -4749,13 +4745,13 @@ export default function ChatScreen({
                     <span className="flex items-center gap-1 font-sans uppercase tracking-widest text-[9px]">👥 Users & Guests</span>
                     <span className="text-[9px] font-mono text-gray-500">{chatMembers.filter(m => m.role === "user" || m.role === "guest").length} Active</span>
                   </div>
-                  <div className="pl-1 space-y-0 font-sans border border-white/5 rounded-lg overflow-hidden bg-white/[0.02]">
+                  <div className="pl-1 space-y-1 font-sans rounded-2xl overflow-hidden bg-white/[0.02] lamma-list-panel p-1.5">
                     {chatMembers.filter(m => m.role === "user" || m.role === "guest").map((m, idx, arr) => (
                       <div 
                         key={m.id}
                         onClick={() => openMemberProfile(m.nickname)}
                         onContextMenu={(e) => { e.preventDefault(); openMemberProfile(m.nickname); }}
-                        className={`p-1 px-2 hover:bg-white/5 flex items-center justify-between cursor-pointer transition-all ${idx !== arr.length - 1 ? 'border-b border-white/5' : ''}`}
+                        className={`p-1.5 px-2 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-all lamma-list-item ${idx !== arr.length - 1 ? 'mb-1' : ''}`}
                       >
                         <div className="flex items-center gap-2 text-gray-300 font-bold overflow-hidden">
                           <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-white/5 rounded-full border border-white/10 text-[24px]">
@@ -4763,12 +4759,12 @@ export default function ChatScreen({
                           </div>
                           <div className="flex flex-col truncate">
                             <span className="font-bold text-[12px] truncate leading-tight">{m.nickname}</span>
-                            <span className="text-gray-500 text-[6.5px] font-black bg-white/5 px-1 py-0.5 rounded border border-white/10 self-start mt-0.5 tracking-wider truncate">
+                            <span className="text-[6.5px] self-start mt-0.5 truncate lamma-role-chip">
                               {m.role === 'guest' ? 'GUEST' : 'MEMBER'}
                             </span>
                           </div>
                         </div>
-                        <span className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse shrink-0 ml-2" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-500 shrink-0 ml-2" />
                       </div>
                     ))}
                   </div>
@@ -4781,7 +4777,7 @@ export default function ChatScreen({
           <div className="p-3 border-t border-green-500/10 bg-black/40 shrink-0">
             <button
               onClick={handleCopyLink}
-              className="w-full py-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 rounded-xl flex items-center justify-center gap-2 text-green-300 font-black text-[10px] transition-all cursor-pointer"
+              className="w-full py-2 rounded-xl flex items-center justify-center gap-2 text-green-300 font-black text-[10px] transition-all cursor-pointer lamma-muted-btn"
             >
               <Share2 size={12} />
               <span>نسخ رابط الشات للمشاركة</span>
@@ -4791,15 +4787,15 @@ export default function ChatScreen({
 
         {/* ----------------- PANEL 3: MAIN ACTIVE MESSAGE LOG (3rd column / Center) ----------------- */}
         <div
-          className={`flex-1 flex flex-col min-w-0 bg-[rgba(5,8,6,0.28)] backdrop-blur-xl xl:order-2 ${
+          className={`flex-1 flex flex-col min-w-0 bg-[rgba(5,8,6,0.2)] backdrop-blur-xl xl:order-2 ${
             mobileTab === "chat" ? "flex" : "hidden md:flex"
           } ${isLeftColumnCollapsed ? "xl:border-l xl:border-[rgba(163,230,53,0.12)]" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-[rgba(163,230,53,0.12)]" : ""} lamma-column-frame`}
         >
           {/* Room Top Bar: Topic & System Actions */}
-          <div className="flex items-stretch justify-between bg-[#040705] min-h-[38px] border-b border-green-500/10 shrink-0 lamma-fire-underline">
+          <div className="flex items-stretch justify-between min-h-[38px] shrink-0 lamma-fire-underline lamma-room-header">
             {/* Topic Side (Right) */}
             <div
-              className="flex-1 flex flex-col justify-center px-3 border-l border-green-500/10 group/topic cursor-pointer relative"
+              className="flex-1 flex flex-col justify-center px-3 border-l border-green-500/10 group/topic cursor-pointer relative lamma-topic-shell"
               onClick={() => {
                 if (
                   !isEditingTopic &&
@@ -4815,8 +4811,8 @@ export default function ChatScreen({
                 }
               }}
             >
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded flex items-center justify-center text-[11px] bg-green-500/10 text-green-400">
+              <div className="flex items-center gap-1.5">
+                <span className="flex items-center justify-center text-[10px] text-green-300 lamma-quiet-power-btn lamma-topic-pin">
                   📌
                 </span>
                 {isEditingTopic ? (
@@ -4843,11 +4839,11 @@ export default function ChatScreen({
                         setIsEditingTopic(false);
                       }
                     }}
-                    className="flex-1 bg-black/40 border border-green-500/30 rounded px-2 py-1 text-sm text-white focus:outline-none"
+                  className="flex-1 bg-black/45 rounded px-2 py-1 text-sm text-white focus:outline-none lamma-input-shell"
                     autoFocus
                   />
                 ) : (
-                  <p className="text-[12px] font-black text-teal-50 truncate flex-1 leading-normal py-0.5 mt-0.5">
+                  <p className="text-[11.5px] font-black text-teal-50 truncate flex-1 leading-normal py-0.5 mt-0.5">
                     {roomTopics[activeRoomId] ||
                       "مرحباً بكم في الغرفة الذكية 💚"}
                   </p>
@@ -4856,7 +4852,7 @@ export default function ChatScreen({
             </div>
 
             {/* System Actions Side (Left) */}
-            <div className="w-[140px] sm:w-[180px] md:w-[220px] flex items-center justify-center px-2 py-0.5 relative overflow-hidden bg-white/[0.02]">
+            <div className="w-[132px] sm:w-[168px] md:w-[208px] flex items-center justify-center px-2 py-0.5 relative overflow-hidden bg-white/[0.02] border-r border-white/5">
               <AnimatePresence mode="popLayout">
                 <motion.div
                   key={systemActivity.id}
@@ -4877,7 +4873,7 @@ export default function ChatScreen({
                       {systemActivity.name}
                     </span>
                     <span
-                      className={`text-[8px] font-black uppercase leading-normal ${systemActivity.type === "join" ? "text-green-400" : "text-red-400"}`}
+                      className={`text-[8px] font-black uppercase leading-normal ${systemActivity.type === "join" ? "text-green-300" : "text-red-400"}`}
                       dir="ltr"
                     >
                       {systemActivity.type === "join"
@@ -4892,7 +4888,7 @@ export default function ChatScreen({
 
           {/* Header section replicating the top of chat log / Room Tabs - matching Ad Banner size & width */}
           <div
-            className="w-full bg-[#030604] border-b border-green-500/10 px-2 flex items-center justify-between shadow-[0_2px_15px_rgba(16,185,129,0.05)] shrink-0 z-10 h-[36px] lamma-fire-underline"
+            className="w-full px-2 flex items-center justify-between shrink-0 z-10 h-[36px] lamma-fire-underline lamma-room-header"
             dir="rtl"
           >
             {/* Tabs Container */}
@@ -4923,10 +4919,10 @@ export default function ChatScreen({
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
                     key={room.id}
                     onClick={() => handleSwitchRoom(room.id)}
-                    className={`flex items-center justify-between gap-1 px-2 pb-1.5 pt-1.5 rounded-t-lg cursor-pointer min-w-[70px] transition-all relative group ${
+                    className={`flex items-center justify-between gap-1 px-2 pb-1.5 pt-1.5 rounded-t-lg cursor-pointer min-w-[70px] transition-all relative group lamma-room-tab ${
                       activeRoomId === room.id
-                        ? "bg-gradient-to-t from-green-500/20 to-transparent border-t border-x border-green-500/30 text-green-300 font-extrabold shadow-[0_0_15px_rgba(16,185,129,0.15)]"
-                        : "bg-white/5 border-t border-x border-transparent text-gray-400 hover:text-white hover:bg-white/10"
+                        ? "lamma-room-tab-active text-green-300 font-extrabold"
+                        : "text-gray-400 hover:text-white"
                     }`}
                   >
                     {activeRoomId === room.id && (
@@ -4966,13 +4962,13 @@ export default function ChatScreen({
             </div>
 
             {/* Left aligned utility action icons inside room header */}
-            <div className="flex items-center gap-2 shrink-0 ml-1 relative">
+            <div className="flex items-center gap-1.5 shrink-0 ml-1 relative">
               <button
                 onClick={toggleSearchPop}
-                className={`p-1 px-1.5 rounded-md transition-all ${
+                className={`transition-all lamma-room-strip-action ${
                   showSearchPop
-                    ? "bg-green-500/25 text-green-400 border border-green-500/20"
-                    : "hover:bg-white/5 text-gray-400 hover:text-white border border-transparent"
+                    ? "text-green-300 lamma-quiet-power-btn-active"
+                    : "text-gray-400 hover:text-white border border-transparent lamma-toolbar-btn"
                 }`}
                 title="البحث عن رسائل وأعضاء"
               >
@@ -5002,10 +4998,10 @@ export default function ChatScreen({
                     setIsPmOpen(false);
                     setShowFeaturesTray(!showFeaturesTray);
                   }}
-                  className={`p-1 px-1.5 rounded-md flex items-center justify-center transition-all flex-shrink-0 ${
+                  className={`flex items-center justify-center transition-all flex-shrink-0 lamma-room-strip-action ${
                     showFeaturesTray
-                      ? "bg-green-500/20 text-green-400"
-                      : "hover:bg-white/5 text-gray-400 hover:text-white"
+                      ? "text-green-300 lamma-quiet-power-btn-active"
+                      : "text-gray-400 hover:text-white lamma-toolbar-btn"
                   }`}
                   title="الميزات الإضافية"
                 >
@@ -5022,12 +5018,12 @@ export default function ChatScreen({
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute top-full left-0 mt-2 w-[280px] bg-[#0a0f0c] border border-green-500/20 shadow-2xl rounded-2xl z-50 overflow-hidden flex flex-col"
+                      className="absolute top-full left-0 mt-2 w-[280px] rounded-2xl z-50 overflow-hidden flex flex-col lamma-feature-shell"
                     >
-                      <div className="flex flex-col gap-3 p-3 bg-black/60 select-none">
+                      <div className="flex flex-col gap-3 p-3 select-none">
                         {/* Block 1: Gift panel */}
-                        <div className="p-2.5 rounded-xl bg-black/40 border border-green-500/10 text-right">
-                          <div className="text-[10px] font-black text-green-400 mb-2">
+                        <div className="p-2.5 rounded-xl text-right lamma-list-item">
+                          <div className="text-[10px] font-black text-green-300 mb-2">
                             إرسال الهدايا السريعة
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5">
@@ -5035,7 +5031,7 @@ export default function ChatScreen({
                               <button
                                 key={gift.name}
                                 onClick={() => triggerGiftFlying(gift.icon)}
-                                className="p-1 px-1.5 rounded-lg bg-black/60 border border-green-500/10 hover:border-green-400 text-sm hover:scale-110 active:scale-95 transition-all text-center flex items-center justify-center"
+                                className="p-1 px-1.5 rounded-lg text-sm hover:scale-110 active:scale-95 transition-all text-center flex items-center justify-center lamma-soft-action"
                                 title={gift.name}
                               >
                                 {gift.icon}
@@ -5045,8 +5041,8 @@ export default function ChatScreen({
                         </div>
 
                         {/* Block 2: Achievements and statistics summary */}
-                        <div className="p-2.5 rounded-xl bg-black/40 border border-green-500/10 flex flex-col justify-between text-right">
-                          <div className="text-[10px] font-black text-green-400 mb-1.5">
+                        <div className="p-2.5 rounded-xl flex flex-col justify-between text-right lamma-list-item">
+                          <div className="text-[10px] font-black text-green-300 mb-1.5">
                             أوسمة الإنجازات
                           </div>
                           <div className="flex items-center gap-2">
@@ -5067,7 +5063,7 @@ export default function ChatScreen({
                         </div>
 
                         {/* Block 3: Live calling indicator/player perfectly matching bottom block in screenshot 1 */}
-                        <div className="p-2.5 rounded-xl bg-black/40 border border-green-500/10 flex flex-col justify-between relative overflow-hidden text-right">
+                        <div className="p-2.5 rounded-xl flex flex-col justify-between relative overflow-hidden text-right lamma-admin-card">
                           <div className="flex justify-between items-center text-[10px] font-bold text-gray-300">
                             <span>المكالمات الصوتية</span>
                             <span className="text-green-400 font-mono text-[9px] font-black tracking-wider flex items-center gap-1.5">
@@ -5158,18 +5154,18 @@ export default function ChatScreen({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="fixed top-24 left-1/2 -translate-x-1/2 sm:left-auto sm:right-32 w-[280px] bg-[#0a0f0c]/98 border border-red-500/30 shadow-[0_10px_50px_rgba(239,68,68,0.15)] rounded-2xl z-[100] overflow-hidden flex flex-col cursor-move"
+                      className="fixed top-24 left-1/2 -translate-x-1/2 sm:left-auto sm:right-32 w-[280px] rounded-2xl z-[100] overflow-hidden flex flex-col cursor-move lamma-modal-shell"
                     >
-                      <div className="flex items-center justify-between p-3 border-b border-red-500/10 bg-black/40">
+                      <div className="flex items-center justify-between p-3 lamma-modal-header">
                         <div className="flex items-center gap-2">
-                          <span className="text-lg">🛡️</span>
+                          <Shield size={16} className="text-rose-300" />
                           <h3 className="font-black text-white text-xs">
                             خصوصية وأمان
                           </h3>
                         </div>
                         <button
                           onClick={() => setShowPrivacyDropdown(false)}
-                          className="p-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
+                          className="p-1.5 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer lamma-danger-btn"
                         >
                           <X size={14} />
                         </button>
@@ -5178,12 +5174,12 @@ export default function ChatScreen({
                         className="p-3 text-right space-y-4 max-h-[300px] overflow-y-auto cursor-default"
                         onPointerDownCapture={(e) => e.stopPropagation()}
                       >
-                        <p className="text-[10px] text-gray-400 font-bold border-b border-red-500/10 pb-2">
+                        <p className="text-[10px] text-gray-400 font-bold border-b border-white/5 pb-2">
                           نحن نهتم بخصوصيتك. يمكنك التحكم في إعدادات الأمان
                           الخاصة بك هنا.
                         </p>
                         <div className="grid gap-3 select-none">
-                          <div className="p-3 bg-black/40 rounded-xl border border-green-500/10 flex items-center justify-between cursor-pointer hover:border-green-500/30 transition-all">
+                          <div className="p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all lamma-admin-card">
                             <div className="flex flex-col gap-1">
                               <span className="text-white text-xs font-black">
                                 حظر الرسائل الخاصة
@@ -5192,11 +5188,11 @@ export default function ChatScreen({
                                 منع أي شخص غير الأصدقاء من مراسلتك على الخاص
                               </span>
                             </div>
-                            <div className="w-10 h-5 bg-green-500/20 rounded-full relative">
-                              <div className="w-4 h-4 bg-green-500 rounded-full absolute top-0.5 right-0.5"></div>
+                            <div className="w-10 h-5 rounded-full relative lamma-toggle-on">
+                              <div className="w-4 h-4 bg-green-300 rounded-full absolute top-0.5 right-0.5"></div>
                             </div>
                           </div>
-                          <div className="p-3 bg-black/40 rounded-xl border border-green-500/10 flex items-center justify-between cursor-pointer hover:border-green-500/30 transition-all">
+                          <div className="p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all lamma-admin-card">
                             <div className="flex flex-col gap-1">
                               <span className="text-white text-xs font-black">
                                 إخفاء التواجد (وضع التخفي)
@@ -5205,11 +5201,11 @@ export default function ChatScreen({
                                 إخفاء حالتك "متصل الآن" (ميزة VIP)
                               </span>
                             </div>
-                            <div className="w-10 h-5 bg-gray-600 rounded-full relative">
+                            <div className="w-10 h-5 rounded-full relative lamma-tab-soft">
                               <div className="w-4 h-4 bg-gray-400 rounded-full absolute top-0.5 left-0.5"></div>
                             </div>
                           </div>
-                          <div className="p-3 bg-black/40 rounded-xl border border-red-500/10 flex items-center justify-between cursor-pointer hover:border-red-500/30 transition-all">
+                          <div className="p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all lamma-soft-danger">
                             <div className="flex flex-col gap-1">
                               <span className="text-red-400 text-xs font-black">
                                 قائمة المحظورين
@@ -5218,7 +5214,7 @@ export default function ChatScreen({
                                 عرض الأشخاص الذين قمت بحظرهم وفك الحظر عنهم
                               </span>
                             </div>
-                            <button className="px-3 py-1 bg-red-500/10 text-red-500 rounded-lg text-[10px] font-black border border-red-500/20">
+                            <button className="px-3 py-1 rounded-lg text-[10px] font-black lamma-danger-btn">
                               إدارة
                             </button>
                           </div>
@@ -5248,7 +5244,7 @@ export default function ChatScreen({
                   setIsPmOpen(false);
                   setShowMembersList(!showMembersList);
                 }}
-                className={`p-1 px-1.5 rounded-md transition-all flex md:hidden ${showMembersList ? "bg-green-500/10 text-green-400" : "hover:bg-white/5 text-gray-400 hover:text-white"}`}
+                className={`p-1 px-1.5 rounded-md transition-all flex md:hidden ${showMembersList ? "lamma-quiet-power-btn-active text-green-300" : "text-gray-400 hover:text-white lamma-toolbar-btn"}`}
                 title="تثبيت قائمة الأعضاء"
               >
                 <Users size={14} />
@@ -5264,7 +5260,7 @@ export default function ChatScreen({
                     setShowProfileModal(false);
                     setShowCommandsDropdown(!showCommandsDropdown);
                   }}
-                  className={`p-1 px-1.5 rounded-md hover:bg-white/5 transition-all flex ${showCommandsDropdown ? "bg-green-500/10 text-green-400 animate-pulse" : "text-green-400 hover:text-green-300"}`}
+                  className={`p-1 px-1.5 rounded-md transition-all flex ${showCommandsDropdown ? "lamma-quiet-power-btn-active text-green-300" : "text-green-400 hover:text-green-300 lamma-toolbar-btn"}`}
                   title="نظام الأوامر السريعة"
                 >
                   <Grid size={14} />
@@ -5281,11 +5277,11 @@ export default function ChatScreen({
             {/* Owner Control Alerts Block */}
             {isMaintenanceMode && (
               <div
-                className="p-3 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 rounded-2xl flex items-center justify-between gap-3 text-right select-none animate-pulse"
+                className="p-3 text-yellow-300 rounded-2xl flex items-center justify-between gap-3 text-right select-none lamma-soft-warn"
                 dir="rtl"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-base">⚙️</span>
+                  <SettingsIcon size={15} className="text-yellow-300" />
                   <div>
                     <h5 className="text-[10px] font-black font-sans text-white">
                       وضع صيانة شات لمة النشط حالياً
@@ -5302,7 +5298,7 @@ export default function ChatScreen({
                   myActiveSession.role === "admin") && (
                   <button
                     onClick={() => setIsMaintenanceMode(false)}
-                    className="px-2 py-0.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-[8.5px] rounded-lg border border-yellow-500/30 text-yellow-400 font-bold transition-all shrink-0 cursor-pointer"
+                    className="px-2 py-0.5 text-[8.5px] rounded-lg text-yellow-300 font-bold transition-all shrink-0 cursor-pointer lamma-soft-warn"
                   >
                     إيقاف
                   </button>
@@ -5312,11 +5308,11 @@ export default function ChatScreen({
 
             {isGlobalMute && (
               <div
-                className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl flex items-center justify-between gap-3 text-right select-none"
+                className="p-3 text-red-300 rounded-2xl flex items-center justify-between gap-3 text-right select-none lamma-soft-danger"
                 dir="rtl"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-base">🔇</span>
+                  <VolumeX size={15} className="text-red-300" />
                   <div>
                     <h5 className="text-[10px] font-black font-sans text-white">
                       كتم الروم العام للدردشة مفعل
@@ -5333,7 +5329,7 @@ export default function ChatScreen({
                   myActiveSession.role === "admin") && (
                   <button
                     onClick={() => setIsGlobalMute(false)}
-                    className="px-2 py-0.5 bg-red-500/10 hover:bg-red-500/20 text-[8.5px] rounded-lg border border-red-500/30 text-red-500 font-bold transition-all shrink-0 cursor-pointer"
+                    className="px-2 py-0.5 text-[8.5px] rounded-lg text-red-300 font-bold transition-all shrink-0 cursor-pointer lamma-danger-btn"
                   >
                     إلغاء الكتم
                   </button>
@@ -5344,7 +5340,7 @@ export default function ChatScreen({
             {/* Live mapped message items list */}
             {authError && (
               <div
-                className="mx-2 mb-3 p-3 bg-red-500/10 border border-red-500/20 rounded-2xl flex flex-col gap-2 text-right animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.1)]"
+                className="mx-2 mb-3 p-3 rounded-2xl flex flex-col gap-2 text-right lamma-soft-danger"
                 dir="rtl"
               >
                 <div className="flex items-center gap-3">
@@ -5363,7 +5359,7 @@ export default function ChatScreen({
                     onClick={async () => {
                       console.log("Login not available");
                     }}
-                    className="mt-1 w-full py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[9px] font-black text-white transition-all flex items-center justify-center gap-2"
+                    className="mt-1 w-full py-1.5 rounded-xl text-[9px] font-black text-white transition-all flex items-center justify-center gap-2 lamma-soft-action"
                   >
                     <svg className="w-3 h-3" viewBox="0 0 24 24">
                       <path
@@ -5451,10 +5447,10 @@ export default function ChatScreen({
                           ? myActiveSession.color
                           : msg.color;
                       return (
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="lamma-author-line">
                           <span
                             style={{ color: nameColor }}
-                            className={`font-bold text-[11px] leading-none group-hover/author:underline ${myActiveSession.nickname === msg.author && myActiveSession.role === "platinum_vip" ? "animate-[pulse_1.5s_infinite] text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400" : ""}`}
+                            className={`font-bold text-[11px] group-hover/author:underline lamma-author-name ${myActiveSession.nickname === msg.author && myActiveSession.role === "platinum_vip" ? "animate-[pulse_1.5s_infinite] text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400" : ""}`}
                           >
                             {cleanName}
                           </span>
@@ -5462,56 +5458,56 @@ export default function ChatScreen({
                           {/* Dynamically Render Custom Badge and Title */}
                           {msg.author === myActiveSession.nickname &&
                             myActiveSession.badge && (
-                              <span className="text-[7.5px] px-1 py-0.5 rounded-md font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
+                              <span className="text-[7.5px] lamma-badge-chip">
                                 {myActiveSession.badge}
                               </span>
                             )}
                           {msg.author === myActiveSession.nickname &&
                             myActiveSession.title && (
-                              <span className="text-[7.5px] px-1 py-0.5 rounded-md font-bold bg-green-500/10 text-green-400 border border-green-500/20">
+                              <span className="text-[7.5px] lamma-title-chip">
                                 [{myActiveSession.title}]
                               </span>
                             )}
 
                           {role === "platinum_vip" && (
-                            <span className="text-yellow-400 text-[7px] font-black bg-yellow-500/15 px-1 py-0.5 rounded leading-none border border-yellow-500/30 tracking-wider">
+                            <span className="text-[7px] lamma-role-chip lamma-role-plat">
                               PLATINUM VIP
                             </span>
                           )}
                           {role === "vip" && (
-                            <span className="text-green-400 text-[7px] font-black bg-green-500/10 px-1 py-0.5 rounded leading-none border border-green-500/20 tracking-wider">
+                            <span className="text-[7px] lamma-role-chip lamma-role-vip">
                               VIP
                             </span>
                           )}
                           {role === "admin" && (
-                            <span className="text-blue-400 text-[7px] font-black bg-blue-500/10 px-1 py-0.5 rounded leading-none border border-blue-500/20 tracking-wider">
+                            <span className="text-[7px] lamma-role-chip lamma-role-admin">
                               ADMIN
                             </span>
                           )}
                           {role === "owner" && (
-                            <span className="text-yellow-500 text-[7px] font-black bg-yellow-500/10 px-1 py-0.5 rounded leading-none border border-yellow-500/20 tracking-wider">
+                            <span className="text-[7px] lamma-role-chip lamma-role-owner">
                               OWNER
                             </span>
                           )}
                         </div>
                       );
                     })()}
-                    <div className="flex items-center gap-1.5 mt-0 relative group/msgactions">
+                    <div className="lamma-author-meta group/msgactions">
                       <span
-                        className="text-gray-500 text-[8px] font-mono"
+                        className="text-[8px] font-mono lamma-msg-meta"
                         dir="ltr"
                       >
                         {msg.time}
                       </span>
 
                       {msg.type === "text" && (
-                        <button className="text-gray-500 text-[10px] font-mono font-black opacity-100 hover:text-green-400 transition-opacity flex items-center justify-center p-0.5 hover:bg-white/10 rounded cursor-pointer group-hover/author:text-green-400">
+                        <button className="text-gray-500 text-[10px] font-mono font-black opacity-100 hover:text-green-300 transition-opacity flex items-center justify-center p-0.5 rounded cursor-pointer group-hover/author:text-green-300 lamma-toolbar-btn">
                           +
                         </button>
                       )}
 
                       {/* Interaction popover */}
-                      <div className="absolute top-full mt-0.5 -right-2 hidden group-hover/msgactions:flex bg-[#1a1f1b]/95 backdrop-blur-sm p-1.5 rounded-lg border border-green-500/30 shadow-[0_0_15px_rgba(0,0,0,0.8)] flex-row gap-2 z-50 w-max items-center">
+                      <div className="absolute top-full mt-0.5 -right-2 hidden group-hover/msgactions:flex p-1.5 rounded-lg flex-row gap-2 z-50 w-max items-center lamma-popover-shell">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -5587,15 +5583,15 @@ export default function ChatScreen({
                   {/* Message Content */}
                   <div className="flex-1 min-w-0 pt-0">
                     <div
-                      className={`lamma-message ${isCompactView ? "text-[10px] px-3 py-2" : "text-[11px]"} leading-snug text-gray-100 break-words ${
+                      className={`lamma-message ${isCompactView ? "text-[10px] px-3 py-2" : "text-[11px]"} leading-relaxed text-gray-100 break-words ${
                         isChatColumnExpanded
                           ? "max-w-full"
                           : "max-w-[min(820px,100%)]"
                       } ${
                         isSystem
-                          ? "bg-[rgba(16,185,129,0.08)] border-[rgba(16,185,129,0.20)]"
+                          ? "lamma-msg-bubble-system"
                           : msg.author === myActiveSession.nickname
-                            ? "border-[rgba(16,185,129,0.18)]"
+                            ? "lamma-msg-bubble-own"
                             : ""
                       }`}
                     >
@@ -5617,14 +5613,14 @@ export default function ChatScreen({
                       )}
 
                       {isSystem && (
-                        <div className="text-right leading-relaxed font-semibold text-[10px] text-gray-200 mt-0.5 select-none font-mono">
-                          <span className="text-green-400 font-extrabold flex items-center gap-1 mb-1 text-[11px]">
+                        <div className="text-right leading-relaxed font-semibold text-[10px] text-gray-200 mt-0.5 select-none font-mono lamma-system-note">
+                          <span className="lamma-system-label flex items-center gap-1 mb-0.5 text-[10px]">
                             🛡️{" "}
                             {msg.author === "🛡️ بوت الحماية الذكي"
                               ? "إشعار حماية تلقائي:"
                               : "إشعار نظام:"}
                           </span>
-                          <div className="whitespace-pre-line text-xs font-sans text-gray-300 leading-normal">
+                          <div className="whitespace-pre-line text-[10.5px] font-sans text-gray-300 leading-relaxed">
                             {msg.text}
                           </div>
                         </div>
@@ -5696,7 +5692,7 @@ export default function ChatScreen({
           {/* Scrolling Commercial ad banner */}
           {isAdsEnabled && !isAdBannerDismissed && (
             <div
-              className="w-full bg-gradient-to-r from-[#1a1400] via-black to-[#1a1400] border-t border-yellow-500/30 px-3 py-1 sm:py-1.5 flex items-center justify-between text-yellow-500 text-[10px] sm:text-[11px] font-bold z-[40] relative lamma-fire-overline"
+              className="w-full px-3 py-1 flex items-center justify-between text-yellow-500 text-[10px] font-bold z-[40] relative lamma-fire-overline lamma-banner-shell"
               dir="rtl"
             >
               <div className="flex items-center gap-2 flex-1 overflow-hidden">
@@ -5705,7 +5701,7 @@ export default function ChatScreen({
                   <span className="hidden sm:inline">إعلانات المتجر:</span>
                 </span>
                 <div className="flex-1 overflow-hidden relative h-5 flex items-center">
-                  <div className="absolute whitespace-nowrap animate-marquee flex items-center gap-12 text-[11px] text-[#e2e8f0] font-semibold tracking-wide">
+                  <div className="absolute whitespace-nowrap animate-marquee flex items-center gap-10 lamma-banner-marquee">
                     <span>
                       🔥 عروض المتجر التأسيسي: احصل على رتبة VIP بلاتينية الآن
                       بخصم 45%!
@@ -5722,7 +5718,7 @@ export default function ChatScreen({
               <button
                 type="button"
                 onClick={() => setIsAdBannerDismissed(true)}
-                className="shrink-0 mr-3 hover:bg-yellow-500/20 text-yellow-500 rounded p-1 cursor-pointer flex items-center justify-center transition-colors"
+                className="shrink-0 mr-3 text-yellow-500 rounded p-1 cursor-pointer flex items-center justify-center transition-colors lamma-soft-action"
                 title="إخفاء الشريط"
               >
                 <X size={14} />
@@ -5733,7 +5729,7 @@ export default function ChatScreen({
           {/* Restore ad banner pill if dismissed */}
           {isAdsEnabled && isAdBannerDismissed && (
             <div
-              className="w-full bg-black/80 border-t border-yellow-500/10 px-3 py-1 flex items-center justify-center z-[40] relative cursor-pointer hover:bg-yellow-900/30 transition-colors text-[9px] text-yellow-600/70 hover:text-yellow-500 font-bold lamma-fire-overline"
+              className="w-full px-3 py-1 flex items-center justify-center z-[40] relative cursor-pointer transition-colors text-[9px] hover:text-yellow-500 font-bold lamma-fire-overline lamma-banner-pill"
               dir="rtl"
               onClick={() => setIsAdBannerDismissed(false)}
             >
@@ -5747,14 +5743,14 @@ export default function ChatScreen({
             className={
               isZenMode
                 ? "p-1.5 sm:p-2 absolute bottom-2 left-2 right-2 max-w-4xl mx-auto z-40 bg-transparent shrink-0 backdrop-blur-sm shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-full"
-                : "p-1.5 sm:p-2 bg-[#0d130e]/80 border-t border-green-500/10 relative z-10 shrink-0"
+                : "p-1.5 sm:p-2 bg-[#0d130e]/74 border-t border-green-500/8 relative z-10 shrink-0"
             }
           >
             <div
-              className={`flex flex-wrap md:flex-nowrap items-center gap-1.5 rounded-3xl md:rounded-full px-2 sm:px-3 py-1.5 sm:py-2 md:py-1 ${
+              className={`flex flex-wrap md:flex-nowrap items-center gap-1 sm:gap-1.5 rounded-3xl md:rounded-full px-2 sm:px-3 py-1.5 sm:py-2 md:py-1 ${
                 isZenMode
-                  ? "bg-[#0b100c]/90 border border-green-500/30 shadow-2xl backdrop-blur-xl"
-                  : "bg-black/40 border border-green-500/10"
+                  ? "bg-[#0b100c]/88 border border-green-500/24 shadow-2xl backdrop-blur-xl lamma-chat-input-shell"
+                  : "bg-black/35 border border-green-500/8 lamma-chat-input-shell"
               }`}
             >
               {/* Attachment Dropdown Container */}
@@ -5762,7 +5758,7 @@ export default function ChatScreen({
                 <button
                   type="button"
                   onClick={() => toggleDropdown("attachment")}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${showAttachmentDropdown ? "bg-green-500/20 text-green-400" : "bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white"}`}
+                  className={`flex items-center justify-center transition-all lamma-composer-tool ${showAttachmentDropdown ? "bg-green-500/20 text-green-400" : "text-gray-400 hover:text-white lamma-toolbar-btn"}`}
                   title="إرفاق ملف"
                 >
                   <Plus
@@ -5778,10 +5774,10 @@ export default function ChatScreen({
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute bottom-full right-0 mb-4 bg-[#0a0f0c] border border-green-500/20 shadow-xl rounded-2xl p-2 grid grid-cols-1 gap-1 w-40 z-50"
+                      className="absolute bottom-full right-0 mb-4 rounded-2xl p-2 grid grid-cols-1 gap-1 w-40 z-50 lamma-popover-shell"
                     >
                       <button
-                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer"
+                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
                         onClick={() => handleSendAttachment("image")}
                       >
                         <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
@@ -5790,7 +5786,7 @@ export default function ChatScreen({
                         <span>رفع صورة</span>
                       </button>
                       <button
-                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer"
+                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
                         onClick={() => handleSendAttachment("imageUrl")}
                       >
                         <div className="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
@@ -5799,7 +5795,7 @@ export default function ChatScreen({
                         <span>رابط صورة</span>
                       </button>
                       <button
-                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer"
+                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
                         onClick={() => handleSendAttachment("video")}
                       >
                         <div className="w-8 h-8 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center">
@@ -5824,10 +5820,10 @@ export default function ChatScreen({
                 <button
                   type="button"
                   onClick={() => toggleDropdown("games")}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${showGamesDropdown ? "bg-green-500/10 text-white" : "bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white"}`}
+                  className={`flex items-center justify-center transition-all lamma-composer-tool ${showGamesDropdown ? "bg-green-500/10 text-white" : "text-gray-400 hover:text-white lamma-toolbar-btn"}`}
                   title="الألعاب"
                 >
-                  <span className="text-sm">🎮</span>
+                  <Trophy size={14} strokeWidth={2.1} />
                 </button>
 
                 <AnimatePresence>
@@ -5845,7 +5841,7 @@ export default function ChatScreen({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="fixed bottom-20 left-4 md:left-auto md:right-1/4 w-[280px] sm:w-[320px] bg-[#0a0f0c]/98 border border-green-500/30 shadow-2xl rounded-2xl z-[100] flex flex-col backdrop-blur-md"
+                      className="fixed bottom-20 left-4 md:left-auto md:right-1/4 w-[280px] sm:w-[320px] rounded-2xl z-[100] flex flex-col lamma-popover-shell"
                       style={{
                         resize: "both",
                         overflow: "hidden",
@@ -5855,9 +5851,9 @@ export default function ChatScreen({
                         maxHeight: "80vh",
                       }}
                     >
-                      <div className="flex items-center justify-between p-3 border-b border-green-500/20 bg-black/40 cursor-grab active:cursor-grabbing">
+                      <div className="flex items-center justify-between p-3 lamma-feature-header cursor-grab active:cursor-grabbing">
                         <div className="flex items-center gap-2 pointer-events-none">
-                          <span className="text-lg">🎮</span>
+                          <Trophy size={16} className="text-amber-300" />
                           <h3 className="font-black text-white text-sm">
                             الألعاب والتحديات
                           </h3>
@@ -5867,19 +5863,19 @@ export default function ChatScreen({
                             e.stopPropagation();
                             setShowGamesDropdown(false);
                           }}
-                          className="p-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer relative z-50"
+                          className="p-1.5 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer relative z-50 lamma-danger-btn"
                         >
                           <X size={14} />
                         </button>
                       </div>
 
-                      <div className="p-3 bg-black/20 text-right space-y-3">
+                      <div className="p-3 text-right space-y-3">
                         <p className="text-[11px] text-gray-400 font-bold">
                           تحدى الأصدقاء واكسب نقاط XP لرفع المستوى.
                         </p>
 
                         <div className="grid gap-2.5">
-                          <div className="p-2.5 bg-black/40 rounded-xl border border-green-500/20 hover:border-green-400 transition-all cursor-pointer flex items-center gap-2.5">
+                          <div className="p-2.5 rounded-xl hover:border-green-400 transition-all cursor-pointer flex items-center gap-2.5 lamma-list-item">
                             <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-xl">
                               🧠
                             </div>
@@ -5891,12 +5887,12 @@ export default function ChatScreen({
                                 أجب على الأسئلة أسرع من الجميع
                               </p>
                             </div>
-                            <button className="px-2.5 py-1.5 bg-green-500 text-black text-[9px] font-black rounded-lg">
+                            <button className="px-2.5 py-1.5 text-black text-[9px] font-black rounded-lg lamma-feature-primary">
                               العب الآن
                             </button>
                           </div>
 
-                          <div className="p-2.5 bg-black/40 rounded-xl border border-green-500/10 transition-all cursor-pointer flex items-center gap-2.5 opacity-60">
+                          <div className="p-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2.5 opacity-60 lamma-list-item">
                             <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center text-xl">
                               🧩
                             </div>
@@ -5916,22 +5912,22 @@ export default function ChatScreen({
                 </AnimatePresence>
               </div>
 
-              <div className="flex gap-1.5 items-center shrink-0">
+              <div className="flex items-center shrink-0 lamma-composer-cluster">
                 <button
                   type="button"
                   onClick={() => {
                     setShopTab("vip");
                     openModal("store");
                   }}
-                  className="w-8 h-8 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 flex items-center justify-center text-emerald-400 transition-all flex-shrink-0 border border-emerald-500/30 animate-pulse relative select-none cursor-pointer xl:hidden"
+                  className="flex items-center justify-center text-emerald-300 transition-all relative select-none cursor-pointer xl:hidden lamma-quiet-power-btn lamma-composer-tool"
                   title="المتجر والاشتراكات التلقائية"
                 >
-                  <span className="text-sm">💰</span>
+                  <Gift size={14} strokeWidth={2.1} />
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full border border-black"></span>
                 </button>
 
                 {(isOwnerRole || isAdminRole) && (
-                  <div className="flex gap-1 items-center shrink-0">
+                  <div className="flex items-center shrink-0 lamma-composer-cluster">
                     {isOwnerRole && (
                       <button
                         type="button"
@@ -5939,10 +5935,10 @@ export default function ChatScreen({
                           setLeadershipTab("quick");
                           openModal("leadership");
                         }}
-                        className="w-8 h-8 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 transition-all flex-shrink-0 border border-transparent hover:border-yellow-500/20 cursor-pointer shadow-[0_0_10px_rgba(234,179,8,0.2)]"
+                        className="flex items-center justify-center text-yellow-400 transition-all cursor-pointer lamma-quiet-power-btn lamma-composer-tool"
                         title="غرفة القيادة"
                       >
-                        <span className="text-sm">👑</span>
+                        <Crown size={14} strokeWidth={2.1} />
                       </button>
                     )}
 
@@ -5950,10 +5946,10 @@ export default function ChatScreen({
                       <button
                         type="button"
                         onClick={() => openModal("admin")}
-                        className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 hover:bg-red-500/20 transition-all flex-shrink-0 border border-transparent hover:border-red-500/20 cursor-pointer"
+                        className="flex items-center justify-center text-red-400 transition-all cursor-pointer lamma-quiet-power-btn lamma-composer-tool"
                         title="لوحة الإدارة"
                       >
-                        <span className="text-sm">🛡️</span>
+                        <Shield size={14} strokeWidth={2.1} />
                       </button>
                     )}
                   </div>
@@ -5979,7 +5975,7 @@ export default function ChatScreen({
                     }
                     toggleDropdown("radio");
                   }}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${showRadioDropdown ? "bg-green-500/10 text-green-400 animate-pulse border border-green-500/20" : "bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white"}`}
+                  className={`flex items-center justify-center transition-all lamma-composer-tool ${showRadioDropdown ? "lamma-quiet-power-btn-active text-green-300" : "text-gray-400 hover:text-white lamma-quiet-power-btn"}`}
                   title="راديو لمة"
                 >
                   <Radio size={14} />
@@ -5992,28 +5988,28 @@ export default function ChatScreen({
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute bottom-full right-0 mb-4 w-[280px] bg-[#070c09] border border-green-500/30 shadow-2xl rounded-2xl z-50 overflow-hidden flex flex-col"
+                      className="absolute bottom-full right-0 mb-4 w-[280px] rounded-2xl z-50 overflow-hidden flex flex-col lamma-feature-shell"
                     >
-                      <div className="flex items-center justify-between p-3 border-b border-green-500/10 bg-black/40">
+                      <div className="flex items-center justify-between p-3 lamma-feature-header">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm">📻</span>
+                          <Radio size={14} strokeWidth={2.1} className="text-green-300" />
                           <h3 className="font-black text-white text-xs">
                             بث راديو لمة المباشر
                           </h3>
                         </div>
                         <button
                           onClick={() => setShowRadioDropdown(false)}
-                          className="p-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
+                          className="p-1.5 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer lamma-feature-action"
                         >
                           <X size={14} />
                         </button>
                       </div>
-                      <div className="p-4 bg-black/20 text-center flex flex-col items-center space-y-3">
+                      <div className="p-4 text-center flex flex-col items-center space-y-3">
                         <div
                           className={`w-14 h-14 rounded-full bg-gradient-to-tr from-green-600 to-yellow-400 p-0.5 shadow-[0_0_15px_rgba(16,185,129,0.2)] ${isRadioPlaying ? "animate-[spin_4s_linear_infinite]" : ""}`}
                         >
                           <div className="w-full h-full rounded-full bg-[#0a0f0c] border-[2px] border-black flex items-center justify-center text-lg">
-                            📻
+                            <Radio size={18} className="text-green-300" />
                           </div>
                         </div>
 
@@ -6024,10 +6020,10 @@ export default function ChatScreen({
                               key={station.id}
                               type="button"
                               onClick={() => handleSelectRadioStation(station)}
-                              className={`w-full p-1.5 rounded-xl text-xs font-black flex items-center justify-between border transition-all cursor-pointer ${
+                              className={`w-full p-1.5 rounded-xl text-xs font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item ${
                                 currentRadioStation.id === station.id
-                                  ? "bg-green-500/15 border-green-500/35 text-green-400"
-                                  : "bg-white/5 border-transparent text-gray-300 hover:bg-white/10"
+                                  ? "bg-green-500/10 border-green-500/20 text-green-300"
+                                  : "bg-white/5 border-transparent text-gray-300"
                               }`}
                             >
                               <span>{station.name}</span>
@@ -6039,18 +6035,18 @@ export default function ChatScreen({
                         </div>
 
                         {/* Controls */}
-                        <div className="flex items-center justify-center gap-4 text-green-400 w-full pt-1">
+                        <div className="flex items-center justify-center gap-4 text-green-300 w-full pt-1">
                           <button
                             type="button"
                             onClick={prevRadioStation}
-                            className="p-1.5 rounded-full hover:bg-white/5 transition-all cursor-pointer"
+                            className="p-1.5 rounded-full transition-all cursor-pointer lamma-feature-action"
                           >
                             <ChevronRight size={18} />
                           </button>
                           <button
                             type="button"
                             onClick={toggleRadioPlay}
-                            className="p-2.5 rounded-full bg-green-500 text-black hover:scale-105 transition-all flex items-center justify-center cursor-pointer"
+                            className="p-2.5 rounded-full hover:scale-105 transition-all flex items-center justify-center cursor-pointer lamma-feature-primary"
                           >
                             {isRadioPlaying ? (
                               <Pause size={18} />
@@ -6061,14 +6057,14 @@ export default function ChatScreen({
                           <button
                             type="button"
                             onClick={nextRadioStation}
-                            className="p-1.5 rounded-full hover:bg-white/5 transition-all cursor-pointer"
+                            className="p-1.5 rounded-full transition-all cursor-pointer lamma-feature-action"
                           >
                             <ChevronLeft size={18} />
                           </button>
                         </div>
 
                         {/* Playing Status label */}
-                        <div className="text-[9.5px] font-bold text-gray-400 animate-pulse">
+                        <div className="text-[9.5px] font-bold lamma-soft-status">
                           {isRadioPlaying
                             ? `جاري تشغيل: ${currentRadioStation.name} 🔊`
                             : "الراديو متوقف مؤقتاً"}
@@ -6098,7 +6094,7 @@ export default function ChatScreen({
                     }
                     toggleDropdown("music");
                   }}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${showMusicDropdown ? "bg-cyan-500/10 text-cyan-400 animate-pulse border border-cyan-500/20" : "bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white"}`}
+                  className={`flex items-center justify-center transition-all lamma-composer-tool ${showMusicDropdown ? "lamma-quiet-power-btn-active text-cyan-300" : "text-gray-400 hover:text-white lamma-quiet-power-btn"}`}
                   title="موسيقى وغناء"
                 >
                   <Music size={14} />
@@ -6111,28 +6107,28 @@ export default function ChatScreen({
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute bottom-full right-0 mb-4 w-[280px] bg-[#070c09] border border-cyan-500/30 shadow-2xl rounded-2xl z-50 overflow-hidden flex flex-col"
+                      className="absolute bottom-full right-0 mb-4 w-[280px] rounded-2xl z-50 overflow-hidden flex flex-col lamma-feature-shell"
                     >
-                      <div className="flex items-center justify-between p-3 border-b border-cyan-500/10 bg-black/40">
+                      <div className="flex items-center justify-between p-3 lamma-feature-header">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm">🎵</span>
+                          <Music size={14} strokeWidth={2.1} className="text-cyan-300" />
                           <h3 className="font-sans font-black text-white text-xs">
                             مكتبة أغاني وموسيقى لمة
                           </h3>
                         </div>
                         <button
                           onClick={() => setShowMusicDropdown(false)}
-                          className="p-1.5 rounded-xl bg-red-400/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
+                          className="p-1.5 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer lamma-feature-action"
                         >
                           <X size={14} />
                         </button>
                       </div>
-                      <div className="p-4 bg-black/20 text-center flex flex-col items-center space-y-3">
+                      <div className="p-4 text-center flex flex-col items-center space-y-3">
                         <div
                           className={`w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-500 p-0.5 shadow-[0_0_15px_rgba(6,182,212,0.2)] ${isMusicPlaying ? "animate-[spin_6s_linear_infinite]" : ""}`}
                         >
                           <div className="w-full h-full rounded-full bg-[#0a0f0c] border-[2px] border-black flex items-center justify-center text-lg">
-                            🎵
+                            <Music size={18} className="text-cyan-300" />
                           </div>
                         </div>
 
@@ -6143,10 +6139,10 @@ export default function ChatScreen({
                               key={track.id}
                               type="button"
                               onClick={() => handleSelectMusicTrack(track)}
-                              className={`w-full p-1.5 rounded-xl text-xs font-black flex items-center justify-between border transition-all cursor-pointer ${
+                              className={`w-full p-1.5 rounded-xl text-xs font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item ${
                                 currentMusicTrack.id === track.id
-                                  ? "bg-cyan-500/15 border-cyan-500/35 text-cyan-400"
-                                  : "bg-white/5 border-transparent text-gray-300 hover:bg-white/10"
+                                  ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300"
+                                  : "bg-white/5 border-transparent text-gray-300"
                               }`}
                             >
                               <span>{track.title}</span>
@@ -6158,18 +6154,18 @@ export default function ChatScreen({
                         </div>
 
                         {/* Controls */}
-                        <div className="flex items-center justify-center gap-4 text-cyan-400 w-full pt-1">
+                        <div className="flex items-center justify-center gap-4 text-cyan-300 w-full pt-1">
                           <button
                             type="button"
                             onClick={prevMusicTrack}
-                            className="p-1.5 rounded-full hover:bg-white/5 transition-all cursor-pointer"
+                            className="p-1.5 rounded-full transition-all cursor-pointer lamma-feature-action"
                           >
                             <ChevronRight size={18} />
                           </button>
                           <button
                             type="button"
                             onClick={toggleMusicPlay}
-                            className="p-2.5 rounded-full bg-cyan-500 text-black hover:scale-105 transition-all flex items-center justify-center cursor-pointer"
+                            className="p-2.5 rounded-full hover:scale-105 transition-all flex items-center justify-center cursor-pointer lamma-feature-primary"
                           >
                             {isMusicPlaying ? (
                               <Pause size={18} />
@@ -6180,14 +6176,14 @@ export default function ChatScreen({
                           <button
                             type="button"
                             onClick={nextMusicTrack}
-                            className="p-1.5 rounded-full hover:bg-white/5 transition-all cursor-pointer"
+                            className="p-1.5 rounded-full transition-all cursor-pointer lamma-feature-action"
                           >
                             <ChevronLeft size={18} />
                           </button>
                         </div>
 
                         {/* Playing status */}
-                        <div className="text-[9.5px] font-bold text-gray-400 animate-pulse">
+                        <div className="text-[9.5px] font-bold lamma-soft-status">
                           {isMusicPlaying
                             ? `جاري الاستماع: ${currentMusicTrack.title} 🔊`
                             : "المشغل متوقف مؤقتاً"}
@@ -6201,7 +6197,7 @@ export default function ChatScreen({
               <button
                 type="button"
                 onClick={() => handleSendAttachment("audio")}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all flex-shrink-0"
+                className="flex items-center justify-center text-gray-400 hover:text-white transition-all lamma-toolbar-btn lamma-composer-tool"
                 title="تسجيل صوتي"
               >
                 <Mic size={14} />
@@ -6211,7 +6207,7 @@ export default function ChatScreen({
                 <button
                   type="button"
                   onClick={() => toggleDropdown("emoji")}
-                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-[#a3e635] transition-all flex-shrink-0"
+                  className="flex items-center justify-center text-[#b7d96d] transition-all lamma-toolbar-btn lamma-composer-tool"
                   title="إيموجي"
                 >
                   <Smile size={14} />
@@ -6223,7 +6219,7 @@ export default function ChatScreen({
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute bottom-full right-0 mb-4 bg-[#0a0f0c] border border-green-500/20 shadow-xl rounded-2xl p-3 w-64 z-50 max-h-[300px] flex flex-col"
+                      className="absolute bottom-full right-0 mb-4 rounded-2xl p-3 w-64 z-50 max-h-[300px] flex flex-col lamma-popover-shell"
                     >
                       <div className="text-[10px] text-gray-400 font-bold mb-2 flex-shrink-0">
                         الرموز التعبيرية
@@ -6258,14 +6254,14 @@ export default function ChatScreen({
                   if (e.key === "Enter") handleSendMessage();
                 }}
                 placeholder="اكتب رسالة..."
-                className="flex-1 min-w-[120px] bg-transparent border-0 focus:ring-0 text-xs text-white focus:outline-none px-2 text-right"
+                className="flex-1 min-w-[120px] bg-transparent border-0 focus:ring-0 text-xs focus:outline-none px-2 text-right lamma-composer-field"
               />
 
               <div className="relative dropdown-container flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => toggleDropdown("settings" as any)}
-                  className={`w-8 h-8 rounded-full transition-all cursor-pointer mx-1 flex items-center justify-center ${showSettingsDropdown ? "bg-white/10 text-white" : "bg-white/5 hover:bg-white/10 text-gray-400"}`}
+                  className={`transition-all cursor-pointer mx-0.5 sm:mx-1 flex items-center justify-center lamma-composer-tool ${showSettingsDropdown ? "bg-white/10 text-white" : "text-gray-400 hover:text-white lamma-toolbar-btn"}`}
                   title="الإعدادات"
                 >
                   <SettingsIcon size={16} />
@@ -6286,7 +6282,7 @@ export default function ChatScreen({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="fixed bottom-24 right-4 md:right-10 w-48 bg-[#0a0f0c]/98 border border-green-500/30 shadow-2xl rounded-2xl z-[99] flex flex-col backdrop-blur-md pb-1"
+                      className="fixed bottom-24 right-4 md:right-10 w-48 rounded-2xl z-[99] flex flex-col pb-1 lamma-popover-shell"
                     >
                       <div className="flex items-center justify-between p-2.5 border-b border-green-500/20 bg-black/40 cursor-grab active:cursor-grabbing">
                         <div className="text-[10px] text-gray-400 font-bold pointer-events-none">
@@ -6297,24 +6293,24 @@ export default function ChatScreen({
                             e.stopPropagation();
                             setShowSettingsDropdown(false);
                           }}
-                          className="p-1 rounded bg-white/5 text-gray-400 hover:text-white transition-all cursor-pointer relative z-50 float-left"
+                          className="p-1 rounded text-gray-400 hover:text-white transition-all cursor-pointer relative z-50 float-left lamma-feature-action"
                         >
                           <X size={12} />
                         </button>
                       </div>
                       <div className="flex flex-col p-2 gap-1.5">
-                        <button className="text-right p-1.5 hover:bg-white/10 rounded-lg text-xs text-white transition-all cursor-pointer">
+                        <button className="text-right p-1.5 hover:bg-white/10 rounded-lg text-xs text-white transition-all cursor-pointer lamma-list-item">
                           تغيير لون الخط
                         </button>
-                        <button className="text-right p-1.5 hover:bg-white/10 rounded-lg text-xs text-white transition-all cursor-pointer">
+                        <button className="text-right p-1.5 hover:bg-white/10 rounded-lg text-xs text-white transition-all cursor-pointer lamma-list-item">
                           الخط المائل
                         </button>
-                        <button className="text-right p-1.5 hover:bg-white/10 rounded-lg text-xs text-white transition-all cursor-pointer">
+                        <button className="text-right p-1.5 hover:bg-white/10 rounded-lg text-xs text-white transition-all cursor-pointer lamma-list-item">
                           الخط العريض
                         </button>
                         <div className="h-px bg-white/5 my-0.5" />
                         <button
-                          className="text-right p-1.5 hover:bg-white/10 rounded-lg text-xs text-green-400 transition-all cursor-pointer flex items-center justify-between"
+                          className="text-right p-1.5 hover:bg-white/10 rounded-lg text-xs text-green-300 transition-all cursor-pointer flex items-center justify-between lamma-list-item"
                           onClick={() => {
                             handleCopyLink();
                             setShowSettingsDropdown(false);
@@ -6325,7 +6321,7 @@ export default function ChatScreen({
                         </button>
                         <div className="h-px bg-white/5 my-0.5" />
                         <button
-                          className="text-right p-1.5 hover:bg-red-500/20 rounded-lg text-xs text-red-400 transition-all cursor-pointer flex items-center justify-between font-bold"
+                          className="text-right p-1.5 hover:bg-red-500/20 rounded-lg text-xs text-red-400 transition-all cursor-pointer flex items-center justify-between font-bold lamma-list-item"
                           onClick={() => {
                             setRoomMessages((prev) => ({
                               ...prev,
@@ -6346,7 +6342,7 @@ export default function ChatScreen({
               <button
                 type="button"
                 onClick={handleSendMessage}
-                className="w-9 h-9 rounded-full bg-green-500 text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all flex-shrink-0 cursor-pointer hover:shadow-[0_0_10px_rgba(16,185,129,0.4)]"
+                className="w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all flex-shrink-0 cursor-pointer lamma-send-orb"
               >
                 <Send size={15} className="rotate-180" />
               </button>
@@ -6360,7 +6356,7 @@ export default function ChatScreen({
           className={`hidden xl:flex xl:order-1 flex-col gap-3 overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isRightColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
-              : "w-[320px] 2xl:w-[340px] p-3 opacity-100 border-l border-[rgba(163,230,53,0.12)] bg-[rgba(5,8,6,0.35)] lamma-column-frame"
+              : "w-[320px] 2xl:w-[340px] p-3 opacity-100 border-l border-[rgba(163,230,53,0.10)] bg-[rgba(5,8,6,0.24)] lamma-column-frame"
           }`}
         >
           <div
@@ -6374,7 +6370,7 @@ export default function ChatScreen({
               <div className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2 text-[color:var(--accent-secondary)]">
-                    <span className="text-base">🗂️</span>
+                    <BookOpen size={15} className="text-[color:var(--accent-secondary)]" />
                     <span className="text-[12px] font-black">الغرف</span>
                   </div>
                   <span className="text-[10px] text-[color:var(--text-secondary)] font-mono">
@@ -6435,17 +6431,17 @@ export default function ChatScreen({
                                   }
                                   handleSwitchRoom(room.id);
                                 }}
-                                className={`w-full p-2.5 rounded-2xl border transition-all text-xs font-black cursor-pointer flex items-center justify-between ${
+                                className={`w-full p-2.5 rounded-2xl transition-all text-xs font-black cursor-pointer flex items-center justify-between ${
                                   room.id === activeRoomId
-                                    ? "bg-[rgba(16,185,129,0.10)] border-[rgba(16,185,129,0.35)] text-[color:var(--accent-primary)] lamma-soft-glow"
-                                    : "bg-black/20 border-white/5 hover:bg-white/5 text-gray-200"
+                                    ? "bg-[rgba(16,185,129,0.10)] border border-[rgba(16,185,129,0.35)] text-[color:var(--accent-primary)] lamma-soft-glow lamma-room-list-card"
+                                    : "text-gray-200 lamma-room-list-card"
                                 }`}
                               >
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm">{room.icon}</span>
                                   <span>{room.name}</span>
                                 </div>
-                                <span className="bg-black/50 px-2 py-0.5 rounded-full border border-white/10 text-[9px] text-[color:var(--accent-secondary)] font-black font-mono">
+                                <span className="px-2 py-0.5 rounded-full text-[9px] text-[color:var(--accent-secondary)] font-black font-mono lamma-room-count-pill">
                                   {room.count}
                                 </span>
                               </button>
@@ -6501,7 +6497,7 @@ export default function ChatScreen({
               <div className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2 text-[color:var(--accent-secondary)]">
-                    <span className="text-base">👥</span>
+                    <Users size={15} className="text-[color:var(--accent-secondary)]" />
                     <span className="text-[12px] font-black">المتصلون</span>
                   </div>
                   <span className="text-[10px] text-[color:var(--text-secondary)] font-mono">
@@ -6603,11 +6599,11 @@ export default function ChatScreen({
                                   </span>
                                 </div>
                               </div>
-                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+                              <span className="lamma-icon-dot shrink-0" />
                             </div>
                           ))}
                           {members.length > 24 ? (
-                            <div className="p-2 text-[10px] text-[color:var(--text-secondary)] font-bold text-center bg-black/20">
+                            <div className="p-2 text-[10px] text-[color:var(--text-secondary)] font-bold text-center lamma-section-card">
                               +{members.length - 24} المزيد
                             </div>
                           ) : null}
@@ -6627,9 +6623,9 @@ export default function ChatScreen({
           dragMomentum={false}
           className={`flex-col justify-between flex-shrink-0 z-50 ${
             mobileTab === "private"
-              ? "absolute inset-0 w-full flex bg-[#050806]"
+              ? "absolute inset-0 w-full flex lamma-panel-shell"
               : isPmOpen
-                ? "hidden md:flex fixed bottom-6 left-6 w-80 h-[450px] bg-[#0a0f0c]/98 backdrop-blur-md rounded-2xl shadow-[0_5px_40px_rgba(16,185,129,0.15)] border border-green-500/20"
+                ? "hidden md:flex fixed bottom-6 left-6 w-80 h-[450px] rounded-2xl lamma-modal-shell"
                 : "hidden"
           }`}
           style={
@@ -6646,26 +6642,26 @@ export default function ChatScreen({
           }
         >
           {/* Header of private messaging panel matching exactly standard visual style */}
-          <div className="p-3.5 bg-black/40 border-b border-green-500/10 flex items-center justify-between cursor-move touching-none">
+          <div className="p-3.5 flex items-center justify-between cursor-move touching-none lamma-modal-header">
             <div className="flex items-center gap-2.5 text-right">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping" />
+              <span className="lamma-icon-dot" />
               <div>
                 <div className="text-xs font-black text-white flex items-center gap-1.5 flex-wrap">
                   <span>{pmTarget.nickname}</span>
                   {pmTarget.role === "platinum_vip" ? (
-                    <span className="text-yellow-400 text-[8px] font-black bg-yellow-500/15 px-1 py-0.5 rounded leading-none border border-yellow-500/30 tracking-wider">
+                    <span className="text-[8px] lamma-role-chip lamma-role-plat">
                       PLATINUM VIP
                     </span>
                   ) : pmTarget.role === "vip" ? (
-                    <span className="text-green-400 text-[8px] font-black bg-green-500/10 px-1 py-0.5 rounded leading-none border border-green-500/20 tracking-wider">
+                    <span className="text-[8px] lamma-role-chip lamma-role-vip">
                       VIP
                     </span>
                   ) : pmTarget.role === "owner" ? (
-                    <span className="text-yellow-500 text-[8px] font-black bg-yellow-500/10 px-1 py-0.5 rounded leading-none border border-yellow-500/20 tracking-wider">
+                    <span className="text-[8px] lamma-role-chip lamma-role-owner">
                       OWNER
                     </span>
                   ) : pmTarget.role === "admin" ? (
-                    <span className="text-blue-400 text-[8px] font-black bg-blue-500/10 px-1 py-0.5 rounded leading-none border border-blue-500/20 tracking-wider">
+                    <span className="text-[8px] lamma-role-chip lamma-role-admin">
                       ADMIN
                     </span>
                   ) : null}
@@ -6701,7 +6697,7 @@ export default function ChatScreen({
                   }
                   initiateCall(pmTarget.nickname, "audio");
                 }}
-                className="w-7 h-7 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 flex items-center justify-center border border-green-500/15"
+                className="w-7 h-7 rounded-lg text-green-300 flex items-center justify-center lamma-quiet-power-btn"
                 title="الاتصال الهاتفي"
               >
                 <Phone size={12} />
@@ -6729,7 +6725,7 @@ export default function ChatScreen({
                   }
                   initiateCall(pmTarget.nickname, "video");
                 }}
-                className="w-7 h-7 rounded-lg bg-[#a3e635]/10 hover:bg-[#a3e635]/20 text-[#a3e635] flex items-center justify-center border border-[#a3e635]/15"
+                className="w-7 h-7 rounded-lg text-[#c1d86a] flex items-center justify-center lamma-quiet-power-btn"
                 title="مكالمة الفيديو"
               >
                 <VideoIcon size={12} />
@@ -6754,7 +6750,7 @@ export default function ChatScreen({
                     ],
                   }));
                 }}
-                className="w-7 h-7 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 flex items-center justify-center border border-teal-500/15"
+                className="w-7 h-7 rounded-lg text-teal-300 flex items-center justify-center lamma-quiet-power-btn"
                 title="مشاركة الشاشة"
               >
                 <Tv size={12} />
@@ -6765,7 +6761,7 @@ export default function ChatScreen({
                   if (mobileTab === "private") setMobileTab("chat");
                   else setIsPmOpen(false);
                 }}
-                className="w-7 h-7 ml-1 rounded-lg hover:bg-white/10 text-gray-400 flex items-center justify-center"
+                className="w-7 h-7 ml-1 rounded-lg text-gray-400 flex items-center justify-center lamma-soft-action"
                 title="إغلاق"
               >
                 <X size={14} />
@@ -6911,11 +6907,11 @@ export default function ChatScreen({
               )}
             </AnimatePresence>
 
-            <div className="flex items-center gap-1.5 bg-black/60 rounded-xl px-2.5 py-1.5 border border-green-500/10">
+            <div className="flex items-center lamma-composer-cluster bg-black/60 rounded-xl px-2.5 py-1.5 border border-green-500/10">
               <button
                 type="button"
                 onClick={() => setShowPmEmojiPicker(!showPmEmojiPicker)}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                className={`flex items-center justify-center transition-all lamma-composer-tool ${
                   showPmEmojiPicker
                     ? "bg-green-500/20 text-[#a3e635]"
                     : "text-gray-500 hover:bg-white/10 hover:text-[#a3e635]"
@@ -6926,7 +6922,7 @@ export default function ChatScreen({
               </button>
               <button
                 type="button"
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                className={`flex items-center justify-center transition-all lamma-composer-tool ${
                   showPmAttachment
                     ? "bg-green-500/20 text-green-400"
                     : "text-gray-500 hover:bg-white/10 hover:text-green-400"
@@ -6950,14 +6946,14 @@ export default function ChatScreen({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSendPM();
                 }}
-                placeholder="اكتب رسالة..."
+                placeholder="اكتب على راحتك..."
                 className="flex-1 bg-transparent border-none text-right font-semibold text-[11px] text-white focus:ring-0 focus:outline-none"
               />
 
               <button
                 type="button"
                 onClick={handleSendPM}
-                className="w-6 h-6 rounded-lg bg-green-500 hover:bg-green-400 flex items-center justify-center text-black"
+                className="w-6 h-6 rounded-lg flex items-center justify-center lamma-send-orb"
               >
                 <Send size={11} className="rotate-180" />
               </button>
@@ -6996,12 +6992,19 @@ export default function ChatScreen({
               {/* Modal Header */}
               <div className="flex items-center justify-between p-4 border-b border-green-500/20 bg-black/40 cursor-grab active:cursor-grabbing shrink-0">
                 <div className="flex items-center gap-2 pointer-events-none">
-                  <span className="text-lg">
-                    {activeModal === "leadership" && "👑"}
-                    {activeModal === "owner" && "👑"}
-                    {activeModal === "admin" && "🛡️"}
-                    {activeModal === "guard" && "🤖"}
-                    {activeModal === "store" && "💎"}
+                  <span className="text-lg flex items-center justify-center">
+                    {(activeModal === "leadership" || activeModal === "owner") && (
+                      <Crown size={18} className="text-yellow-300" />
+                    )}
+                    {activeModal === "admin" && (
+                      <Shield size={18} className="text-sky-300" />
+                    )}
+                    {activeModal === "guard" && (
+                      <ShieldAlert size={18} className="text-lime-300" />
+                    )}
+                    {activeModal === "store" && (
+                      <Gift size={18} className="text-emerald-300" />
+                    )}
                   </span>
                   <h3 className="font-sans font-black text-white text-sm">
                     {activeModal === "leadership" &&
@@ -7032,17 +7035,20 @@ export default function ChatScreen({
               <div className="flex-1 overflow-y-auto p-5 text-right space-y-4">
                 {activeModal === "leadership" && (
                   <div className="space-y-4 select-none" dir="rtl">
-                    <div className="p-4 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 lamma-soft-warn">
                       <div className="space-y-1">
                         <div className="text-white text-sm font-black">
-                          👑 غرفة القيادة
+                          <span className="inline-flex items-center gap-1.5">
+                            <Crown size={14} className="text-yellow-300" />
+                            غرفة القيادة
+                          </span>
                         </div>
                         <div className="text-[10px] text-gray-400 font-bold">
                           مركز عمليات المالك الكامل: التحكم، الحماية، المتجر،
                           التصميم، والإحصائيات.
                         </div>
                       </div>
-                      <div className="text-[9px] text-yellow-500 font-black bg-black/30 border border-yellow-500/20 px-3 py-1.5 rounded-xl">
+                      <div className="text-[9px] text-yellow-300 font-black px-3 py-1.5 rounded-xl lamma-soft-action">
                         صلاحية: Owner فقط
                       </div>
                     </div>
@@ -7054,10 +7060,13 @@ export default function ChatScreen({
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           leadershipTab === "quick"
                             ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/25"
-                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
                         }`}
                       >
-                        ⚡ التحكم السريع
+                        <span className="inline-flex items-center gap-1.5">
+                          <Sparkles size={12} />
+                          التحكم السريع
+                        </span>
                       </button>
                       <button
                         type="button"
@@ -7065,10 +7074,13 @@ export default function ChatScreen({
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           leadershipTab === "guard"
                             ? "bg-lime-500/15 text-lime-400 border border-lime-500/25"
-                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
                         }`}
                       >
-                        🛡️ الحماية
+                        <span className="inline-flex items-center gap-1.5">
+                          <Shield size={12} />
+                          الحماية
+                        </span>
                       </button>
                       <button
                         type="button"
@@ -7076,10 +7088,13 @@ export default function ChatScreen({
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           leadershipTab === "store"
                             ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
                         }`}
                       >
-                        🏪 المتجر
+                        <span className="inline-flex items-center gap-1.5">
+                          <Gift size={12} />
+                          المتجر
+                        </span>
                       </button>
                       <button
                         type="button"
@@ -7087,10 +7102,13 @@ export default function ChatScreen({
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           leadershipTab === "design"
                             ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/25"
-                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
                         }`}
                       >
-                        🎨 مركز التصميم
+                        <span className="inline-flex items-center gap-1.5">
+                          <Sparkles size={12} />
+                          مركز التصميم
+                        </span>
                       </button>
                       <button
                         type="button"
@@ -7098,10 +7116,13 @@ export default function ChatScreen({
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           leadershipTab === "stats"
                             ? "bg-blue-500/15 text-blue-300 border border-blue-500/25"
-                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
                         }`}
                       >
-                        📊 الإحصائيات
+                        <span className="inline-flex items-center gap-1.5">
+                          <Trophy size={12} />
+                          الإحصائيات
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -7112,11 +7133,11 @@ export default function ChatScreen({
                   (activeModal === "leadership" &&
                     leadershipTab === "quick")) && (
                   <div className="space-y-6 select-none" dir="rtl">
-                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 text-center">
+                    <div className="rounded-2xl p-4 text-center lamma-soft-warn">
                       <h4 className="text-sm font-black text-yellow-500 mb-2">
                         {activeModal === "leadership"
-                          ? "⚡ التحكم السريع"
-                          : "غرفة التحكم الخاصة بالمالك فقط 👑"}
+                          ? "التحكم السريع"
+                          : "غرفة التحكم الخاصة بالمالك فقط"}
                       </h4>
                       <p className="text-[10px] text-gray-400">
                         {activeModal === "leadership"
@@ -7127,10 +7148,13 @@ export default function ChatScreen({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Maintenance */}
-                      <div className="p-4 bg-white/5 rounded-xl border border-white/10 flex flex-col gap-2">
+                      <div className="p-4 rounded-xl flex flex-col gap-2 lamma-admin-card">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-white">
-                            🚧 وضع الصيانة الشامل
+                            <span className="inline-flex items-center gap-1.5">
+                              <SettingsIcon size={13} className="text-yellow-300" />
+                              وضع الصيانة الشامل
+                            </span>
                           </span>
                           <button
                             onClick={() => {
@@ -7146,7 +7170,7 @@ export default function ChatScreen({
                                 `قام المالك ${newVal ? "بتفعيل" : "بإلغاء"} وضع الصيانة الشامل لكامل المنصة.`,
                               );
                             }}
-                            className={`px-3 py-1 rounded shadow-lg text-[10px] font-bold ${isMaintenanceMode ? "bg-red-500 text-white" : "bg-white/10 text-gray-300"}`}
+                            className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isMaintenanceMode ? "lamma-danger-btn" : "lamma-soft-action text-gray-300"}`}
                           >
                             {isMaintenanceMode ? "إيقاف الصيانة" : "تفعيل"}
                           </button>
@@ -7157,10 +7181,13 @@ export default function ChatScreen({
                       </div>
 
                       {/* Global Mute */}
-                      <div className="p-4 bg-white/5 rounded-xl border border-white/10 flex flex-col gap-2">
+                      <div className="p-4 rounded-xl flex flex-col gap-2 lamma-admin-card">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-white">
-                            🔇 كتم الشات العام
+                            <span className="inline-flex items-center gap-1.5">
+                              <VolumeX size={13} className="text-red-300" />
+                              كتم الشات العام
+                            </span>
                           </span>
                           <button
                             onClick={() => {
@@ -7176,7 +7203,7 @@ export default function ChatScreen({
                                 `قام المالك ${newVal ? "بكتم" : "بفتح"} الشات العام على الجميع.`,
                               );
                             }}
-                            className={`px-3 py-1 rounded shadow-lg text-[10px] font-bold ${isGlobalMute ? "bg-red-500 text-white" : "bg-white/10 text-gray-300"}`}
+                            className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isGlobalMute ? "lamma-danger-btn" : "lamma-soft-action text-gray-300"}`}
                           >
                             {isGlobalMute ? "إلغاء الكتم" : "كتم للكل"}
                           </button>
@@ -7187,7 +7214,7 @@ export default function ChatScreen({
                       </div>
 
                       {/* Global Mic Mute */}
-                      <div className="p-4 bg-white/5 rounded-xl border border-white/10 flex flex-col gap-2">
+                      <div className="p-4 rounded-xl flex flex-col gap-2 lamma-admin-card">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-white">
                             🎙️ حظر المايكروفون العام
@@ -7206,7 +7233,7 @@ export default function ChatScreen({
                                 `قام المالك ${newVal ? "بحظر" : "بإلغاء حظر"} المايكروفون العام والصوتيات.`,
                               );
                             }}
-                            className={`px-3 py-1 rounded shadow-lg text-[10px] font-bold ${isGlobalMicMute ? "bg-red-500 text-white" : "bg-white/10 text-gray-300"}`}
+                            className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isGlobalMicMute ? "lamma-danger-btn" : "lamma-soft-action text-gray-300"}`}
                           >
                             {isGlobalMicMute ? "السماح بالمايك" : "حظر المايك"}
                           </button>
@@ -7217,7 +7244,7 @@ export default function ChatScreen({
                       </div>
 
                       {/* VIP Images Only */}
-                      <div className="p-4 bg-white/5 rounded-xl border border-white/10 flex flex-col gap-2">
+                      <div className="p-4 rounded-xl flex flex-col gap-2 lamma-admin-card">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-white">
                             🖼️ الصور للـ VIP فقط
@@ -7231,7 +7258,7 @@ export default function ChatScreen({
                                 String(newVal),
                               );
                             }}
-                            className={`px-3 py-1 rounded shadow-lg text-[10px] font-bold ${isOnlyVIPCanSendImages ? "bg-green-500 text-white" : "bg-white/10 text-gray-300"}`}
+                            className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isOnlyVIPCanSendImages ? "lamma-toggle-on" : "lamma-soft-action text-gray-300"}`}
                           >
                             {isOnlyVIPCanSendImages ? "مفعل (VIP)" : "الجميع"}
                           </button>
@@ -7244,7 +7271,7 @@ export default function ChatScreen({
                     </div>
 
                     {/* Change Primary App logo / icon */}
-                    <div className="p-4 bg-black/40 border border-green-500/20 rounded-xl space-y-3 mt-4">
+                    <div className="p-4 rounded-xl space-y-3 mt-4 lamma-section-card">
                       <h5 className="text-xs font-bold text-emerald-400">
                         🎨 تعديل أيقونة التطبيق واستبدال التصميم
                       </h5>
@@ -7254,7 +7281,7 @@ export default function ChatScreen({
                       </p>
 
                       {/* Logo */}
-                      <div className="flex bg-black/30 p-1.5 rounded-lg border border-white/10 mt-2">
+                      <div className="flex p-1.5 rounded-lg mt-2 lamma-admin-card">
                         <input
                           type="text"
                           id="owner_logo_url_input"
@@ -7286,14 +7313,14 @@ export default function ChatScreen({
                               alert("تم استعادة الأيقونة الافتراضية.");
                             }
                           }}
-                          className="px-3 py-1.5 bg-[#10b981] hover:bg-[#059669] text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap"
+                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-feature-primary"
                         >
                           تحديث اللوجو
                         </button>
                       </div>
 
                       {/* Background */}
-                      <div className="flex bg-black/30 p-1.5 rounded-lg border border-white/10 mt-3">
+                      <div className="flex p-1.5 rounded-lg mt-3 lamma-admin-card">
                         <input
                           type="text"
                           id="owner_bg_url_input"
@@ -7323,7 +7350,7 @@ export default function ChatScreen({
                               alert("تم استعادة تصميم الخلفية الافتراضية.");
                             }
                           }}
-                          className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap"
+                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
                         >
                           تحديث التصميم
                         </button>
@@ -7331,7 +7358,7 @@ export default function ChatScreen({
                     </div>
 
                     {/* Word Wall Firewall */}
-                    <div className="p-4 bg-black/40 border border-red-500/20 rounded-xl space-y-3 mt-4">
+                    <div className="p-4 rounded-xl space-y-3 mt-4 lamma-soft-danger">
                       <h5 className="text-xs font-bold text-red-500">
                         🧱 جدار حماية الشات القوي (Word Wall)
                       </h5>
@@ -7339,7 +7366,7 @@ export default function ChatScreen({
                         إضافة كلمات ممنوعة إلى جدار حماية اللمة لمنع أي رسائل
                         تحتوي عليها وطرد مرسلها فوراً.
                       </p>
-                      <div className="flex bg-black/30 p-1.5 rounded-lg border border-white/10">
+                      <div className="flex p-1.5 rounded-lg lamma-admin-card">
                         <input
                           type="text"
                           id="owner_word_wall_input"
@@ -7367,7 +7394,7 @@ export default function ChatScreen({
                               inp.value = "";
                             }
                           }}
-                          className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold rounded-lg transition-all"
+                          className="px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all lamma-danger-btn"
                         >
                           إضافة للجدار
                         </button>
@@ -7377,7 +7404,7 @@ export default function ChatScreen({
                         {bannedWords.slice(0, 8).map((word) => (
                           <span
                             key={word}
-                            className="px-2 py-0.5 rounded-md bg-red-500/10 text-red-400 text-[9px] border border-red-500/10"
+                            className="px-2 py-0.5 rounded-md text-red-300 text-[9px] lamma-soft-danger"
                           >
                             {word}
                           </span>
@@ -7516,7 +7543,7 @@ export default function ChatScreen({
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
                                 isMaintenanceMode
                                   ? "bg-yellow-500/10 border-yellow-500/35 text-yellow-400 shadow-md"
-                                  : "bg-[#050806]/80 border-white/5 hover:border-white/15 text-gray-300"
+                                  : "lamma-tab-soft text-gray-300 hover:text-white"
                               }`}
                             >
                               <span>⚙️ وضع الصيانة الشامل</span>
@@ -7547,7 +7574,7 @@ export default function ChatScreen({
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
                                 isGlobalMute
                                   ? "bg-red-500/10 border-red-500/35 text-red-400"
-                                  : "bg-[#050806]/80 border-white/5 hover:border-white/15 text-gray-300"
+                                  : "lamma-tab-soft text-gray-300 hover:text-white"
                               }`}
                             >
                               <span>🔇 كتم الروم العام لكافة الأعضاء</span>
@@ -7578,7 +7605,7 @@ export default function ChatScreen({
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
                                 isGlobalMicMute
                                   ? "bg-orange-500/10 border-orange-500/35 text-orange-400"
-                                  : "bg-[#050806]/80 border-white/5 hover:border-white/15 text-gray-300"
+                                  : "lamma-tab-soft text-gray-300 hover:text-white"
                               }`}
                             >
                               <span>🎙️ إغلاق الميكروفونات العامة</span>
@@ -7611,7 +7638,7 @@ export default function ChatScreen({
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
                                 isOnlyVIPCanSendImages
                                   ? "bg-cyan-500/10 border-cyan-500/35 text-cyan-400"
-                                  : "bg-[#050806]/80 border-white/5 hover:border-white/15 text-gray-300"
+                                  : "lamma-tab-soft text-gray-300 hover:text-white"
                               }`}
                             >
                               <span>📸 وضع وسائط الشات للـ VIP</span>
@@ -7640,7 +7667,7 @@ export default function ChatScreen({
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
                                 isBotSilent
                                   ? "bg-purple-500/10 border-purple-500/35 text-purple-400"
-                                  : "bg-[#050806]/80 border-white/5 hover:border-white/15 text-gray-300"
+                                  : "lamma-tab-soft text-gray-300 hover:text-white"
                               }`}
                             >
                               <span>🤖 إسكات بوت المساعدة التلقائي</span>
@@ -7669,7 +7696,7 @@ export default function ChatScreen({
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
                                 isWelcomeToastEnabled
                                   ? "bg-lime-500/10 border-lime-500/35 text-lime-400"
-                                  : "bg-[#050806]/80 border-white/5 hover:border-white/15 text-gray-300"
+                                  : "lamma-tab-soft text-gray-300 hover:text-white"
                               }`}
                             >
                               <span>✨ تفعيل الترحيب الفلاشي السريع</span>
@@ -7698,7 +7725,7 @@ export default function ChatScreen({
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
                                 isAdsEnabled
                                   ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-400"
-                                  : "bg-[#050806]/80 border-white/5 hover:border-white/15 text-gray-300"
+                                  : "lamma-tab-soft text-gray-300 hover:text-white"
                               }`}
                             >
                               <span>🔥 تفعيل شريط عروض المتجر بالسفل</span>
@@ -7750,7 +7777,7 @@ export default function ChatScreen({
                         </div>
 
                         {/* SECTION B: DYNAMIC INSTANT USER ROLE & VIP PROMOTION SUITE */}
-                        <div className="p-4 bg-black/40 rounded-2xl border border-white/5 space-y-3.5">
+                        <div className="p-4 rounded-2xl space-y-3.5 lamma-section-card">
                           <h5 className="text-[10px] font-black text-lime-400 border-b border-white/5 pb-1.5">
                             👤 لوحة التحكم بالترقيات والعزل السريع للأعضاء
                             (Instant Member Promotion Suite)
@@ -7759,7 +7786,10 @@ export default function ChatScreen({
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {/* Member Dropdown Picker */}
                             <div className="space-y-1">
-                              <label className="text-[9px] text-gray-400 font-extrabold">
+                              <label
+                                htmlFor="promo-target-select"
+                                className="text-[9px] text-gray-400 font-extrabold"
+                              >
                                 اختر العضو (المتواجدين بالشات حالياً):
                               </label>
                               <select
@@ -7779,7 +7809,7 @@ export default function ChatScreen({
                                     setPromoTargetRole(found.role || "vip");
                                   }
                                 }}
-                                className="w-full bg-[#050806]/90 border border-white/10 rounded-xl p-2 text-xs text-white"
+                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
                               >
                                 <option value="">
                                   --- اختر العضو المطلوب للعملية السريعة ---
@@ -7802,7 +7832,10 @@ export default function ChatScreen({
 
                             {/* Manual Nickname write-in (for offline users) */}
                             <div className="space-y-1">
-                              <label className="text-[9px] text-gray-400 font-extrabold">
+                              <label
+                                htmlFor="promoTargetNick"
+                                className="text-[9px] text-gray-400 font-extrabold"
+                              >
                                 أو اكتب اللقب يدوياً بالدقة:
                               </label>
                               <input
@@ -7815,13 +7848,16 @@ export default function ChatScreen({
                                 onChange={(e) =>
                                   setPromoTargetNick(e.target.value)
                                 }
-                                className="w-full bg-[#050806]/90 border border-white/10 rounded-xl p-2 text-xs text-white"
+                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
                               />
                             </div>
 
                             {/* Role Select */}
                             <div className="space-y-1">
-                              <label className="text-[9px] text-gray-400 font-extrabold">
+                              <label
+                                htmlFor="promo-target-role"
+                                className="text-[9px] text-gray-400 font-extrabold"
+                              >
                                 الرتبة الجديدة المراد منحها بضغطة واحدة:
                               </label>
                               <select
@@ -7831,7 +7867,7 @@ export default function ChatScreen({
                                 onChange={(e) =>
                                   setPromoTargetRole(e.target.value as any)
                                 }
-                                className="w-full bg-[#050806]/90 border border-white/10 rounded-xl p-2 text-xs text-white"
+                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
                               >
                                 <option value="owner">
                                   👑 رتبة مالك الشات التأسيسي (Owner Power)
@@ -7864,7 +7900,10 @@ export default function ChatScreen({
 
                             {/* Display Custom Badge tag */}
                             <div className="space-y-1">
-                              <label className="text-[9px] text-gray-400 font-extrabold">
+                              <label
+                                htmlFor="promoTargetBadge"
+                                className="text-[9px] text-gray-400 font-extrabold"
+                              >
                                 شارة اللقب الفخرية (Badge Tag) - اختيارية:
                               </label>
                               <input
@@ -7877,16 +7916,16 @@ export default function ChatScreen({
                                 onChange={(e) =>
                                   setPromoTargetBadge(e.target.value)
                                 }
-                                className="w-full bg-[#050806]/90 border border-white/10 rounded-xl p-2 text-xs text-white"
+                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
                               />
                             </div>
                           </div>
 
                           {/* Color DOTS picker */}
-                          <div className="space-y-1.5 p-2 bg-black/25 rounded-xl border border-white/5">
-                            <label className="text-[9px] text-gray-400 font-extrabold block">
+                          <div className="space-y-1.5 p-2 rounded-xl lamma-admin-card">
+                            <div className="text-[9px] text-gray-400 font-extrabold block">
                               اختر لون الاسم المميز فوراً بضغطة زر:
-                            </label>
+                            </div>
                             <div className="flex gap-2 flex-wrap items-center">
                               {[
                                 "#f59e0b",
@@ -7922,7 +7961,7 @@ export default function ChatScreen({
                                 onChange={(e) =>
                                   setPromoTargetColor(e.target.value)
                                 }
-                                className="w-20 bg-black/45 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-white text-center font-mono focus:outline-none"
+                                className="w-20 rounded px-1.5 py-0.5 text-[10px] text-white text-center font-mono focus:outline-none lamma-input-shell"
                               />
                             </div>
                           </div>
@@ -8012,7 +8051,7 @@ export default function ChatScreen({
                                 setPromoTargetNick("");
                                 setPromoTargetBadge("");
                               }}
-                              className="px-6 py-2 bg-gradient-to-r from-lime-600 to-emerald-600 hover:from-lime-500 hover:to-emerald-500 text-white font-black text-[11px] rounded-xl border border-lime-500/30 transition-all shadow-md cursor-pointer"
+                              className="px-6 py-2 text-white font-black text-[11px] rounded-xl transition-all cursor-pointer lamma-feature-primary"
                             >
                               🚀 تطبيق مرسوم ومنح الصلاحية الفورية
                             </button>
@@ -8031,7 +8070,7 @@ export default function ChatScreen({
                         {activityLogs.map((log) => (
                           <div
                             key={log.id}
-                            className="p-3 bg-black/45 rounded-xl border border-white/5 space-y-1 text-right"
+                            className="p-3 rounded-xl space-y-1 text-right lamma-admin-card"
                           >
                             <div className="flex items-center justify-between text-[9px] text-gray-400 font-sans">
                               <span>الساعة: {log.time}</span>
@@ -8090,7 +8129,7 @@ export default function ChatScreen({
                         {bannedUsersList.map((item) => (
                           <div
                             key={item.id}
-                            className="p-3 bg-black/45 hover:bg-black/60 rounded-xl border border-red-500/10 flex flex-col md:flex-row md:items-center justify-between text-right gap-3 transition-all"
+                            className="p-3 rounded-xl flex flex-col md:flex-row md:items-center justify-between text-right gap-3 transition-all lamma-soft-danger"
                           >
                             <div className="space-y-1">
                               <div className="text-xs font-black text-white flex items-center gap-1.5 flex-wrap">
@@ -8148,14 +8187,14 @@ export default function ChatScreen({
                                   `تم إلغاء العقوبة بنجاح وإرجاع تراخيص العضو ${item.nickname}!`,
                                 );
                               }}
-                              className="p-1.5 px-3 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 hover:text-white text-[9.5px] font-black border border-green-500/20 self-end md:self-center transition-all cursor-pointer shrink-0"
+                              className="p-1.5 px-3 rounded-lg text-[9.5px] font-black self-end md:self-center transition-all cursor-pointer shrink-0 lamma-feature-primary"
                             >
                               🕊️ إلغاء العقوبة وفك الحظر
                             </button>
                           </div>
                         ))}
                         {bannedUsersList.length === 0 && (
-                          <div className="p-8 text-center text-gray-500 text-xs font-bold border border-white/5 bg-black/10 rounded-2xl">
+                          <div className="p-8 text-center text-gray-500 text-xs font-bold rounded-2xl lamma-section-card">
                             لا توجد محظورين أو بصمات أجهزة مقيدة حالياً. الشات
                             نظيف ومستقر بنسبة 100%.
                           </div>
@@ -8169,7 +8208,7 @@ export default function ChatScreen({
                         className="space-y-4 max-h-[50vh] overflow-y-auto pr-1 text-right font-sans"
                         dir="rtl"
                       >
-                        <div className="p-4 bg-emerald-950/10 border border-emerald-500/20 rounded-2xl">
+                        <div className="p-4 rounded-2xl lamma-soft-success">
                           <h5 className="text-white text-xs font-black">
                             🏪 لوحة التحكم في عروض وهدايا المتجر التلقائي
                           </h5>
@@ -8181,7 +8220,7 @@ export default function ChatScreen({
                         </div>
 
                         {/* ADD / EDIT PRODUCT FORM */}
-                        <div className="p-4 bg-black/40 border border-white/5 rounded-2xl space-y-3">
+                        <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
                           <h6 className="text-[11px] font-black text-emerald-400">
                             {editingProduct
                               ? "✍️ تعديل المنتج المختار"
@@ -8190,7 +8229,10 @@ export default function ChatScreen({
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                              <label className="text-[9px] text-gray-400 font-bold">
+                              <label
+                                htmlFor="prod-name"
+                                className="text-[9px] text-gray-400 font-bold"
+                              >
                                 اسم الميزة في الشات:
                               </label>
                               <input
@@ -8201,12 +8243,15 @@ export default function ChatScreen({
                                 placeholder="مثلاً: 🔥 باقة التحدي أو إطار كواكب"
                                 value={newProdName}
                                 onChange={(e) => setNewProdName(e.target.value)}
-                                className="w-full bg-[#050806]/85 border border-white/10 rounded-xl p-2 text-xs text-white"
+                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
                               />
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-[9px] text-gray-400 font-bold">
+                              <label
+                                htmlFor="new-prod-tab"
+                                className="text-[9px] text-gray-400 font-bold"
+                              >
                                 قسم العرض (التصنيف):
                               </label>
                               <select
@@ -8216,7 +8261,7 @@ export default function ChatScreen({
                                 onChange={(e) =>
                                   setNewProdTab(e.target.value as any)
                                 }
-                                className="w-full bg-[#050806]/85 border border-white/10 rounded-xl p-2 text-xs text-white"
+                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
                               >
                                 <option value="vip">
                                   💎 باقات وعرقيات VIP
@@ -8231,7 +8276,10 @@ export default function ChatScreen({
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-[9px] text-gray-400 font-bold">
+                              <label
+                                htmlFor="prod-price"
+                                className="text-[9px] text-gray-400 font-bold"
+                              >
                                 السعر (بالجنيه المصري أو العملة البديلة):
                               </label>
                               <input
@@ -8244,12 +8292,15 @@ export default function ChatScreen({
                                 onChange={(e) =>
                                   setNewProdPrice(e.target.value)
                                 }
-                                className="w-full bg-[#050806]/85 border border-white/10 rounded-xl p-2 text-xs text-white"
+                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
                               />
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-[9px] text-gray-400 font-bold">
+                              <label
+                                htmlFor="new-prod-type"
+                                className="text-[9px] text-gray-400 font-bold"
+                              >
                                 نوع الميزة التلقائية:
                               </label>
                               <select
@@ -8259,7 +8310,7 @@ export default function ChatScreen({
                                 onChange={(e) =>
                                   setNewProdType(e.target.value as any)
                                 }
-                                className="w-full bg-[#050806]/85 border border-white/10 rounded-xl p-2 text-xs text-white"
+                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
                               >
                                 <option value="bronze">
                                   💎 باقة برونزية عادية (30 يوماً)
@@ -8279,7 +8330,10 @@ export default function ChatScreen({
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-[9px] text-gray-400 font-bold">
+                            <label
+                              htmlFor="new-prod-desc"
+                              className="text-[9px] text-gray-400 font-bold"
+                            >
                               وصف العرض للمستخدم بالتفصيل:
                             </label>
                             <textarea
@@ -8290,16 +8344,19 @@ export default function ChatScreen({
                               placeholder="صيغة ممتازة تشرح الصلاحيات الممنوحة لترغيب الأعضاء..."
                               value={newProdDesc}
                               onChange={(e) => setNewProdDesc(e.target.value)}
-                              className="w-full bg-[#050806]/85 border border-white/10 rounded-xl p-2 text-xs text-white resize-none"
+                              className="w-full rounded-xl p-2 text-xs text-white resize-none lamma-input-shell"
                             />
                           </div>
 
                           {/* Dynamic Inputs Based on Type Selected */}
                           {(newProdType === "bronze" ||
                             newProdType === "platinum") && (
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 rounded-xl lamma-admin-card">
                               <div className="space-y-1">
-                                <label className="text-[8px] text-gray-400 font-bold">
+                                <label
+                                  htmlFor="prod-badge"
+                                  className="text-[8px] text-gray-400 font-bold"
+                                >
                                   نص شارة الإسم (Badge):
                                 </label>
                                 <input
@@ -8312,11 +8369,14 @@ export default function ChatScreen({
                                   onChange={(e) =>
                                     setNewProdBadge(e.target.value)
                                   }
-                                  className="w-full bg-[#050806]/85 border border-white/5 rounded-lg p-1.5 text-xs text-white"
+                                  className="w-full rounded-lg p-1.5 text-xs text-white lamma-input-shell"
                                 />
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[8px] text-gray-400 font-bold">
+                                <label
+                                  htmlFor="prod-color"
+                                  className="text-[8px] text-gray-400 font-bold"
+                                >
                                   لون الاسم (أو gradient):
                                 </label>
                                 <input
@@ -8329,11 +8389,14 @@ export default function ChatScreen({
                                   onChange={(e) =>
                                     setNewProdColor(e.target.value)
                                   }
-                                  className="w-full bg-[#050806]/85 border border-white/5 rounded-lg p-1.5 text-xs text-white"
+                                  className="w-full rounded-lg p-1.5 text-xs text-white lamma-input-shell"
                                 />
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[8px] text-gray-400 font-bold">
+                                <label
+                                  htmlFor="prod-ext"
+                                  className="text-[8px] text-gray-400 font-bold"
+                                >
                                   الدور الإضافي (role):
                                 </label>
                                 <input
@@ -8346,15 +8409,18 @@ export default function ChatScreen({
                                   onChange={(e) =>
                                     setNewProdExt(e.target.value)
                                   }
-                                  className="w-full bg-[#050806]/85 border border-white/5 rounded-lg p-1.5 text-xs text-white"
+                                  className="w-full rounded-lg p-1.5 text-xs text-white lamma-input-shell"
                                 />
                               </div>
                             </div>
                           )}
 
                           {newProdType === "frame" && (
-                            <div className="p-2 bg-cyan-500/5 rounded-xl border border-cyan-500/10 space-y-1">
-                              <label className="text-[8px] text-gray-400 font-bold">
+                            <div className="p-2 rounded-xl space-y-1 lamma-admin-card">
+                              <label
+                                htmlFor="prod-frame"
+                                className="text-[8px] text-gray-400 font-bold"
+                              >
                                 ألوان كلاس التدرج للإطار (Tailwind gradients):
                               </label>
                               <input
@@ -8367,15 +8433,18 @@ export default function ChatScreen({
                                 onChange={(e) =>
                                   setNewProdFrame(e.target.value)
                                 }
-                                className="w-full bg-[#050806]/85 border border-white/5 rounded-lg p-1.5 text-xs text-white"
+                                className="w-full rounded-lg p-1.5 text-xs text-white lamma-input-shell"
                               />
                             </div>
                           )}
 
                           {newProdType === "title" && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 bg-yellow-500/5 rounded-xl border border-yellow-500/10">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 rounded-xl lamma-admin-card">
                               <div className="space-y-1">
-                                <label className="text-[8px] text-gray-400 font-bold">
+                                <label
+                                  htmlFor="prod-title"
+                                  className="text-[8px] text-gray-400 font-bold"
+                                >
                                   اللقب المعين للشات:
                                 </label>
                                 <input
@@ -8388,11 +8457,14 @@ export default function ChatScreen({
                                   onChange={(e) =>
                                     setNewProdTitle(e.target.value)
                                   }
-                                  className="w-full bg-[#050806]/85 border border-white/5 rounded-lg p-1.5 text-xs text-white"
+                                  className="w-full rounded-lg p-1.5 text-xs text-white lamma-input-shell"
                                 />
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[8px] text-gray-400 font-bold">
+                                <label
+                                  htmlFor="prod-badge-2"
+                                  className="text-[8px] text-gray-400 font-bold"
+                                >
                                   شارة اللقب الفخرية (Badge):
                                 </label>
                                 <input
@@ -8405,7 +8477,7 @@ export default function ChatScreen({
                                   onChange={(e) =>
                                     setNewProdBadge(e.target.value)
                                   }
-                                  className="w-full bg-[#050806]/85 border border-white/5 rounded-lg p-1.5 text-xs text-white"
+                                  className="w-full rounded-lg p-1.5 text-xs text-white lamma-input-shell"
                                 />
                               </div>
                             </div>
@@ -8424,7 +8496,7 @@ export default function ChatScreen({
                                   setNewProdTitle("");
                                   setNewProdExt("");
                                 }}
-                                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-[10px] rounded-lg border border-white/10 transition-all"
+                                className="px-3 py-1.5 text-gray-300 font-bold text-[10px] rounded-lg transition-all lamma-soft-action"
                               >
                                 إلغاء التعديل
                               </button>
@@ -8523,7 +8595,7 @@ export default function ChatScreen({
                                 setNewProdTitle("");
                                 setNewProdExt("");
                               }}
-                              className="px-4 py-1.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-[10px] rounded-lg border border-emerald-500/30 transition-all shadow-md cursor-pointer"
+                              className="px-4 py-1.5 text-white font-black text-[10px] rounded-lg transition-all cursor-pointer lamma-feature-primary"
                             >
                               {editingProduct
                                 ? "💾 حفظ وتعديل الميزة"
@@ -8540,7 +8612,7 @@ export default function ChatScreen({
                           {storeProducts.map((p) => (
                             <div
                               key={p.id}
-                              className="p-3 bg-[#050806]/60 border border-white/5 hover:border-white/10 rounded-xl flex items-center justify-between gap-3 text-right transition-all"
+                              className="p-3 rounded-xl flex items-center justify-between gap-3 text-right transition-all lamma-admin-card"
                             >
                               <div className="flex gap-2">
                                 <button
@@ -8559,7 +8631,7 @@ export default function ChatScreen({
                                     setNewProdTitle(p.title || "");
                                     setNewProdExt(p.ext || "");
                                   }}
-                                  className="p-1 px-2.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg text-[9px] font-bold border border-blue-500/20 transition-all cursor-pointer"
+                                  className="p-1 px-2.5 rounded-lg text-[9px] font-bold transition-all cursor-pointer lamma-accent-btn"
                                   title="تعديل هذا المنتج"
                                 >
                                   ✏️ تعديل
@@ -8582,7 +8654,7 @@ export default function ChatScreen({
                                       );
                                     }
                                   }}
-                                  className="p-1 px-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-[9px] font-bold border border-red-500/20 transition-all cursor-pointer"
+                                  className="p-1 px-2.5 rounded-lg text-[9px] font-bold transition-all cursor-pointer lamma-danger-btn"
                                   title="حذف هذا المنتج"
                                 >
                                   🗑️ حذف من المتجر
@@ -8631,7 +8703,7 @@ export default function ChatScreen({
                             </div>
                           ))}
                           {storeProducts.length === 0 && (
-                            <div className="p-8 text-center text-gray-500 text-xs font-bold border border-white/5 bg-black/10 rounded-2xl">
+                            <div className="p-8 text-center text-gray-500 text-xs font-bold rounded-2xl lamma-section-card">
                               المتجر فارغ! استخدم النموذج أعلاه لإنشاء عرقيات
                               وعروض جديدة للربح والتأثير.
                             </div>
@@ -8646,7 +8718,7 @@ export default function ChatScreen({
                   (activeModal === "leadership" &&
                     leadershipTab === "guard")) && (
                   <div className="space-y-6 select-none" dir="rtl">
-                    <div className="flex flex-col md:flex-row items-center justify-between p-4 bg-lime-950/15 border border-lime-500/20 rounded-2xl gap-3">
+                    <div className="flex flex-col md:flex-row items-center justify-between p-4 rounded-2xl gap-3 lamma-soft-success">
                       <div className="flex items-start gap-2.5">
                         <span className="text-2xl mt-0.5">🤖</span>
                         <div>
@@ -8664,8 +8736,8 @@ export default function ChatScreen({
                         onClick={() => setIsBotEnabled(!isBotEnabled)}
                         className={`px-4 py-2 rounded-xl text-[11px] font-black transition-all flex items-center gap-1.5 shrink-0 select-none ${
                           isBotEnabled
-                            ? "bg-lime-500/20 hover:bg-lime-500/30 text-lime-400 border border-lime-500/30"
-                            : "bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25"
+                            ? "lamma-toggle-on"
+                            : "lamma-toggle-off"
                         }`}
                       >
                         <span
@@ -8679,7 +8751,7 @@ export default function ChatScreen({
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {/* Bot 1: Protection Guard */}
-                      <div className="p-3 bg-black/40 rounded-xl border border-white/5 flex flex-col gap-2">
+                      <div className="p-3 rounded-xl flex flex-col gap-2 lamma-admin-card">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-green-400 text-lg">🛡️</span>
                           <span className="text-xs font-bold text-white">
@@ -8695,13 +8767,13 @@ export default function ChatScreen({
                             onClick={() =>
                               setBotRuleSwearFilter(!botRuleSwearFilter)
                             }
-                            className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleSwearFilter ? "bg-green-500/20 text-green-400 border border-green-500/20" : "bg-red-500/10 text-red-400 border border-red-500/10"}`}
+                            className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleSwearFilter ? "lamma-toggle-on" : "lamma-toggle-off"}`}
                           >
                             تصفية الشتائم {botRuleSwearFilter ? "🟢" : "🔴"}
                           </button>
                           <button
                             onClick={() => setBotRuleAntiSpam(!botRuleAntiSpam)}
-                            className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleAntiSpam ? "bg-green-500/20 text-green-400 border border-green-500/20" : "bg-red-500/10 text-red-400 border border-red-500/10"}`}
+                            className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleAntiSpam ? "lamma-toggle-on" : "lamma-toggle-off"}`}
                           >
                             منع السبام {botRuleAntiSpam ? "🟢" : "🔴"}
                           </button>
@@ -8709,7 +8781,7 @@ export default function ChatScreen({
                             onClick={() =>
                               setBotRuleAntiLinks(!botRuleAntiLinks)
                             }
-                            className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleAntiLinks ? "bg-green-500/20 text-green-400 border border-green-500/20" : "bg-red-500/10 text-red-400 border border-red-500/10"}`}
+                            className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleAntiLinks ? "lamma-toggle-on" : "lamma-toggle-off"}`}
                           >
                             منع الروابط {botRuleAntiLinks ? "🟢" : "🔴"}
                           </button>
@@ -8717,7 +8789,7 @@ export default function ChatScreen({
                       </div>
 
                       {/* Bot 2: Maintenance & Reports */}
-                      <div className="p-3 bg-black/40 rounded-xl border border-white/5 flex flex-col gap-2">
+                      <div className="p-3 rounded-xl flex flex-col gap-2 lamma-admin-card">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-blue-400 text-lg">📋</span>
                           <span className="text-xs font-bold text-white">
@@ -8730,14 +8802,14 @@ export default function ChatScreen({
                           الحرجة.
                         </p>
                         <div className="flex flex-col gap-1 mt-1">
-                          <div className="bg-blue-500/10 text-blue-400 px-2 py-1.5 rounded-lg text-[9px] font-bold text-center border border-blue-500/10">
+                          <div className="px-2 py-1.5 rounded-lg text-[9px] font-bold text-center lamma-section-card text-blue-300">
                             أوامر التقارير: /guard | /status تعمل بكفاءة ✅
                           </div>
                         </div>
                       </div>
 
                       {/* Bot 3: Tech Tracker */}
-                      <div className="p-3 bg-black/40 rounded-xl border border-white/5 flex flex-col gap-2">
+                      <div className="p-3 rounded-xl flex flex-col gap-2 lamma-admin-card">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-purple-400 text-lg">🛰️</span>
                           <span className="text-xs font-bold text-white">
@@ -8750,14 +8822,14 @@ export default function ChatScreen({
                           المكالمات الصوتية والمرئية لتفادي التقطيع.
                         </p>
                         <div className="flex flex-col gap-1 mt-1">
-                          <div className="bg-purple-500/10 text-purple-400 px-2 py-1.5 rounded-lg text-[9px] font-bold text-center border border-purple-500/10">
+                          <div className="px-2 py-1.5 rounded-lg text-[9px] font-bold text-center lamma-section-card text-purple-300">
                             خوادم جوجل وكلاودفلير متصلة وتعمل تلقائياً ⚡
                           </div>
                         </div>
                       </div>
 
                       {/* Bot 4: Word Wall Auto-Mod */}
-                      <div className="p-3 bg-black/40 rounded-xl border border-white/5 flex flex-col gap-2">
+                      <div className="p-3 rounded-xl flex flex-col gap-2 lamma-admin-card">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-red-400 text-lg">🧱</span>
                           <span className="text-xs font-bold text-white">
@@ -8769,20 +8841,20 @@ export default function ChatScreen({
                           تلقائياً إذا حاول إرسال كلمة موجودة في جدار الحماية
                           السيادي.
                         </p>
-                        <div className="flex items-center justify-between mt-1 bg-red-500/10 px-2 py-1.5 rounded-lg border border-red-500/10">
+                        <div className="flex items-center justify-between mt-1 px-2 py-1.5 rounded-lg lamma-soft-danger">
                           <span className="text-[9px] text-red-400 font-bold">
                             حجم القاموس السيادي النشط:
                           </span>
-                          <span className="text-[10px] text-white font-black bg-red-500 px-2 py-0.5 rounded-md">
+                          <span className="text-[10px] text-white font-black bg-red-500/90 px-2 py-0.5 rounded-md">
                             {bannedWords.length} كلمة
                           </span>
                         </div>
                       </div>
                     </div>
-                    <div className="p-4 bg-[#050806] border border-green-500/10 rounded-2xl space-y-3">
+                    <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
                       <div className="flex items-center justify-between border-b border-green-500/10 pb-2">
                         <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span className="lamma-icon-dot"></span>
                           <h4 className="text-white text-xs font-black font-sans">
                             سجل الفحص الأمني (Real-time Live Logs)
                           </h4>
@@ -8801,10 +8873,10 @@ export default function ChatScreen({
                             key={log.id}
                             className={`p-2 rounded-xl border flex items-start gap-2 text-right ${
                               log.severity === "danger"
-                                ? "bg-red-950/15 border-red-500/10 text-red-350"
+                                ? "lamma-soft-danger text-red-300"
                                 : log.severity === "warn"
-                                  ? "bg-yellow-950/15 border-yellow-500/10 text-yellow-350"
-                                  : "bg-black/50 border-white/5 text-gray-300"
+                                  ? "lamma-soft-warn text-yellow-300"
+                                  : "lamma-section-card text-gray-300"
                             }`}
                           >
                             <span className="text-gray-500 shrink-0 font-sans">
@@ -8858,7 +8930,7 @@ export default function ChatScreen({
                           ]);
                           setActiveModal(null);
                         }}
-                        className="py-2.5 rounded-xl bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 font-black text-[10px] border border-yellow-500/20 transition-all flex items-center justify-center gap-1.5 select-none"
+                        className="py-2.5 rounded-xl text-yellow-300 font-black text-[10px] transition-all flex items-center justify-center gap-1.5 select-none lamma-soft-warn"
                       >
                         🚨 إنذار عام للغرفة
                       </button>
@@ -8883,7 +8955,7 @@ export default function ChatScreen({
                             ...prev,
                           ]);
                         }}
-                        className="py-2.5 rounded-xl bg-lime-500/10 hover:bg-lime-500/20 text-lime-400 font-black text-[10px] border border-lime-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="py-2.5 rounded-xl text-lime-300 font-black text-[10px] transition-all flex items-center justify-center gap-1.5 cursor-pointer lamma-soft-success"
                       >
                         ⚡ محاكاة فحص الغرفة
                       </button>
@@ -8897,7 +8969,7 @@ export default function ChatScreen({
                     leadershipTab === "store")) && (
                   <div className="space-y-4 text-right selection:bg-emerald-500/20 font-sans">
                     {/* Header Banner */}
-                    <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-green-950/15 to-black border border-emerald-500/20 shadow-[inset_0_0_15px_rgba(16,185,129,0.06)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none">
+                    <div className="p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none lamma-soft-success">
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-1.5 justify-end sm:justify-start">
                           <span className="text-sm">💎</span>
@@ -8911,7 +8983,7 @@ export default function ChatScreen({
                         </p>
                       </div>
                       <div className="shrink-0 text-left">
-                        <span className="text-[8.5px] font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full whitespace-nowrap">
+                        <span className="text-[8.5px] font-black lamma-role-chip lamma-role-vip px-2.5 py-1 whitespace-nowrap">
                           ● معالج التحقق التلقائي نشط
                         </span>
                       </div>
@@ -8927,8 +8999,8 @@ export default function ChatScreen({
                         }}
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           shopTab === "vip"
-                            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                            ? "lamma-toggle-on"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
                         }`}
                       >
                         💎 باقات VIP الشاملة
@@ -8941,8 +9013,8 @@ export default function ChatScreen({
                         }}
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           shopTab === "skins"
-                            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                            ? "lamma-toggle-on"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
                         }`}
                       >
                         🎨 المظهر والإطارات
@@ -8955,8 +9027,8 @@ export default function ChatScreen({
                         }}
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           shopTab === "badges"
-                            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                            ? "lamma-toggle-on"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
                         }`}
                       >
                         🏷️ الألقاب والشارات
@@ -8968,8 +9040,8 @@ export default function ChatScreen({
                         }}
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           shopTab === "suggests"
-                            ? "bg-[#10b981]/15 text-emerald-400 border border-emerald-500/25"
-                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                            ? "lamma-toggle-on"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
                         }`}
                       >
                         🤝 لقاء الرفاق آلياً
@@ -8981,8 +9053,8 @@ export default function ChatScreen({
                         }}
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           shopTab === "stats"
-                            ? "bg-[#10b981]/15 text-emerald-400 border border-emerald-500/25"
-                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                            ? "lamma-toggle-on"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
                         }`}
                       >
                         📊 إحصائيات الغرف تلقائياً
@@ -8994,8 +9066,8 @@ export default function ChatScreen({
                         }}
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           shopTab === "maintenance"
-                            ? "bg-red-500/10 text-red-400 border border-red-500/20"
-                            : "bg-[#050806]/50 text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                            ? "lamma-toggle-off"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
                         }`}
                       >
                         🔧 الصيانة والتعافي الذاتي
@@ -9013,11 +9085,11 @@ export default function ChatScreen({
                               .map((p) => (
                                 <div
                                   key={p.id}
-                                  className="p-4 bg-black/40 border border-green-500/10 rounded-2xl flex flex-col justify-between hover:border-green-500/20 transition-all select-none"
+                                  className="p-4 rounded-2xl flex flex-col justify-between transition-all select-none lamma-admin-card"
                                 >
                                   <div className="space-y-1.5 text-right">
                                     <div className="flex items-center justify-between">
-                                      <span className="text-xs bg-emerald-500/10 text-emerald-400 font-extrabold px-1.5 py-0.5 rounded-lg border border-emerald-500/10">
+                                      <span className="text-xs lamma-role-chip lamma-role-vip font-extrabold px-1.5 py-0.5 rounded-lg">
                                         30 يوماً
                                       </span>
                                       <h5 className="font-sans font-black text-white text-xs">
@@ -9041,7 +9113,7 @@ export default function ChatScreen({
                                       setPaymentAccountInput("");
                                       setPayStatus("idle");
                                     }}
-                                    className="w-full mt-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-extrabold text-[10px] rounded-xl shadow-lg transition-all cursor-pointer"
+                                    className="w-full mt-4 py-2 text-white font-extrabold text-[10px] rounded-xl transition-all cursor-pointer lamma-feature-primary"
                                   >
                                     شراء فوري وتفعيل تلقائي
                                   </button>
@@ -9067,7 +9139,7 @@ export default function ChatScreen({
                             .map((p) => (
                               <div
                                 key={p.id}
-                                className="p-3 bg-black/40 border border-emerald-500/10 rounded-xl flex flex-col justify-between hover:border-emerald-500/25 transition-all text-right select-none"
+                                className="p-3 rounded-xl flex flex-col justify-between transition-all text-right select-none lamma-admin-card"
                               >
                                 <h5 className="font-sans font-black text-white text-[11px] flex items-center gap-1.5 justify-end">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
@@ -9086,7 +9158,7 @@ export default function ChatScreen({
                                     setPaymentAccountInput("");
                                     setPayStatus("idle");
                                   }}
-                                  className="mt-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-[9px] font-black border border-emerald-500/20 transition-all cursor-pointer"
+                                  className="mt-2 py-1.5 rounded-lg text-[9px] font-black transition-all cursor-pointer lamma-toggle-on"
                                 >
                                   احصل علي الإطار فوراً
                                 </button>
@@ -9111,7 +9183,7 @@ export default function ChatScreen({
                             .map((p) => (
                               <div
                                 key={p.id}
-                                className="p-4 bg-black/40 border border-green-500/10 rounded-2xl hover:border-green-500/25 transition-all select-none"
+                                className="p-4 rounded-2xl transition-all select-none lamma-admin-card"
                               >
                                 <h5 className="font-sans font-black text-white text-xs">
                                   {p.name}
@@ -9129,7 +9201,7 @@ export default function ChatScreen({
                                     setPaymentAccountInput("");
                                     setPayStatus("idle");
                                   }}
-                                  className="w-full mt-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-xl text-[9px] font-black border border-green-500/20 transition-all cursor-pointer"
+                                  className="w-full mt-3 py-1.5 rounded-xl text-[9px] font-black transition-all cursor-pointer lamma-toggle-on"
                                 >
                                   تثبيت اللقب فوراً آلياً
                                 </button>
@@ -9147,7 +9219,7 @@ export default function ChatScreen({
                     {/* TAB CONTENTS - 4. AUTOMATED FRIEND SUGGESTIONS */}
                     {shopTab === "suggests" && (
                       <div className="space-y-3">
-                        <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+                        <div className="p-3 rounded-2xl lamma-section-card">
                           <p className="text-[9.5px] text-gray-300 font-bold leading-relaxed">
                             🤖 بوت الأرجحة الآلي يقترح عليك هؤلاء الأعضاء
                             المتواجدين حالياً الحاملين لنفس اهتمامات الحوار
@@ -9159,7 +9231,7 @@ export default function ChatScreen({
                           {friendSuggestions.map((sug) => (
                             <div
                               key={sug.id}
-                              className="p-3 bg-black/50 border border-white/5 hover:border-white/10 rounded-xl flex items-center justify-between gap-3 text-right"
+                              className="p-3 rounded-xl flex items-center justify-between gap-3 text-right lamma-admin-card"
                             >
                               {sug.status === "pending" ? (
                                 <span className="text-[9px] bg-yellow-500/15 text-yellow-500 border border-yellow-500/25 py-1 px-2.5 rounded-lg font-bold animate-pulse font-sans">
@@ -9212,7 +9284,7 @@ export default function ChatScreen({
                                       );
                                     }, 2000);
                                   }}
-                                  className="py-1 px-3 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 font-bold text-[9.5px] rounded-lg border border-emerald-500/25 transition-all cursor-pointer"
+                                  className="py-1 px-3 font-bold text-[9.5px] rounded-lg transition-all cursor-pointer lamma-feature-primary"
                                 >
                                   📨 إرسال طلب صداقة آلي
                                 </button>
@@ -9246,7 +9318,7 @@ export default function ChatScreen({
                         </p>
 
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          <div className="p-3 bg-black/40 border border-green-500/10 rounded-xl text-center">
+                          <div className="p-3 rounded-xl text-center lamma-stat-card">
                             <span className="text-gray-500 text-[8.5px] font-black">
                               إجمالي الرسائل
                             </span>
@@ -9254,7 +9326,7 @@ export default function ChatScreen({
                               5,820
                             </h5>
                           </div>
-                          <div className="p-3 bg-black/40 border border-cyan-500/10 rounded-xl text-center">
+                          <div className="p-3 rounded-xl text-center lamma-stat-card">
                             <span className="text-gray-500 text-[8.5px] font-black">
                               الأعضاء المتفاعلين
                             </span>
@@ -9262,7 +9334,7 @@ export default function ChatScreen({
                               409
                             </h5>
                           </div>
-                          <div className="p-3 bg-black/40 border border-yellow-500/10 rounded-xl text-center">
+                          <div className="p-3 rounded-xl text-center lamma-stat-card">
                             <span className="text-gray-500 text-[8.5px] font-black">
                               الزوار الجدد
                             </span>
@@ -9270,7 +9342,7 @@ export default function ChatScreen({
                               +185
                             </h5>
                           </div>
-                          <div className="p-3 bg-black/40 border border-purple-500/10 rounded-xl text-center">
+                          <div className="p-3 rounded-xl text-center lamma-stat-card">
                             <span className="text-gray-500 text-[8.5px] font-black">
                               جودة الاستقرار
                             </span>
@@ -9281,7 +9353,7 @@ export default function ChatScreen({
                         </div>
 
                         {/* Chart Representation */}
-                        <div className="p-3 bg-black/50 border border-white/5 rounded-2xl">
+                        <div className="p-3 rounded-2xl lamma-section-card">
                           <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
                             <span className="text-[8.5px] text-gray-500 font-black">
                               مؤشر نشاط الغرف بالساعات السابقة (النسبة النأوية)
@@ -9354,7 +9426,7 @@ export default function ChatScreen({
                     {/* TAB CONTENTS - 6. AUTOMATED MAINTENANCE & HEALING */}
                     {shopTab === "maintenance" && (
                       <div className="space-y-3 font-sans">
-                        <div className="p-3 rounded-xl bg-red-950/10 border border-red-500/10 flex items-center justify-between gap-3 text-right">
+                        <div className="p-3 rounded-xl flex items-center justify-between gap-3 text-right lamma-soft-danger">
                           <div className="space-y-0.5">
                             <h5 className="text-[11.5px] font-black text-white">
                               نظام الصيانة والتعافي الذاتي الشامل (Auto
@@ -9373,7 +9445,7 @@ export default function ChatScreen({
                         </div>
 
                         {/* Live simulation control */}
-                        <div className="p-3 bg-[#050806] rounded-xl border border-white/5 space-y-2">
+                        <div className="p-3 rounded-xl space-y-2 lamma-section-card">
                           <div className="flex items-center justify-between text-right border-b border-white/5 pb-1.5">
                             <span className="text-[8.5px] text-gray-500 font-extrabold">
                               الوضع الحالي لقنوات الإتصال
@@ -9463,12 +9535,12 @@ export default function ChatScreen({
                                 );
                               }, 4500);
                             }}
-                            className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-extrabold text-[10px] rounded-xl border border-red-500/20 transition-all cursor-pointer text-center"
+                            className="w-full py-2 font-extrabold text-[10px] rounded-xl transition-all cursor-pointer text-center lamma-danger-btn"
                           >
                             🔌 محاكاة قطع الاتصال ورصد التعافي الفوري للبوت
                           </button>
                         ) : (
-                          <div className="py-2.5 bg-yellow-500/10 border border-yellow-500/25 rounded-xl text-center text-yellow-500 text-[10px] font-black animate-pulse font-sans">
+                          <div className="py-2.5 rounded-xl text-center text-yellow-300 text-[10px] font-black font-sans lamma-soft-warn">
                             ⏳ جاري تنفيذ معالجات التعافي الذاتي من خلال البوت
                             الذكي... انتظر ثانية واحدة!
                           </div>
@@ -9480,7 +9552,7 @@ export default function ChatScreen({
                     {selectedProduct &&
                       payStatus !== "loading" &&
                       payStatus !== "success" && (
-                        <div className="p-4 bg-[#050806] border border-green-500/20 rounded-2xl text-right space-y-3 font-sans animate-fadeIn">
+                        <div className="p-4 rounded-2xl text-right space-y-3 font-sans animate-fadeIn lamma-section-card">
                           <div className="flex items-center justify-between border-b border-green-500/15 pb-2">
                             <button
                               onClick={() => setSelectedProduct(null)}
@@ -9493,7 +9565,7 @@ export default function ChatScreen({
                             </h6>
                           </div>
 
-                          <div className="p-3 bg-black/40 rounded-xl space-y-1.5 text-right">
+                          <div className="p-3 rounded-xl space-y-1.5 text-right lamma-admin-card">
                             <div className="text-[10px] text-gray-400 font-bold leading-normal">
                               المنتج المحدد للتفعيل التلقائي:
                             </div>
@@ -9518,8 +9590,8 @@ export default function ChatScreen({
                                 }}
                                 className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
                                   payGateway === "vodafone"
-                                    ? "bg-red-500/15 text-red-500 border-red-500/30"
-                                    : "bg-black/50 text-gray-400 border-white/5 hover:text-white"
+                                    ? "lamma-toggle-off"
+                                    : "lamma-tab-soft text-gray-400 hover:text-white"
                                 }`}
                               >
                                 🍎 فودافون كاش
@@ -9531,8 +9603,8 @@ export default function ChatScreen({
                                 }}
                                 className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
                                   payGateway === "instapay"
-                                    ? "bg-pink-500/15 text-pink-500 border-pink-500/30"
-                                    : "bg-black/50 text-gray-400 border-white/5 hover:text-white"
+                                    ? "lamma-accent-btn"
+                                    : "lamma-tab-soft text-gray-400 hover:text-white"
                                 }`}
                               >
                                 ⚡ إنستاباي IPA
@@ -9544,8 +9616,8 @@ export default function ChatScreen({
                                 }}
                                 className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
                                   payGateway === "paymob"
-                                    ? "bg-blue-500/15 text-blue-500 border-blue-500/30"
-                                    : "bg-black/50 text-gray-400 border-white/5 hover:text-white"
+                                    ? "lamma-accent-btn"
+                                    : "lamma-tab-soft text-gray-400 hover:text-white"
                                 }`}
                               >
                                 💳 بطاقة فيزا/ميزة
@@ -9557,8 +9629,8 @@ export default function ChatScreen({
                                 }}
                                 className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
                                   payGateway === "stripe"
-                                    ? "bg-[#635BFF]/15 text-[#635BFF] border-[#635BFF]/30"
-                                    : "bg-black/50 text-gray-400 border-white/5 hover:text-white"
+                                    ? "lamma-accent-btn"
+                                    : "lamma-tab-soft text-gray-400 hover:text-white"
                                 }`}
                               >
                                 💳 Stripe الآلي
@@ -9570,8 +9642,8 @@ export default function ChatScreen({
                                 }}
                                 className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
                                   payGateway === "paypal"
-                                    ? "bg-yellow-500/15 text-yellow-500 border-yellow-500/30"
-                                    : "bg-black/50 text-gray-400 border-white/5 hover:text-white"
+                                    ? "lamma-soft-warn"
+                                    : "lamma-tab-soft text-gray-400 hover:text-white"
                                 }`}
                               >
                                 🅿️ PayPal
@@ -9582,7 +9654,10 @@ export default function ChatScreen({
                           {/* Dynamic Input Based on Gateway */}
                           {payGateway === "vodafone" && (
                             <div className="space-y-1 text-right">
-                              <label className="text-[9px] text-gray-400 font-extrabold pr-1">
+                              <label
+                                htmlFor="vodafone-wallet-input"
+                                className="text-[9px] text-gray-400 font-extrabold pr-1"
+                              >
                                 قم بتحويل المبلغ فودافون كاش للرقم{" "}
                                 <span className="text-white text-xs font-mono">
                                   01029384756
@@ -9602,14 +9677,17 @@ export default function ChatScreen({
                                     e.target.value.replace(/\D/g, ""),
                                   )
                                 }
-                                className="w-full bg-[#050806] border border-red-500/25 rounded-xl p-2.5 text-xs text-white text-right focus:outline-none focus:border-red-500 text-right"
+                                className="w-full rounded-xl p-2.5 text-xs text-white text-right focus:outline-none text-right lamma-input-shell"
                               />
                             </div>
                           )}
 
                           {payGateway === "instapay" && (
                             <div className="space-y-1 text-right">
-                              <label className="text-[9px] text-gray-400 font-extrabold pr-1">
+                              <label
+                                htmlFor="instapay-address-input"
+                                className="text-[9px] text-gray-400 font-extrabold pr-1"
+                              >
                                 قم بالتحويل الآمن لعنوان إنستاباي{" "}
                                 <span className="text-white text-xs font-mono">
                                   lamma@instapay
@@ -9626,16 +9704,16 @@ export default function ChatScreen({
                                 onChange={(e) =>
                                   setPaymentAccountInput(e.target.value)
                                 }
-                                className="w-full bg-[#050806] border border-pink-500/25 rounded-xl p-2.5 text-xs text-white text-right focus:outline-none focus:border-pink-500 text-right"
+                                className="w-full rounded-xl p-2.5 text-xs text-white text-right focus:outline-none text-right lamma-input-shell"
                               />
                             </div>
                           )}
 
                           {payGateway === "paymob" && (
                             <div className="space-y-2 text-right">
-                              <label className="text-[9px] text-gray-400 font-extrabold pr-1">
+                              <div className="text-[9px] text-gray-400 font-extrabold pr-1">
                                 أدخل بيانات بطاقتك الائتمانية للتسوية الآمنة:
-                              </label>
+                              </div>
                               <div className="grid grid-cols-3 gap-2">
                                 <input
                                   type="text"
@@ -9644,7 +9722,7 @@ export default function ChatScreen({
                                   autoComplete="cc-csc"
                                   maxLength={3}
                                   placeholder="CVV"
-                                  className="bg-[#050806] border border-white/10 rounded-xl p-2 text-xs text-center text-white"
+                                  className="rounded-xl p-2 text-xs text-center text-white lamma-input-shell"
                                 />
                                 <input
                                   type="text"
@@ -9653,7 +9731,7 @@ export default function ChatScreen({
                                   autoComplete="cc-exp"
                                   maxLength={5}
                                   placeholder="MM/YY"
-                                  className="bg-[#050806] border border-white/10 rounded-xl p-2 text-xs text-center text-white"
+                                  className="rounded-xl p-2 text-xs text-center text-white lamma-input-shell"
                                 />
                                 <input
                                   type="text"
@@ -9662,7 +9740,7 @@ export default function ChatScreen({
                                   autoComplete="cc-number"
                                   maxLength={16}
                                   placeholder="رقم البطاقة المكون من 16 رقم"
-                                  className="bg-[#050806] border border-white/10 rounded-xl p-2 text-xs text-right text-white col-span-2"
+                                  className="rounded-xl p-2 text-xs text-right text-white col-span-2 lamma-input-shell"
                                 />
                               </div>
                             </div>
@@ -9670,7 +9748,10 @@ export default function ChatScreen({
 
                           {payGateway === "paypal" && (
                             <div className="space-y-1 text-right">
-                              <label className="text-[9px] text-gray-400 font-extrabold pr-1">
+                              <label
+                                htmlFor="paypal-email-input"
+                                className="text-[9px] text-gray-400 font-extrabold pr-1"
+                              >
                                 قم بإدخال بريدك الإلكتروني المسجل في PayPal
                                 للتسوية التلقائية:
                               </label>
@@ -9684,7 +9765,7 @@ export default function ChatScreen({
                                 onChange={(e) =>
                                   setPaymentAccountInput(e.target.value)
                                 }
-                                className="w-full bg-[#050806] border border-yellow-500/25 rounded-xl p-2.5 text-xs text-white text-right focus:outline-none focus:border-yellow-500 text-right"
+                                className="w-full rounded-xl p-2.5 text-xs text-white text-right focus:outline-none text-right lamma-input-shell"
                               />
                             </div>
                           )}
@@ -9820,7 +9901,7 @@ export default function ChatScreen({
                                 }
                               }, 3200);
                             }}
-                            className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white text-[10.5px] font-black rounded-xl border border-green-500/30 transition-all shadow-lg text-center cursor-pointer flex items-center justify-center gap-1.5"
+                            className="w-full py-2.5 text-white text-[10.5px] font-black rounded-xl transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 lamma-feature-primary"
                           >
                             💸 تأكيد الدفع التلقائي الآمن وإصدار الترقية فوراً
                           </button>
@@ -9829,7 +9910,7 @@ export default function ChatScreen({
 
                     {/* GATEWAY PAYMENT LOADER SIMULATION */}
                     {payStatus === "loading" && (
-                      <div className="p-5 bg-black/60 border border-green-500/20 rounded-2xl text-center space-y-4 font-sans animate-fadeIn">
+                      <div className="p-5 rounded-2xl text-center space-y-4 font-sans animate-fadeIn lamma-section-card">
                         <div className="w-12 h-12 rounded-full border-t-2 border-emerald-500 animate-spin mx-auto"></div>
                         <div className="space-y-1.5 pt-2">
                           <h6 className="font-sans font-black text-white text-xs">
@@ -9839,7 +9920,7 @@ export default function ChatScreen({
                             Lamma Auto-Verification Server Connection Node-9
                           </p>
                         </div>
-                        <div className="p-3 bg-[#050806] rounded-xl border border-white/5 space-y-1 max-h-[140px] overflow-y-auto">
+                        <div className="p-3 rounded-xl space-y-1 max-h-[140px] overflow-y-auto lamma-admin-card">
                           {paymentLogs.map((log, i) => (
                             <div
                               key={i}
@@ -9854,7 +9935,7 @@ export default function ChatScreen({
 
                     {/* GATEWAY PAYMENT SUCCESS PANEL */}
                     {payStatus === "success" && (
-                      <div className="p-6 bg-emerald-950/15 border border-emerald-500/30 rounded-3xl text-center space-y-4 font-sans animate-bounceIn">
+                      <div className="p-6 rounded-3xl text-center space-y-4 font-sans animate-bounceIn lamma-soft-success">
                         <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl mx-auto shadow-[0_0_15px_rgba(16,185,129,0.3)] shrink-0 select-none">
                           ✓
                         </div>
@@ -9868,7 +9949,7 @@ export default function ChatScreen({
                             وسلام.
                           </p>
                         </div>
-                        <div className="p-3 bg-black/40 rounded-2xl border border-green-500/10 flex items-center justify-between text-right font-sans">
+                        <div className="p-3 rounded-2xl flex items-center justify-between text-right font-sans lamma-admin-card">
                           <div className="flex flex-col items-start leading-tight">
                             <span className="text-white text-xs font-black">
                               {myActiveSession.nickname}
@@ -9886,7 +9967,7 @@ export default function ChatScreen({
                             setSelectedProduct(null);
                             setPayStatus("idle");
                           }}
-                          className="w-full py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-extrabold text-[10px] rounded-xl hover:shadow-lg transition-all"
+                          className="w-full py-2 text-white font-extrabold text-[10px] rounded-xl transition-all lamma-feature-primary"
                         >
                           عودة لمركز المتجر والأتمتة
                         </button>
@@ -9929,7 +10010,7 @@ export default function ChatScreen({
                           </button>
                           <button
                             onClick={() => handleAccelerateDays(30)}
-                            className="py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-[9px] rounded-lg border border-red-500/20 transition-all col-span-2 md:col-span-1"
+                            className="py-1.5 text-red-400 font-black text-[9px] rounded-lg transition-all col-span-2 md:col-span-1 lamma-danger-btn"
                           >
                             ⚠️ إنهاء كامل (30 يوماً)
                           </button>
@@ -9941,7 +10022,7 @@ export default function ChatScreen({
                 {activeModal === "leadership" &&
                   leadershipTab === "design" && (
                     <div className="space-y-4 select-none" dir="rtl">
-                      <div className="p-4 bg-cyan-950/15 border border-cyan-500/20 rounded-2xl">
+                      <div className="p-4 rounded-2xl lamma-section-card">
                         <div className="text-white text-xs font-black">
                           🎨 مركز التصميم
                         </div>
@@ -9952,7 +10033,7 @@ export default function ChatScreen({
                       </div>
 
                       {isOwnerRole && (
-                        <div className="p-4 bg-black/40 border border-white/10 rounded-2xl space-y-3">
+                        <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
                           <div className="text-[11px] text-cyan-300 font-black">
                             ألوان الجدران
                           </div>
@@ -9968,8 +10049,8 @@ export default function ChatScreen({
                               }}
                               className={`p-3 rounded-xl border transition-all ${
                                 wallTheme === "fire"
-                                  ? "bg-cyan-500/10 border-cyan-500/30"
-                                  : "bg-black/30 border-white/10 hover:bg-white/5"
+                                  ? "lamma-accent-btn"
+                                  : "lamma-tab-soft"
                               }`}
                             >
                               <div className="h-3 rounded-full bg-gradient-to-r from-yellow-500/30 via-orange-500/40 to-yellow-500/30 border border-yellow-500/25" />
@@ -9985,8 +10066,8 @@ export default function ChatScreen({
                               }}
                               className={`p-3 rounded-xl border transition-all ${
                                 wallTheme === "ice"
-                                  ? "bg-cyan-500/10 border-cyan-500/30"
-                                  : "bg-black/30 border-white/10 hover:bg-white/5"
+                                  ? "lamma-accent-btn"
+                                  : "lamma-tab-soft"
                               }`}
                             >
                               <div className="h-3 rounded-full bg-gradient-to-r from-sky-400/25 via-cyan-400/35 to-sky-400/25 border border-sky-400/25" />
@@ -10005,8 +10086,8 @@ export default function ChatScreen({
                               }}
                               className={`p-3 rounded-xl border transition-all ${
                                 wallTheme === "violet"
-                                  ? "bg-cyan-500/10 border-cyan-500/30"
-                                  : "bg-black/30 border-white/10 hover:bg-white/5"
+                                  ? "lamma-accent-btn"
+                                  : "lamma-tab-soft"
                               }`}
                             >
                               <div className="h-3 rounded-full bg-gradient-to-r from-fuchsia-500/20 via-violet-500/35 to-fuchsia-500/20 border border-violet-500/25" />
@@ -10018,11 +10099,11 @@ export default function ChatScreen({
                         </div>
                       )}
 
-                      <div className="p-4 bg-black/40 border border-white/10 rounded-2xl space-y-3">
+                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
                         <div className="text-[11px] text-cyan-300 font-black">
                           الشعار
                         </div>
-                        <div className="flex items-center justify-center bg-black/30 border border-white/10 rounded-xl p-3">
+                        <div className="flex items-center justify-center rounded-xl p-3 lamma-admin-card">
                           <img
                             src={brandLogoUrl || "/images/lamma-wordmark.svg"}
                             alt="LAMMA CHAT"
@@ -10030,7 +10111,7 @@ export default function ChatScreen({
                             draggable={false}
                           />
                         </div>
-                        <div className="flex bg-black/30 p-1.5 rounded-lg border border-white/10">
+                        <div className="flex p-1.5 rounded-lg lamma-admin-card">
                           <input
                             type="text"
                             id="leadership_logo_url_input"
@@ -10055,18 +10136,18 @@ export default function ChatScreen({
                                 setBrandLogoUrl(null);
                               }
                             }}
-                            className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap"
+                            className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
                           >
                             تطبيق
                           </button>
                         </div>
                       </div>
 
-                      <div className="p-4 bg-black/40 border border-white/10 rounded-2xl space-y-3">
+                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
                         <div className="text-[11px] text-cyan-300 font-black">
                           ألوان الإضاءة
                         </div>
-                        <div className="flex items-center gap-3 bg-black/30 border border-white/10 rounded-xl p-3">
+                        <div className="flex items-center gap-3 rounded-xl p-3 lamma-admin-card">
                           <input
                             type="color"
                             value={glowColor}
@@ -10075,7 +10156,7 @@ export default function ChatScreen({
                               setGlowColor(next);
                               localStorage.setItem("lamma_glow_color", next);
                             }}
-                            className="w-10 h-10 rounded-lg bg-transparent border border-white/10"
+                            className="w-10 h-10 rounded-lg bg-transparent lamma-input-shell"
                           />
                           <input
                             type="text"
@@ -10085,13 +10166,13 @@ export default function ChatScreen({
                               setGlowColor(next);
                               localStorage.setItem("lamma_glow_color", next);
                             }}
-                            className="flex-1 bg-transparent border border-white/10 rounded-lg text-[11px] text-white px-2 py-2 focus:outline-none"
+                            className="flex-1 rounded-lg text-[11px] text-white px-2 py-2 focus:outline-none lamma-input-shell"
                             dir="ltr"
                           />
                         </div>
                       </div>
 
-                      <div className="p-4 bg-black/40 border border-white/10 rounded-2xl space-y-3">
+                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
                         <div className="text-[11px] text-cyan-300 font-black">
                           خلفية الغرفة الحالية
                         </div>
@@ -10099,7 +10180,7 @@ export default function ChatScreen({
                           {openRooms.find((r) => r.id === activeRoomId)?.name ||
                             activeRoomId}
                         </div>
-                        <div className="flex bg-black/30 p-1.5 rounded-lg border border-white/10">
+                        <div className="flex p-1.5 rounded-lg lamma-admin-card">
                           <input
                             type="text"
                             id="leadership_room_bg_url_input"
@@ -10123,7 +10204,7 @@ export default function ChatScreen({
                                 JSON.stringify(updated),
                               );
                             }}
-                            className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap"
+                            className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
                           >
                             تطبيق
                           </button>
@@ -10139,17 +10220,17 @@ export default function ChatScreen({
                               JSON.stringify(updated),
                             );
                           }}
-                          className="w-full py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-[10px] border border-red-500/20 transition-all"
+                          className="w-full py-2.5 rounded-xl font-black text-[10px] transition-all lamma-danger-btn"
                         >
                           حذف خلفية الغرفة
                         </button>
                       </div>
 
-                      <div className="p-4 bg-black/40 border border-white/10 rounded-2xl space-y-3">
+                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
                         <div className="text-[11px] text-cyan-300 font-black">
                           الخلفية الافتراضية
                         </div>
-                        <div className="flex bg-black/30 p-1.5 rounded-lg border border-white/10">
+                        <div className="flex p-1.5 rounded-lg lamma-admin-card">
                           <input
                             type="text"
                             id="leadership_bg_url_input"
@@ -10174,7 +10255,7 @@ export default function ChatScreen({
                                 setOwnerBgImage(null);
                               }
                             }}
-                            className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap"
+                            className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
                           >
                             تطبيق
                           </button>
@@ -10186,7 +10267,7 @@ export default function ChatScreen({
                 {activeModal === "leadership" &&
                   leadershipTab === "stats" && (
                     <div className="space-y-4 select-none" dir="rtl">
-                      <div className="p-4 bg-blue-950/15 border border-blue-500/20 rounded-2xl">
+                      <div className="p-4 rounded-2xl lamma-section-card">
                         <div className="text-white text-xs font-black">
                           📊 الإحصائيات
                         </div>
@@ -10196,7 +10277,7 @@ export default function ChatScreen({
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                        <div className="p-3 bg-black/40 rounded-xl border border-blue-500/10 text-center">
+                        <div className="p-3 rounded-xl text-center lamma-stat-card">
                           <div className="text-sm font-black text-blue-300">
                             {chatMembers.filter((m) => m.status === "online")
                               .length}
@@ -10205,7 +10286,7 @@ export default function ChatScreen({
                             المتصلين الآن
                           </div>
                         </div>
-                        <div className="p-3 bg-black/40 rounded-xl border border-emerald-500/10 text-center">
+                        <div className="p-3 rounded-xl text-center lamma-stat-card">
                           <div className="text-sm font-black text-emerald-400">
                             {(roomMessages?.[activeRoomId] || []).length}
                           </div>
@@ -10213,7 +10294,7 @@ export default function ChatScreen({
                             رسائل الغرفة الحالية
                           </div>
                         </div>
-                        <div className="p-3 bg-black/40 rounded-xl border border-yellow-500/10 text-center">
+                        <div className="p-3 rounded-xl text-center lamma-stat-card">
                           <div className="text-sm font-black text-yellow-500">
                             {openRooms.length}
                           </div>
@@ -10221,7 +10302,7 @@ export default function ChatScreen({
                             الغرف المفتوحة
                           </div>
                         </div>
-                        <div className="p-3 bg-black/40 rounded-xl border border-red-500/10 text-center">
+                        <div className="p-3 rounded-xl text-center lamma-stat-card">
                           <div className="text-sm font-black text-red-400">
                             {bannedUsersList.length}
                           </div>
@@ -10246,7 +10327,7 @@ export default function ChatScreen({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed top-20 left-4 md:left-auto md:right-32 w-[340px] bg-[#070b09]/98 border border-green-500/30 rounded-3xl overflow-hidden shadow-[0_10px_50px_rgba(16,185,129,0.25)] flex flex-col z-[100] cursor-move"
+            className="fixed top-20 left-4 md:left-auto md:right-32 w-[340px] rounded-3xl overflow-hidden flex flex-col z-[100] cursor-move lamma-modal-shell"
             style={{
               resize: "both",
               overflow: "hidden",
@@ -10262,7 +10343,7 @@ export default function ChatScreen({
               onPointerDownCapture={(e) => e.stopPropagation()}
             >
               {/* Profile Header */}
-              <div className="flex items-center justify-between p-4 border-b border-green-500/10 bg-black/40">
+              <div className="flex items-center justify-between p-4 lamma-modal-header">
                 <div className="flex items-center gap-2">
                   <span className="text-sm">👤</span>
                   <h3 className="font-sans font-black text-white text-xs">
@@ -10275,7 +10356,7 @@ export default function ChatScreen({
                     setShowProfileModal(false);
                     setSelectedProfileMember(null);
                   }}
-                  className="p-1.5 rounded-xl bg-red-400/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
+                  className="p-1.5 rounded-xl text-red-400 transition-all cursor-pointer lamma-danger-btn"
                 >
                   <X size={16} />
                 </button>
@@ -10284,28 +10365,26 @@ export default function ChatScreen({
               {/* Profile Body */}
               <div className="p-5 overflow-y-auto space-y-4 text-right">
                 {/* Visual Avatar Card */}
-                <div className="p-4 rounded-2xl bg-black/50 border border-green-500/10 flex items-center gap-3">
-                  <div className="w-14 h-14 bg-green-500/10 border border-green-500/30 rounded-2xl flex items-center justify-center text-3xl font-bold shrink-0">
+                <div className="p-4 rounded-2xl flex items-center gap-3 lamma-section-card">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl font-bold shrink-0 lamma-quiet-power-btn">
                     {selectedProfileMember.avatar || "👤"}
                   </div>
                   <div className="flex-grow space-y-1">
                     <div className="text-sm font-black text-white flex items-center gap-2">
                       <span>{selectedProfileMember.nickname}</span>
                       <span
-                        className={`text-[8px] px-1.5 py-0.5 rounded font-black tracking-wider ${
+                        className={`text-[8px] px-1.5 py-0.5 rounded font-black tracking-wider lamma-role-chip ${
                           selectedProfileMember.role === "platinum_vip"
-                            ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/30"
+                            ? "lamma-role-plat"
                             : selectedProfileMember.role === "owner"
-                              ? "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20"
+                              ? "lamma-role-owner"
                               : selectedProfileMember.role === "admin"
-                                ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                ? "lamma-role-admin"
                                 : selectedProfileMember.role === "mod"
-                                  ? "bg-purple-500/15 text-purple-500 border border-purple-500/20"
+                                  ? "lamma-role-mod"
                                   : selectedProfileMember.role === "vip"
-                                    ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                                    : selectedProfileMember.role === "user"
-                                      ? "bg-gray-500/15 text-gray-400 border border-gray-500/20"
-                                      : "bg-slate-500/15 text-slate-400 border border-slate-500/20"
+                                    ? "lamma-role-vip"
+                                    : ""
                         }`}
                       >
                         {selectedProfileMember.role === "platinum_vip"
@@ -10335,7 +10414,7 @@ export default function ChatScreen({
                   <div className="text-[9px] font-black text-[#a3e635] tracking-wide uppercase">
                     بصمة المعرف الرقمي ومواصفات الاتصال الفني (Device Signature)
                   </div>
-                  <div className="p-3 bg-black/35 rounded-2xl border border-white/5 space-y-2 text-[10px] font-mono text-gray-300">
+                  <div className="p-3 rounded-2xl space-y-2 text-[10px] font-mono text-gray-300 lamma-section-card">
                     <div className="flex justify-between items-center border-b border-white/5 pb-1">
                       <span className="text-gray-500 select-none">
                         ID المعرف:
@@ -10541,7 +10620,7 @@ export default function ChatScreen({
                             );
                             setShowProfileModal(false);
                           }}
-                          className="py-2 px-3 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 font-bold text-[10px] rounded-xl border border-orange-500/20 text-center transition-all cursor-pointer flex items-center justify-center gap-1"
+                          className="py-2 px-3 text-orange-300 font-bold text-[10px] rounded-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1 lamma-soft-warn"
                         >
                           🚪 طرد فوري (Kick)
                         </button>
@@ -10577,7 +10656,7 @@ export default function ChatScreen({
                             );
                             setShowProfileModal(false);
                           }}
-                          className="py-2 px-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-[10px] rounded-xl border border-red-500/20 text-center transition-all cursor-pointer flex items-center justify-center gap-1"
+                          className="py-2 px-3 text-red-400 font-bold text-[10px] rounded-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1 lamma-danger-btn"
                         >
                           🗑️ حذف رسائله
                         </button>
@@ -10683,13 +10762,16 @@ export default function ChatScreen({
                               {/* Custom Permissions Controls exclusively handled by owner */}
                               <div className="p-3 bg-black/60 border border-green-500/25 rounded-2xl space-y-2.5">
                                 <div className="text-[10px] font-black text-[#a3e635] flex items-center gap-1.5 border-b border-green-500/10 pb-1.5">
-                                  <span>🛡️ صلاحيات المالك الحصرية للعضو:</span>
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <Shield size={13} className="text-lime-300" />
+                                    صلاحيات المالك الحصرية للعضو:
+                                  </span>
                                 </div>
                                 <div className="space-y-2 text-right">
                                   {/* 1. Audio Recording */}
                                   <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-sm">🎙️</span>
+                                      <Mic size={14} className="text-emerald-300" />
                                       <span>تسجيل وبث الصوت ميكروفون:</span>
                                     </div>
                                     <button
@@ -10707,6 +10789,7 @@ export default function ChatScreen({
                                             ] || {
                                               callsAllowed: false,
                                               musicRadioAllowed: false,
+                                              roomCreationAllowed: false,
                                             }),
                                             recordingAllowed: !currentVal,
                                           },
@@ -10736,7 +10819,7 @@ export default function ChatScreen({
                                   {/* 2. Live Calls */}
                                   <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-sm">📞</span>
+                                      <Phone size={14} className="text-sky-300" />
                                       <span>
                                         إجراء المكالمات الهاتفية والمرئية:
                                       </span>
@@ -10756,6 +10839,7 @@ export default function ChatScreen({
                                             ] || {
                                               recordingAllowed: false,
                                               musicRadioAllowed: false,
+                                              roomCreationAllowed: false,
                                             }),
                                             callsAllowed: !currentVal,
                                           },
@@ -10785,7 +10869,7 @@ export default function ChatScreen({
                                   {/* 3. Music/Radio access */}
                                   <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-sm">📻</span>
+                                      <Radio size={14} className="text-cyan-300" />
                                       <span>
                                         تشغيل الراديو ومكتبة الموسيقى:
                                       </span>
@@ -10805,6 +10889,7 @@ export default function ChatScreen({
                                             ] || {
                                               recordingAllowed: false,
                                               callsAllowed: false,
+                                              roomCreationAllowed: false,
                                             }),
                                             musicRadioAllowed: !currentVal,
                                           },
@@ -10834,7 +10919,7 @@ export default function ChatScreen({
                                   {/* 4. Room Creation */}
                                   <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-sm">🏠</span>
+                                      <Compass size={14} className="text-yellow-300" />
                                       <span>إتاحة إنشاء غرف خاصة:</span>
                                     </div>
                                     <button
@@ -10853,6 +10938,7 @@ export default function ChatScreen({
                                               recordingAllowed: false,
                                               callsAllowed: false,
                                               musicRadioAllowed: false,
+                                              roomCreationAllowed: false,
                                             }),
                                             roomCreationAllowed: !currentVal,
                                           },
@@ -11071,7 +11157,7 @@ export default function ChatScreen({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          className="fixed top-24 left-4 md:left-auto md:right-1/4 w-[320px] bg-[#070b09]/98 border border-green-500/30 rounded-3xl overflow-hidden shadow-[0_10px_50px_rgba(16,185,129,0.25)] flex flex-col z-[9999] cursor-move text-right"
+          className="fixed top-24 left-4 md:left-auto md:right-1/4 w-[320px] rounded-3xl overflow-hidden flex flex-col z-[9999] cursor-move text-right lamma-modal-shell"
           style={{
             resize: "both",
             overflow: "hidden",
@@ -11083,7 +11169,7 @@ export default function ChatScreen({
           dir="rtl"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-3 border-b border-green-500/10 bg-black/40 select-none">
+          <div className="flex items-center justify-between p-3 select-none lamma-modal-header">
             <div className="flex items-center gap-2">
               <Search size={14} className="text-green-500" />
               <h3 className="font-sans font-black text-white text-xs">
@@ -11092,7 +11178,7 @@ export default function ChatScreen({
             </div>
             <button
               onClick={() => setShowSearchPop(false)}
-              className="p-1.5 rounded-xl bg-red-400/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
+              className="p-1.5 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer lamma-danger-btn"
             >
               <X size={14} />
             </button>
@@ -11111,7 +11197,7 @@ export default function ChatScreen({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ابحث عن رسالة، عضو، أو رمز..."
-              className="w-full px-3 py-2 bg-black/45 border border-green-500/20 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-green-500/50 text-right font-semibold"
+              className="w-full px-3 py-2 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none text-right font-semibold lamma-input-shell"
             />
             <div className="flex-1 overflow-y-auto space-y-3 scroller-soft text-right">
               {searchQuery.trim() === "" ? (
@@ -11147,7 +11233,7 @@ export default function ChatScreen({
                               onClick={() => {
                                 openMemberProfile(m.nickname);
                               }}
-                              className="flex items-center justify-between p-1.5 rounded-lg bg-white/5 hover:bg-green-500/10 border border-transparent hover:border-green-500/20 text-right text-[10px] transition-all cursor-pointer w-full"
+                              className="flex items-center justify-between p-1.5 rounded-lg text-right text-[10px] transition-all cursor-pointer w-full lamma-list-item"
                             >
                               <div className="flex items-center gap-1.5">
                                 <span>{m.avatar}</span>
@@ -11192,7 +11278,7 @@ export default function ChatScreen({
                           .map((m, idx) => (
                             <div
                               key={idx}
-                              className="p-2 rounded-xl bg-black/30 border border-white/5 space-y-1 text-right"
+                              className="p-2 rounded-xl space-y-1 text-right lamma-search-result"
                             >
                               <div className="flex items-center justify-between text-[8.5px]">
                                 <button
@@ -11408,7 +11494,7 @@ export default function ChatScreen({
             exit={{ opacity: 0, scale: 0.95 }}
             className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
           >
-            <div className="bg-[#0a0f0c] border border-green-500/30 rounded-3xl p-6 w-full max-w-sm flex flex-col items-center justify-center space-y-6 shadow-[0_0_40px_rgba(16,185,129,0.15)]">
+            <div className="rounded-3xl p-6 w-full max-w-sm flex flex-col items-center justify-center space-y-6 lamma-call-shell">
               {/* Target Avatar / Icon */}
               <div className="relative">
                 <div
@@ -11445,7 +11531,7 @@ export default function ChatScreen({
               </div>
 
               {/* Status & Fallback Servers Tracker */}
-              <div className="w-full text-center space-y-3 bg-black border border-white/5 rounded-xl p-4">
+              <div className="w-full text-center space-y-3 rounded-xl p-4 lamma-call-status">
                 {activeCall.status === "connecting" && (
                   <div className="flex flex-col items-center space-y-2">
                     <span className="text-sm font-bold text-yellow-500 animate-pulse">
@@ -11506,11 +11592,11 @@ export default function ChatScreen({
               <div className="flex items-center gap-4 pt-2">
                 {activeCall.status !== "ended" && (
                   <>
-                    <button className="w-12 h-12 rounded-full cursor-pointer bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all text-xl">
+                    <button className="w-12 h-12 rounded-full cursor-pointer flex items-center justify-center text-white transition-all text-xl lamma-soft-action">
                       🎙️
                     </button>
                     {activeCall.type === "video" && (
-                      <button className="w-12 h-12 rounded-full cursor-pointer bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all text-xl">
+                      <button className="w-12 h-12 rounded-full cursor-pointer flex items-center justify-center text-white transition-all text-xl lamma-soft-action">
                         📹
                       </button>
                     )}

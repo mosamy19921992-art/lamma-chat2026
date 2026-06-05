@@ -8,21 +8,13 @@ import OnlineStatus from './components/pwa/OnlineStatus';
 import ThemeFab from './components/pwa/ThemeFab';
 import { useTheme } from './hooks/useTheme';
 import { supabase } from './lib/supabase';
+import type { UserSession } from './lib/chatTypes';
 
 // Lazy-load ChatScreen so the LoginScreen (which is the entry surface
 // for guests and unauthenticated users) ships in a smaller initial bundle.
 const ChatScreen = lazy(() => import('./components/ChatScreen'));
 
 type Theme = 'dark' | 'amoled';
-
-interface UserSession {
-  nickname: string;
-  role: string;
-  color: string;
-  uid?: string;
-  email?: string | null;
-  authProvider?: 'supabase' | 'guest';
-}
 
 export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
@@ -125,7 +117,7 @@ export default function App() {
           isInstalled={sw.isInstalled}
           onInstall={sw.promptInstall}
         />
-        <ThemeFab />
+        <ThemeFab inChat={!!user} />
       </div>
     </ErrorBoundary>
   );
@@ -133,10 +125,11 @@ export default function App() {
 
 function ChatLoadingScreen() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#0a0f0c] via-[#0c120d] to-[#0a0f0c]">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-12 h-12 border-4 border-green-500/20 border-t-green-500 rounded-full animate-spin" />
-        <p className="text-xs text-gray-400 font-bold">جاري تحميل شات لمة...</p>
+    <div className="min-h-screen w-full flex items-center justify-center lamma-fallback-shell">
+      <div className="flex flex-col items-center gap-3 px-5 py-6 rounded-3xl lamma-fallback-card">
+        <div className="w-12 h-12 rounded-full animate-spin lamma-loading-orb" />
+        <p className="text-xs text-gray-300 font-bold">جاري تجهيز شات لمة...</p>
+        <p className="text-[10px] text-gray-500 font-semibold">ثواني بسيطة ونكمل السهرة</p>
       </div>
     </div>
   );

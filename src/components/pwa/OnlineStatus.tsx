@@ -35,7 +35,7 @@ export function OnlineStatus({ isOnline }: OnlineStatusProps) {
           className="fixed top-4 inset-x-4 sm:top-6 sm:right-1/2 sm:translate-x-1/2 sm:w-fit z-[9998]"
           role="status"
         >
-          <div className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/40 backdrop-blur-xl shadow-lg shadow-red-500/20 flex items-center gap-2.5">
+          <div className="px-4 py-2.5 rounded-2xl flex items-center gap-2.5 lamma-status-offline">
             <motion.div
               animate={{ opacity: [1, 0.3, 1] }}
               transition={{ duration: 1.5, repeat: Infinity }}
@@ -58,7 +58,7 @@ export function OnlineStatus({ isOnline }: OnlineStatusProps) {
           className="fixed top-4 inset-x-4 sm:top-6 sm:right-1/2 sm:translate-x-1/2 sm:w-fit z-[9998]"
           role="status"
         >
-          <div className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 to-emerald-400/20 border border-emerald-500/40 backdrop-blur-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2.5">
+          <div className="px-4 py-2.5 rounded-2xl flex items-center gap-2.5 lamma-status-online">
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}

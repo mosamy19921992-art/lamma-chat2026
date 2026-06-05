@@ -43,7 +43,7 @@ export function CreateRoomModal({
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
         >
-          <div className="bg-[#0a0f0c] p-6 rounded-3xl border border-green-500/30 w-full max-w-sm space-y-4 shadow-2xl">
+          <div className="p-6 rounded-3xl w-full max-w-sm space-y-4 lamma-modal-shell">
             <h2 className="text-sm font-black text-white">
               إنشاء غرفة خاصة جديدة
             </h2>
@@ -57,7 +57,7 @@ export function CreateRoomModal({
               onChange={(e) =>
                 setDetails((prev) => ({ ...prev, name: e.target.value }))
               }
-              className="w-full p-3 rounded-xl bg-black border border-white/10 text-white text-xs"
+              className="w-full p-3 rounded-xl text-white text-xs lamma-input-shell"
             />
             <input
               type="password"
@@ -69,18 +69,18 @@ export function CreateRoomModal({
               onChange={(e) =>
                 setDetails((prev) => ({ ...prev, password: e.target.value }))
               }
-              className="w-full p-3 rounded-xl bg-black border border-white/10 text-white text-xs"
+              className="w-full p-3 rounded-xl text-white text-xs lamma-input-shell"
             />
             <div className="flex gap-2">
               <button
                 onClick={handleClose}
-                className="flex-1 p-2 rounded-xl bg-red-500/10 text-red-400 text-xs font-bold"
+                className="flex-1 p-2 rounded-xl text-red-400 text-xs font-bold lamma-danger-btn"
               >
                 إلغاء
               </button>
               <button
                 onClick={handleCreate}
-                className="flex-1 p-2 rounded-xl bg-green-500 text-black text-xs font-bold"
+                className="flex-1 p-2 rounded-xl text-xs font-bold lamma-feature-primary"
               >
                 إنشاء
               </button>
