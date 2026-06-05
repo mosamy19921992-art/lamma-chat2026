@@ -442,9 +442,9 @@ export default function LoginScreen({
       </div>
 
       {/* Dynamic Scrollable Wrapper with centering behavior */}
-      <div className="min-h-[100dvh] w-full flex items-start 2xl:items-center justify-center p-3 sm:p-4 md:p-6 2xl:py-10">
+      <div className="min-h-[100dvh] w-full flex items-start xl:items-center justify-center p-3 sm:p-4 md:px-5 md:py-6 xl:p-6 2xl:py-10">
         {/* Main Grid Wrapper */}
-        <div className="w-full max-w-[1360px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-5 items-start md:items-start 2xl:items-center relative z-10">
+        <div className="w-full max-w-[560px] xl:max-w-[1360px] mx-auto grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-start xl:items-center relative z-10">
           {/* COLUMN 1: BRANDING & SYSTEM STATS (LEFT) */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
@@ -578,7 +578,7 @@ export default function LoginScreen({
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
-            className="hidden md:flex md:col-span-4 w-full items-start justify-center"
+            className="hidden xl:flex xl:col-span-4 w-full items-start justify-center"
           >
             <div className="w-full max-w-[420px] flex flex-col gap-3">
               <div className="lamma-column-frame">
@@ -738,7 +738,7 @@ export default function LoginScreen({
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="w-full md:col-span-4 flex flex-col justify-start items-center h-auto relative z-20"
+            className="w-full xl:col-span-4 flex flex-col justify-start items-center h-auto relative z-20"
           >
             {/* Rounded glass container with green neon border shadow */}
             <div
@@ -1179,7 +1179,7 @@ export default function LoginScreen({
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
-            className="hidden md:flex md:col-span-4 w-full items-start justify-center"
+            className="hidden xl:flex xl:col-span-4 w-full items-start justify-center"
           >
             <div className="w-full max-w-[420px]">
               <div className="lamma-column-frame">
@@ -1261,7 +1261,7 @@ export default function LoginScreen({
             </div>
           </motion.div>
 
-          <div className="md:hidden w-full flex flex-col items-center gap-4 mt-4">
+          <div className="xl:hidden w-full flex flex-col items-center gap-4 mt-4">
             <div className="w-full max-w-[520px] grid gap-4">
               <div className="lamma-column-frame">
                 <div className="lamma-glass lamma-login-panel rounded-3xl p-4 overflow-hidden">
