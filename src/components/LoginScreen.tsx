@@ -440,9 +440,9 @@ export default function LoginScreen({
                 />
               </div>
 
-              <div className="relative z-10 flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-24 w-24 sm:h-28 sm:w-28 overflow-hidden rounded-[30px] border border-white/10 bg-black/25 shadow-[0_26px_70px_rgba(0,0,0,0.42)] backdrop-blur-xl p-2 sm:p-2.5">
+              <div className="relative z-10">
+                <div className="rounded-[34px] border border-white/10 bg-black/25 shadow-[0_28px_80px_rgba(0,0,0,0.48)] backdrop-blur-2xl overflow-hidden px-5 py-6 sm:px-7 sm:py-8">
+                  <div className="flex items-center justify-center">
                     <img
                       src={brandMarkSrc}
                       alt={brandName}
@@ -451,38 +451,40 @@ export default function LoginScreen({
                         img.onerror = null;
                         img.src = fallbackMarkSrc;
                       }}
-                      className="h-full w-full object-contain object-center opacity-95 scale-[1.12]"
+                      className="h-[240px] w-[120%] max-w-none object-contain object-center sm:h-[300px] md:h-[340px] scale-[1.12]"
                       draggable={false}
                     />
                   </div>
-                  <div className="flex flex-col items-start">
-                    <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-black border border-white/10 bg-black/25 text-gray-100 backdrop-blur-xl">
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{
-                          backgroundColor:
-                            "rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.95)",
-                        }}
-                      />
-                      <span>دخول محترم وواضح من أول مرة</span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
-                        🛡️ خصوصية
-                      </span>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
-                        ⚡ غرف فورية
-                      </span>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
-                        🔗 مشاركة
-                      </span>
-                    </div>
-                  </div>
                 </div>
 
-                <div className="hidden sm:flex items-center gap-1.5 rounded-2xl px-3 py-2 text-[10px] font-black bg-black/25 border border-white/10 text-gray-100 backdrop-blur-xl">
-                  <Sparkles size={14} className="opacity-90" />
-                  <span>شات لَمّة</span>
+                <div className="mt-4 grid grid-cols-1 gap-2">
+                  <div className="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-[10px] font-black border border-white/10 bg-black/25 text-gray-100 backdrop-blur-xl">
+                    <span
+                      className="inline-block h-2 w-2 rounded-full"
+                      style={{
+                        backgroundColor:
+                          "rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.95)",
+                      }}
+                    />
+                    <span>دخول محترم وواضح من أول مرة</span>
+                  </div>
+
+                  <div className="rounded-full px-4 py-2 text-[10px] font-black flex items-center justify-center gap-2 lamma-gold-signature">
+                    <span>البطاقة الذهبية</span>
+                    <strong>{brandCredit}</strong>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center gap-1.5">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
+                      🛡️ خصوصية
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
+                      ⚡ غرف فورية
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
+                      🔗 مشاركة
+                    </span>
+                  </div>
                 </div>
               </div>
 
