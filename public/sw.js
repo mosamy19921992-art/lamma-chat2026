@@ -2,10 +2,10 @@
 // Smart caching with multiple strategies:
 //  - Cache-First  for static assets (images, fonts, icons)
 //  - Network-First  for API calls (with stale-while-revalidate fallback)
-//  - Stale-While-Revalidate  for HTML / routes
+//  - Network-First  for HTML / routes
 //  - Offline fallback page
 
-const VERSION = "lamma-v1.0.0";
+const VERSION = "lamma-v1.0.1";
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const IMAGE_CACHE = `${VERSION}-images`;
@@ -99,12 +99,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 5. HTML / navigation — Stale-while-revalidate
+  // 5. HTML / navigation — Network first to avoid stale app shells
   if (
     request.mode === "navigate" ||
     request.destination === "document"
   ) {
-    event.respondWith(staleWhileRevalidate(request, RUNTIME_CACHE));
+    event.respondWith(networkFirst(request, RUNTIME_CACHE));
     return;
   }
 
@@ -148,34 +148,6 @@ async function networkFirst(request, cacheName) {
     if (cached) return cached;
     return new Response("Offline", { status: 503, statusText: "Offline" });
   }
-}
-
-async function staleWhileRevalidate(request, cacheName) {
-  const cache = await caches.open(cacheName);
-  const cached = await cache.match(request);
-  const networkPromise = fetch(request)
-    .then((res) => {
-      if (res.ok) cache.put(request, res.clone());
-      return res;
-    })
-    .catch(() => null);
-
-  // If we have a cached version, return it immediately.
-  if (cached) {
-    // Also fire-and-forget the network refresh.
-    networkPromise.catch(() => {});
-    return cached;
-  }
-
-  const networkRes = await networkPromise;
-  if (networkRes) return networkRes;
-
-  // Last resort: offline fallback
-  const offline = await cache.match("/offline.html");
-  return (
-    offline ||
-    new Response("Offline", { status: 503, statusText: "Offline" })
-  );
 }
 
 // ─────────────────────────────────────────────

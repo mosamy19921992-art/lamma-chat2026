@@ -51,8 +51,9 @@ export function useServiceWorker(): ServiceWorkerState {
 
     // Register the service worker.
     navigator.serviceWorker
-      .register(SW_URL, { scope: "/" })
+      .register(SW_URL, { scope: "/", updateViaCache: "none" })
       .then((registration) => {
+        void registration.update();
         // Listen for a waiting worker (an update is available).
         if (registration.waiting) {
           setNeedRefresh(true);
