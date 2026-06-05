@@ -442,9 +442,9 @@ export default function LoginScreen({
       </div>
 
       {/* Dynamic Scrollable Wrapper with centering behavior */}
-      <div className="min-h-[100dvh] w-full flex items-start 2xl:items-center justify-center p-3 sm:p-4 md:px-5 md:py-6 xl:p-6 2xl:py-10">
+      <div className="min-h-[100dvh] w-full flex items-start 2xl:items-center justify-center p-3 sm:p-4 md:px-5 md:py-6 xl:p-6 2xl:py-5">
         {/* Main Grid Wrapper */}
-        <div className="w-full max-w-[560px] 2xl:max-w-[1360px] mx-auto grid grid-cols-1 2xl:grid-cols-12 gap-4 2xl:gap-5 items-start 2xl:items-center relative z-10">
+        <div className="w-full max-w-[560px] 2xl:max-w-[1320px] mx-auto grid grid-cols-1 2xl:grid-cols-12 gap-4 2xl:gap-4 items-start 2xl:items-center relative z-10">
           {/* COLUMN 1: BRANDING & SYSTEM STATS (LEFT) */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
@@ -580,10 +580,10 @@ export default function LoginScreen({
             transition={{ duration: 0.5 }}
             className="hidden 2xl:flex 2xl:col-span-4 w-full items-start justify-center"
           >
-            <div className="w-full max-w-[420px] flex flex-col gap-3">
+            <div className="w-full max-w-[400px] flex flex-col gap-2.5">
               <div className="lamma-column-frame">
-                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
-                  <div className="space-y-3">
+                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-3.5 overflow-hidden">
+                  <div className="space-y-2.5">
                     {[
                       {
                         name: "مستخدم",
@@ -644,8 +644,8 @@ export default function LoginScreen({
               </div>
 
               <div className="lamma-column-frame">
-                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
-                  <div className="space-y-3">
+                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-3.5 overflow-hidden">
+                  <div className="space-y-2.5">
                     {[
                       {
                         name: "السرعة",
@@ -673,40 +673,14 @@ export default function LoginScreen({
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 pt-3 border-t border-white/10 text-[10px] text-gray-300 font-semibold leading-relaxed">
+                  <div className="mt-2.5 pt-2.5 border-t border-white/10 text-[10px] text-gray-300 font-semibold leading-relaxed">
                     هدفنا إن كل عمود يبقى متوازن… من غير فراغات مزعجة.
                   </div>
                 </div>
               </div>
 
               <div className="lamma-column-frame">
-                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0">
-                      <Shield size={16} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-black text-white truncate">
-                          ثبات
-                        </span>
-                        <span className="text-[8px] font-mono text-gray-500" dir="ltr">
-                          الآن
-                        </span>
-                      </div>
-                      <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
-                        شكل ثابت… ومفيش عمود هيطلع أقصر من التاني.
-                      </div>
-                      <div className="mt-2 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
-                        دخول سريع + كروت واضحة من غير زحمة.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="lamma-column-frame">
-                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
+                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-3.5 overflow-hidden">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0">
                       <Shield size={16} />
@@ -742,7 +716,7 @@ export default function LoginScreen({
           >
             {/* Rounded glass container with green neon border shadow */}
             <div
-              className={`w-full max-w-[420px] h-auto relative rounded-[32px] p-4 sm:p-5 md:p-6 overflow-hidden transition-all duration-300 flex flex-col lamma-login-shell ${
+              className={`w-full max-w-[400px] h-auto relative rounded-[32px] p-4 sm:p-5 md:p-6 2xl:p-5 overflow-hidden transition-all duration-300 flex flex-col lamma-login-shell ${
                 primaryTheme === "amoled" ? "bg-neutral-950/92" : ""
               }`}
             >
@@ -756,28 +730,28 @@ export default function LoginScreen({
               </div>
 
               {/* Header logo & headings */}
-              <div className="text-center mb-4">
+              <div className="text-center mb-3 2xl:mb-2.5">
                 <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[9px] font-black text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] lamma-login-hero-badge">
                   <Sparkles size={11} />
                   <span>دخول هادي بنفس روح اللمة</span>
                 </div>
-                <div className="mx-auto mt-3 flex justify-center">
-                  <div className="rounded-[28px] px-5 py-3 lamma-login-panel">
+                <div className="mx-auto mt-2.5 2xl:mt-2 flex justify-center">
+                  <div className="rounded-[28px] px-4 py-2.5 2xl:px-4 2xl:py-2 lamma-login-panel">
                     <img
                       src={brandLogoUrl || "/images/lamma-wordmark.svg"}
                       alt="LAMMA CHAT"
-                      className="w-[170px] sm:w-[215px] max-w-full h-auto drop-shadow-2xl"
+                      className="w-[160px] sm:w-[200px] 2xl:w-[185px] max-w-full h-auto drop-shadow-2xl"
                       draggable={false}
                     />
                   </div>
                 </div>
-                <h2 className="text-[18px] md:text-[22px] font-black text-white m-0 mt-3">
+                <h2 className="text-[18px] md:text-[22px] font-black text-white m-0 mt-2.5 2xl:mt-2">
                   تسجيل الدخول
                 </h2>
-                <p className="text-[10px] sm:text-[11px] mt-2 px-2 lamma-login-subtext">
+                <p className="text-[10px] sm:text-[11px] mt-1.5 px-2 lamma-login-subtext">
                   واجهة سهلة ومريحة من أول ثانية, وكل القوة مستخبية بهدوء لحد ما تحتاجها.
                 </p>
-                <div className="mt-3 flex items-center justify-center gap-2 text-[9px] text-gray-300">
+                <div className="mt-2 flex items-center justify-center gap-2 text-[9px] text-gray-300">
                   <span className="px-2.5 py-1 rounded-full lamma-login-soft-link">
                     دخول سريع
                   </span>
@@ -788,7 +762,7 @@ export default function LoginScreen({
               </div>
 
               {/* Input credentials forms */}
-              <form onSubmit={handleFormLogin} className="space-y-2.5">
+              <form onSubmit={handleFormLogin} className="space-y-2 2xl:space-y-1.5">
                 {/* Email / Username field */}
                 <div className="space-y-1">
                   <label
@@ -957,7 +931,7 @@ export default function LoginScreen({
               </form>
 
               {/* Divider */}
-              <div className="flex items-center gap-3 my-2.5 text-gray-400 text-[10px] font-bold">
+              <div className="flex items-center gap-3 my-2 text-gray-400 text-[10px] font-bold">
                 <span className="flex-1 h-[1px] bg-gradient-to-l from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
                 <span>أو</span>
                 <span className="flex-1 h-[1px] bg-gradient-to-r from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
@@ -996,7 +970,7 @@ export default function LoginScreen({
               <button
                 type="button"
                 onClick={() => setShowExtraOptions((p) => !p)}
-                className="mt-4 w-full py-2.5 rounded-2xl text-[11px] font-black text-gray-300 hover:text-white transition-all flex items-center justify-between px-4 lamma-muted-btn lamma-login-panel"
+                className="mt-3 w-full py-2.5 rounded-2xl text-[11px] font-black text-gray-300 hover:text-white transition-all flex items-center justify-between px-4 lamma-muted-btn lamma-login-panel"
               >
                 <span>خيارات إضافية</span>
                 <ChevronRight
@@ -1007,7 +981,7 @@ export default function LoginScreen({
 
               {showExtraOptions && (
                 <div className="mt-3 p-3 rounded-2xl lamma-login-panel">
-                  <div className="flex justify-between items-center mb-3">
+                  <div className="flex justify-between items-center mb-2.5">
                     <div className="flex items-center gap-2 rounded-full px-2.5 py-1 lamma-login-highlight">
                       <Sparkles
                         size={13}
@@ -1022,7 +996,7 @@ export default function LoginScreen({
                     </span>
                   </div>
 
-                  <p className="text-[10px] mb-3 text-right lamma-login-subtext">
+                  <p className="text-[10px] mb-2.5 text-right lamma-login-subtext">
                     هيتجهز لك اسم زائر تلقائي وتدخل فورًا من غير زحمة أو خطوات كتير.
                   </p>
 
@@ -1073,7 +1047,7 @@ export default function LoginScreen({
                   <button
                     type="button"
                     onClick={handleSwiftGuestLogin}
-                    className="w-full mt-3 py-2.5 text-xs font-black rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] hover:text-white transition-all cursor-pointer lamma-primary-btn"
+                    className="w-full mt-2.5 py-2.5 text-xs font-black rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] hover:text-white transition-all cursor-pointer lamma-primary-btn"
                   >
                     <span className="inline-flex items-center justify-center gap-2">
                       <Zap size={14} />
@@ -1129,7 +1103,7 @@ export default function LoginScreen({
               )}
 
               {/* Bottom link as Guest */}
-              <div className="mt-4 text-center space-y-3">
+              <div className="mt-3 text-center space-y-2.5">
                 <button
                   type="button"
                   id="continue-as-guest-btn"
@@ -1155,7 +1129,7 @@ export default function LoginScreen({
             </div>
 
             {/* Footer Rights */}
-            <div className="text-center mt-auto pt-4 space-y-1.5">
+            <div className="text-center mt-auto pt-3 space-y-1">
               <div className="text-xs text-gray-400/80 font-bold">
                 © 2026 Lamma Chat. جميع الحقوق محفوظة{" "}
                 <span className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)]">
@@ -1181,11 +1155,11 @@ export default function LoginScreen({
             transition={{ duration: 0.5 }}
             className="hidden 2xl:flex 2xl:col-span-4 w-full items-start justify-center"
           >
-            <div className="w-full max-w-[420px]">
+            <div className="w-full max-w-[400px]">
               <div className="lamma-column-frame">
-                <div className="space-y-3">
-                  <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
-                    <div className="w-full flex flex-col items-center gap-3">
+                <div className="space-y-2.5">
+                  <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-3.5 overflow-hidden">
+                    <div className="w-full flex flex-col items-center gap-2.5">
                       <div className="w-full rounded-3xl overflow-hidden aspect-square lamma-login-art-frame">
                         <img
                           src={amMarkSrc}
@@ -1196,7 +1170,7 @@ export default function LoginScreen({
                           draggable={false}
                         />
                       </div>
-                      <div className="w-full rounded-3xl px-4 py-3 text-[10px] font-black lamma-gold-signature">
+                      <div className="w-full rounded-3xl px-4 py-2.5 text-[10px] font-black lamma-gold-signature">
                         <div className="flex items-center justify-center gap-1.5">
                           <Sparkles size={11} />
                           <span className="text-[9px] text-yellow-300/75">
@@ -1210,8 +1184,8 @@ export default function LoginScreen({
                     </div>
                   </div>
 
-                  <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
-                    <div className="space-y-3">
+                  <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-3.5 overflow-hidden">
+                    <div className="space-y-2.5">
                       {[
                         {
                           name: "الحل",
@@ -1245,7 +1219,7 @@ export default function LoginScreen({
                       ))}
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-white/10 text-[10px] text-gray-300 font-semibold leading-relaxed">
+                    <div className="mt-2.5 pt-2.5 border-t border-white/10 text-[10px] text-gray-300 font-semibold leading-relaxed">
                       <span className="text-white font-black">لمة شات</span> مش
                       مجرد فكرة… ده مشروع كله{" "}
                       <span className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] font-black">
