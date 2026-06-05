@@ -423,7 +423,7 @@ export default function LoginScreen({
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.05 }}
-              className="relative overflow-hidden rounded-[34px] p-5 sm:p-6 md:p-7 lamma-login-art-frame lamma-column-frame h-full min-h-0"
+              className="relative order-2 lg:order-1 overflow-hidden rounded-[34px] p-5 sm:p-6 md:p-7 lamma-login-art-frame lamma-column-frame h-full min-h-0"
             >
               <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute -top-32 -right-40 h-[26rem] w-[26rem] rounded-full blur-3xl opacity-60"
@@ -451,13 +451,13 @@ export default function LoginScreen({
                         img.onerror = null;
                         img.src = fallbackMarkSrc;
                       }}
-                      className="h-[240px] w-[120%] max-w-none object-contain object-center sm:h-[300px] md:h-[340px] scale-[1.12]"
+                      className="h-[min(34dvh,220px)] w-[120%] max-w-none object-contain object-center sm:h-[260px] md:h-[320px] scale-[1.12]"
                       draggable={false}
                     />
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-1 gap-2">
+                <div className="mt-4 hidden grid-cols-1 gap-2 sm:grid">
                   <div className="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-[10px] font-black border border-white/10 bg-black/25 text-gray-100 backdrop-blur-xl">
                     <span
                       className="inline-block h-2 w-2 rounded-full"
@@ -488,7 +488,7 @@ export default function LoginScreen({
                 </div>
               </div>
 
-              <div className="relative z-10 mt-6 flex flex-col gap-3">
+              <div className="relative z-10 mt-4 sm:mt-6 flex flex-col gap-3">
                 <h1 className="text-[22px] sm:text-[26px] md:text-[30px] font-black leading-tight text-white">
                   شات عربي
                 </h1>
@@ -503,7 +503,7 @@ export default function LoginScreen({
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.12 }}
-              className="w-full flex flex-col h-full relative"
+              className="w-full order-1 lg:order-2 flex flex-col h-full relative"
             >
               <div
                 className={`w-full h-auto relative rounded-[34px] p-5 sm:p-6 md:p-7 overflow-hidden transition-all duration-300 flex flex-col shadow-[0_18px_70px_rgba(0,0,0,0.55)] lamma-login-shell lamma-column-frame ${
@@ -561,7 +561,7 @@ export default function LoginScreen({
                   </div>
                 </div>
 
-                <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-y-auto pr-1">
+                <div className="flex-1 min-h-0 overflow-visible lg:overflow-y-auto lg:pr-1">
                   <form onSubmit={handleFormLogin} className="space-y-3">
                   <div className="space-y-1">
                     <label
