@@ -442,9 +442,9 @@ export default function LoginScreen({
       </div>
 
       {/* Dynamic Scrollable Wrapper with centering behavior */}
-      <div className="min-h-[100dvh] w-full flex items-start justify-center p-3 sm:p-4 md:px-5 md:py-6 xl:p-6">
+      <div className="min-h-[100dvh] w-full flex items-start xl:items-center justify-center p-3 sm:p-4 md:px-5 md:py-6 xl:p-6">
         {/* Main Grid Wrapper */}
-        <div className="w-full max-w-[560px] mx-auto grid grid-cols-1 gap-4 items-start relative z-10">
+        <div className="w-full max-w-[620px] mx-auto grid grid-cols-1 gap-4 items-start relative z-10">
           {/* COLUMN 1: BRANDING & SYSTEM STATS (LEFT) */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
@@ -716,7 +716,7 @@ export default function LoginScreen({
           >
             {/* Rounded glass container with green neon border shadow */}
             <div
-              className={`w-full max-w-[390px] h-auto relative rounded-[32px] p-4 sm:p-5 md:p-6 2xl:p-4 overflow-hidden transition-all duration-300 flex flex-col lamma-login-shell ${
+              className={`w-full max-w-[460px] h-auto relative rounded-[32px] p-4 sm:p-5 md:p-6 overflow-hidden transition-all duration-300 flex flex-col lamma-login-shell ${
                 primaryTheme === "amoled" ? "bg-neutral-950/92" : ""
               }`}
             >
@@ -740,7 +740,7 @@ export default function LoginScreen({
                     <img
                       src={brandLogoUrl || "/images/lamma-wordmark.svg"}
                       alt="LAMMA CHAT"
-                      className="w-[150px] sm:w-[190px] 2xl:w-[176px] max-w-full h-auto drop-shadow-2xl"
+                      className="w-[160px] sm:w-[210px] max-w-full h-auto drop-shadow-2xl"
                       draggable={false}
                     />
                   </div>
@@ -782,7 +782,7 @@ export default function LoginScreen({
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pr-11 pl-4 py-2 2xl:py-1.5 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-left lamma-input-shell"
+                      className="w-full pr-11 pl-4 py-2.5 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-left lamma-input-shell"
                       placeholder="example@email.com"
                       autoComplete="email"
                       dir="ltr"
@@ -809,7 +809,7 @@ export default function LoginScreen({
                         required
                         value={signupNickname}
                         onChange={(e) => setSignupNickname(e.target.value)}
-                        className="w-full pr-11 pl-4 py-2 2xl:py-1.5 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-right lamma-input-shell"
+                        className="w-full pr-11 pl-4 py-2.5 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-right lamma-input-shell"
                         placeholder="مثال: لَمّة_محمد"
                         autoComplete="nickname"
                       />
@@ -836,7 +836,7 @@ export default function LoginScreen({
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pr-11 pl-12 py-2 2xl:py-1.5 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-left lamma-input-shell"
+                      className="w-full pr-11 pl-12 py-2.5 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-left lamma-input-shell"
                       autoComplete="current-password"
                       dir="ltr"
                     />
@@ -905,7 +905,7 @@ export default function LoginScreen({
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full py-2 2xl:py-1.5 text-white rounded-xl font-black text-[11px] flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed lamma-primary-btn"
+                  className="w-full py-2.5 text-white rounded-xl font-black text-[11px] flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed lamma-primary-btn"
                 >
                   <span>
                     {authLoading
@@ -922,7 +922,7 @@ export default function LoginScreen({
                   onClick={() =>
                     setAuthMode((p) => (p === "login" ? "signup" : "login"))
                   }
-                  className="w-full text-[11px] font-black transition-all rounded-full py-2 2xl:py-1.5 lamma-login-soft-link"
+                  className="w-full text-[11px] font-black transition-all rounded-full py-2.5 lamma-login-soft-link"
                 >
                   {authMode === "login"
                     ? "مش عندك حساب؟ اعمل حساب جديد"
@@ -941,7 +941,7 @@ export default function LoginScreen({
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full py-2 2xl:py-1.5 rounded-2xl text-[11px] font-black flex items-center justify-between px-4 transition-all text-gray-300 hover:text-white lamma-muted-btn lamma-login-panel"
+                className="w-full py-2.5 rounded-2xl text-[11px] font-black flex items-center justify-between px-4 transition-all text-gray-300 hover:text-white lamma-muted-btn lamma-login-panel"
               >
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -970,7 +970,7 @@ export default function LoginScreen({
               <button
                 type="button"
                 onClick={() => setShowExtraOptions((p) => !p)}
-                className="mt-2.5 w-full py-2 2xl:py-1.5 rounded-2xl text-[11px] font-black text-gray-300 hover:text-white transition-all flex items-center justify-between px-4 lamma-muted-btn lamma-login-panel"
+                className="mt-2.5 w-full py-2.5 rounded-2xl text-[11px] font-black text-gray-300 hover:text-white transition-all flex items-center justify-between px-4 lamma-muted-btn lamma-login-panel"
               >
                 <span>خيارات إضافية</span>
                 <ChevronRight
@@ -1235,7 +1235,7 @@ export default function LoginScreen({
             </div>
           </motion.div>
 
-          <div className="w-full flex flex-col items-center gap-4 mt-4">
+          <div className="hidden">
             <div className="w-full max-w-[520px] grid gap-4">
               <div className="lamma-column-frame">
                 <div className="lamma-glass lamma-login-panel rounded-3xl p-4 overflow-hidden">
