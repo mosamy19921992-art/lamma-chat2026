@@ -418,7 +418,7 @@ export default function LoginScreen({
 
       <div className="relative z-10 h-full w-full overflow-y-auto">
         <div className="min-h-full w-full flex items-center justify-center px-4 py-8 sm:py-10 md:py-12">
-          <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 lg:gap-6 items-stretch">
+          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] gap-4 sm:gap-5 lg:gap-6 items-stretch">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -442,7 +442,7 @@ export default function LoginScreen({
 
               <div className="relative z-10 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 overflow-hidden rounded-2xl border border-white/10 bg-black/25 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+                  <div className="h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-[28px] border border-white/10 bg-black/25 shadow-[0_24px_60px_rgba(0,0,0,0.4)] backdrop-blur-xl p-2.5 sm:p-3">
                     <img
                       src={brandMarkSrc}
                       alt={brandName}
@@ -451,7 +451,7 @@ export default function LoginScreen({
                         img.onerror = null;
                         img.src = fallbackMarkSrc;
                       }}
-                      className="h-full w-full object-cover object-center scale-110 opacity-95"
+                      className="h-full w-full object-contain object-center opacity-95"
                       draggable={false}
                     />
                   </div>
@@ -539,10 +539,10 @@ export default function LoginScreen({
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.12 }}
-              className="w-full flex flex-col justify-center items-center h-full relative"
+              className="w-full flex flex-col h-full relative"
             >
               <div
-                className={`w-full max-w-[460px] h-auto relative rounded-[34px] p-4 sm:p-5 overflow-hidden transition-all duration-300 flex flex-col shadow-[0_18px_70px_rgba(0,0,0,0.55)] lamma-login-shell ${
+                className={`w-full h-auto relative rounded-[34px] p-5 sm:p-6 md:p-7 overflow-hidden transition-all duration-300 flex flex-col shadow-[0_18px_70px_rgba(0,0,0,0.55)] lamma-login-shell lamma-column-frame ${
                   primaryTheme === "amoled" ? "bg-black/40" : ""
                 }`}
               >
