@@ -39,9 +39,27 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="application-name" content="Lamma Chat" />
     <meta name="format-detection" content="telephone=no" />
+    <style>
+      html, body, #root {
+        min-height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        background-color: #070b12;
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 14% 18%, rgba(59, 130, 246, 0.16), transparent 24%),
+          radial-gradient(circle at 86% 22%, rgba(245, 158, 11, 0.12), transparent 20%),
+          radial-gradient(circle at 50% 0%, rgba(148, 163, 184, 0.08), transparent 26%),
+          linear-gradient(135deg, #060912 0%, #0c1420 42%, #0a0f18 72%, #05070b 100%);
+        color: #f8fafc;
+      }
+    </style>
 
     <!-- Microsoft PWA -->
-    <meta name="msapplication-TileColor" content="#10b981" />
+    <meta name="msapplication-TileColor" content="#070b12" />
     <meta name="msapplication-TileImage" content="/images/lamma-logo.png" />
     <meta name="msapplication-config" content="/manifest.json" />
 

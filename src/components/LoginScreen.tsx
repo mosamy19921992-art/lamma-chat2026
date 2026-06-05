@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "../lib/supabase.ts";
+import AMLogo from "./AMLogo.tsx";
 
 interface LoginScreenProps {
   onLogin: (
@@ -65,7 +66,7 @@ export default function LoginScreen({
   type WallTheme = "fire" | "ice" | "violet";
   const amMarkSrc = "/images/lamma-logo.png";
   const loginHeroBg =
-    "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=luxury%20modern%20collaboration%20lounge%20inside%20a%20glass%20office%2C%20softly%20blurred%20professionals%20in%20the%20background%2C%20abstract%20holographic%20chat%20light%20nodes%2C%20teal%20and%20warm%20gold%20cinematic%20lighting%2C%20dark%20premium%20atmosphere%2C%20clean%20website%20hero%20background%2C%20realistic%20photography%2C%20soft%20focus%2C%20no%20text%2C%20no%20letters%2C%20no%20logos%2C%20no%20ui%20screens&image_size=landscape_16_9";
+    "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=bright%20modern%20office%20setting%20with%20a%20diverse%20group%20of%20professionals%20collaborating%20around%20computers%2C%20smiling%20and%20pointing%20at%20screens%2C%20with%20futuristic%20digital%20network%20overlays%20and%20floating%20tech%20nodes%2C%20high%20quality%2C%20realistic%20photography&image_size=landscape_16_9";
 
   const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(() =>
     localStorage.getItem("lamma_custom_logo_url"),
@@ -402,17 +403,17 @@ export default function LoginScreen({
 
   return (
     <div
-      className="min-h-[100dvh] w-full relative overflow-y-auto overflow-x-hidden font-sans bg-transparent text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app"
+      className="h-[100dvh] w-full relative overflow-hidden font-sans bg-transparent text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app"
       dir="rtl"
       data-lamma-wall={wallTheme}
     >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden bg-slate-900">
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-16 scale-105 blur-[2px]"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
           style={{ backgroundImage: `url("${loginHeroBg}")` }}
         />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(8,18,18,0.12)_0%,rgba(3,7,7,0.72)_38%,rgba(1,4,4,0.92)_100%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(7,14,12,0.86)_0%,rgba(10,18,16,0.62)_34%,rgba(16,10,2,0.50)_68%,rgba(2,6,5,0.88)_100%)]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/60 via-slate-900/50 to-black/80 mix-blend-multiply" />
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
         <motion.div
           className="absolute left-1/2 top-[6%] h-[18rem] w-[78rem] -translate-x-1/2 rounded-[50%] blur-3xl opacity-80"
           style={{
@@ -449,10 +450,51 @@ export default function LoginScreen({
         />
       </div>
 
+      {/* Top Right: Welcome Message & Golden Card Container */}
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-30 flex flex-col items-end gap-2">
+        {/* Welcome Message Card */}
+        <div className="flex flex-col items-end gap-1.5 bg-black/20 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] rounded-[26px] p-2.5 sm:p-3 max-w-[220px] sm:max-w-[300px]">
+          <div className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 sm:px-2.5 text-[8px] sm:text-[9px] font-black text-green-400 bg-green-500/10 border border-green-500/20">
+            <Sparkles size={12} />
+            <span>دخول هادي بنفس روح اللمة</span>
+          </div>
+          <p className="text-[9px] sm:text-[10px] text-gray-200 font-bold max-w-[260px] text-right leading-relaxed">
+            واجهة سهلة ومريحة من أول ثانية وكل القوة مستخبية بهدوء.
+          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="px-2 py-1 sm:px-2.5 rounded-full bg-white/5 border border-white/10 text-[8px] sm:text-[9px] text-gray-300 font-bold">
+              ⚡ دخول سريع
+            </span>
+            <span className="px-2 py-1 sm:px-2.5 rounded-full bg-white/5 border border-white/10 text-[8px] sm:text-[9px] text-gray-300 font-bold">
+              🛡️ خصوصية أعلى
+            </span>
+          </div>
+        </div>
+
+        {/* Golden Card */}
+        <div className="rounded-2xl px-3 py-2 text-[9px] sm:text-[10px] font-black bg-black/40 bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 border border-yellow-500/30 text-yellow-300 shadow-[0_4px_15px_rgba(234,179,8,0.15)] flex items-center gap-2 backdrop-blur-xl w-full sm:w-auto">
+          <div className="flex items-center gap-1.5">
+            <Sparkles size={12} className="text-yellow-400" />
+            <span>البطاقة الذهبية</span>
+          </div>
+          <span className="text-white truncate">MR mohamed samy</span>
+        </div>
+      </div>
+
+      {/* Top Left: AM Logo Card */}
+      <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-30 flex items-center justify-center bg-black/20 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] rounded-[28px] overflow-hidden p-0 w-[104px] h-[104px] sm:w-[128px] sm:h-[128px] md:w-[144px] md:h-[144px]">
+        <img
+          src={amMarkSrc}
+          alt="AM Golden Logo"
+          className="w-[110%] h-[110%] object-cover object-center opacity-95 scale-110"
+          draggable={false}
+        />
+      </div>
+
       {/* Dynamic Scrollable Wrapper with centering behavior */}
-      <div className="min-h-[100dvh] w-full flex items-start xl:items-center justify-center p-3 sm:p-4 md:px-5 md:py-6 xl:p-6">
+      <div className="h-full w-full flex items-center justify-center px-3 pb-3 pt-[132px] sm:px-4 sm:pb-4 sm:pt-[90px] md:px-5 md:pb-5 md:pt-[76px]">
         {/* Main Grid Wrapper */}
-        <div className="w-full max-w-[620px] mx-auto grid grid-cols-1 gap-4 items-start relative z-10">
+        <div className="w-full max-w-[540px] mx-auto grid grid-cols-1 gap-3 items-start relative z-10">
           {/* COLUMN 1: BRANDING & SYSTEM STATS (LEFT) */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
@@ -720,12 +762,12 @@ export default function LoginScreen({
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="w-full flex flex-col justify-start items-center h-auto relative z-20"
+            className="w-full flex flex-col justify-center items-center h-full relative z-20"
           >
             {/* Rounded glass container with green neon border shadow */}
             <div
-              className={`w-full max-w-[460px] h-auto relative rounded-[32px] p-4 sm:p-5 md:p-6 overflow-hidden transition-all duration-300 flex flex-col lamma-login-shell ${
-                primaryTheme === "amoled" ? "bg-neutral-950/92" : ""
+              className={`w-full max-w-[420px] h-auto relative rounded-[30px] p-3.5 sm:p-4 md:p-5 overflow-hidden transition-all duration-300 flex flex-col shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl bg-white/10 border border-white/20 ${
+                primaryTheme === "amoled" ? "bg-black/40" : ""
               }`}
             >
               {/* Horizontal neon neon ambient line at the top rim of card */}
@@ -738,44 +780,28 @@ export default function LoginScreen({
               </div>
 
               {/* Header logo & headings */}
-              <div className="text-center mb-2.5 2xl:mb-2">
-                <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[9px] font-black text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] lamma-login-hero-badge">
-                  <Sparkles size={11} />
-                  <span>دخول هادي بنفس روح اللمة</span>
-                </div>
-                <div className="mx-auto mt-2 2xl:mt-1.5 flex justify-center">
-                  <div className="rounded-[28px] px-4 py-2 2xl:px-3.5 2xl:py-1.5 lamma-login-panel">
-                    <img
-                      src={brandLogoUrl || "/images/lamma-wordmark.svg"}
-                      alt="LAMMA CHAT"
-                      className="w-[160px] sm:w-[210px] max-w-full h-auto drop-shadow-2xl"
-                      draggable={false}
-                    />
-                  </div>
-                </div>
-                <h2 className="text-[18px] md:text-[22px] font-black text-white m-0 mt-2 2xl:mt-1.5">
-                  تسجيل الدخول
+              <div className="flex flex-col items-center text-center mb-3">
+                <img
+                  src={brandLogoUrl || "/images/lamma-wordmark.svg"}
+                  alt="LAMMA CHAT"
+                  className="w-[116px] sm:w-[132px] drop-shadow-xl mb-2"
+                  draggable={false}
+                />
+                <h2 className="text-[18px] md:text-[22px] font-black text-white m-0 flex items-center gap-2">
+                  تسجيل الدخول <span className="text-2xl">🌙</span>
                 </h2>
-                <p className="text-[10px] sm:text-[11px] mt-1 px-2 lamma-login-subtext">
-                  واجهة سهلة ومريحة من أول ثانية, وكل القوة مستخبية بهدوء لحد ما تحتاجها.
+                <p className="mt-1 text-[10px] text-gray-300/90 font-semibold leading-relaxed">
+                  دخول سريع ومرتب من غير ما يطول المشهد.
                 </p>
-                <div className="mt-1.5 flex items-center justify-center gap-1.5 text-[9px] text-gray-300">
-                  <span className="px-2.5 py-1 rounded-full lamma-login-soft-link">
-                    دخول سريع
-                  </span>
-                  <span className="px-2.5 py-1 rounded-full lamma-login-soft-link">
-                    خصوصية أعلى
-                  </span>
-                </div>
               </div>
 
               {/* Input credentials forms */}
-              <form onSubmit={handleFormLogin} className="space-y-2 2xl:space-y-1.5">
+              <form onSubmit={handleFormLogin} className="space-y-1.5">
                 {/* Email / Username field */}
                 <div className="space-y-1">
                   <label
                     htmlFor="email-field"
-                    className="block text-[10px] font-black text-gray-400 mr-1 text-right"
+                    className="block text-[9px] font-black text-gray-400 mr-1 text-right"
                   >
                     البريد الإلكتروني
                   </label>
@@ -790,7 +816,7 @@ export default function LoginScreen({
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pr-11 pl-4 py-2.5 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-left lamma-input-shell"
+                      className="w-full pr-11 pl-4 py-2 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-left bg-black/30 border border-white/10 focus:border-white/30 focus:bg-black/50 backdrop-blur-md placeholder-gray-400"
                       placeholder="example@email.com"
                       autoComplete="email"
                       dir="ltr"
@@ -802,7 +828,7 @@ export default function LoginScreen({
                   <div className="space-y-1">
                     <label
                       htmlFor="nickname-field"
-                      className="block text-[10px] font-black text-gray-400 mr-1 text-right"
+                      className="block text-[9px] font-black text-gray-400 mr-1 text-right"
                     >
                       اسم المستخدم
                     </label>
@@ -817,7 +843,7 @@ export default function LoginScreen({
                         required
                         value={signupNickname}
                         onChange={(e) => setSignupNickname(e.target.value)}
-                        className="w-full pr-11 pl-4 py-2.5 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-right lamma-input-shell"
+                        className="w-full pr-11 pl-4 py-2 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-right bg-black/30 border border-white/10 focus:border-white/30 focus:bg-black/50 backdrop-blur-md placeholder-gray-400"
                         placeholder="مثال: لَمّة_محمد"
                         autoComplete="nickname"
                       />
@@ -829,7 +855,7 @@ export default function LoginScreen({
                 <div className="space-y-1">
                   <label
                     htmlFor="password-field"
-                    className="block text-[10px] font-black text-gray-400 mr-1 text-right"
+                    className="block text-[9px] font-black text-gray-400 mr-1 text-right"
                   >
                     كلمة المرور
                   </label>
@@ -844,7 +870,7 @@ export default function LoginScreen({
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pr-11 pl-12 py-2.5 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-left lamma-input-shell"
+                      className="w-full pr-11 pl-12 py-2 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-left bg-black/30 border border-white/10 focus:border-white/30 focus:bg-black/50 backdrop-blur-md placeholder-gray-400"
                       autoComplete="current-password"
                       dir="ltr"
                     />
@@ -859,7 +885,7 @@ export default function LoginScreen({
                 </div>
 
                 {/* Custom remember state & forgot links */}
-                <div className="flex justify-between items-center text-[10px] pt-0.5 select-none">
+                <div className="flex justify-between items-center text-[9px] pt-0.5 select-none">
                   <label
                     htmlFor="rememberMe"
                     className="flex items-center gap-2 cursor-pointer text-gray-300 hover:text-white"
@@ -904,7 +930,7 @@ export default function LoginScreen({
                         })
                         .finally(() => setAuthLoading(false));
                     }}
-                    className="px-3 py-1.5 rounded-full font-extrabold transition-all lamma-login-soft-link"
+                    className="px-2.5 py-1 rounded-full font-extrabold transition-all lamma-login-soft-link"
                   >
                     نسيت كلمة المرور؟
                   </button>
@@ -913,7 +939,7 @@ export default function LoginScreen({
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full py-2.5 text-white rounded-xl font-black text-[11px] flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed lamma-primary-btn"
+                  className="w-full py-2 text-white rounded-xl font-black text-[11px] flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed lamma-primary-btn"
                 >
                   <span>
                     {authLoading
@@ -930,7 +956,7 @@ export default function LoginScreen({
                   onClick={() =>
                     setAuthMode((p) => (p === "login" ? "signup" : "login"))
                   }
-                  className="w-full text-[11px] font-black transition-all rounded-full py-2.5 lamma-login-soft-link"
+                  className="w-full text-[11px] font-black transition-all rounded-full py-2 lamma-login-soft-link"
                 >
                   {authMode === "login"
                     ? "مش عندك حساب؟ اعمل حساب جديد"
@@ -939,7 +965,7 @@ export default function LoginScreen({
               </form>
 
               {/* Divider */}
-              <div className="flex items-center gap-3 my-1.5 text-gray-400 text-[10px] font-bold">
+              <div className="flex items-center gap-2 my-1 text-gray-400 text-[9px] font-bold">
                 <span className="flex-1 h-[1px] bg-gradient-to-l from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
                 <span>أو</span>
                 <span className="flex-1 h-[1px] bg-gradient-to-r from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
@@ -949,7 +975,7 @@ export default function LoginScreen({
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full py-2.5 rounded-2xl text-[11px] font-black flex items-center justify-between px-4 transition-all text-gray-300 hover:text-white lamma-muted-btn lamma-login-panel"
+                className="w-full py-2 rounded-2xl text-[11px] font-black flex items-center justify-between px-4 transition-all text-gray-300 hover:text-white bg-black/20 hover:bg-black/40 border border-white/10 backdrop-blur-md"
               >
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -978,7 +1004,7 @@ export default function LoginScreen({
               <button
                 type="button"
                 onClick={() => setShowExtraOptions((p) => !p)}
-                className="mt-2.5 w-full py-2.5 rounded-2xl text-[11px] font-black text-gray-300 hover:text-white transition-all flex items-center justify-between px-4 lamma-muted-btn lamma-login-panel"
+                className="mt-2 w-full py-2 rounded-2xl text-[11px] font-black text-gray-300 hover:text-white transition-all flex items-center justify-between px-4 bg-black/20 hover:bg-black/40 border border-white/10 backdrop-blur-md"
               >
                 <span>خيارات إضافية</span>
                 <ChevronRight
@@ -988,8 +1014,8 @@ export default function LoginScreen({
               </button>
 
               {showExtraOptions && (
-                <div className="mt-3 p-3 rounded-2xl lamma-login-panel">
-                  <div className="flex justify-between items-center mb-2.5">
+                <div className="mt-2 p-2.5 rounded-2xl lamma-login-panel">
+                  <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2 rounded-full px-2.5 py-1 lamma-login-highlight">
                       <Sparkles
                         size={13}
@@ -1004,11 +1030,11 @@ export default function LoginScreen({
                     </span>
                   </div>
 
-                  <p className="text-[10px] mb-2.5 text-right lamma-login-subtext">
+                  <p className="text-[9px] mb-2 text-right lamma-login-subtext">
                     هيتجهز لك اسم زائر تلقائي وتدخل فورًا من غير زحمة أو خطوات كتير.
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
                     <div className="sm:col-span-3 flex justify-center">
                       <div className="relative w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-[0_0_12px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] lamma-login-orb">
                         <span>🤖</span>
@@ -1024,7 +1050,7 @@ export default function LoginScreen({
                           type="text"
                           readOnly
                           value={guestId}
-                          className="flex-1 text-xs px-2.5 py-2 rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] font-mono text-center focus:outline-none lamma-input-shell"
+                          className="flex-1 text-[11px] px-2.5 py-1.5 rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] font-mono text-center focus:outline-none lamma-input-shell"
                           autoComplete="off"
                         />
 
@@ -1055,7 +1081,7 @@ export default function LoginScreen({
                   <button
                     type="button"
                     onClick={handleSwiftGuestLogin}
-                    className="w-full mt-2.5 py-2.5 text-xs font-black rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] hover:text-white transition-all cursor-pointer lamma-primary-btn"
+                    className="w-full mt-2 py-2 text-[11px] font-black rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] hover:text-white transition-all cursor-pointer lamma-primary-btn"
                   >
                     <span className="inline-flex items-center justify-center gap-2">
                       <Zap size={14} />
@@ -1111,13 +1137,13 @@ export default function LoginScreen({
               )}
 
               {/* Bottom link as Guest */}
-              <div className="mt-2.5 text-center space-y-2">
+              <div className="mt-2 text-center space-y-1.5">
                 <button
                   type="button"
                   id="continue-as-guest-btn"
                   name="continueAsGuest"
                   onClick={handleSwiftGuestLogin}
-                  className="text-xs flex items-center justify-center gap-1.5 mx-auto font-black transition-all px-4 py-1.5 rounded-full lamma-login-soft-link"
+                  className="text-[11px] flex items-center justify-center gap-1.5 mx-auto font-black transition-all px-4 py-1.5 rounded-full text-white bg-black/30 hover:bg-black/50 border border-white/10 backdrop-blur-md"
                 >
                   <span>متابعة كضيف</span>
                   <ChevronRight size={13} className="rotate-180 opacity-60" />
@@ -1128,7 +1154,7 @@ export default function LoginScreen({
                   id="copy-app-link-btn"
                   name="copyAppLink"
                   onClick={handleCopyLink}
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] text-gray-300 hover:text-white transition-all cursor-pointer mx-auto lamma-muted-btn lamma-login-panel"
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] text-gray-200 hover:text-white transition-all cursor-pointer mx-auto bg-black/30 hover:bg-black/50 border border-white/10 backdrop-blur-md"
                 >
                   <Share2 size={12} />
                   <span>هات الرابط بتاعى (Get My App Link)</span>
@@ -1137,22 +1163,15 @@ export default function LoginScreen({
             </div>
 
             {/* Footer Rights */}
-            <div className="text-center mt-auto pt-2.5 space-y-1">
-              <div className="text-[11px] text-gray-400/80 font-bold">
+            <div className="text-center pt-2 space-y-1">
+              <div className="text-[10px] text-gray-400/75 font-bold">
                 © 2026 Lamma Chat. جميع الحقوق محفوظة{" "}
                 <span className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)]">
                   💚
                 </span>
               </div>
-              <div className="mx-auto max-w-[300px] rounded-2xl px-3.5 py-2 text-[9px] font-semibold lamma-footer-credit">
-                <div className="text-[8px] uppercase tracking-[0.18em] text-white/55">
-                  Official Credit
-                </div>
-                <div className="mt-0.5">
-                  توثيق وهوية خاصة:
-                  {" "}
-                  <strong>MR mohamed samy</strong>
-                </div>
+              <div className="mx-auto inline-flex max-w-full rounded-full px-3 py-1 text-[8px] font-semibold lamma-footer-credit">
+                توثيق وهوية خاصة: <strong className="mr-1">MR mohamed samy</strong>
               </div>
             </div>
           </motion.div>

@@ -71,21 +71,21 @@ body,
 body {
   background:
     radial-gradient(
-      circle at 50% 0%,
-      rgba(24, 181, 123, 0.07),
+      circle at 14% 18%,
+      rgba(59, 130, 246, 0.16),
       transparent 24%
     ),
     radial-gradient(
-      circle at 20% 70%,
-      rgba(24, 181, 123, 0.04),
-      transparent 34%
+      circle at 86% 22%,
+      rgba(245, 158, 11, 0.12),
+      transparent 20%
     ),
     radial-gradient(
-      circle at 80% 60%,
-      rgba(193, 216, 106, 0.03),
-      transparent 34%
+      circle at 50% 0%,
+      rgba(148, 163, 184, 0.08),
+      transparent 26%
     ),
-    linear-gradient(180deg, #020403, #07100b 42%, #020403);
+    linear-gradient(135deg, #060912 0%, #0c1420 42%, #0a0f18 72%, #05070b 100%);
   background-attachment: fixed;
   color: var(--text-primary);
 }
@@ -350,7 +350,7 @@ body {
 
 .lamma-fire-frame-app {
   --lamma-frame-inset: 10px;
-  --lamma-frame-radius: 34px;
+  --lamma-frame-radius: 28px;
 }
 
 .lamma-fire-frame-panel {
