@@ -8,16 +8,12 @@ import {
   RefreshCw,
   Copy,
   Sparkles,
-  AlertCircle,
   Share2,
-  MessageCircle,
-  Shield,
   Zap,
   Hash,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "../lib/supabase.ts";
-import AMLogo from "./AMLogo.tsx";
 
 interface LoginScreenProps {
   onLogin: (
@@ -64,8 +60,14 @@ export default function LoginScreen({
   setPrimaryTheme,
 }: LoginScreenProps) {
   type WallTheme = "fire" | "ice" | "violet";
-  const amMarkSrc = "/images/lamma-logo.png";
+  const brandName = import.meta.env.VITE_BRAND_NAME || "Lamma Chat";
+  const brandCredit = import.meta.env.VITE_BRAND_CREDIT || "MR mohamed samy";
+  const brandMarkSrc = "/images/brand-mark.png";
+  const brandWordmarkSrc = "/images/brand-wordmark.svg";
+  const fallbackMarkSrc = "/images/lamma-logo.png";
+  const fallbackWordmarkSrc = "/images/lamma-wordmark.svg";
   const loginHeroBg =
+    import.meta.env.VITE_LOGIN_HERO_BG ||
     "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=bright%20modern%20office%20setting%20with%20a%20diverse%20group%20of%20professionals%20collaborating%20around%20computers%2C%20smiling%20and%20pointing%20at%20screens%2C%20with%20futuristic%20digital%20network%20overlays%20and%20floating%20tech%20nodes%2C%20high%20quality%2C%20realistic%20photography&image_size=landscape_16_9";
 
   const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(() =>
@@ -146,42 +148,6 @@ export default function LoginScreen({
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
-
-  // Simulated live active users list
-  const activeMembers = [
-    {
-      name: "ShadowX",
-      role: "Owner",
-      roleColor: "text-red-400 bg-red-500/10 border-red-500/20",
-      status: "Online",
-      avatar: "🧔",
-      color: "#ef4444",
-    },
-    {
-      name: "Luna_99",
-      role: "Mod",
-      roleColor: "text-purple-400 bg-purple-500/10 border-purple-500/20",
-      status: "Online",
-      avatar: "👩",
-      color: "#a371f7",
-    },
-    {
-      name: "CodeMaster",
-      role: "User",
-      roleColor: "text-green-400 bg-green-500/10 border-green-500/20",
-      status: "Online",
-      avatar: "👨",
-      color: "#22c55e",
-    },
-    {
-      name: "NightOwl",
-      role: "Idle",
-      roleColor: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
-      status: "Idle",
-      avatar: "🦉",
-      color: "#f59e0b",
-    },
-  ];
 
   const handleRegenerateGuestId = () => {
     setGuestId(generateRandomGuestId());
@@ -450,993 +416,404 @@ export default function LoginScreen({
         />
       </div>
 
-      {/* Top Right: Welcome Message & Golden Card Container */}
-      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-30 flex flex-col items-end gap-2">
-        {/* Welcome Message Card */}
-        <div className="flex flex-col items-end gap-1.5 bg-black/20 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] rounded-[26px] p-2.5 sm:p-3 max-w-[220px] sm:max-w-[300px]">
-          <div className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 sm:px-2.5 text-[8px] sm:text-[9px] font-black text-green-400 bg-green-500/10 border border-green-500/20">
-            <Sparkles size={12} />
-            <span>دخول هادي بنفس روح اللمة</span>
-          </div>
-          <p className="text-[9px] sm:text-[10px] text-gray-200 font-bold max-w-[260px] text-right leading-relaxed">
-            واجهة سهلة ومريحة من أول ثانية وكل القوة مستخبية بهدوء.
-          </p>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="px-2 py-1 sm:px-2.5 rounded-full bg-white/5 border border-white/10 text-[8px] sm:text-[9px] text-gray-300 font-bold">
-              ⚡ دخول سريع
-            </span>
-            <span className="px-2 py-1 sm:px-2.5 rounded-full bg-white/5 border border-white/10 text-[8px] sm:text-[9px] text-gray-300 font-bold">
-              🛡️ خصوصية أعلى
-            </span>
-          </div>
-        </div>
-
-        {/* Golden Card */}
-        <div className="rounded-2xl px-3 py-2 text-[9px] sm:text-[10px] font-black bg-black/40 bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 border border-yellow-500/30 text-yellow-300 shadow-[0_4px_15px_rgba(234,179,8,0.15)] flex items-center gap-2 backdrop-blur-xl w-full sm:w-auto">
-          <div className="flex items-center gap-1.5">
-            <Sparkles size={12} className="text-yellow-400" />
-            <span>البطاقة الذهبية</span>
-          </div>
-          <span className="text-white truncate">MR mohamed samy</span>
-        </div>
-      </div>
-
-      {/* Top Left: AM Logo Card */}
-      <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-30 flex items-center justify-center bg-black/20 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] rounded-[28px] overflow-hidden p-0 w-[104px] h-[104px] sm:w-[128px] sm:h-[128px] md:w-[144px] md:h-[144px]">
-        <img
-          src={amMarkSrc}
-          alt="AM Golden Logo"
-          className="w-[110%] h-[110%] object-cover object-center opacity-95 scale-110"
-          draggable={false}
-        />
-      </div>
-
-      {/* Dynamic Scrollable Wrapper with centering behavior */}
-      <div className="h-full w-full flex items-center justify-center px-3 pb-3 pt-[132px] sm:px-4 sm:pb-4 sm:pt-[90px] md:px-5 md:pb-5 md:pt-[76px]">
-        {/* Main Grid Wrapper */}
-        <div className="w-full max-w-[540px] mx-auto grid grid-cols-1 gap-3 items-start relative z-10">
-          {/* COLUMN 1: BRANDING & SYSTEM STATS (LEFT) */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="hidden"
-          >
-            {/* Branding Header */}
-            <div className="flex flex-col items-center text-center pb-2">
-              <img
-                src={brandLogoUrl || "/images/lamma-wordmark.svg"}
-                alt="LAMMA CHAT"
-                className="w-[180px] max-w-full drop-shadow-xl my-2"
-                draggable={false}
-              />
-              <div className="mt-1 flex items-center justify-center p-2 rounded-full bg-emerald-950/60 border border-green-500/30 text-green-400 shadow-[0_0_15px_rgba(16,185,129,0.2)] animate-pulse">
-                <MessageCircle size={18} />
-              </div>
-              <p className="mt-2 text-gray-400 text-[11px] font-bold leading-relaxed px-4">
-                الغرف الصوتية والنصية الخاصة والعامة مشفرة ومؤمنة بالكامل
-              </p>
-              <div className="w-16 h-[2px] bg-gradient-to-r from-transparent via-green-500 to-transparent mt-3" />
-            </div>
-
-            {/* Core Server Stats Blocks */}
-            <div className="flex-1 flex flex-col gap-2 mt-1">
-              <div className="p-3 rounded-xl bg-black/50 border border-green-500/10 hover:border-green-500/30 transition-all duration-300">
-                <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold mb-1">
-                  <span>حالة الخوادم</span>
-                  <span className="text-green-400">99.9% Online</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-ping flex-shrink-0" />
-                  <span className="font-black text-white text-xs">
-                    Servers Online
-                  </span>
-                  <div className="mr-auto w-12 h-6 flex items-center opacity-70">
-                    <svg
-                      className="w-full h-full"
-                      viewBox="0 0 100 40"
-                      fill="none"
-                    >
-                      <path
-                        d="M 10 20 L 30 20 L 35 10 L 40 30 L 45 5 L 50 35 L 55 20 L 60 20 L 65 15 L 70 25 L 75 20 L 95 20"
-                        stroke="#10b981"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-black/50 border border-green-500/10 hover:border-green-500/30 transition-all duration-300">
-                <div className="text-[10px] text-gray-400 font-bold flex justify-between items-center mb-1">
-                  <span>المتصلون</span>
-                  <span className="text-green-400 animate-pulse">نشط الآن</span>
-                </div>
-                <div className="flex items-baseline gap-2 mt-0.5">
-                  <span className="text-2xl font-black text-[#a3e635] drop-shadow-[0_0_12px_rgba(163,230,53,0.3)]">
-                    12,845+
-                  </span>
-                  <span className="text-[10px] text-gray-300 font-bold">
-                    أونلاين
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-black/50 border border-green-500/10 hover:border-green-500/30 transition-all duration-300 space-y-2">
-                <div className="flex items-center gap-1.5 pb-1.5 border-b border-green-500/10 text-right">
-                  <Shield size={12} className="text-blue-400 flex-shrink-0" />
-                  <span className="text-[10px] font-black text-white">
-                    جودة الاتصال والأمان
-                  </span>
-                </div>
-                <div className="space-y-1.5 text-right">
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-gray-400 font-bold">
-                      زمن الاستجابة (Ping):
-                    </span>
-                    <span className="text-green-400 font-black">15ms ⚡</span>
-                  </div>
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-gray-400 font-bold">
-                      نظام التشفير:
-                    </span>
-                    <span className="text-[#a3e635] font-black">
-                      WSS / AES-256
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-black/50 border border-green-500/10 hover:border-green-500/30 transition-all duration-300">
-                <div className="flex items-center justify-between pb-1.5 border-b border-green-500/10 mb-1.5 text-right">
-                  <div className="flex items-center gap-1.5 text-[10px] font-black text-white">
-                    <Sparkles
-                      size={12}
-                      className="text-green-400 animate-pulse"
-                    />
-                    <span>تحديثات المنصة</span>
-                  </div>
-                  <span className="text-[8px] bg-[#a3e635]/15 text-[#a3e635] px-1.5 py-0.5 rounded-full font-black">
-                    V14.2
-                  </span>
-                </div>
-                <div className="space-y-2 text-right mt-2 text-[10px] font-semibold text-gray-300">
-                  <div className="flex items-start gap-1.5">
-                    <span className="text-green-400 mt-0.5">⚡</span>
-                    <p className="leading-tight">غرف صوتية بجودة HD مجانية</p>
-                  </div>
-                  <div className="flex items-start gap-1.5">
-                    <span className="text-green-400 mt-0.5">⚡</span>
-                    <p className="leading-tight">
-                      مشاركة آمنة للوسائط بدون ضغط
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-1.5">
-                    <span className="text-green-400 mt-0.5">⚡</span>
-                    <p className="leading-tight">
-                      نظام رتب وشارات حصرية للأعضاء
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="hidden"
-          >
-            <div className="w-full max-w-[390px] flex flex-col gap-2">
-              <div className="lamma-column-frame">
-                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-3.5 overflow-hidden">
-                  <div className="space-y-2.5">
-                    {[
-                      {
-                        name: "مستخدم",
-                        quote: "مفيش تجديد… كله كلام فاضي ومكرر طول اليوم.",
-                        icon: <MessageCircle size={16} />,
-                        tone:
-                          "text-red-300 border-red-500/15 bg-red-500/5 shadow-[0_0_24px_rgba(239,68,68,0.08)]",
-                      },
-                      {
-                        name: "عضو قديم",
-                        quote: "الناس بتتخانق على الفاضي… ومحدش بيلحق على الكلام.",
-                        icon: <AlertCircle size={16} />,
-                        tone:
-                          "text-yellow-200 border-yellow-500/15 bg-yellow-500/5 shadow-[0_0_24px_rgba(245,158,11,0.08)]",
-                      },
-                      {
-                        name: "صاحب شات",
-                        quote: "الموضوع محتاج شكل جديد… يخلّي الدردشة محترمة وممتعة.",
-                        icon: <Sparkles size={16} />,
-                        tone:
-                          "text-sky-200 border-sky-500/15 bg-sky-500/5 shadow-[0_0_24px_rgba(56,189,248,0.08)]",
-                      },
-                    ].map((item, idx) => (
-                      <motion.div
-                        key={item.name}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: [0, -3, 0] }}
-                        transition={{
-                          duration: 4.2,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: 0.18 * idx,
-                        }}
-                        className="flex items-start gap-3"
-                      >
-                        <div
-                          className={`w-10 h-10 rounded-2xl flex items-center justify-center border ${item.tone} shrink-0`}
-                        >
-                          {item.icon}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[11px] font-black text-white truncate">
-                              {item.name}
-                            </span>
-                            <span className="text-[8px] font-mono text-gray-500" dir="ltr">
-                              الآن
-                            </span>
-                          </div>
-                          <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
-                            {item.quote}
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="lamma-column-frame">
-                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-3.5 overflow-hidden">
-                  <div className="space-y-2.5">
-                    {[
-                      {
-                        name: "السرعة",
-                        quote: "تدخل وتتكلم فورًا… من غير خطوات كتير.",
-                        icon: <Zap size={16} />,
-                      },
-                    ].map((item, idx) => (
-                      <div key={`${item.name}-${idx}`} className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] shrink-0 lamma-admin-card">
-                          {item.icon}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[11px] font-black text-white truncate">
-                              {item.name}
-                            </span>
-                            <span className="text-[8px] font-mono text-gray-500" dir="ltr">
-                              الآن
-                            </span>
-                          </div>
-                          <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
-                            {item.quote}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-2.5 pt-2.5 border-t border-white/10 text-[10px] text-gray-300 font-semibold leading-relaxed">
-                    هدفنا إن كل عمود يبقى متوازن… من غير فراغات مزعجة.
-                  </div>
-                </div>
-              </div>
-
-              <div className="lamma-column-frame">
-                <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-3.5 overflow-hidden">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] border border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0">
-                      <Shield size={16} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-black text-white truncate">
-                          ثبات
-                        </span>
-                        <span className="text-[8px] font-mono text-gray-500" dir="ltr">
-                          الآن
-                        </span>
-                      </div>
-                      <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
-                        شكل ثابت… ومفيش عمود هيطلع أقصر من التاني.
-                      </div>
-                      <div className="mt-2 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
-                        دخول سريع + كروت واضحة من غير زحمة.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* ================= COLUMN 2 (MIDDLE COLUMN): THE LOGIN CARD ================= */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="w-full flex flex-col justify-center items-center h-full relative z-20"
-          >
-            {/* Rounded glass container with green neon border shadow */}
-            <div
-              className={`w-full max-w-[420px] h-auto relative rounded-[30px] p-3.5 sm:p-4 md:p-5 overflow-hidden transition-all duration-300 flex flex-col shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl bg-white/10 border border-white/20 ${
-                primaryTheme === "amoled" ? "bg-black/40" : ""
-              }`}
+      <div className="relative z-10 h-full w-full overflow-y-auto">
+        <div className="min-h-full w-full flex items-center justify-center px-4 py-8 sm:py-10 md:py-12">
+          <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 lg:gap-6 items-stretch">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.05 }}
+              className="relative overflow-hidden rounded-[34px] p-5 sm:p-6 md:p-7 lamma-login-art-frame lamma-column-frame"
             >
-              {/* Horizontal neon neon ambient line at the top rim of card */}
-              <div className="absolute top-0 right-0 left-0 h-[2.5px] bg-gradient-to-r from-transparent via-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.75)] to-transparent animate-pulse" />
-
-              {/* Glowing corner beads */}
-              <div className="absolute top-3 left-3 flex gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] animate-ping" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.65)] animate-pulse" />
-              </div>
-
-              {/* Header logo & headings */}
-              <div className="flex flex-col items-center text-center mb-3">
-                <img
-                  src={brandLogoUrl || "/images/lamma-wordmark.svg"}
-                  alt="LAMMA CHAT"
-                  className="w-[116px] sm:w-[132px] drop-shadow-xl mb-2"
-                  draggable={false}
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute -top-32 -right-40 h-[26rem] w-[26rem] rounded-full blur-3xl opacity-60"
+                  style={{
+                    background:
+                      "radial-gradient(circle, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.16) 0%, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.06) 42%, transparent 72%)",
+                  }}
                 />
-                <h2 className="text-[18px] md:text-[22px] font-black text-white m-0 flex items-center gap-2">
-                  تسجيل الدخول <span className="text-2xl">🌙</span>
-                </h2>
-                <p className="mt-1 text-[10px] text-gray-300/90 font-semibold leading-relaxed">
-                  دخول سريع ومرتب من غير ما يطول المشهد.
-                </p>
+                <div className="absolute -bottom-36 -left-44 h-[28rem] w-[28rem] rounded-full blur-3xl opacity-50"
+                  style={{
+                    background:
+                      "radial-gradient(circle, rgba(59, 130, 246, 0.16) 0%, rgba(59, 130, 246, 0.06) 40%, transparent 72%)",
+                  }}
+                />
               </div>
 
-              {/* Input credentials forms */}
-              <form onSubmit={handleFormLogin} className="space-y-1.5">
-                {/* Email / Username field */}
-                <div className="space-y-1">
-                  <label
-                    htmlFor="email-field"
-                    className="block text-[9px] font-black text-gray-400 mr-1 text-right"
-                  >
-                    البريد الإلكتروني
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
-                      <Mail size={16} />
-                    </span>
-                    <input
-                      id="email-field"
-                      name="email"
-                      type="text"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pr-11 pl-4 py-2 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-left bg-black/30 border border-white/10 focus:border-white/30 focus:bg-black/50 backdrop-blur-md placeholder-gray-400"
-                      placeholder="example@email.com"
-                      autoComplete="email"
-                      dir="ltr"
+              <div className="relative z-10 flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 overflow-hidden rounded-2xl border border-white/10 bg-black/25 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+                    <img
+                      src={brandMarkSrc}
+                      alt={brandName}
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        img.onerror = null;
+                        img.src = fallbackMarkSrc;
+                      }}
+                      className="h-full w-full object-cover object-center scale-110 opacity-95"
+                      draggable={false}
                     />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-black border border-white/10 bg-black/25 text-gray-100 backdrop-blur-xl">
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{
+                          backgroundColor:
+                            "rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.95)",
+                        }}
+                      />
+                      <span>دخول محترم وواضح من أول مرة</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
+                        🛡️ جلسة آمنة
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
+                        ⚡ دخول سريع
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
+                        🔗 مشاركة سهلة
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {authMode === "signup" && (
-                  <div className="space-y-1">
-                    <label
-                      htmlFor="nickname-field"
-                      className="block text-[9px] font-black text-gray-400 mr-1 text-right"
-                    >
-                      اسم المستخدم
-                    </label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
-                        <Hash size={16} />
-                      </span>
-                      <input
-                        id="nickname-field"
-                        name="nickname"
-                        type="text"
-                        required
-                        value={signupNickname}
-                        onChange={(e) => setSignupNickname(e.target.value)}
-                        className="w-full pr-11 pl-4 py-2 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-right bg-black/30 border border-white/10 focus:border-white/30 focus:bg-black/50 backdrop-blur-md placeholder-gray-400"
-                        placeholder="مثال: لَمّة_محمد"
-                        autoComplete="nickname"
-                      />
-                    </div>
-                  </div>
-                )}
+                <div className="hidden sm:flex items-center gap-1.5 rounded-2xl px-3 py-2 text-[10px] font-black bg-black/25 border border-white/10 text-gray-100 backdrop-blur-xl">
+                  <Sparkles size={14} className="opacity-90" />
+                  <span>واجهة “تقفيل” جاهزة لمشروعك</span>
+                </div>
+              </div>
 
-                {/* Password field */}
-                <div className="space-y-1">
-                  <label
-                    htmlFor="password-field"
-                    className="block text-[9px] font-black text-gray-400 mr-1 text-right"
-                  >
-                    كلمة المرور
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
-                      <Lock size={16} />
-                    </span>
-                    <input
-                      id="password-field"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pr-11 pl-12 py-2 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-left bg-black/30 border border-white/10 focus:border-white/30 focus:bg-black/50 backdrop-blur-md placeholder-gray-400"
-                      autoComplete="current-password"
-                      dir="ltr"
+              <div className="relative z-10 mt-6">
+                <h1 className="text-[22px] sm:text-[26px] md:text-[30px] font-black leading-tight text-white">
+                  صفحة دخول شكلها شغل — ومعاها تجربة محترمة
+                </h1>
+                <p className="mt-2 text-[12px] sm:text-[13px] leading-relaxed text-gray-200/90">
+                  خفيفة على العين، واضحة في الحركة، ومبنية على هيراركي نظيف: زر
+                  أساسي واحد، خطوات قليلة، وتفاصيل كفاية تحس إن المنتج كبير.
+                </p>
+
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="rounded-3xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-xl">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black text-white">
+                        تركيز أعلى
+                      </span>
+                      <Zap size={14} className="text-white/80" />
+                    </div>
+                    <p className="mt-1 text-[10px] leading-relaxed text-gray-300">
+                      فورم بسيط ومقروء بدون زحمة، مع حالات Focus واضحة.
+                    </p>
+                  </div>
+
+                  <div className="rounded-3xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-xl">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black text-white">
+                        أمان وراحة
+                      </span>
+                      <Lock size={14} className="text-white/80" />
+                    </div>
+                    <p className="mt-1 text-[10px] leading-relaxed text-gray-300">
+                      تسجيل منظم + Google + خيار الضيف من غير ما يبوّظ الواجهة.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative z-10 mt-5 flex flex-wrap items-center gap-2">
+                <div className="rounded-full px-3 py-1.5 text-[9px] font-extrabold text-gray-200 border border-white/10 bg-white/5">
+                  مناسب لمنتجات SaaS
+                </div>
+                <div className="rounded-full px-3 py-1.5 text-[9px] font-extrabold text-gray-200 border border-white/10 bg-white/5">
+                  RTL جاهز
+                </div>
+                <div className="rounded-full px-3 py-1.5 text-[9px] font-extrabold text-gray-200 border border-white/10 bg-white/5">
+                  موبايل أولًا
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.12 }}
+              className="w-full flex flex-col justify-center items-center h-full relative"
+            >
+              <div
+                className={`w-full max-w-[460px] h-auto relative rounded-[34px] p-4 sm:p-5 overflow-hidden transition-all duration-300 flex flex-col shadow-[0_18px_70px_rgba(0,0,0,0.55)] lamma-login-shell ${
+                  primaryTheme === "amoled" ? "bg-black/40" : ""
+                }`}
+              >
+                <div className="absolute top-0 right-0 left-0 h-[2px] bg-gradient-to-r from-transparent via-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.7)] to-transparent" />
+
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="flex flex-col">
+                    <img
+                      src={brandLogoUrl || brandWordmarkSrc}
+                      alt={brandName}
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        img.onerror = null;
+                        img.src = fallbackWordmarkSrc;
+                      }}
+                      className="w-[112px] sm:w-[128px] drop-shadow-xl"
+                      draggable={false}
                     />
+                    <h2 className="mt-2 m-0 text-[18px] sm:text-[20px] font-black text-white">
+                      {authMode === "signup" ? "إنشاء حساب" : "تسجيل الدخول"}
+                    </h2>
+                    <p className="mt-1 text-[10px] sm:text-[11px] text-gray-300 leading-relaxed">
+                      {authMode === "signup"
+                        ? "خطوة واحدة وتبدأ معانا."
+                        : "دخول سريع ومرتب من غير ما يطول المشهد."}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1 rounded-full p-1 border border-white/10 bg-black/25 backdrop-blur-xl">
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500 hover:text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] transition-colors"
+                      onClick={() => setAuthMode("login")}
+                      className={`px-3 py-1.5 rounded-full text-[10px] font-black transition-all ${
+                        authMode === "login"
+                          ? "bg-white/10 text-white shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
+                          : "text-gray-300 hover:text-white"
+                      }`}
                     >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      دخول
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode("signup")}
+                      className={`px-3 py-1.5 rounded-full text-[10px] font-black transition-all ${
+                        authMode === "signup"
+                          ? "bg-white/10 text-white shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
+                          : "text-gray-300 hover:text-white"
+                      }`}
+                    >
+                      حساب جديد
                     </button>
                   </div>
                 </div>
 
-                {/* Custom remember state & forgot links */}
-                <div className="flex justify-between items-center text-[9px] pt-0.5 select-none">
-                  <label
-                    htmlFor="rememberMe"
-                    className="flex items-center gap-2 cursor-pointer text-gray-300 hover:text-white"
-                  >
-                    <input
-                      id="rememberMe"
-                      name="rememberMe"
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-3.5 h-3.5 rounded border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] bg-black/50 text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] accent-[rgb(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b))] focus:ring-0"
-                    />
-                    <span>تذكرني</span>
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const targetEmail = email.trim();
-                      if (!targetEmail) {
-                        showToast("اكتب البريد الإلكتروني الأول.", "error");
-                        return;
-                      }
-                      if (!supabase) {
-                        showToast("⚠️ إعدادات Supabase غير مكتملة حالياً.", "error");
-                        return;
-                      }
-                      setAuthLoading(true);
-                      supabase.auth
-                        .resetPasswordForEmail(targetEmail, {
-                          redirectTo: window.location.origin,
-                        })
-                        .then(({ error }) => {
-                          if (error) {
-                            showToast(error.message, "error");
-                            return;
-                          }
-                          showToast(
-                            "📧 تم إرسال رسالة إعادة تعيين كلمة المرور. راجع بريدك.",
-                            "success",
-                          );
-                        })
-                        .finally(() => setAuthLoading(false));
-                    }}
-                    className="px-2.5 py-1 rounded-full font-extrabold transition-all lamma-login-soft-link"
-                  >
-                    نسيت كلمة المرور؟
-                  </button>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={authLoading}
-                  className="w-full py-2 text-white rounded-xl font-black text-[11px] flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed lamma-primary-btn"
-                >
-                  <span>
-                    {authLoading
-                      ? "جاري التنفيذ..."
-                      : authMode === "signup"
-                        ? "إنشاء حساب"
-                        : "تسجيل الدخول"}
-                  </span>
-                  <ChevronRight size={16} className="rotate-180" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setAuthMode((p) => (p === "login" ? "signup" : "login"))
-                  }
-                  className="w-full text-[11px] font-black transition-all rounded-full py-2 lamma-login-soft-link"
-                >
-                  {authMode === "login"
-                    ? "مش عندك حساب؟ اعمل حساب جديد"
-                    : "عندك حساب؟ سجل دخول"}
-                </button>
-              </form>
-
-              {/* Divider */}
-              <div className="flex items-center gap-2 my-1 text-gray-400 text-[9px] font-bold">
-                <span className="flex-1 h-[1px] bg-gradient-to-l from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
-                <span>أو</span>
-                <span className="flex-1 h-[1px] bg-gradient-to-r from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
-              </div>
-
-              {/* Google Authentication row button */}
-              <button
-                type="button"
-                onClick={handleGoogleLogin}
-                className="w-full py-2 rounded-2xl text-[11px] font-black flex items-center justify-between px-4 transition-all text-gray-300 hover:text-white bg-black/20 hover:bg-black/40 border border-white/10 backdrop-blur-md"
-              >
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285f4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34a853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#fbbc05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="#ea4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 11.99 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
-                  </svg>
-                  <span>متابعة باستخدام Google</span>
-                </div>
-                <ChevronRight size={13} className="rotate-180 opacity-60" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowExtraOptions((p) => !p)}
-                className="mt-2 w-full py-2 rounded-2xl text-[11px] font-black text-gray-300 hover:text-white transition-all flex items-center justify-between px-4 bg-black/20 hover:bg-black/40 border border-white/10 backdrop-blur-md"
-              >
-                <span>خيارات إضافية</span>
-                <ChevronRight
-                  size={13}
-                  className={`rotate-180 opacity-60 transition-transform ${showExtraOptions ? "-rotate-90" : ""}`}
-                />
-              </button>
-
-              {showExtraOptions && (
-                <div className="mt-2 p-2.5 rounded-2xl lamma-login-panel">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-2 rounded-full px-2.5 py-1 lamma-login-highlight">
-                      <Sparkles
-                        size={13}
-                        className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] animate-pulse"
-                      />
-                      <span className="text-[11px] font-black text-white">
-                        دخول سريع باستخدام Lamma Chat
+                <form onSubmit={handleFormLogin} className="space-y-3">
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="email-field"
+                      className="block text-[10px] font-black text-gray-300 mr-1 text-right"
+                    >
+                      البريد الإلكتروني
+                    </label>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
+                        <Mail size={16} />
                       </span>
+                      <input
+                        id="email-field"
+                        name="email"
+                        type="text"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full pr-11 pl-4 py-2.5 rounded-2xl text-[12px] focus:outline-none text-white transition-all text-left placeholder-gray-400 lamma-input-shell"
+                        placeholder="example@email.com"
+                        autoComplete="email"
+                        dir="ltr"
+                      />
                     </div>
-                    <span className="text-[9px] text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] px-2 py-0.5 rounded-full font-bold">
-                      تلقائي
-                    </span>
                   </div>
 
-                  <p className="text-[9px] mb-2 text-right lamma-login-subtext">
-                    هيتجهز لك اسم زائر تلقائي وتدخل فورًا من غير زحمة أو خطوات كتير.
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
-                    <div className="sm:col-span-3 flex justify-center">
-                      <div className="relative w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-[0_0_12px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] lamma-login-orb">
-                        <span>🤖</span>
-                        <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] border border-black animate-pulse" />
-                      </div>
-                    </div>
-
-                    <div className="sm:col-span-9 space-y-2">
-                      <div className="flex items-center gap-1.5">
+                  {authMode === "signup" && (
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="nickname-field"
+                        className="block text-[10px] font-black text-gray-300 mr-1 text-right"
+                      >
+                        اسم المستخدم
+                      </label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
+                          <Hash size={16} />
+                        </span>
                         <input
-                          id="guest-id-display"
-                          name="guestId"
+                          id="nickname-field"
+                          name="nickname"
                           type="text"
-                          readOnly
-                          value={guestId}
-                          className="flex-1 text-[11px] px-2.5 py-1.5 rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] font-mono text-center focus:outline-none lamma-input-shell"
-                          autoComplete="off"
+                          required
+                          value={signupNickname}
+                          onChange={(e) => setSignupNickname(e.target.value)}
+                          className="w-full pr-11 pl-4 py-2.5 rounded-2xl text-[12px] focus:outline-none text-white transition-all text-right placeholder-gray-400 lamma-input-shell"
+                          placeholder="مثال: لَمّة_محمد"
+                          autoComplete="nickname"
                         />
-
-                        <button
-                          type="button"
-                          onClick={handleCopyGuestId}
-                          className="p-2 rounded-lg text-gray-400 hover:text-white transition-all lamma-muted-btn"
-                          title="نسخ المعرف"
-                        >
-                          <Copy size={13} />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleRegenerateGuestId}
-                          className="p-2 rounded-lg text-gray-400 hover:text-white transition-all group lamma-muted-btn"
-                          title="توليد معرف جديد"
-                        >
-                          <RefreshCw
-                            size={13}
-                            className="group-hover:rotate-180 transition-transform duration-500"
-                          />
-                        </button>
                       </div>
                     </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="password-field"
+                      className="block text-[10px] font-black text-gray-300 mr-1 text-right"
+                    >
+                      كلمة المرور
+                    </label>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
+                        <Lock size={16} />
+                      </span>
+                      <input
+                        id="password-field"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full pr-11 pl-12 py-2.5 rounded-2xl text-[12px] focus:outline-none text-white transition-all text-left placeholder-gray-400 lamma-input-shell"
+                        autoComplete="current-password"
+                        dir="ltr"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500 hover:text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-[10px] pt-0.5 select-none">
+                    <label
+                      htmlFor="rememberMe"
+                      className="flex items-center gap-2 cursor-pointer text-gray-200 hover:text-white"
+                    >
+                      <input
+                        id="rememberMe"
+                        name="rememberMe"
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-4 h-4 rounded border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] bg-black/50 text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] accent-[rgb(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b))] focus:ring-0"
+                      />
+                      <span className="font-black">تذكرني</span>
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetEmail = email.trim();
+                        if (!targetEmail) {
+                          showToast("اكتب البريد الإلكتروني الأول.", "error");
+                          return;
+                        }
+                        if (!supabase) {
+                          showToast(
+                            "⚠️ إعدادات Supabase غير مكتملة حالياً.",
+                            "error",
+                          );
+                          return;
+                        }
+                        setAuthLoading(true);
+                        supabase.auth
+                          .resetPasswordForEmail(targetEmail, {
+                            redirectTo: window.location.origin,
+                          })
+                          .then(({ error }) => {
+                            if (error) {
+                              showToast(error.message, "error");
+                              return;
+                            }
+                            showToast(
+                              "📧 تم إرسال رسالة إعادة تعيين كلمة المرور. راجع بريدك.",
+                              "success",
+                            );
+                          })
+                          .finally(() => setAuthLoading(false));
+                      }}
+                      className="px-3 py-1.5 rounded-full font-black transition-all lamma-login-soft-link"
+                    >
+                      نسيت كلمة المرور؟
+                    </button>
                   </div>
 
                   <button
-                    type="button"
-                    onClick={handleSwiftGuestLogin}
-                    className="w-full mt-2 py-2 text-[11px] font-black rounded-xl text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] hover:text-white transition-all cursor-pointer lamma-primary-btn"
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full py-2.5 text-white rounded-2xl font-black text-[12px] flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed lamma-primary-btn"
                   >
-                    <span className="inline-flex items-center justify-center gap-2">
-                      <Zap size={14} />
-                      <span>دخول مباشر بالاسم المقترح</span>
+                    <span>
+                      {authLoading
+                        ? "جاري التنفيذ..."
+                        : authMode === "signup"
+                          ? "إنشاء حساب"
+                          : "تسجيل الدخول"}
                     </span>
+                    <ChevronRight size={16} className="rotate-180" />
                   </button>
 
-                  {import.meta.env.DEV && !supabase ? (
-                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const assignedColor =
-                            NICKNAME_COLORS[
-                              Math.floor(Math.random() * NICKNAME_COLORS.length)
-                            ];
-                          onLogin(
-                            guestId,
-                            "owner",
-                            assignedColor,
-                            undefined,
-                            undefined,
-                            "guest",
-                          );
-                        }}
-                        className="py-2 bg-red-500/5 hover:bg-red-500/15 border border-red-500/20 hover:border-red-500/60 text-xs font-black rounded-xl text-red-300 hover:text-white transition-all cursor-pointer"
-                      >
-                        👑 دخول كمالك (Demo)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const assignedColor =
-                            NICKNAME_COLORS[
-                              Math.floor(Math.random() * NICKNAME_COLORS.length)
-                            ];
-                          onLogin(
-                            guestId,
-                            "admin",
-                            assignedColor,
-                            undefined,
-                            undefined,
-                            "guest",
-                          );
-                        }}
-                        className="py-2 bg-blue-500/5 hover:bg-blue-500/15 border border-blue-500/20 hover:border-blue-500/60 text-xs font-black rounded-xl text-blue-200 hover:text-white transition-all cursor-pointer"
-                      >
-                        🛡️ دخول كأدمن (Demo)
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              )}
+                  <p className="text-[9px] text-gray-400 leading-relaxed text-center">
+                    بالضغط على المتابعة أنت توافق على سياسة الاستخدام والخصوصية
+                    الخاصة بالمشروع.
+                  </p>
+                </form>
 
-              {/* Bottom link as Guest */}
-              <div className="mt-2 text-center space-y-1.5">
+                <div className="flex items-center gap-2 my-3 text-gray-400 text-[9px] font-bold">
+                  <span className="flex-1 h-[1px] bg-gradient-to-l from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
+                  <span>أو</span>
+                  <span className="flex-1 h-[1px] bg-gradient-to-r from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
+                </div>
+
                 <button
                   type="button"
-                  id="continue-as-guest-btn"
-                  name="continueAsGuest"
-                  onClick={handleSwiftGuestLogin}
-                  className="text-[11px] flex items-center justify-center gap-1.5 mx-auto font-black transition-all px-4 py-1.5 rounded-full text-white bg-black/30 hover:bg-black/50 border border-white/10 backdrop-blur-md"
+                  onClick={handleGoogleLogin}
+                  className="w-full py-2 rounded-2xl text-[12px] font-black flex items-center justify-between px-4 transition-all text-gray-200 hover:text-white bg-black/20 hover:bg-black/40 border border-white/10 backdrop-blur-md"
                 >
-                  <span>متابعة كضيف</span>
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285f4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34a853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#fbbc05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                      />
+                      <path
+                        fill="#ea4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 11.99 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      />
+                    </svg>
+                    <span>متابعة باستخدام Google</span>
+                  </div>
                   <ChevronRight size={13} className="rotate-180 opacity-60" />
                 </button>
 
                 <button
                   type="button"
-                  id="copy-app-link-btn"
-                  name="copyAppLink"
-                  onClick={handleCopyLink}
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] text-gray-200 hover:text-white transition-all cursor-pointer mx-auto bg-black/30 hover:bg-black/50 border border-white/10 backdrop-blur-md"
+                  onClick={() => setShowExtraOptions(true)}
+                  className="mt-2 w-full py-2 rounded-2xl text-[12px] font-black text-gray-200 hover:text-white transition-all flex items-center justify-between px-4 bg-black/20 hover:bg-black/40 border border-white/10 backdrop-blur-md"
                 >
-                  <Share2 size={12} />
-                  <span>هات الرابط بتاعى (Get My App Link)</span>
+                  <span>خيارات إضافية</span>
+                  <ChevronRight size={13} className="rotate-180 opacity-60" />
                 </button>
               </div>
-            </div>
 
-            {/* Footer Rights */}
-            <div className="text-center pt-2 space-y-1">
-              <div className="text-[10px] text-gray-400/75 font-bold">
-                © 2026 Lamma Chat. جميع الحقوق محفوظة{" "}
-                <span className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)]">
-                  💚
-                </span>
-              </div>
-              <div className="mx-auto inline-flex max-w-full rounded-full px-3 py-1 text-[8px] font-semibold lamma-footer-credit">
-                توثيق وهوية خاصة: <strong className="mr-1">MR mohamed samy</strong>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="hidden"
-          >
-            <div className="w-full max-w-[390px]">
-              <div className="lamma-column-frame">
-                <div className="space-y-2">
-                  <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-3 overflow-hidden">
-                    <div className="w-full flex flex-col items-center gap-2">
-                      <div className="w-full rounded-3xl overflow-hidden aspect-[1/0.88] lamma-login-art-frame">
-                        <img
-                          src={amMarkSrc}
-                          alt="AM"
-                          className="w-full h-full object-cover object-center opacity-95"
-                          loading="eager"
-                          decoding="async"
-                          draggable={false}
-                        />
-                      </div>
-                      <div className="w-full rounded-3xl px-4 py-2 text-[10px] font-black lamma-gold-signature">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <Sparkles size={11} />
-                          <span className="text-[9px] text-yellow-300/75">
-                            البطاقة الذهبية
-                          </span>
-                        </div>
-                        <strong className="block text-center text-[12px] mt-2 break-words">
-                          MR mohamed samy
-                        </strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-3 overflow-hidden">
-                    <div className="space-y-2">
-                      {[
-                        {
-                          name: "الحل",
-                          quote: "اللي فاهم بيريّح ومن غير كلام كتير",
-                          icon: <Hash size={16} />,
-                        },
-                        {
-                          name: "الحل",
-                          quote: "الشات تجربتك لحل أي روتين",
-                          icon: <Shield size={16} />,
-                        },
-                      ].map((item, idx) => (
-                        <div key={`${item.quote}-${idx}`} className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0 lamma-login-orb">
-                            {item.icon}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-[11px] font-black text-white truncate">
-                                {item.name}
-                              </span>
-                              <span className="text-[8px] font-mono text-gray-500" dir="ltr">
-                                الآن
-                              </span>
-                            </div>
-                            <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
-                              {item.quote}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-2 pt-2 border-t border-white/10 text-[10px] text-gray-300 font-semibold leading-relaxed">
-                      <span className="text-white font-black">لمة شات</span> مش
-                      مجرد فكرة… ده مشروع كله{" "}
-                      <span className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] font-black">
-                        مفاجآت
-                      </span>
-                      ، وأهمها السهولة وتنقية العين، مع اكتشافات مش هتتخيلها يا
-                      مان.
-                    </div>
-                  </div>
-
+              <div className="mt-3 space-y-1 text-center">
+                <div className="text-[10px] text-gray-400/80 font-bold">
+                  © {new Date().getFullYear()} {brandName}. جميع الحقوق محفوظة
+                </div>
+                <div className="mx-auto inline-flex max-w-full rounded-full px-3 py-1 text-[8px] font-semibold lamma-footer-credit">
+                  توثيق وهوية خاصة:{" "}
+                  <strong className="mr-1">{brandCredit}</strong>
                 </div>
               </div>
-            </div>
-          </motion.div>
-
-          <div className="hidden">
-            <div className="w-full max-w-[520px] grid gap-4">
-              <div className="lamma-column-frame">
-                <div className="lamma-glass lamma-login-panel rounded-3xl p-4 overflow-hidden">
-                  <div className="space-y-3">
-                    {[
-                      {
-                        name: "مستخدم",
-                        quote: "مفيش تجديد… كله كلام فاضي ومكرر طول اليوم.",
-                        icon: <MessageCircle size={16} />,
-                        tone:
-                          "text-red-300 border-red-500/15 bg-red-500/5 shadow-[0_0_24px_rgba(239,68,68,0.08)]",
-                      },
-                      {
-                        name: "عضو قديم",
-                        quote: "الناس بتتخانق على الفاضي… ومحدش بيلحق على الكلام.",
-                        icon: <AlertCircle size={16} />,
-                        tone:
-                          "text-yellow-200 border-yellow-500/15 bg-yellow-500/5 shadow-[0_0_24px_rgba(245,158,11,0.08)]",
-                      },
-                      {
-                        name: "صاحب شات",
-                        quote: "الموضوع محتاج شكل جديد… يخلّي الدردشة محترمة وممتعة.",
-                        icon: <Sparkles size={16} />,
-                        tone:
-                          "text-sky-200 border-sky-500/15 bg-sky-500/5 shadow-[0_0_24px_rgba(56,189,248,0.08)]",
-                      },
-                    ].map((item, idx) => (
-                      <motion.div
-                        key={item.name}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: [0, -3, 0] }}
-                        transition={{
-                          duration: 4.2,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: 0.18 * idx,
-                        }}
-                        className="flex items-start gap-3"
-                      >
-                        <div
-                          className={`w-10 h-10 rounded-2xl flex items-center justify-center border ${item.tone} shrink-0`}
-                        >
-                          {item.icon}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[11px] font-black text-white truncate">
-                              {item.name}
-                            </span>
-                            <span className="text-[8px] font-mono text-gray-500" dir="ltr">
-                              الآن
-                            </span>
-                          </div>
-                          <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
-                            {item.quote}
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="lamma-column-frame">
-                <div className="lamma-glass lamma-login-panel rounded-3xl p-4 overflow-hidden">
-                  <div className="space-y-3">
-                    {[
-                      {
-                        name: "السرعة",
-                        quote: "تدخل وتتكلم فورًا… من غير خطوات كتير.",
-                        icon: <Zap size={16} />,
-                      },
-                    ].map((item, idx) => (
-                      <div key={`${item.name}-${idx}`} className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] shrink-0 lamma-admin-card">
-                          {item.icon}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[11px] font-black text-white truncate">
-                              {item.name}
-                            </span>
-                            <span className="text-[8px] font-mono text-gray-500" dir="ltr">
-                              الآن
-                            </span>
-                          </div>
-                          <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
-                            {item.quote}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="lamma-column-frame">
-                <div className="space-y-3">
-                  <div className="lamma-glass lamma-surface-card lamma-login-panel rounded-3xl p-4 overflow-hidden">
-                    <div className="w-full flex flex-col items-center gap-3">
-                      <div className="w-full rounded-3xl overflow-hidden aspect-square lamma-login-art-frame">
-                        <img
-                          src={amMarkSrc}
-                          alt="AM"
-                          className="w-full h-full object-cover object-center opacity-95"
-                          loading="eager"
-                          decoding="async"
-                          draggable={false}
-                        />
-                      </div>
-                      <div className="w-full rounded-3xl px-3 py-3 text-[10px] font-black lamma-gold-signature">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <Sparkles size={10} />
-                          <span className="text-[8px] text-yellow-300/75">
-                            البطاقة الذهبية
-                          </span>
-                        </div>
-                        <strong className="block text-center text-[11px] mt-2 break-words">
-                          MR mohamed samy
-                        </strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="lamma-glass lamma-login-panel rounded-3xl p-4 overflow-hidden">
-                    <div className="space-y-3">
-                      {[
-                        {
-                          name: "الحل",
-                          quote: "اللي فاهم بيريّح ومن غير كلام كتير",
-                          icon: <Hash size={16} />,
-                        },
-                        {
-                          name: "الحل",
-                          quote: "الشات تجربتك لحل أي روتين",
-                          icon: <Shield size={16} />,
-                        },
-                      ].map((item, idx) => (
-                        <div key={`${item.quote}-${idx}`} className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] shrink-0 lamma-login-orb">
-                            {item.icon}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-[11px] font-black text-white truncate">
-                                {item.name}
-                              </span>
-                              <span className="text-[8px] font-mono text-gray-500" dir="ltr">
-                                الآن
-                              </span>
-                            </div>
-                            <div className="mt-1 rounded-2xl px-3 py-2 text-[10px] text-gray-200 font-semibold leading-relaxed lamma-section-card">
-                              {item.quote}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-3 pt-3 border-t border-white/10 text-[10px] text-gray-300 font-semibold leading-relaxed">
-                      <span className="text-white font-black">لمة شات</span> مش
-                      مجرد فكرة… ده مشروع كله{" "}
-                      <span className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] font-black">
-                        مفاجآت
-                      </span>
-                      ، وأهمها السهولة وتنقية العين، مع اكتشافات مش هتتخيلها يا
-                      مان.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            </motion.div>
           </div>
-
         </div>
       </div>
 
@@ -1512,6 +889,197 @@ export default function LoginScreen({
               >
                 حفظ
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {showExtraOptions && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[99998] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
+            onClick={() => setShowExtraOptions(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative my-8 w-full max-w-lg rounded-[28px] p-5 text-right lamma-modal-shell max-h-[min(82vh,760px)] overflow-y-auto"
+            >
+              <div className="mb-4 flex items-center justify-between pb-4 lamma-modal-header">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)]" />
+                  <h3 className="text-base font-black text-white">
+                    خيارات إضافية
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowExtraOptions(false)}
+                  className="rounded-full px-3 py-1.5 text-xs text-gray-400 transition-all cursor-pointer lamma-soft-action hover:text-white"
+                >
+                  إغلاق
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-2xl p-3 lamma-section-card">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2 rounded-full px-2.5 py-1 lamma-login-highlight">
+                      <Sparkles
+                        size={13}
+                        className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] animate-pulse"
+                      />
+                      <span className="text-[11px] font-black text-white">
+                        دخول سريع باستخدام {brandName}
+                      </span>
+                    </div>
+                    <span className="rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] px-2 py-0.5 text-[9px] font-bold text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)]">
+                      تلقائي
+                    </span>
+                  </div>
+
+                  <p className="mb-3 text-right text-[10px] lamma-login-subtext">
+                    هيتجهز لك اسم زائر تلقائي وتدخل فورًا من غير زحمة أو خطوات كتير.
+                  </p>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-12 sm:items-center">
+                    <div className="flex justify-center sm:col-span-3">
+                      <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-[0_0_12px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] lamma-login-orb">
+                        <span>🤖</span>
+                        <span className="absolute bottom-1 right-1 h-2.5 w-2.5 animate-pulse rounded-full border border-black bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)]" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 sm:col-span-9">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          id="guest-id-display"
+                          name="guestId"
+                          type="text"
+                          readOnly
+                          value={guestId}
+                          className="flex-1 rounded-xl px-2.5 py-1.5 text-center text-[11px] font-mono text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] focus:outline-none lamma-input-shell"
+                          autoComplete="off"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={handleCopyGuestId}
+                          className="rounded-lg p-2 text-gray-400 transition-all lamma-muted-btn hover:text-white"
+                          title="نسخ المعرف"
+                        >
+                          <Copy size={13} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleRegenerateGuestId}
+                          className="group rounded-lg p-2 text-gray-400 transition-all lamma-muted-btn hover:text-white"
+                          title="توليد معرف جديد"
+                        >
+                          <RefreshCw
+                            size={13}
+                            className="transition-transform duration-500 group-hover:rotate-180"
+                          />
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowExtraOptions(false);
+                          handleSwiftGuestLogin();
+                        }}
+                        className="w-full rounded-xl py-2 text-[11px] font-black cursor-pointer transition-all lamma-primary-btn"
+                      >
+                        <span className="inline-flex items-center justify-center gap-2">
+                          <Zap size={14} />
+                          <span>دخول مباشر بالاسم المقترح</span>
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {import.meta.env.DEV && !supabase ? (
+                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const assignedColor =
+                            NICKNAME_COLORS[
+                              Math.floor(Math.random() * NICKNAME_COLORS.length)
+                            ];
+                          setShowExtraOptions(false);
+                          onLogin(
+                            guestId,
+                            "owner",
+                            assignedColor,
+                            undefined,
+                            undefined,
+                            "guest",
+                          );
+                        }}
+                        className="cursor-pointer rounded-xl border border-red-500/20 bg-red-500/5 py-2 text-xs font-black text-red-300 transition-all hover:border-red-500/60 hover:bg-red-500/15 hover:text-white"
+                      >
+                        👑 دخول كمالك (Demo)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const assignedColor =
+                            NICKNAME_COLORS[
+                              Math.floor(Math.random() * NICKNAME_COLORS.length)
+                            ];
+                          setShowExtraOptions(false);
+                          onLogin(
+                            guestId,
+                            "admin",
+                            assignedColor,
+                            undefined,
+                            undefined,
+                            "guest",
+                          );
+                        }}
+                        className="cursor-pointer rounded-xl border border-blue-500/20 bg-blue-500/5 py-2 text-xs font-black text-blue-200 transition-all hover:border-blue-500/60 hover:bg-blue-500/15 hover:text-white"
+                      >
+                        🛡️ دخول كأدمن (Demo)
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    id="continue-as-guest-btn"
+                    name="continueAsGuest"
+                    onClick={() => {
+                      setShowExtraOptions(false);
+                      handleSwiftGuestLogin();
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-2xl border border-white/10 bg-black/20 px-4 py-2 text-[11px] font-black text-white transition-all backdrop-blur-md hover:bg-black/40"
+                  >
+                    <span>متابعة كضيف</span>
+                    <ChevronRight size={13} className="rotate-180 opacity-60" />
+                  </button>
+
+                  <button
+                    type="button"
+                    id="copy-app-link-btn"
+                    name="copyAppLink"
+                    onClick={() => {
+                      setShowExtraOptions(false);
+                      handleCopyLink();
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-2 text-[10px] text-gray-200 transition-all backdrop-blur-md hover:bg-black/40 hover:text-white"
+                  >
+                    <Share2 size={12} />
+                    <span>هات الرابط بتاعى</span>
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </motion.div>
         )}
