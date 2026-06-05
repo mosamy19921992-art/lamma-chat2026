@@ -65,7 +65,7 @@ export default function LoginScreen({
   type WallTheme = "fire" | "ice" | "violet";
   const amMarkSrc = "/images/lamma-logo.png";
   const loginHeroBg =
-    "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=cinematic%20modern%20teamwork%20office%20around%20glowing%20chat%20product%20dashboards%2C%20panoramic%20glass%20windows%2C%20collaborative%20digital%20workspace%2C%20subtle%20teal%20and%20warm%20gold%20color%20grading%2C%20luxury%20dark%20atmosphere%2C%20realistic%20photography%2C%20soft%20depth%20of%20field%2C%20elegant%20composition%2C%20no%20readable%20logos%2C%20website%20hero%20background&image_size=landscape_16_9";
+    "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=luxury%20modern%20collaboration%20lounge%20inside%20a%20glass%20office%2C%20softly%20blurred%20professionals%20in%20the%20background%2C%20abstract%20holographic%20chat%20light%20nodes%2C%20teal%20and%20warm%20gold%20cinematic%20lighting%2C%20dark%20premium%20atmosphere%2C%20clean%20website%20hero%20background%2C%20realistic%20photography%2C%20soft%20focus%2C%20no%20text%2C%20no%20letters%2C%20no%20logos%2C%20no%20ui%20screens&image_size=landscape_16_9";
 
   const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(() =>
     localStorage.getItem("lamma_custom_logo_url"),
@@ -408,11 +408,11 @@ export default function LoginScreen({
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-22 scale-105"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-16 scale-105 blur-[2px]"
           style={{ backgroundImage: `url("${loginHeroBg}")` }}
         />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(8,18,18,0.14)_0%,rgba(3,7,7,0.68)_38%,rgba(1,4,4,0.90)_100%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(7,14,12,0.82)_0%,rgba(10,18,16,0.58)_34%,rgba(16,10,2,0.54)_68%,rgba(2,6,5,0.86)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(8,18,18,0.12)_0%,rgba(3,7,7,0.72)_38%,rgba(1,4,4,0.92)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(7,14,12,0.86)_0%,rgba(10,18,16,0.62)_34%,rgba(16,10,2,0.50)_68%,rgba(2,6,5,0.88)_100%)]" />
         <motion.div
           className="absolute left-1/2 top-[6%] h-[18rem] w-[78rem] -translate-x-1/2 rounded-[50%] blur-3xl opacity-80"
           style={{
