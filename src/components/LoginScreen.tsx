@@ -416,14 +416,14 @@ export default function LoginScreen({
         />
       </div>
 
-      <div className="relative z-10 h-full w-full overflow-y-auto">
-        <div className="min-h-full w-full flex items-center justify-center px-4 py-8 sm:py-10 md:py-12">
-          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] gap-4 sm:gap-5 lg:gap-6 items-stretch">
+      <div className="relative z-10 h-full w-full overflow-y-auto lg:overflow-hidden">
+        <div className="min-h-full w-full flex items-center justify-center px-4 py-6 sm:py-8 lg:py-10">
+          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] lg:h-[min(86dvh,760px)] gap-4 sm:gap-5 lg:gap-6 items-stretch">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.05 }}
-              className="relative overflow-hidden rounded-[34px] p-5 sm:p-6 md:p-7 lamma-login-art-frame lamma-column-frame"
+              className="relative overflow-hidden rounded-[34px] p-5 sm:p-6 md:p-7 lamma-login-art-frame lamma-column-frame h-full min-h-0"
             >
               <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute -top-32 -right-40 h-[26rem] w-[26rem] rounded-full blur-3xl opacity-60"
@@ -442,7 +442,7 @@ export default function LoginScreen({
 
               <div className="relative z-10 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-[28px] border border-white/10 bg-black/25 shadow-[0_24px_60px_rgba(0,0,0,0.4)] backdrop-blur-xl p-2.5 sm:p-3">
+                  <div className="h-24 w-24 sm:h-28 sm:w-28 overflow-hidden rounded-[30px] border border-white/10 bg-black/25 shadow-[0_26px_70px_rgba(0,0,0,0.42)] backdrop-blur-xl p-2 sm:p-2.5">
                     <img
                       src={brandMarkSrc}
                       alt={brandName}
@@ -451,7 +451,7 @@ export default function LoginScreen({
                         img.onerror = null;
                         img.src = fallbackMarkSrc;
                       }}
-                      className="h-full w-full object-contain object-center opacity-95"
+                      className="h-full w-full object-contain object-center opacity-95 scale-[1.12]"
                       draggable={false}
                     />
                   </div>
@@ -468,13 +468,13 @@ export default function LoginScreen({
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
-                        🛡️ جلسة آمنة
+                        🛡️ خصوصية
                       </span>
                       <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
-                        ⚡ دخول سريع
+                        ⚡ غرف فورية
                       </span>
                       <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
-                        🔗 مشاركة سهلة
+                        🔗 مشاركة
                       </span>
                     </div>
                   </div>
@@ -482,55 +482,43 @@ export default function LoginScreen({
 
                 <div className="hidden sm:flex items-center gap-1.5 rounded-2xl px-3 py-2 text-[10px] font-black bg-black/25 border border-white/10 text-gray-100 backdrop-blur-xl">
                   <Sparkles size={14} className="opacity-90" />
-                  <span>واجهة “تقفيل” جاهزة لمشروعك</span>
+                  <span>شات لَمّة</span>
                 </div>
               </div>
 
-              <div className="relative z-10 mt-6">
+              <div className="relative z-10 mt-6 flex flex-col gap-3">
                 <h1 className="text-[22px] sm:text-[26px] md:text-[30px] font-black leading-tight text-white">
-                  صفحة دخول شكلها شغل — ومعاها تجربة محترمة
+                  شات عربي سريع وآمن
                 </h1>
-                <p className="mt-2 text-[12px] sm:text-[13px] leading-relaxed text-gray-200/90">
-                  خفيفة على العين، واضحة في الحركة، ومبنية على هيراركي نظيف: زر
-                  أساسي واحد، خطوات قليلة، وتفاصيل كفاية تحس إن المنتج كبير.
+                <p className="text-[12px] sm:text-[13px] leading-relaxed text-gray-200/90">
+                  غرف عامة وخاصّة، ودخول سريع من غير خطوات كتير. نفس ستايل الشات من
+                  أول صفحة.
                 </p>
 
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="rounded-3xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-xl">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-black text-white">
-                        تركيز أعلى
+                        غرف فورية
                       </span>
                       <Zap size={14} className="text-white/80" />
                     </div>
                     <p className="mt-1 text-[10px] leading-relaxed text-gray-300">
-                      فورم بسيط ومقروء بدون زحمة، مع حالات Focus واضحة.
+                      ادخل أو اعمل حساب… وبعدها شات مباشر.
                     </p>
                   </div>
 
                   <div className="rounded-3xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-xl">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-black text-white">
-                        أمان وراحة
+                        خصوصية أعلى
                       </span>
                       <Lock size={14} className="text-white/80" />
                     </div>
                     <p className="mt-1 text-[10px] leading-relaxed text-gray-300">
-                      تسجيل منظم + Google + خيار الضيف من غير ما يبوّظ الواجهة.
+                      تسجيل منظم + Google + ضيف من غير ما يبوّظ الشكل.
                     </p>
                   </div>
-                </div>
-              </div>
-
-              <div className="relative z-10 mt-5 flex flex-wrap items-center gap-2">
-                <div className="rounded-full px-3 py-1.5 text-[9px] font-extrabold text-gray-200 border border-white/10 bg-white/5">
-                  مناسب لمنتجات SaaS
-                </div>
-                <div className="rounded-full px-3 py-1.5 text-[9px] font-extrabold text-gray-200 border border-white/10 bg-white/5">
-                  RTL جاهز
-                </div>
-                <div className="rounded-full px-3 py-1.5 text-[9px] font-extrabold text-gray-200 border border-white/10 bg-white/5">
-                  موبايل أولًا
                 </div>
               </div>
             </motion.div>
@@ -597,7 +585,8 @@ export default function LoginScreen({
                   </div>
                 </div>
 
-                <form onSubmit={handleFormLogin} className="space-y-3">
+                <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-y-auto pr-1">
+                  <form onSubmit={handleFormLogin} className="space-y-3">
                   <div className="space-y-1">
                     <label
                       htmlFor="email-field"
@@ -756,7 +745,7 @@ export default function LoginScreen({
                     بالضغط على المتابعة أنت توافق على سياسة الاستخدام والخصوصية
                     الخاصة بالمشروع.
                   </p>
-                </form>
+                  </form>
 
                 <div className="flex items-center gap-2 my-3 text-gray-400 text-[9px] font-bold">
                   <span className="flex-1 h-[1px] bg-gradient-to-l from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
@@ -801,7 +790,7 @@ export default function LoginScreen({
                   <span>خيارات إضافية</span>
                   <ChevronRight size={13} className="rotate-180 opacity-60" />
                 </button>
-              </div>
+                </div>
 
               <div className="mt-3 space-y-1 text-center">
                 <div className="text-[10px] text-gray-400/80 font-bold">
@@ -812,6 +801,7 @@ export default function LoginScreen({
                   <strong className="mr-1">{brandCredit}</strong>
                 </div>
               </div>
+            </div>
             </motion.div>
           </div>
         </div>
