@@ -505,7 +505,7 @@ export default function LoginScreen({
                       </span>
                       <Zap size={14} className="text-white/80" />
                     </div>
-                    <p className="mt-1 text-[10px] leading-relaxed text-gray-300">
+                    <p className="mt-1 text-[9px] leading-relaxed text-gray-300">
                       ادخل أو اعمل حساب… وبعدها شات مباشر.
                     </p>
                   </div>
@@ -517,7 +517,7 @@ export default function LoginScreen({
                       </span>
                       <Lock size={14} className="text-white/80" />
                     </div>
-                    <p className="mt-1 text-[10px] leading-relaxed text-gray-300">
+                    <p className="mt-1 text-[9px] leading-relaxed text-gray-300">
                       تسجيل منظم + Google + ضيف من غير ما يبوّظ الشكل.
                     </p>
                   </div>
