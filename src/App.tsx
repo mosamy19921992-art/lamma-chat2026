@@ -1,5 +1,10 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import LoginScreen from './components/LoginScreen';
+import DesignPreview from './components/DesignPreview';
+
+// مؤقت: عرض معاينة التصميم الجديد قبل تطبيقه على شاشة الدخول الحقيقية.
+// بعد موافقة المستخدم نرجّع هذا للـ false ونطبّق التصميم على LoginScreen.
+const SHOW_DESIGN_PREVIEW = true;
 import ErrorBoundary from './components/ErrorBoundary';
 import { useServiceWorker } from './hooks/useServiceWorker';
 import InstallPrompt from './components/pwa/InstallPrompt';
@@ -97,6 +102,10 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="app-container">
+        {SHOW_DESIGN_PREVIEW ? (
+          <DesignPreview />
+        ) : (
+        <>
         <OnlineStatus isOnline={sw.isOnline} />
         {!user ? (
           <LoginScreen onLogin={handleLogin} primaryTheme={primaryTheme} setPrimaryTheme={setPrimaryTheme} />
@@ -118,6 +127,8 @@ export default function App() {
           onInstall={sw.promptInstall}
         />
         <ThemeFab inChat={!!user} />
+        </>
+        )}
       </div>
     </ErrorBoundary>
   );
