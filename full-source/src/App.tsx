@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import SimpleLoginScreen from './components/SimpleLoginScreen';
+import LoginScreen from './components/LoginScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useServiceWorker } from './hooks/useServiceWorker';
 import InstallPrompt from './components/pwa/InstallPrompt';
@@ -99,7 +99,7 @@ export default function App() {
       <div className="app-container">
         <OnlineStatus isOnline={sw.isOnline} />
         {!user ? (
-          <SimpleLoginScreen onLogin={handleLogin} primaryTheme={primaryTheme} setPrimaryTheme={setPrimaryTheme} />
+          <LoginScreen onLogin={handleLogin} primaryTheme={primaryTheme} setPrimaryTheme={setPrimaryTheme} />
         ) : (
           <Suspense fallback={<ChatLoadingScreen />}>
             <ChatScreen currentUser={user} onLogout={handleLogout} primaryTheme={primaryTheme} />
