@@ -144,7 +144,7 @@ export default function ChatScreen({
   primaryTheme,
 }: ChatScreenProps) {
   const DEFAULT_AMBIENT_BG =
-    "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=calm%20premium%20night%20rooftop%20lounge%2C%20cozy%20friends%20gathering%20atmosphere%2C%20elegant%20empty%20seating%2C%20warm%20amber%20lights%2C%20deep%20emerald%20shadows%2C%20subtle%20cairo%20city%20bokeh%20in%20the%20distance%2C%20wide%20cinematic%20composition%2C%20realistic%20high-end%20photography%2C%20minimal%20clutter%2C%20no%20people%2C%20no%20text%2C%20no%20logo&image_size=landscape_16_9";
+    "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=realistic%20cinematic%20night%20alley%20with%20blue%20cyan%20neon%20tube%20lights%2C%20soft%20warm%20orange%20sign%20glow%20on%20the%20left%2C%20urban%20graffiti%20walls%2C%20wet%20reflective%20ground%2C%20calm%20cyberpunk%20mood%2C%20clean%20depth%20of%20field%2C%20comfortable%20dark%20background%20for%20chat%20interface%2C%20minimal%20visual%20noise%2C%20no%20people%2C%20no%20text%2C%20no%20logo&image_size=landscape_16_9";
 
   type WallTheme = "fire" | "ice" | "violet";
 
@@ -3236,10 +3236,25 @@ export default function ChatScreen({
             style={{
               backgroundImage: `url(${activeRoomBg})`,
               backgroundSize: "cover",
-              backgroundPosition: "center",
+              backgroundPosition: "center center",
+              transform: "scale(1.03)",
             }}
           />
-          <div className="absolute inset-0 bg-black/68 z-0 pointer-events-none" />
+          <div
+            className="absolute inset-0 z-0 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(2, 6, 12, 0.58) 0%, rgba(2, 8, 14, 0.44) 18%, rgba(3, 8, 12, 0.68) 100%)",
+            }}
+          />
+          <div
+            className="absolute inset-0 z-0 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(circle at 16% 18%, rgba(255, 145, 68, 0.16), transparent 20%), radial-gradient(circle at 76% 14%, rgba(37, 99, 235, 0.18), transparent 24%), radial-gradient(circle at 52% 82%, rgba(14, 165, 233, 0.12), transparent 28%)",
+            }}
+          />
+          <div className="absolute inset-0 bg-black/46 z-0 pointer-events-none" />
         </>
       ) : null}
       {/* Background radial soft light particles */}
