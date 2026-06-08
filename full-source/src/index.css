@@ -361,6 +361,7 @@ body {
 .lamma-column-frame {
   position: relative;
   border-radius: 28px;
+  overflow: hidden;
 }
 
 .lamma-column-frame::before {
@@ -377,8 +378,22 @@ body {
   z-index: 5;
 }
 
+.lamma-column-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(9, 14, 18, 0.24), rgba(5, 8, 12, 0.16)),
+    radial-gradient(circle at top right, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.10), transparent 34%);
+  -webkit-backdrop-filter: blur(22px) saturate(1.02);
+  backdrop-filter: blur(22px) saturate(1.02);
+  pointer-events: none;
+  z-index: 0;
+}
+
 .lamma-surface-card {
-  background: linear-gradient(180deg, rgba(8, 12, 10, 0.72), rgba(5, 8, 6, 0.58));
+  background: linear-gradient(180deg, rgba(8, 14, 18, 0.34), rgba(5, 8, 12, 0.22));
   border: 1px solid rgba(214, 229, 220, 0.08);
   box-shadow:
     0 18px 38px rgba(0, 0, 0, 0.36),
@@ -539,7 +554,7 @@ body {
 }
 
 .lamma-panel-shell {
-  background: rgba(8, 12, 10, 0.9);
+  background: linear-gradient(180deg, rgba(7, 13, 17, 0.46), rgba(4, 7, 10, 0.30));
   border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.2);
   box-shadow:
     0 20px 44px rgba(0, 0, 0, 0.45),
@@ -549,7 +564,7 @@ body {
 }
 
 .lamma-list-panel {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.034), rgba(255, 255, 255, 0.014));
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.02),
@@ -557,7 +572,7 @@ body {
 }
 
 .lamma-list-item {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.015));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.048), rgba(255, 255, 255, 0.018));
   border: 1px solid rgba(255, 255, 255, 0.045);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.018),
@@ -570,7 +585,7 @@ body {
 }
 
 .lamma-list-item:hover {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.046), rgba(255, 255, 255, 0.024));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.026));
   border-color: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12);
   transform: translateY(-1px);
   box-shadow:
@@ -627,7 +642,7 @@ body {
 }
 
 .lamma-popover-shell {
-  background: rgba(10, 15, 12, 0.96);
+  background: rgba(8, 12, 16, 0.56);
   border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.18);
   box-shadow:
     0 16px 40px rgba(0, 0, 0, 0.42),
@@ -637,7 +652,7 @@ body {
 }
 
 .lamma-chat-input-shell {
-  background: linear-gradient(180deg, rgba(8, 12, 10, 0.84), rgba(5, 8, 6, 0.72));
+  background: linear-gradient(180deg, rgba(8, 12, 16, 0.52), rgba(5, 8, 12, 0.34));
   border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
@@ -648,7 +663,7 @@ body {
 
 .lamma-room-header {
   background:
-    linear-gradient(180deg, rgba(5, 8, 6, 0.92), rgba(4, 7, 5, 0.82));
+    linear-gradient(180deg, rgba(6, 10, 14, 0.48), rgba(4, 7, 10, 0.28));
   border-bottom: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.08);
   box-shadow:
     inset 0 -1px 0 rgba(255, 255, 255, 0.02),
@@ -656,8 +671,29 @@ body {
 }
 
 .lamma-topic-shell {
-  background: rgba(255, 255, 255, 0.018);
+  background: rgba(255, 255, 255, 0.032);
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.018);
+}
+
+.lamma-column-shell {
+  background: linear-gradient(180deg, rgba(7, 12, 16, 0.22), rgba(5, 8, 12, 0.12));
+}
+
+.lamma-chat-core-shell {
+  background: linear-gradient(180deg, rgba(7, 12, 16, 0.16), rgba(5, 8, 12, 0.08));
+}
+
+.lamma-mobile-sidebar-shell {
+  background: rgba(5, 8, 12, 0.70);
+  -webkit-backdrop-filter: blur(22px) saturate(1.02);
+  backdrop-filter: blur(22px) saturate(1.02);
+}
+
+.lamma-mobile-sidebar-header,
+.lamma-mobile-sidebar-footer {
+  background: rgba(0, 0, 0, 0.22);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 
 .lamma-topic-pin {

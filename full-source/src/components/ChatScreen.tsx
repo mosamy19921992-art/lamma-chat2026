@@ -4277,7 +4277,7 @@ export default function ChatScreen({
           className={`hidden xl:flex xl:order-3 flex-col overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isLeftColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
-              : "w-[300px] 2xl:w-[340px] p-3 opacity-100 border-r border-[rgba(163,230,53,0.10)] bg-[rgba(5,8,6,0.24)] lamma-column-frame"
+              : "w-[300px] 2xl:w-[340px] p-3 opacity-100 border-r border-[rgba(163,230,53,0.10)] lamma-column-frame lamma-column-shell"
           }`}
         >
           <div
@@ -4519,12 +4519,12 @@ export default function ChatScreen({
         />
         {/* ----------------- OVERLAY SIDEBAR PANEL (ROOMS & MEMBERS TABBED) ----------------- */}
         <aside
-          className={`xl:hidden sidebar-container w-full sm:w-[420px] border-l border-green-500/10 bg-[#050907]/96 flex flex-col justify-between flex-shrink-0 z-40 absolute inset-y-0 right-0 h-full shadow-[0_0_25px_rgba(0,0,0,0.85)] max-w-[92vw] ${
+          className={`xl:hidden sidebar-container w-full sm:w-[420px] border-l border-green-500/10 flex flex-col justify-between flex-shrink-0 z-40 absolute inset-y-0 right-0 h-full shadow-[0_0_25px_rgba(0,0,0,0.85)] max-w-[92vw] lamma-mobile-sidebar-shell ${
             isSidebarOpen ? "flex animate-fade-in" : "hidden"
           }`}
         >
           {/* Header switchers inside the sidebar */}
-          <div className="p-3 border-b border-green-500/10 bg-black/40 flex flex-col gap-2 shrink-0">
+          <div className="p-3 border-b border-green-500/10 flex flex-col gap-2 shrink-0 lamma-mobile-sidebar-header">
             {/* Mobile Close option */}
             <div className="flex lg:hidden items-center justify-between pb-1.5 border-b border-green-500/10 mb-1">
               <span className="text-white font-black text-xs">
@@ -4802,7 +4802,7 @@ export default function ChatScreen({
           </div>
 
           {/* Sidebar Footer with Copy Link */}
-          <div className="p-3 border-t border-green-500/10 bg-black/40 shrink-0">
+          <div className="p-3 border-t border-green-500/10 shrink-0 lamma-mobile-sidebar-footer">
             <button
               onClick={handleCopyLink}
               className="w-full py-2 rounded-xl flex items-center justify-center gap-2 text-green-300 font-black text-[10px] transition-all cursor-pointer lamma-muted-btn"
@@ -4815,7 +4815,7 @@ export default function ChatScreen({
 
         {/* ----------------- PANEL 3: MAIN ACTIVE MESSAGE LOG (3rd column / Center) ----------------- */}
         <div
-          className={`flex-1 flex flex-col min-w-0 bg-[rgba(5,8,6,0.2)] backdrop-blur-xl xl:order-2 ${
+          className={`flex-1 flex flex-col min-w-0 backdrop-blur-xl xl:order-2 lamma-column-frame lamma-chat-core-shell ${
             mobileTab === "chat" ? "flex" : "hidden md:flex"
           } ${isLeftColumnCollapsed ? "xl:border-l xl:border-[rgba(163,230,53,0.12)]" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-[rgba(163,230,53,0.12)]" : ""} lamma-column-frame`}
         >
@@ -6384,7 +6384,7 @@ export default function ChatScreen({
           className={`hidden xl:flex xl:order-1 flex-col gap-3 overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isRightColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
-              : "w-[320px] 2xl:w-[340px] p-3 opacity-100 border-l border-[rgba(163,230,53,0.10)] bg-[rgba(5,8,6,0.24)] lamma-column-frame"
+              : "w-[320px] 2xl:w-[340px] p-3 opacity-100 border-l border-[rgba(163,230,53,0.10)] lamma-column-frame lamma-column-shell"
           }`}
         >
           <div
