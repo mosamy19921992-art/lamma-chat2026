@@ -15,6 +15,44 @@ import type { UserSession } from './lib/chatTypes';
 const ChatScreen = lazy(() => import('./components/ChatScreen'));
 
 type Theme = 'dark' | 'amoled';
+const GUEST_SESSION_KEY = 'lamma_guest_session';
+
+function readGuestSession(): UserSession | null {
+  try {
+    const raw = localStorage.getItem(GUEST_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.nickname || parsed?.authProvider !== 'guest') return null;
+    return {
+      nickname: parsed.nickname,
+      role: parsed.role || 'guest',
+      color: parsed.color || 'white',
+      uid: parsed.uid,
+      email: parsed.email ?? null,
+      authProvider: 'guest',
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeGuestSession(user: UserSession) {
+  localStorage.setItem(
+    GUEST_SESSION_KEY,
+    JSON.stringify({
+      nickname: user.nickname,
+      role: user.role || 'guest',
+      color: user.color || 'white',
+      uid: user.uid,
+      email: user.email ?? null,
+      authProvider: 'guest',
+    }),
+  );
+}
+
+function clearGuestSession() {
+  localStorage.removeItem(GUEST_SESSION_KEY);
+}
 
 export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
@@ -27,11 +65,17 @@ export default function App() {
   useTheme();
 
   useEffect(() => {
-    if (!supabase) return;
+    const guestSession = readGuestSession();
+
+    if (!supabase) {
+      if (guestSession) setUser(guestSession);
+      return;
+    }
 
     // 1) محاولة جلب الجلسة الحالية
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
+        clearGuestSession();
         const nick =
           (session.user.user_metadata as any)?.nickname ||
           (session.user.user_metadata as any)?.name ||
@@ -44,6 +88,11 @@ export default function App() {
           email: session.user.email ?? null,
           authProvider: 'supabase',
         });
+        return;
+      }
+
+      if (guestSession) {
+        setUser(guestSession);
       }
     });
 
@@ -51,21 +100,23 @@ export default function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(
-        session?.user
-          ? {
-              nickname:
-                (session.user.user_metadata as any)?.nickname ||
-                (session.user.user_metadata as any)?.name ||
-                (session.user.email ?? 'User'),
-              role: 'user',
-              color: 'white',
-              uid: session.user.id,
-              email: session.user.email ?? null,
-              authProvider: 'supabase',
-            }
-          : null,
-      );
+      if (session?.user) {
+        clearGuestSession();
+        setUser({
+          nickname:
+            (session.user.user_metadata as any)?.nickname ||
+            (session.user.user_metadata as any)?.name ||
+            (session.user.email ?? 'User'),
+          role: 'user',
+          color: 'white',
+          uid: session.user.id,
+          email: session.user.email ?? null,
+          authProvider: 'supabase',
+        });
+        return;
+      }
+
+      setUser(readGuestSession());
     });
 
     return () => subscription.unsubscribe();
@@ -79,18 +130,27 @@ export default function App() {
     email?: string,
     authProvider?: 'supabase' | 'guest',
   ) => {
-    setUser({
+    const nextUser = {
       nickname,
       role,
       color,
       uid,
       email: email ?? null,
       authProvider,
-    });
+    };
+
+    if (authProvider === 'guest') {
+      writeGuestSession(nextUser);
+    } else {
+      clearGuestSession();
+    }
+
+    setUser(nextUser);
   };
 
   const handleLogout = () => {
     setUser(null);
+    clearGuestSession();
     supabase?.auth.signOut();
   };
 
