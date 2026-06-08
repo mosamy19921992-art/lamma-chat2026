@@ -5,7 +5,7 @@
 //  - Network-First  for HTML / routes
 //  - Offline fallback page
 
-const VERSION = "lamma-v1.0.1";
+const VERSION = "lamma-v1.0.2";
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const IMAGE_CACHE = `${VERSION}-images`;
@@ -14,11 +14,16 @@ const API_CACHE = `${VERSION}-api`;
 const PRECACHE_URLS = [
   "/",
   "/index.html",
+  "/login.html",
   "/manifest.json",
   "/images/lamma-favicon.svg",
   "/images/lamma-logo.png",
+  "/images/lamma-logo-نايس.png",
   "/images/lamma-wordmark.svg",
+  "/images/login-hero-1.jpg.jpg",
   "/offline.html",
+  "/assets/login.css",
+  "/assets/login.js",
 ];
 
 // ─────────────────────────────────────────────
@@ -75,14 +80,14 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
 
-  // 1. Skip cross-origin non-GET / streaming
-  if (url.origin !== self.location.origin) return;
-
-  // 2. Supabase realtime / API — Network first, fall back to cache
+  // 1. Supabase realtime / API — Network first, fall back to cache
   if (url.host.includes("supabase.co")) {
     event.respondWith(networkFirst(request, API_CACHE));
     return;
   }
+
+  // 1. Skip cross-origin non-GET / streaming
+  if (url.origin !== self.location.origin) return;
 
   // 3. Images — Cache first
   if (request.destination === "image") {

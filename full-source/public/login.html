@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0b0f16" />
+    <link rel="icon" type="image/svg+xml" href="/images/lamma-favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="stylesheet" href="/assets/login.css" />
+    <title>تسجيل الدخول | Lamma Chat</title>
+  </head>
+  <body>
+    <main class="page">
+      <section class="card" aria-label="تسجيل الدخول">
+        <div class="panel" id="panel" data-view="main">
+          <div class="view view--main">
+            <header class="brand">
+              <img
+                class="brandLogo"
+                src="/images/lamma-logo-نايس.png"
+                alt="Lamma Chat"
+                loading="eager"
+                decoding="async"
+              />
+            </header>
+
+            <div class="afterLogo">
+              <div class="tagline" aria-label="وصف">
+                المتعه كلها بتستناك
+              </div>
+
+              <div class="tagline2" aria-label="وصف إضافي">
+                شات بالروح المصرية بيجمع تلاقي مع الأصالة العربية
+              </div>
+
+              <div class="badges" aria-label="مميزات">
+                <span class="badge">🛡️ خصوصية</span>
+                <span class="badge">⚡ أمان</span>
+                <span class="badge">رَوْقان</span>
+              </div>
+
+              <div class="mainActions">
+                <button
+                  class="primaryBtn primaryBtn--go"
+                  type="button"
+                  id="openOptions"
+                >
+                  <span class="goArrow" aria-hidden="true">←</span>
+                  <span class="goText">يالا بينا</span>
+                </button>
+              </div>
+
+              <footer class="legal" aria-label="حقوق ونظام">
+                <div>© 2026 Lamma Chat. جميع الحقوق محفوظة — توثيق وهوية خاصة:</div>
+                <div class="idCard">MR / Mohamed Samy</div>
+                <button class="appBtn" type="button" id="installApp">تثبيت التطبيق</button>
+              </footer>
+            </div>
+          </div>
+
+          <div class="view view--options">
+            <section class="optionCard optionCard--empty" aria-label="مساحة فارغة">
+              <div class="optionTop">
+                <button
+                  class="backBtn"
+                  type="button"
+                  data-action="back"
+                  aria-label="رجوع"
+                >
+                  ←
+                </button>
+              </div>
+              <div class="storyWrap">
+                <div class="storyCard" aria-label="وصف لمة">
+                  <div class="storyKicker">أهلاً بك يا شريكي في «لمة»</div>
+                  <div class="storyTitle">لمة.. قعدتنا الرقمية</div>
+                  <p class="storyP">لمة مش مجرد شات، دي قعدتنا الرقمية اللي بتجمعنا.</p>
+                  <p class="storyP">
+                    المكان اللي بنهرب فيه من ضجيج العالم عشان نلاقي
+                    <span class="storyGold">(ونس)</span>
+                    حقيقي.
+                  </p>
+                  <p class="storyP">
+                    هنا الفاصل الزمني بيختفي، وبتبدأ اللمة، والضحكة، والحكايات
+                    اللي بجد.
+                  </p>
+                  <p class="storyP storyP--end">لمة.. مكانكم اللي هنستناكم فيه دايمًا</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="optionCard optionCard--methods" aria-label="طرق التسجيل">
+              <div class="optionTop">
+                <button
+                  class="backBtn"
+                  type="button"
+                  data-action="back"
+                  aria-label="رجوع"
+                >
+                  ←
+                </button>
+              </div>
+
+              <div class="methodsList">
+                <details class="methodDisclosure" id="emailMethod">
+                  <summary class="methodSummary">
+                    <span class="methodLeft">
+                      <span class="methodIcon" aria-hidden="true">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M4 6.5C4 5.67 4.67 5 5.5 5H18.5C19.33 5 20 5.67 20 6.5V17.5C20 18.33 19.33 19 18.5 19H5.5C4.67 19 4 18.33 4 17.5V6.5Z"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                          />
+                          <path
+                            d="M5 7L12 12.2L19 7"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </span>
+                      <span class="methodText">البريد الإلكتروني</span>
+                    </span>
+                    <span class="methodCaret" aria-hidden="true">▾</span>
+                  </summary>
+
+                  <div class="methodPanel emailPanel" data-email-tab="login">
+                    <div class="emailTabs" role="tablist" aria-label="تبديل">
+                      <button
+                        class="tabBtn"
+                        type="button"
+                        data-email-tab-btn="login"
+                      >
+                        دخول
+                      </button>
+                      <button
+                        class="tabBtn"
+                        type="button"
+                        data-email-tab-btn="register"
+                      >
+                        حساب جديد
+                      </button>
+                    </div>
+
+                    <div class="emailPane emailPane--login">
+                      <form id="loginForm" class="form" novalidate>
+                        <div class="field">
+                          <label class="label" for="loginIdentifier"
+                            >البريد الإلكتروني أو الاسم</label
+                          >
+                          <input
+                            class="input"
+                            id="loginIdentifier"
+                            name="identifier"
+                            type="text"
+                            autocomplete="username"
+                            inputmode="email"
+                            placeholder="example@email.com"
+                            required
+                          />
+                        </div>
+
+                        <div class="field">
+                          <label class="label" for="loginPassword"
+                            >كلمة المرور</label
+                          >
+                          <div class="passwordWrap">
+                            <input
+                              class="input"
+                              id="loginPassword"
+                              name="password"
+                              type="password"
+                              autocomplete="current-password"
+                              placeholder="••••••••"
+                              required
+                            />
+                            <button
+                              class="iconBtn"
+                              type="button"
+                              data-toggle-password="loginPassword"
+                            >
+                              إظهار
+                            </button>
+                          </div>
+                        </div>
+
+                        <button class="primaryBtn" type="submit">
+                          <span class="btnText">تسجيل الدخول</span>
+                          <span class="spinner" aria-hidden="true"></span>
+                        </button>
+                      </form>
+                    </div>
+
+                    <div class="emailPane emailPane--register">
+                      <form id="registerForm" class="form" novalidate>
+                        <div class="field">
+                          <label class="label" for="registerEmail"
+                            >البريد الإلكتروني</label
+                          >
+                          <input
+                            class="input"
+                            id="registerEmail"
+                            name="email"
+                            type="email"
+                            autocomplete="email"
+                            inputmode="email"
+                            placeholder="example@email.com"
+                            required
+                          />
+                        </div>
+
+                        <div class="field">
+                          <label class="label" for="registerPassword"
+                            >كلمة المرور</label
+                          >
+                          <div class="passwordWrap">
+                            <input
+                              class="input"
+                              id="registerPassword"
+                              name="password"
+                              type="password"
+                              autocomplete="new-password"
+                              placeholder="••••••••"
+                              required
+                            />
+                            <button
+                              class="iconBtn"
+                              type="button"
+                              data-toggle-password="registerPassword"
+                            >
+                              إظهار
+                            </button>
+                          </div>
+                        </div>
+
+                        <div class="field">
+                          <label class="label" for="registerPassword2"
+                            >تأكيد كلمة المرور</label
+                          >
+                          <div class="passwordWrap">
+                            <input
+                              class="input"
+                              id="registerPassword2"
+                              name="password2"
+                              type="password"
+                              autocomplete="new-password"
+                              placeholder="••••••••"
+                              required
+                            />
+                            <button
+                              class="iconBtn"
+                              type="button"
+                              data-toggle-password="registerPassword2"
+                            >
+                              إظهار
+                            </button>
+                          </div>
+                        </div>
+
+                        <button class="primaryBtn" type="submit">
+                          <span class="btnText">إنشاء حساب</span>
+                          <span class="spinner" aria-hidden="true"></span>
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </details>
+
+                <button
+                  class="secondaryBtn methodRow"
+                  type="button"
+                  data-action="google"
+                >
+                  <span class="methodLeft">
+                    <span class="methodIcon methodIcon--g" aria-hidden="true"
+                      >G</span
+                    >
+                    <span class="methodText">Google</span>
+                  </span>
+                </button>
+
+                <button
+                  class="secondaryBtn methodRow"
+                  type="button"
+                  data-action="quick"
+                >
+                  <span class="methodLeft">
+                    <span class="methodIcon" aria-hidden="true">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M13 2L3 14H11L9 22L21 9H13L13 2Z"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </span>
+                    <span class="methodText">دخول سريع</span>
+                  </span>
+                </button>
+
+                <button
+                  class="secondaryBtn methodRow methodRow--link"
+                  type="button"
+                  data-action="share"
+                >
+                  هات الرابط بتاعي
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/assets/login.js"></script>
+  </body>
+</html>
