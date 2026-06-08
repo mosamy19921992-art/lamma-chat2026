@@ -3270,24 +3270,24 @@ export default function ChatScreen({
             className="absolute inset-0 z-0 pointer-events-none"
             style={{
               background:
-                "linear-gradient(180deg, rgba(2, 6, 12, 0.24) 0%, rgba(2, 8, 14, 0.12) 18%, rgba(3, 8, 12, 0.26) 100%)",
+                "linear-gradient(180deg, rgba(2, 6, 12, 0.12) 0%, rgba(2, 8, 14, 0.05) 18%, rgba(3, 8, 12, 0.14) 100%)",
             }}
           />
           <div
             className="absolute inset-0 z-0 pointer-events-none"
             style={{
               background:
-                "radial-gradient(circle at 16% 18%, rgba(16, 185, 129, 0.05), transparent 22%), radial-gradient(circle at 76% 14%, rgba(45, 212, 191, 0.05), transparent 24%), radial-gradient(circle at 52% 82%, rgba(148, 163, 184, 0.035), transparent 28%)",
+                "radial-gradient(circle at 16% 18%, rgba(16, 185, 129, 0.025), transparent 22%), radial-gradient(circle at 76% 14%, rgba(45, 212, 191, 0.025), transparent 24%), radial-gradient(circle at 52% 82%, rgba(148, 163, 184, 0.02), transparent 28%)",
             }}
           />
-          <div className="absolute inset-0 bg-black/18 z-0 pointer-events-none" />
+          <div className="absolute inset-0 bg-black/8 z-0 pointer-events-none" />
         </>
       ) : null}
       {/* Background radial soft light particles */}
       <div
         className="absolute inset-0 pointer-events-none z-0"
         style={{
-          background: `radial-gradient(circle at center, ${hexToRgba(glowColor, 0.02)}, transparent 72%)`,
+          background: `radial-gradient(circle at center, ${hexToRgba(glowColor, 0.012)}, transparent 74%)`,
         }}
       />
 
@@ -4833,10 +4833,10 @@ export default function ChatScreen({
           } ${isLeftColumnCollapsed ? "xl:border-l xl:border-[rgba(163,230,53,0.12)]" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-[rgba(163,230,53,0.12)]" : ""} lamma-column-frame`}
         >
           {/* Room Top Bar: Topic & System Actions */}
-          <div className="flex items-stretch justify-between min-h-[38px] shrink-0 lamma-fire-underline lamma-room-header">
+          <div className="flex items-stretch justify-between min-h-[32px] shrink-0 lamma-fire-underline lamma-room-header">
             {/* Topic Side (Right) */}
             <div
-              className="flex-1 flex flex-col justify-center px-3 border-l border-green-500/10 group/topic cursor-pointer relative lamma-topic-shell"
+              className="flex-1 flex flex-col justify-center px-2.5 border-l border-green-500/10 group/topic cursor-pointer relative lamma-topic-shell"
               onClick={() => {
                 if (
                   !isEditingTopic &&
@@ -4884,7 +4884,7 @@ export default function ChatScreen({
                     autoFocus
                   />
                 ) : (
-                  <p className="text-[11.5px] font-black text-teal-50 truncate flex-1 leading-normal py-0.5 mt-0.5">
+                  <p className="text-[10.5px] font-black text-teal-50 truncate flex-1 leading-normal py-0 mt-0">
                     {roomTopics[activeRoomId] ||
                       "مرحباً بكم في الغرفة الذكية 💚"}
                   </p>
@@ -4893,7 +4893,7 @@ export default function ChatScreen({
             </div>
 
             {/* System Actions Side (Left) */}
-            <div className="w-[132px] sm:w-[168px] md:w-[208px] flex items-center justify-center px-2 py-0.5 relative overflow-hidden bg-white/[0.02] border-r border-white/5">
+            <div className="w-[116px] sm:w-[148px] md:w-[188px] flex items-center justify-center px-2 py-0 relative overflow-hidden bg-white/[0.015] border-r border-white/5">
               <AnimatePresence mode="popLayout">
                 <motion.div
                   key={systemActivity.id}
@@ -4929,7 +4929,7 @@ export default function ChatScreen({
 
           {/* Header section replicating the top of chat log / Room Tabs - matching Ad Banner size & width */}
           <div
-            className="w-full px-2 flex items-center justify-between shrink-0 z-10 h-[36px] lamma-fire-underline lamma-room-header"
+            className="w-full px-2 flex items-center justify-between shrink-0 z-10 h-[30px] lamma-fire-underline lamma-room-header"
             dir="rtl"
           >
             {/* Tabs Container */}
@@ -5312,10 +5312,10 @@ export default function ChatScreen({
 
           {/* Messages Feed Viewport */}
           <div
-            className="flex-1 overflow-y-auto lamma-fire-scroll pr-3 pl-4"
+            className="flex-1 overflow-y-auto lamma-fire-scroll pr-3 pl-4 pt-1 pb-0"
             dir="rtl"
           >
-            <div className="min-h-full flex flex-col justify-end gap-3 pt-2 pb-0">
+            <div className="flex flex-col gap-2.5">
             {/* Owner Control Alerts Block */}
             {isMaintenanceMode && (
               <div
@@ -5735,7 +5735,7 @@ export default function ChatScreen({
           {/* Scrolling Commercial ad banner */}
           {isAdsEnabled && !isAdBannerDismissed && (
             <div
-              className="w-full px-3 py-1 flex items-center justify-between text-[rgba(210,220,226,0.84)] text-[10px] font-bold z-[40] relative lamma-fire-overline lamma-banner-shell"
+              className="w-full px-3 py-0.5 flex items-center justify-between text-[rgba(210,220,226,0.84)] text-[10px] font-bold z-[40] relative lamma-fire-overline lamma-banner-shell"
               dir="rtl"
             >
               <div className="flex items-center gap-2 flex-1 overflow-hidden">
@@ -5789,7 +5789,7 @@ export default function ChatScreen({
             className={
               isZenMode
                 ? "p-1.5 sm:p-2 absolute bottom-2 left-2 right-2 max-w-4xl mx-auto z-40 bg-transparent shrink-0 backdrop-blur-sm shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-full"
-                : "px-1.5 sm:px-2 pb-1.5 sm:pb-2 pt-1 bg-[rgba(8,12,12,0.10)] border-t border-white/5 relative z-10 shrink-0"
+                : "px-1.5 sm:px-2 pb-1 sm:pb-1.5 pt-0.5 bg-[rgba(8,12,12,0.07)] border-t border-white/5 relative z-10 shrink-0"
             }
           >
             <div
