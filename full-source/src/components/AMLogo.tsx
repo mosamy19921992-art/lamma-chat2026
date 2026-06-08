@@ -229,7 +229,7 @@ export default function AMLogo({
             fontWeight="900"
             fontFamily="'Cinzel', 'Playfair Display', 'Times New Roman', serif"
             style={{
-              textShadow: "0 0 12px rgba(16, 185, 129, 0.95), 0 0 4px rgba(255, 255, 255, 0.5)",
+              textShadow: "0 0 12px rgba(255, 255, 255, 0.16), 0 0 4px rgba(255, 255, 255, 0.32)",
               letterSpacing: "-0.5px",
             }}
           >

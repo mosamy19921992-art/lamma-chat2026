@@ -15,6 +15,19 @@ interface ThemeFabProps {
 export function ThemeFab({ inChat = false }: ThemeFabProps) {
   const [open, setOpen] = useState(false);
   const { theme } = useTheme();
+  const fabStyle = inChat
+    ? {
+        zIndex: 2147483647,
+        background:
+          "linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06))",
+        boxShadow:
+          "0 8px 24px rgba(0, 0, 0, 0.26), 0 0 0 4px rgba(255, 255, 255, 0.08)",
+      }
+    : {
+        zIndex: 2147483647,
+        background: `linear-gradient(135deg, ${theme.palette.primary}, ${theme.palette.accent})`,
+        boxShadow: `0 8px 32px rgba(${theme.palette.primaryRgb}, 0.5), 0 0 0 4px rgba(${theme.palette.primaryRgb}, 0.15)`,
+      };
 
   return (
     <>
@@ -25,13 +38,7 @@ export function ThemeFab({ inChat = false }: ThemeFabProps) {
             ? "bottom-28 sm:bottom-5 left-3 sm:left-5 w-11 h-11 sm:w-12 sm:h-12 rounded-2xl"
             : "bottom-5 left-5 w-14 h-14 rounded-2xl"
         }`}
-        style={{
-          zIndex: 2147483647,
-          background: `linear-gradient(135deg, ${theme.palette.primary}, ${theme.palette.accent})`,
-          boxShadow: inChat
-            ? `0 8px 24px rgba(${theme.palette.primaryRgb}, 0.34), 0 0 0 4px rgba(${theme.palette.primaryRgb}, 0.10)`
-            : `0 8px 32px rgba(${theme.palette.primaryRgb}, 0.5), 0 0 0 4px rgba(${theme.palette.primaryRgb}, 0.15)`,
-        }}
+        style={fabStyle}
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", damping: 18, stiffness: 220 }}

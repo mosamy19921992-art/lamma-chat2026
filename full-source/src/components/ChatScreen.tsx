@@ -4256,7 +4256,7 @@ export default function ChatScreen({
           className={`hidden xl:flex xl:order-3 flex-col overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isLeftColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
-              : "w-[300px] 2xl:w-[340px] px-1 pt-0 pb-0 opacity-100 border-r border-[rgba(163,230,53,0.10)] lamma-column-frame lamma-column-shell"
+              : "w-[300px] 2xl:w-[340px] px-1 pt-0 pb-0 opacity-100 border-r border-white/8 lamma-column-frame lamma-column-shell"
           }`}
         >
           <div
@@ -4796,7 +4796,7 @@ export default function ChatScreen({
         <div
           className={`flex-1 flex flex-col min-w-0 backdrop-blur-xl xl:order-2 lamma-column-frame lamma-chat-core-shell ${
             mobileTab === "chat" ? "flex" : "hidden md:flex"
-          } ${isLeftColumnCollapsed ? "xl:border-l xl:border-[rgba(163,230,53,0.12)]" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-[rgba(163,230,53,0.12)]" : ""} lamma-column-frame`}
+          } ${isLeftColumnCollapsed ? "xl:border-l xl:border-white/10" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-white/10" : ""} lamma-column-frame`}
         >
           {/* Room Top Bar: Topic & System Actions */}
           <div className="flex items-stretch justify-between min-h-[32px] shrink-0 lamma-fire-underline lamma-room-header">
@@ -6368,7 +6368,7 @@ export default function ChatScreen({
           className={`hidden xl:flex xl:order-1 flex-col gap-3 overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isRightColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
-              : "w-[320px] 2xl:w-[340px] px-1 pt-0 pb-0 opacity-100 border-l border-[rgba(163,230,53,0.10)] lamma-column-frame lamma-column-shell"
+              : "w-[320px] 2xl:w-[340px] px-1 pt-0 pb-0 opacity-100 border-l border-white/8 lamma-column-frame lamma-column-shell"
           }`}
         >
           <div
