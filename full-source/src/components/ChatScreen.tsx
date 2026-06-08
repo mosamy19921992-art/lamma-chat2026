@@ -5741,15 +5741,22 @@ export default function ChatScreen({
             className={
               isZenMode
                 ? "p-1.5 sm:p-2 absolute bottom-2 left-2 right-2 max-w-4xl mx-auto z-40 bg-transparent shrink-0 backdrop-blur-sm shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-full"
-                : "px-0 sm:px-0 pb-0 pt-0 bg-transparent relative z-10 shrink-0"
+                : "-mt-px px-0 sm:px-0 pb-0 pt-0 bg-transparent relative z-10 shrink-0"
             }
           >
             <div
-              className={`flex flex-wrap md:flex-nowrap items-center gap-1 sm:gap-1.5 rounded-3xl md:rounded-full px-2 sm:px-3 py-1.5 sm:py-2 md:py-1 ${
+              className={`flex flex-wrap md:flex-nowrap items-center gap-1 sm:gap-1.5 rounded-t-[22px] rounded-b-none md:rounded-t-[24px] md:rounded-b-none px-2 sm:px-3 py-1.5 sm:py-2 md:py-1 ${
                 isZenMode
                   ? "bg-[#0b100c]/88 border border-green-500/24 shadow-2xl backdrop-blur-xl lamma-chat-input-shell"
                   : "bg-[rgba(7,10,12,0.22)] border border-white/6 shadow-none lamma-chat-input-shell"
               }`}
+              style={
+                isZenMode
+                  ? undefined
+                  : {
+                      marginBottom: "-1px",
+                    }
+              }
             >
               {/* Attachment Dropdown Container */}
               <div className="relative dropdown-container">
