@@ -1134,13 +1134,13 @@ body {
 .lamma-neutral-glass .lamma-modal-shell,
 .lamma-neutral-glass .lamma-modal-header {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.045)) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.078), rgba(255, 255, 255, 0.028)) !important;
+  border-color: rgba(255, 255, 255, 0.085) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 14px 34px rgba(0, 0, 0, 0.18) !important;
-  -webkit-backdrop-filter: blur(22px) saturate(1.05) !important;
-  backdrop-filter: blur(22px) saturate(1.05) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 34px rgba(0, 0, 0, 0.14) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.03) !important;
+  backdrop-filter: blur(18px) saturate(1.03) !important;
 }
 
 .lamma-neutral-glass .lamma-list-item:hover,

@@ -901,8 +901,11 @@ export default function ChatScreen({
       return localStorage.getItem("lamma_greetings_enabled") !== "false";
     },
   );
-  const [isAdBannerDismissed, setIsAdBannerDismissed] =
-    useState<boolean>(true);
+  const [isAdBannerDismissed, setIsAdBannerDismissed] = useState<boolean>(
+    () => {
+      return localStorage.getItem("lamma_ad_banner_dismissed") === "true";
+    },
+  );
 
   // Persistent state synchronization loops
   useEffect(() => {
@@ -3236,7 +3239,7 @@ export default function ChatScreen({
               backgroundPosition: isDefaultAmbientBg ? "68% center" : "center center",
               transform: isDefaultAmbientBg ? "scale(1.09)" : "scale(1.05)",
               filter: isDefaultAmbientBg
-                ? "blur(6px) saturate(0.82) contrast(0.94) brightness(0.78)"
+                ? "blur(4px) saturate(0.92) contrast(0.98) brightness(0.9)"
                 : "none",
             }}
           />
@@ -3248,9 +3251,9 @@ export default function ChatScreen({
                 backgroundSize: "cover",
                 backgroundRepeat: "no-repeat",
                 backgroundPosition: "68% center",
-                opacity: 0.2,
-                filter: "blur(1px) saturate(0.86) contrast(0.96) brightness(0.88)",
-                transform: "scale(1.02)",
+                opacity: 0.28,
+                filter: "blur(0.5px) saturate(0.98) contrast(1) brightness(0.98)",
+                transform: "scale(1.015)",
               }}
             />
           ) : null}
@@ -3259,7 +3262,7 @@ export default function ChatScreen({
               className="absolute inset-0 z-0 pointer-events-none"
               style={{
                 background:
-                  "linear-gradient(135deg, rgba(0, 0, 0, 0.22) 0%, rgba(0, 0, 0, 0.08) 42%, rgba(0, 0, 0, 0.24) 100%)",
+                  "linear-gradient(135deg, rgba(0, 0, 0, 0.14) 0%, rgba(0, 0, 0, 0.03) 42%, rgba(0, 0, 0, 0.16) 100%)",
               }}
             />
           ) : null}
@@ -3267,7 +3270,7 @@ export default function ChatScreen({
             className="absolute inset-0 z-0 pointer-events-none"
             style={{
               background:
-                "radial-gradient(ellipse at center top, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.018) 34%, transparent 68%), radial-gradient(ellipse at center bottom, rgba(255, 151, 73, 0.055) 0%, rgba(255, 255, 255, 0.016) 34%, transparent 76%), linear-gradient(180deg, rgba(3, 8, 10, 0.1) 0%, rgba(3, 8, 10, 0.02) 24%, rgba(3, 7, 9, 0.12) 100%)",
+                "radial-gradient(ellipse at center top, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.012) 34%, transparent 68%), radial-gradient(ellipse at center bottom, rgba(255, 151, 73, 0.035) 0%, rgba(255, 255, 255, 0.012) 34%, transparent 76%), linear-gradient(180deg, rgba(3, 8, 10, 0.06) 0%, rgba(3, 8, 10, 0.01) 24%, rgba(3, 7, 9, 0.08) 100%)",
             }}
           />
           <div
@@ -3277,7 +3280,7 @@ export default function ChatScreen({
                 "radial-gradient(circle at 60% 20%, rgba(255, 255, 255, 0.01), transparent 18%), radial-gradient(circle at 52% 82%, rgba(148, 163, 184, 0.006), transparent 24%)",
             }}
           />
-          <div className="absolute inset-0 bg-[rgba(4,8,10,0.08)] z-0 pointer-events-none" />
+          <div className="absolute inset-0 bg-[rgba(4,8,10,0.035)] z-0 pointer-events-none" />
         </>
       ) : null}
       {/* Background radial soft light particles */}
