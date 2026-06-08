@@ -3222,7 +3222,7 @@ export default function ChatScreen({
 
   return (
     <div
-      className="h-[100dvh] w-full flex flex-col overflow-hidden relative font-sans text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app lamma-neutral-glass"
+      className="fixed inset-0 h-screen w-full flex flex-col overflow-hidden font-sans text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app lamma-neutral-glass"
       dir="rtl"
       data-lamma-wall={wallTheme}
     >
