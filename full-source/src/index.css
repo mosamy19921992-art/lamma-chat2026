@@ -174,14 +174,14 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
+    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04),
     rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.10),
-    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.28),
-    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.10),
+    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04),
     transparent
   );
-  border: 0.75px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.18);
+  border: 0.75px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.08);
   box-shadow:
-    0 0 26px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.16),
+    0 0 14px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.07),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   pointer-events: none;
 }
@@ -274,14 +274,14 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
+    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04),
     rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.10),
-    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.28),
-    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.10),
+    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04),
     transparent
   );
-  border: 0.75px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.18);
+  border: 0.75px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.08);
   box-shadow:
-    0 0 26px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.16),
+    0 0 14px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.07),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   pointer-events: none;
 }
@@ -328,9 +328,9 @@ body {
   --lamma-frame-radius: 30px;
   border-radius: var(--lamma-frame-radius);
   box-shadow:
-    0 0 0 1px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.22),
-    0 0 28px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.08),
-    0 0 72px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04);
+    0 0 0 1px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.10),
+    0 12px 30px rgba(0, 0, 0, 0.24),
+    0 0 26px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.025);
 }
 
 .lamma-fire-frame::before {
@@ -370,9 +370,9 @@ body {
   inset: 0;
   border-radius: inherit;
   box-shadow:
-    0 0 0 1px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.16),
-    0 0 18px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.05),
-    0 0 40px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.025),
+    0 0 0 1px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.10),
+    0 0 12px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.03),
+    0 0 24px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.015),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   pointer-events: none;
   z-index: 5;
@@ -556,7 +556,7 @@ body {
 
 .lamma-panel-shell {
   background: linear-gradient(180deg, rgba(7, 13, 17, 0.24), rgba(4, 7, 10, 0.11));
-  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow:
     0 16px 34px rgba(0, 0, 0, 0.28),
     0 0 18px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04);
@@ -665,7 +665,7 @@ body {
 .lamma-room-header {
   background:
     linear-gradient(180deg, rgba(6, 10, 14, 0.18), rgba(4, 7, 10, 0.08));
-  border-bottom: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.045);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   box-shadow:
     inset 0 -1px 0 rgba(255, 255, 255, 0.03),
     0 8px 18px rgba(0, 0, 0, 0.08);
@@ -1052,11 +1052,11 @@ body {
 }
 
 .lamma-send-orb {
-  background: linear-gradient(180deg, rgba(163, 230, 53, 0.95), rgba(24, 181, 123, 0.82));
-  border: 1px solid rgba(193, 216, 106, 0.18);
+  background: linear-gradient(180deg, rgba(146, 214, 77, 0.88), rgba(20, 161, 110, 0.76));
+  border: 1px solid rgba(193, 216, 106, 0.12);
   color: #07110b;
   box-shadow:
-    0 8px 18px rgba(24, 181, 123, 0.16),
+    0 6px 14px rgba(24, 181, 123, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
@@ -1081,11 +1081,13 @@ body {
 }
 
 .lamma-banner-shell {
-  background: linear-gradient(90deg, rgba(33, 25, 6, 0.8), rgba(10, 10, 8, 0.92), rgba(33, 25, 6, 0.8));
-  border-top: 1px solid rgba(245, 158, 11, 0.12);
+  background: linear-gradient(90deg, rgba(10, 12, 12, 0.42), rgba(8, 10, 10, 0.62), rgba(10, 12, 12, 0.42));
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.025),
-    0 -8px 18px rgba(0, 0, 0, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 -4px 10px rgba(0, 0, 0, 0.04);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 
 .lamma-banner-marquee {
@@ -1096,9 +1098,9 @@ body {
 }
 
 .lamma-banner-pill {
-  background: rgba(245, 158, 11, 0.08);
-  border-top: 1px solid rgba(245, 158, 11, 0.1);
-  color: rgba(245, 158, 11, 0.8);
+  background: rgba(255, 255, 255, 0.04);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  color: rgba(210, 220, 226, 0.78);
 }
 
 .lamma-soft-action {

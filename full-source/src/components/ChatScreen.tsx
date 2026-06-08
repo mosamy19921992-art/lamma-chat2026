@@ -5733,12 +5733,15 @@ export default function ChatScreen({
           {/* Scrolling Commercial ad banner */}
           {isAdsEnabled && !isAdBannerDismissed && (
             <div
-              className="w-full px-3 py-1 flex items-center justify-between text-yellow-500 text-[10px] font-bold z-[40] relative lamma-fire-overline lamma-banner-shell"
+              className="w-full px-3 py-1 flex items-center justify-between text-[rgba(210,220,226,0.84)] text-[10px] font-bold z-[40] relative lamma-fire-overline lamma-banner-shell"
               dir="rtl"
             >
               <div className="flex items-center gap-2 flex-1 overflow-hidden">
-                <span className="shrink-0 text-yellow-400 flex items-center gap-1">
-                  <Sparkles size={12} className="text-yellow-500" />{" "}
+                <span className="shrink-0 text-[rgba(190,220,160,0.9)] flex items-center gap-1">
+                  <Sparkles
+                    size={12}
+                    className="text-[rgba(190,220,160,0.9)]"
+                  />{" "}
                   <span className="hidden sm:inline">إعلانات المتجر:</span>
                 </span>
                 <div className="flex-1 overflow-hidden relative h-5 flex items-center">
@@ -5784,7 +5787,7 @@ export default function ChatScreen({
             className={
               isZenMode
                 ? "p-1.5 sm:p-2 absolute bottom-2 left-2 right-2 max-w-4xl mx-auto z-40 bg-transparent shrink-0 backdrop-blur-sm shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-full"
-                : "p-1.5 sm:p-2 bg-[#0d130e]/74 border-t border-green-500/8 relative z-10 shrink-0"
+                : "px-1.5 sm:px-2 pb-1.5 sm:pb-2 pt-1 bg-[rgba(8,12,12,0.10)] border-t border-white/5 relative z-10 shrink-0"
             }
           >
             <div
