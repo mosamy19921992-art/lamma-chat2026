@@ -20,8 +20,7 @@ interface ServiceWorkerState {
   isOnline: boolean;
 }
 
-const SW_VERSION = "lamma-v1.0.11";
-const SW_URL = `/sw.js?v=${SW_VERSION}`;
+const SW_RESET_KEY = "lamma_sw_reset_v1";
 
 export function useServiceWorker(): ServiceWorkerState {
   const [needRefresh, setNeedRefresh] = useState(false);
@@ -35,84 +34,43 @@ export function useServiceWorker(): ServiceWorkerState {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
-    if (import.meta.env.DEV) {
-      // Avoid stale cached shells during local development.
-      navigator.serviceWorker
-        .getRegistrations()
-        .then((registrations) => {
-          registrations.forEach((registration) => {
-            void registration.unregister();
-          });
-        })
-        .catch((err) => {
-          console.warn("[SW] Dev unregister failed:", err);
-        });
-      return;
-    }
-
-    // Register the service worker.
     navigator.serviceWorker
       .getRegistrations()
       .then(async (registrations) => {
+        const hadRegistrations = registrations.length > 0;
+
         await Promise.all(
           registrations.map(async (registration) => {
-            const activeUrl = registration.active?.scriptURL ?? "";
-            const waitingUrl = registration.waiting?.scriptURL ?? "";
-            const installingUrl = registration.installing?.scriptURL ?? "";
-            const hasCurrentVersion =
-              activeUrl.includes(SW_VERSION) ||
-              waitingUrl.includes(SW_VERSION) ||
-              installingUrl.includes(SW_VERSION);
-
-            if (!hasCurrentVersion) {
-              try {
-                registration.active?.postMessage("CLEAR_CACHES");
-              } catch {
-                // Ignore failures from stale workers and unregister below.
-              }
-              await registration.unregister();
+            try {
+              registration.active?.postMessage("CLEAR_CACHES");
+            } catch {
+              // Ignore stale worker messaging failures.
             }
+            await registration.unregister();
           }),
         );
 
-        return navigator.serviceWorker.register(SW_URL, {
-          scope: "/",
-          updateViaCache: "none",
-        });
-      })
-      .then((registration) => {
-        void registration.update();
-        // Listen for a waiting worker (an update is available).
-        if (registration.waiting) {
-          setNeedRefresh(true);
+        if ("caches" in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map((name) => caches.delete(name)));
         }
-        registration.addEventListener("updatefound", () => {
-          const newWorker = registration.installing;
-          if (!newWorker) return;
-          newWorker.addEventListener("statechange", () => {
-            if (
-              newWorker.state === "installed" &&
-              navigator.serviceWorker.controller
-            ) {
-              setNeedRefresh(true);
-            }
-            if (newWorker.state === "activated") {
-              setOfflineReady(true);
-            }
-          });
-        });
+
+        // Reload once after clearing old workers/caches so the app boots
+        // from the network instead of a stale shell.
+        if (hadRegistrations && !sessionStorage.getItem(SW_RESET_KEY)) {
+          sessionStorage.setItem(SW_RESET_KEY, "true");
+          const url = new URL(window.location.href);
+          url.searchParams.set("cache_reset", Date.now().toString());
+          window.location.replace(url.toString());
+          return;
+        }
+
+        setNeedRefresh(false);
+        setOfflineReady(false);
       })
       .catch((err) => {
-        console.warn("[SW] Registration failed:", err);
+        console.warn("[SW] Reset failed:", err);
       });
-
-    // Listen for controller changes (after skipWaiting).
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (refreshing) return;
-      refreshing = true;
-      window.location.reload();
-    });
 
     // Listen for the native install prompt.
     const handleBeforeInstallPrompt = (event: any) => {
