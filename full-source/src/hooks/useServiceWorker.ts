@@ -20,7 +20,7 @@ interface ServiceWorkerState {
   isOnline: boolean;
 }
 
-const SW_VERSION = "lamma-v1.0.10";
+const SW_VERSION = "lamma-v1.0.11";
 const SW_URL = `/sw.js?v=${SW_VERSION}`;
 
 export function useServiceWorker(): ServiceWorkerState {
