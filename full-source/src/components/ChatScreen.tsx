@@ -3236,10 +3236,10 @@ export default function ChatScreen({
             style={{
               backgroundImage: `url(${activeRoomBg})`,
               backgroundSize: "cover",
-              backgroundPosition: isDefaultAmbientBg ? "69% center" : "center center",
-              transform: isDefaultAmbientBg ? "scale(1.1)" : "scale(1.05)",
+              backgroundPosition: isDefaultAmbientBg ? "68% center" : "center center",
+              transform: isDefaultAmbientBg ? "scale(1.09)" : "scale(1.05)",
               filter: isDefaultAmbientBg
-                ? "blur(10px) saturate(0.58) contrast(0.88) brightness(0.62)"
+                ? "blur(8px) saturate(0.7) contrast(0.9) brightness(0.7)"
                 : "none",
             }}
           />
@@ -3250,10 +3250,10 @@ export default function ChatScreen({
                 backgroundImage: `url(${activeRoomBg})`,
                 backgroundSize: "cover",
                 backgroundRepeat: "no-repeat",
-                backgroundPosition: "69% center",
-                opacity: 0.1,
-                filter: "blur(2px) saturate(0.66) contrast(0.9) brightness(0.7)",
-                transform: "scale(1.025)",
+                backgroundPosition: "68% center",
+                opacity: 0.14,
+                filter: "blur(1.5px) saturate(0.74) contrast(0.92) brightness(0.78)",
+                transform: "scale(1.02)",
               }}
             />
           ) : null}
@@ -3262,7 +3262,7 @@ export default function ChatScreen({
               className="absolute inset-0 z-0 pointer-events-none"
               style={{
                 background:
-                  "radial-gradient(circle at 58% 42%, rgba(255, 255, 255, 0.02), rgba(6, 10, 12, 0.14) 54%, rgba(3, 6, 8, 0.28) 100%)",
+                  "radial-gradient(circle at 58% 42%, rgba(255, 255, 255, 0.028), rgba(6, 10, 12, 0.09) 52%, rgba(3, 6, 8, 0.2) 100%)",
               }}
             />
           ) : null}
@@ -3270,7 +3270,7 @@ export default function ChatScreen({
             className="absolute inset-0 z-0 pointer-events-none"
             style={{
               background:
-                "radial-gradient(circle at 18% 68%, rgba(4, 7, 8, 0.58), transparent 18%), linear-gradient(90deg, rgba(4, 8, 10, 0.18) 0%, rgba(4, 8, 10, 0.04) 16%, rgba(4, 8, 10, 0.04) 84%, rgba(4, 8, 10, 0.16) 100%), linear-gradient(180deg, rgba(3, 8, 10, 0.26) 0%, rgba(3, 8, 10, 0.14) 20%, rgba(3, 7, 9, 0.28) 100%)",
+                "radial-gradient(circle at 18% 68%, rgba(4, 7, 8, 0.42), transparent 20%), linear-gradient(90deg, rgba(4, 8, 10, 0.1) 0%, rgba(4, 8, 10, 0.02) 15%, rgba(4, 8, 10, 0.02) 85%, rgba(4, 8, 10, 0.08) 100%), linear-gradient(180deg, rgba(3, 8, 10, 0.18) 0%, rgba(3, 8, 10, 0.08) 20%, rgba(3, 7, 9, 0.2) 100%)",
             }}
           />
           <div
@@ -3280,7 +3280,7 @@ export default function ChatScreen({
                 "radial-gradient(circle at 60% 20%, rgba(255, 255, 255, 0.01), transparent 18%), radial-gradient(circle at 52% 82%, rgba(148, 163, 184, 0.006), transparent 24%)",
             }}
           />
-          <div className="absolute inset-0 bg-[rgba(4,8,10,0.22)] z-0 pointer-events-none" />
+          <div className="absolute inset-0 bg-[rgba(4,8,10,0.14)] z-0 pointer-events-none" />
         </>
       ) : null}
       {/* Background radial soft light particles */}
