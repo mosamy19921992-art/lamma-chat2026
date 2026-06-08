@@ -3237,8 +3237,10 @@ export default function ChatScreen({
               backgroundImage: `url(${activeRoomBg})`,
               backgroundSize: "cover",
               backgroundPosition: "center center",
-              transform: "scale(1.05)",
-              filter: isDefaultAmbientBg ? "blur(12px) saturate(0.95)" : "none",
+              transform: isDefaultAmbientBg ? "scale(1.08)" : "scale(1.05)",
+              filter: isDefaultAmbientBg
+                ? "blur(7px) saturate(1.06) contrast(1.04) brightness(0.82)"
+                : "none",
             }}
           />
           {isDefaultAmbientBg ? (
@@ -3246,10 +3248,21 @@ export default function ChatScreen({
               className="absolute inset-0 z-0 pointer-events-none"
               style={{
                 backgroundImage: `url(${activeRoomBg})`,
-                backgroundSize: "contain",
+                backgroundSize: "cover",
                 backgroundRepeat: "no-repeat",
                 backgroundPosition: "center center",
-                opacity: 0.88,
+                opacity: 0.54,
+                filter: "saturate(1.14) contrast(1.12) brightness(0.94)",
+                transform: "scale(1.02)",
+              }}
+            />
+          ) : null}
+          {isDefaultAmbientBg ? (
+            <div
+              className="absolute inset-0 z-0 pointer-events-none"
+              style={{
+                background:
+                  "radial-gradient(circle at 50% 42%, rgba(8, 20, 28, 0.08), rgba(4, 8, 12, 0.22) 58%, rgba(2, 5, 8, 0.42) 100%)",
               }}
             />
           ) : null}
