@@ -5312,7 +5312,7 @@ export default function ChatScreen({
 
           {/* Messages Feed Viewport */}
           <div
-            className="flex-1 overflow-y-auto py-4 space-y-4 lamma-fire-scroll pr-4 pl-6"
+            className="flex-1 overflow-y-auto pt-2 pb-1 space-y-3 lamma-fire-scroll pr-3 pl-4 flex flex-col justify-end"
             dir="rtl"
           >
             {/* Owner Control Alerts Block */}
