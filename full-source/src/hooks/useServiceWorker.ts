@@ -20,7 +20,8 @@ interface ServiceWorkerState {
   isOnline: boolean;
 }
 
-const SW_URL = "/sw.js";
+const SW_VERSION = "lamma-v1.0.10";
+const SW_URL = `/sw.js?v=${SW_VERSION}`;
 
 export function useServiceWorker(): ServiceWorkerState {
   const [needRefresh, setNeedRefresh] = useState(false);
@@ -51,7 +52,34 @@ export function useServiceWorker(): ServiceWorkerState {
 
     // Register the service worker.
     navigator.serviceWorker
-      .register(SW_URL, { scope: "/", updateViaCache: "none" })
+      .getRegistrations()
+      .then(async (registrations) => {
+        await Promise.all(
+          registrations.map(async (registration) => {
+            const activeUrl = registration.active?.scriptURL ?? "";
+            const waitingUrl = registration.waiting?.scriptURL ?? "";
+            const installingUrl = registration.installing?.scriptURL ?? "";
+            const hasCurrentVersion =
+              activeUrl.includes(SW_VERSION) ||
+              waitingUrl.includes(SW_VERSION) ||
+              installingUrl.includes(SW_VERSION);
+
+            if (!hasCurrentVersion) {
+              try {
+                registration.active?.postMessage("CLEAR_CACHES");
+              } catch {
+                // Ignore failures from stale workers and unregister below.
+              }
+              await registration.unregister();
+            }
+          }),
+        );
+
+        return navigator.serviceWorker.register(SW_URL, {
+          scope: "/",
+          updateViaCache: "none",
+        });
+      })
       .then((registration) => {
         void registration.update();
         // Listen for a waiting worker (an update is available).
