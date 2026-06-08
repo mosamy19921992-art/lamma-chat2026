@@ -349,8 +349,14 @@ body {
 }
 
 .lamma-fire-frame-app {
-  --lamma-frame-inset: 10px;
-  --lamma-frame-radius: 28px;
+  --lamma-frame-inset: 0px;
+  --lamma-frame-radius: 0px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.lamma-fire-frame-app::before {
+  display: none;
 }
 
 .lamma-fire-frame-panel {
