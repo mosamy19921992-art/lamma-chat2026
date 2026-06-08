@@ -3239,7 +3239,7 @@ export default function ChatScreen({
               backgroundPosition: "center center",
               transform: isDefaultAmbientBg ? "scale(1.08)" : "scale(1.05)",
               filter: isDefaultAmbientBg
-                ? "blur(7px) saturate(1.06) contrast(1.04) brightness(0.82)"
+                ? "blur(5px) saturate(1.08) contrast(1.06) brightness(0.9)"
                 : "none",
             }}
           />
@@ -3251,8 +3251,8 @@ export default function ChatScreen({
                 backgroundSize: "cover",
                 backgroundRepeat: "no-repeat",
                 backgroundPosition: "center center",
-                opacity: 0.54,
-                filter: "saturate(1.14) contrast(1.12) brightness(0.94)",
+                opacity: 0.68,
+                filter: "saturate(1.16) contrast(1.14) brightness(1.02)",
                 transform: "scale(1.02)",
               }}
             />
@@ -3262,7 +3262,7 @@ export default function ChatScreen({
               className="absolute inset-0 z-0 pointer-events-none"
               style={{
                 background:
-                  "radial-gradient(circle at 50% 42%, rgba(8, 20, 28, 0.08), rgba(4, 8, 12, 0.22) 58%, rgba(2, 5, 8, 0.42) 100%)",
+                  "radial-gradient(circle at 50% 42%, rgba(8, 20, 28, 0.04), rgba(4, 8, 12, 0.10) 58%, rgba(2, 5, 8, 0.22) 100%)",
               }}
             />
           ) : null}
@@ -4290,7 +4290,7 @@ export default function ChatScreen({
           className={`hidden xl:flex xl:order-3 flex-col overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isLeftColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
-              : "w-[300px] 2xl:w-[340px] p-3 opacity-100 border-r border-[rgba(163,230,53,0.10)] lamma-column-frame lamma-column-shell"
+              : "w-[300px] 2xl:w-[340px] px-1 pt-0 pb-0 opacity-100 border-r border-[rgba(163,230,53,0.10)] lamma-column-frame lamma-column-shell"
           }`}
         >
           <div
@@ -6400,7 +6400,7 @@ export default function ChatScreen({
           className={`hidden xl:flex xl:order-1 flex-col gap-3 overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isRightColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
-              : "w-[320px] 2xl:w-[340px] p-3 opacity-100 border-l border-[rgba(163,230,53,0.10)] lamma-column-frame lamma-column-shell"
+              : "w-[320px] 2xl:w-[340px] px-1 pt-0 pb-0 opacity-100 border-l border-[rgba(163,230,53,0.10)] lamma-column-frame lamma-column-shell"
           }`}
         >
           <div
