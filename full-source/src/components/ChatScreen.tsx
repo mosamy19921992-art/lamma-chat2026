@@ -3270,24 +3270,24 @@ export default function ChatScreen({
             className="absolute inset-0 z-0 pointer-events-none"
             style={{
               background:
-                "linear-gradient(180deg, rgba(2, 6, 12, 0.54) 0%, rgba(2, 8, 14, 0.40) 18%, rgba(3, 8, 12, 0.64) 100%)",
+                "linear-gradient(180deg, rgba(2, 6, 12, 0.24) 0%, rgba(2, 8, 14, 0.12) 18%, rgba(3, 8, 12, 0.26) 100%)",
             }}
           />
           <div
             className="absolute inset-0 z-0 pointer-events-none"
             style={{
               background:
-                "radial-gradient(circle at 16% 18%, rgba(255, 145, 68, 0.12), transparent 20%), radial-gradient(circle at 76% 14%, rgba(37, 99, 235, 0.15), transparent 24%), radial-gradient(circle at 52% 82%, rgba(14, 165, 233, 0.10), transparent 28%)",
+                "radial-gradient(circle at 16% 18%, rgba(16, 185, 129, 0.05), transparent 22%), radial-gradient(circle at 76% 14%, rgba(45, 212, 191, 0.05), transparent 24%), radial-gradient(circle at 52% 82%, rgba(148, 163, 184, 0.035), transparent 28%)",
             }}
           />
-          <div className="absolute inset-0 bg-black/38 z-0 pointer-events-none" />
+          <div className="absolute inset-0 bg-black/18 z-0 pointer-events-none" />
         </>
       ) : null}
       {/* Background radial soft light particles */}
       <div
         className="absolute inset-0 pointer-events-none z-0"
         style={{
-          background: `radial-gradient(circle at center, ${hexToRgba(glowColor, 0.05)}, transparent 70%)`,
+          background: `radial-gradient(circle at center, ${hexToRgba(glowColor, 0.02)}, transparent 72%)`,
         }}
       />
 
@@ -5312,9 +5312,10 @@ export default function ChatScreen({
 
           {/* Messages Feed Viewport */}
           <div
-            className="flex-1 overflow-y-auto pt-2 pb-1 space-y-3 lamma-fire-scroll pr-3 pl-4 flex flex-col justify-end"
+            className="flex-1 overflow-y-auto lamma-fire-scroll pr-3 pl-4"
             dir="rtl"
           >
+            <div className="min-h-full flex flex-col justify-end gap-3 pt-2 pb-0">
             {/* Owner Control Alerts Block */}
             {isMaintenanceMode && (
               <div
@@ -5728,6 +5729,7 @@ export default function ChatScreen({
             })}
 
             <div ref={messageEndRef} />
+            </div>
           </div>
 
           {/* Scrolling Commercial ad banner */}

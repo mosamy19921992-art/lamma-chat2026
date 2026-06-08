@@ -8,10 +8,10 @@
 
 :root {
   --bg-primary: #040705;
-  --bg-secondary: #09100c;
-  --bg-surface: #0d1511;
+  --bg-secondary: #07100f;
+  --bg-surface: #0b1714;
   --accent-primary: #18b57b;
-  --accent-secondary: #c1d86a;
+  --accent-secondary: #8fd3b2;
   --accent-soft: rgba(24, 181, 123, 0.14);
   --text-primary: #f8fafc;
   --text-secondary: #8ea0a7;
@@ -20,9 +20,9 @@
   --glass-bg: rgba(10, 16, 13, 0.72);
   --glass-border: rgba(188, 224, 208, 0.09);
   --glow-color: rgba(24, 181, 123, 0.12);
-  --lamma-wall-r: 245;
-  --lamma-wall-g: 158;
-  --lamma-wall-b: 11;
+  --lamma-wall-r: 16;
+  --lamma-wall-g: 185;
+  --lamma-wall-b: 129;
 }
 
 /* Theme variables — overridden at runtime by useTheme().
@@ -41,21 +41,21 @@
 }
 
 [data-lamma-wall="fire"] {
-  --lamma-wall-r: 245;
-  --lamma-wall-g: 158;
-  --lamma-wall-b: 11;
+  --lamma-wall-r: 16;
+  --lamma-wall-g: 185;
+  --lamma-wall-b: 129;
 }
 
 [data-lamma-wall="ice"] {
-  --lamma-wall-r: 37;
-  --lamma-wall-g: 99;
-  --lamma-wall-b: 235;
+  --lamma-wall-r: 45;
+  --lamma-wall-g: 212;
+  --lamma-wall-b: 191;
 }
 
 [data-lamma-wall="violet"] {
-  --lamma-wall-r: 139;
-  --lamma-wall-g: 92;
-  --lamma-wall-b: 246;
+  --lamma-wall-r: 99;
+  --lamma-wall-g: 102;
+  --lamma-wall-b: 241;
 }
 
 html,
@@ -70,22 +70,9 @@ body,
 
 body {
   background:
-    radial-gradient(
-      circle at 14% 18%,
-      rgba(59, 130, 246, 0.16),
-      transparent 24%
-    ),
-    radial-gradient(
-      circle at 86% 22%,
-      rgba(245, 158, 11, 0.12),
-      transparent 20%
-    ),
-    radial-gradient(
-      circle at 50% 0%,
-      rgba(148, 163, 184, 0.08),
-      transparent 26%
-    ),
-    linear-gradient(135deg, #060912 0%, #0c1420 42%, #0a0f18 72%, #05070b 100%);
+    radial-gradient(circle at 18% 20%, rgba(16, 185, 129, 0.08), transparent 28%),
+    radial-gradient(circle at 82% 16%, rgba(45, 212, 191, 0.06), transparent 24%),
+    linear-gradient(135deg, #050b0c 0%, #081113 38%, #071012 72%, #040708 100%);
   background-attachment: fixed;
   color: var(--text-primary);
 }
@@ -93,8 +80,8 @@ body {
 .lamma-glass {
   background: linear-gradient(
     180deg,
-    rgba(14, 20, 17, 0.9),
-    rgba(8, 12, 10, 0.8)
+    rgba(10, 18, 16, 0.72),
+    rgba(7, 12, 11, 0.58)
   );
   -webkit-backdrop-filter: blur(30px);
   backdrop-filter: blur(30px);
@@ -103,8 +90,8 @@ body {
   position: relative;
   overflow: hidden;
   box-shadow:
-    0 28px 80px rgba(0, 0, 0, 0.82),
-    0 0 40px rgba(24, 181, 123, 0.06),
+    0 18px 44px rgba(0, 0, 0, 0.40),
+    0 0 18px rgba(24, 181, 123, 0.035),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
@@ -127,21 +114,18 @@ body {
   top: -120px;
   right: -120px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(24, 181, 123, 0.08), transparent 70%);
+  background: radial-gradient(circle, rgba(24, 181, 123, 0.035), transparent 70%);
   pointer-events: none;
 }
 
 .lamma-header {
   height: 64px;
   backdrop-filter: blur(20px);
-  background:
-    radial-gradient(circle at top center, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.08), transparent 42%),
-    linear-gradient(180deg, rgba(8, 12, 10, 0.94), rgba(5, 8, 6, 0.82));
-  border-bottom: 1px solid rgba(193, 216, 106, 0.07);
+  background: linear-gradient(180deg, rgba(8, 12, 12, 0.88), rgba(6, 9, 10, 0.72));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 10px 34px rgba(0, 0, 0, 0.24),
-    0 1px 24px rgba(24, 181, 123, 0.04);
+    0 8px 20px rgba(0, 0, 0, 0.14);
   position: relative;
 }
 
@@ -156,7 +140,7 @@ body {
     90deg,
     transparent,
     rgba(255, 255, 255, 0.06),
-    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.14),
+    rgba(255, 255, 255, 0.05),
     rgba(255, 255, 255, 0.06),
     transparent
   );
@@ -174,14 +158,14 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04),
-    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.10),
-    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04),
+    rgba(255, 255, 255, 0.018),
+    rgba(255, 255, 255, 0.04),
+    rgba(255, 255, 255, 0.018),
     transparent
   );
-  border: 0.75px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.08);
+  border: 0.75px solid rgba(255, 255, 255, 0.04);
   box-shadow:
-    0 0 14px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.07),
+    0 0 8px rgba(255, 255, 255, 0.025),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   pointer-events: none;
 }
@@ -229,7 +213,7 @@ body {
 
 .lamma-header-wordmark {
   letter-spacing: 0.22em;
-  text-shadow: 0 0 18px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.1);
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.04);
 }
 
 .lamma-fire-underline {
@@ -247,14 +231,14 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.06),
-    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.16),
-    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.06),
+    rgba(255, 255, 255, 0.02),
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.02),
     transparent
   );
-  border: 0.75px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12);
+  border: 0.75px solid rgba(255, 255, 255, 0.04);
   box-shadow:
-    0 0 18px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.10),
+    0 0 8px rgba(255, 255, 255, 0.03),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   pointer-events: none;
 }
