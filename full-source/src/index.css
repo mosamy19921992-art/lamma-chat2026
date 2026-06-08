@@ -1100,6 +1100,20 @@ body {
   color: #f3f4f6;
 }
 
+.lamma-neutral-glass {
+  --theme-primary: #d1d5db !important;
+  --theme-accent: #f3f4f6 !important;
+  --theme-bg-1: #0b0d10 !important;
+  --theme-bg-2: #101317 !important;
+  --theme-bg-3: #161a1f !important;
+  --theme-primary-rgb: 209, 213, 219 !important;
+  --theme-accent-rgb: 243, 244, 246 !important;
+  --glow-color: rgba(255, 255, 255, 0.06) !important;
+  --lamma-wall-r: 214 !important;
+  --lamma-wall-g: 219 !important;
+  --lamma-wall-b: 225 !important;
+}
+
 .lamma-neutral-glass [class*="text-green-"],
 .lamma-neutral-glass [class*="text-yellow-"],
 .lamma-neutral-glass [class*="text-blue-"],

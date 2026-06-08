@@ -3277,7 +3277,7 @@ export default function ChatScreen({
             className="absolute inset-0 z-0 pointer-events-none"
             style={{
               background:
-                "radial-gradient(circle at 60% 20%, rgba(16, 185, 129, 0.008), transparent 22%), radial-gradient(circle at 52% 82%, rgba(148, 163, 184, 0.008), transparent 28%)",
+                "radial-gradient(circle at 60% 20%, rgba(255, 255, 255, 0.012), transparent 22%), radial-gradient(circle at 52% 82%, rgba(148, 163, 184, 0.008), transparent 28%)",
             }}
           />
           <div className="absolute inset-0 bg-[rgba(4,8,10,0.14)] z-0 pointer-events-none" />
