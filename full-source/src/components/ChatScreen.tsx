@@ -901,11 +901,8 @@ export default function ChatScreen({
       return localStorage.getItem("lamma_greetings_enabled") !== "false";
     },
   );
-  const [isAdBannerDismissed, setIsAdBannerDismissed] = useState<boolean>(
-    () => {
-      return localStorage.getItem("lamma_ad_banner_dismissed") !== "false";
-    },
-  );
+  const [isAdBannerDismissed, setIsAdBannerDismissed] =
+    useState<boolean>(true);
 
   // Persistent state synchronization loops
   useEffect(() => {
@@ -3262,7 +3259,7 @@ export default function ChatScreen({
               className="absolute inset-0 z-0 pointer-events-none"
               style={{
                 background:
-                  "radial-gradient(circle at 58% 42%, rgba(255, 255, 255, 0.028), rgba(6, 10, 12, 0.09) 52%, rgba(3, 6, 8, 0.2) 100%)",
+                  "radial-gradient(circle at 58% 42%, rgba(255, 255, 255, 0.024), rgba(6, 10, 12, 0.07) 52%, rgba(3, 6, 8, 0.16) 100%)",
               }}
             />
           ) : null}
@@ -3270,7 +3267,7 @@ export default function ChatScreen({
             className="absolute inset-0 z-0 pointer-events-none"
             style={{
               background:
-                "radial-gradient(circle at 18% 68%, rgba(4, 7, 8, 0.42), transparent 20%), linear-gradient(90deg, rgba(4, 8, 10, 0.1) 0%, rgba(4, 8, 10, 0.02) 15%, rgba(4, 8, 10, 0.02) 85%, rgba(4, 8, 10, 0.08) 100%), linear-gradient(180deg, rgba(3, 8, 10, 0.18) 0%, rgba(3, 8, 10, 0.08) 20%, rgba(3, 7, 9, 0.2) 100%)",
+                "radial-gradient(circle at 18% 68%, rgba(4, 7, 8, 0.28), transparent 22%), linear-gradient(90deg, rgba(4, 8, 10, 0.06) 0%, rgba(4, 8, 10, 0.015) 15%, rgba(4, 8, 10, 0.015) 85%, rgba(4, 8, 10, 0.05) 100%), linear-gradient(180deg, rgba(3, 8, 10, 0.14) 0%, rgba(3, 8, 10, 0.06) 20%, rgba(3, 7, 9, 0.16) 100%)",
             }}
           />
           <div
@@ -5739,30 +5736,19 @@ export default function ChatScreen({
           )}
 
           {/* Restore ad banner pill if dismissed */}
-          {isAdsEnabled && isAdBannerDismissed && (
-            <div
-              className="w-full px-3 py-1 flex items-center justify-center z-[40] relative cursor-pointer transition-colors text-[9px] hover:text-yellow-500 font-bold lamma-fire-overline lamma-banner-pill"
-              dir="rtl"
-              onClick={() => setIsAdBannerDismissed(false)}
-            >
-              <Gift size={10} className="mr-1" />
-              إظهار الإعلانات
-            </div>
-          )}
-
           {/* Styled Room Chat Bottom Input panel matching exact screenshot 1 center bar */}
           <div
             className={
               isZenMode
                 ? "p-1.5 sm:p-2 absolute bottom-2 left-2 right-2 max-w-4xl mx-auto z-40 bg-transparent shrink-0 backdrop-blur-sm shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-full"
-                : "px-1 sm:px-1.5 pb-0.5 sm:pb-1 pt-0 bg-transparent border-t border-white/5 relative z-10 shrink-0"
+                : "px-0 sm:px-0 pb-0 pt-0 bg-transparent relative z-10 shrink-0"
             }
           >
             <div
               className={`flex flex-wrap md:flex-nowrap items-center gap-1 sm:gap-1.5 rounded-3xl md:rounded-full px-2 sm:px-3 py-1.5 sm:py-2 md:py-1 ${
                 isZenMode
                   ? "bg-[#0b100c]/88 border border-green-500/24 shadow-2xl backdrop-blur-xl lamma-chat-input-shell"
-                  : "bg-black/35 border border-green-500/8 lamma-chat-input-shell"
+                  : "bg-[rgba(7,10,12,0.22)] border border-white/6 shadow-none lamma-chat-input-shell"
               }`}
             >
               {/* Attachment Dropdown Container */}
