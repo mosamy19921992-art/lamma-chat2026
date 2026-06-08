@@ -3225,7 +3225,7 @@ export default function ChatScreen({
 
   return (
     <div
-      className="h-[100dvh] w-full flex flex-col overflow-hidden relative font-sans text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app"
+      className="h-[100dvh] w-full flex flex-col overflow-hidden relative font-sans text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app lamma-neutral-glass"
       dir="rtl"
       data-lamma-wall={wallTheme}
     >
@@ -6791,8 +6791,8 @@ export default function ChatScreen({
                 <div
                   className={`p-2.5 rounded-2xl text-xs leading-normal ${
                     msg.isOwn
-                      ? "bg-gradient-to-l from-green-600 to-[#a3e635] text-black font-extrabold rounded-tr-none"
-                      : "bg-black/50 border border-green-500/5 text-gray-100 rounded-tl-none"
+                      ? "bg-white/12 border border-white/10 text-white font-extrabold rounded-tr-none"
+                      : "bg-black/40 border border-white/8 text-gray-100 rounded-tl-none"
                   }`}
                 >
                   {msg.mediaUrl ? (
