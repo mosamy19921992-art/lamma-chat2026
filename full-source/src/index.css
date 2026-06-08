@@ -126,10 +126,10 @@ body {
 }
 
 .lamma-header-rail {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012));
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
-  backdrop-filter: blur(12px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.008));
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: none;
+  backdrop-filter: blur(10px);
 }
 
 .lamma-header-brand-rail {
@@ -145,10 +145,10 @@ body {
 .lamma-header-center-badge {
   padding: 0.24rem 0.46rem;
   border-radius: 9999px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.012));
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(10px);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .lamma-brand-mark {

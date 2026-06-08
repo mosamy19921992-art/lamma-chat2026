@@ -903,7 +903,7 @@ export default function ChatScreen({
   );
   const [isAdBannerDismissed, setIsAdBannerDismissed] = useState<boolean>(
     () => {
-      return localStorage.getItem("lamma_ad_banner_dismissed") === "true";
+      return localStorage.getItem("lamma_ad_banner_dismissed") !== "false";
     },
   );
 
@@ -3320,48 +3320,12 @@ export default function ChatScreen({
       {/* ================= HEADER BAR ================= */}
       {!isZenMode && (
         <header className="lamma-header px-2 sm:px-4 md:px-6 flex items-center justify-between relative z-20 shrink-0">
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none select-none">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
             <img
               src="/images/lamma-wordmark.svg"
               alt="LAMMA CHAT"
-              className="h-6 sm:h-7 opacity-90 drop-shadow-[0_0_18px_rgba(24,181,123,0.14)]"
+              className="h-4 sm:h-5 opacity-55"
             />
-            <div className="flex items-center gap-1.5 pointer-events-auto lamma-header-center-badge">
-              {isEditingWelcome ? (
-                <input
-                  type="text"
-                  id="welcome-message-input"
-                  name="welcome-message"
-                  autoComplete="off"
-                  value={welcomeMessage}
-                  onChange={(e) => setWelcomeMessage(e.target.value)}
-                  onBlur={() => setIsEditingWelcome(false)}
-                  onKeyDown={(e) => e.key === "Enter" && setIsEditingWelcome(false)}
-                  className="text-[9px] md:text-[10px] text-white font-medium truncate w-28 md:w-44 rounded-lg px-2 py-1 lamma-input-shell"
-                  autoFocus
-                />
-              ) : (
-                <p
-                  className="text-[9px] md:text-[10px] text-gray-400 font-medium truncate max-w-[160px] md:max-w-[240px] drop-shadow-md"
-                  title={welcomeMessage}
-                >
-                  {welcomeMessage}
-                </p>
-              )}
-
-              {(currentUser.role === "admin" ||
-                currentUser.role === "owner" ||
-                currentUser.role === "Owner") &&
-                !isEditingWelcome && (
-                  <button
-                    onClick={() => setIsEditingWelcome(true)}
-                    className="opacity-100 transition-opacity text-gray-500 hover:text-green-400 lamma-soft-action lamma-header-mini-btn"
-                    title="تعديل ترحيب الشات"
-                  >
-                    <SettingsIcon size={9} />
-                  </button>
-                )}
-            </div>
           </div>
           {/* Right side controls (User account & actions - Now in the visual start "اول الصفحة" due to RTL) */}
           <div className="flex items-center gap-2 md:gap-3">
