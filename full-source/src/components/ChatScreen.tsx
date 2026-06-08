@@ -3251,9 +3251,9 @@ export default function ChatScreen({
                 backgroundSize: "cover",
                 backgroundRepeat: "no-repeat",
                 backgroundPosition: "center center",
-                opacity: 0.68,
-                filter: "saturate(1.16) contrast(1.14) brightness(1.02)",
-                transform: "scale(1.02)",
+                opacity: 0.52,
+                filter: "saturate(1.08) contrast(1.06) brightness(0.96)",
+                transform: "scale(1.015)",
               }}
             />
           ) : null}
@@ -5685,7 +5685,7 @@ export default function ChatScreen({
                             loading="lazy"
                             src={msg.mediaUrl}
                             alt="Attachment"
-                            className="rounded-xl max-w-[280px] object-cover border border-white/10"
+                            className="rounded-xl max-w-[180px] max-h-[120px] object-cover border border-white/10 bg-black/10"
                           />
                         </div>
                       )}
