@@ -35,7 +35,7 @@ export function InstallPrompt({
       return;
     }
     // Slight delay so the page is interactive before we show the prompt.
-    const t = setTimeout(() => setVisible(true), 4000);
+    const t = setTimeout(() => setVisible(true), 1500);
     return () => clearTimeout(t);
   }, [installPromptEvent, isInstalled]);
 
@@ -75,7 +75,7 @@ export function InstallPrompt({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 100, scale: 0.95 }}
           transition={{ type: "spring", damping: 22, stiffness: 280 }}
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 sm:bottom-6 sm:top-auto sm:left-auto sm:translate-x-0 sm:translate-y-0 sm:right-6 inset-4 sm:inset-auto sm:w-[420px] z-[9999]"
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 sm:bottom-6 sm:top-auto sm:left-auto sm:translate-x-0 sm:translate-y-0 sm:end-6 mx-4 sm:mx-0 sm:w-[420px] z-[9999] w-[calc(100%-2rem)]"
           role="dialog"
           aria-live="polite"
         >
@@ -94,7 +94,7 @@ export function InstallPrompt({
               {/* Close */}
               <button
                 onClick={handleDismiss}
-                className="absolute top-3 left-3 w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-white transition-colors lamma-soft-action"
+                className="absolute top-3 end-3 w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-white transition-colors lamma-soft-action"
                 aria-label="إغلاق"
               >
                 <X size={14} />
