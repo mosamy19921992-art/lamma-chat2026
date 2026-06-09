@@ -1,15 +1,16 @@
 // Chat constants extracted from ChatScreen.tsx
 // All data preserved exactly as-is. Pure refactor — no behavior change.
 
+// count = 0 لأن الأرقام الحقيقية بتيجي ديناميكياً من Supabase عبر roomCounts state في ChatScreen
 export const ROOMS_DEF = [
-  { id: "egypt", name: "مصر", icon: "🇪🇬", count: 128, category: "social" },
-  { id: "arab", name: "كل العرب", icon: "🌍", count: 99, category: "social" },
-  { id: "youth", name: "لمة شباب وبنات", icon: "👫", count: 85, category: "social" },
-  { id: "palestine", name: "فلسطين", icon: "🇵🇸", count: 54, category: "social" },
-  { id: "fun", name: "فرفشة", icon: "🥳", count: 65, category: "fun" },
-  { id: "games", name: "ألعاب", icon: "🎮", count: 41, category: "fun" },
-  { id: "romance", name: "رومانسية", icon: "💖", count: 76, category: "relations" },
-  { id: "admin", name: "الإدارة", icon: "🛡️", count: 3, category: "private" },
+  { id: "egypt", name: "مصر", icon: "🇪🇬", count: 0, category: "social" },
+  { id: "arab", name: "كل العرب", icon: "🌍", count: 0, category: "social" },
+  { id: "youth", name: "لمة شباب وبنات", icon: "👫", count: 0, category: "social" },
+  { id: "palestine", name: "فلسطين", icon: "🇵🇸", count: 0, category: "social" },
+  { id: "fun", name: "فرفشة", icon: "🥳", count: 0, category: "fun" },
+  { id: "games", name: "ألعاب", icon: "🎮", count: 0, category: "fun" },
+  { id: "romance", name: "رومانسية", icon: "💖", count: 0, category: "relations" },
+  { id: "admin", name: "الإدارة", icon: "🛡️", count: 0, category: "private" },
 ];
 
 export const ROOM_CATEGORIES = [

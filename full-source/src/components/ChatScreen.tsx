@@ -623,8 +623,10 @@ export default function ChatScreen({
         .delete()
         .eq("id", msg.id)
         .then(({ error }) => {
-          if (error)
+          if (error) {
             console.error("Error deleting message from Supabase:", error);
+            showChatToast("فشل حذف الرسالة، حاول مرة أخرى", "error");
+          }
         });
     }
   };
@@ -1870,25 +1872,22 @@ export default function ChatScreen({
     type: "join",
   });
   useEffect(() => {
-    const names = [
-      "Mohamed",
-      "Ahmed",
-      "Sara",
-      "Khalid",
-      "Mona",
-      "Omar",
-      "Nour",
-      "Rami",
-    ];
+    // استخدام أسماء الأعضاء الحقيقيين لو متاحة، وإلا fallback لأسماء عربية
+    const getNames = () =>
+      chatMembers.length > 1
+        ? chatMembers.map((m) => m.nickname)
+        : ["محمد", "أحمد", "سارة", "خالد", "منى", "عمر", "نور", "رامي"];
+
     const timer = setInterval(() => {
+      const names = getNames();
       setSystemActivity((prev) => ({
         id: prev.id + 1,
         name: names[Math.floor(Math.random() * names.length)],
         type: Math.random() > 0.5 ? "join" : "leave",
       }));
-    }, 30000); // Smart Presence Optimization: Update every 30 seconds
+    }, 30000);
     return () => clearInterval(timer);
-  }, []);
+  }, [chatMembers]);
 
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -2212,7 +2211,8 @@ export default function ChatScreen({
         `⏳ محاكاة الأتمتة: تم تقدم الزمن بمقدار ${days} أيام على نظام التتبع الخاص باشتراكك. سيقوم البوت الذكي برصد التغيير وتنفيذ الأوامر إن لزم الأمر...`,
       );
     } catch (e) {
-      console.error(e);
+      console.error("[v0] advanceTime failed:", e);
+      showChatToast("فشل تقديم الوقت", "error");
     }
   };
 
@@ -2319,13 +2319,18 @@ export default function ChatScreen({
     if (activeRoomId === "admin" || activeRoomId === "owner") return; // Keep private management rooms silent from bots
 
     const rxTimer = setInterval(() => {
-      const bots = [
-        { name: "محمد (VIP)", color: "#58a6ff" },
-        { name: "علي (أدمن)", color: "#f43f5e" },
-        { name: "سارة (VIP)", color: "#ec4899" },
-        { name: "نور الدين", color: "#10b981" },
-      ];
-      const selectedBot = bots[Math.floor(Math.random() * bots.length)];
+      // استخدام الأعضاء الحقيقيين في الغرفة كـ bots — مع fallback لو القائمة فارغة
+      const activeBots =
+        chatMembers.length > 2
+          ? chatMembers
+              .filter((m) => m.nickname !== myActiveSession.nickname)
+              .slice(0, 4)
+              .map((m) => ({ name: m.nickname, color: m.color || "#10b981" }))
+          : [
+              { name: "زائر 1", color: "#58a6ff" },
+              { name: "زائر 2", color: "#ec4899" },
+            ];
+      const selectedBot = activeBots[Math.floor(Math.random() * activeBots.length)];
 
       // Occasionally simulated bots try to post offensive or spam content to showcase moderation
       let reply =
@@ -2671,7 +2676,10 @@ export default function ChatScreen({
             },
           ])
           .then(({ error }) => {
-            if (error) console.error("Error sending to Supabase:", error);
+            if (error) {
+              console.error("Error sending to Supabase:", error);
+              showChatToast("فشل إرسال الرسالة، تحقق من الاتصال", "error");
+            }
           });
       }
     }
@@ -2802,7 +2810,10 @@ export default function ChatScreen({
           },
         ])
         .then(({ error }) => {
-          if (error) console.error("Error sending gift to Supabase:", error);
+          if (error) {
+            console.error("Error sending gift to Supabase:", error);
+            showChatToast("فشل إرسال الهدية", "error");
+          }
         });
     }
 
@@ -2900,7 +2911,10 @@ export default function ChatScreen({
           },
         ])
         .then(({ error }) => {
-          if (error) console.error("Error sending media to Supabase:", error);
+          if (error) {
+            console.error("Error sending media to Supabase:", error);
+            showChatToast("فشل إرسال الملف، تحقق من الاتصال", "error");
+          }
         });
     }
 
