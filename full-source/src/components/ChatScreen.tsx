@@ -214,12 +214,7 @@ export default function ChatScreen({
   const geminiSearchEndpoint = import.meta.env.VITE_GEMINI_SEARCH_ENDPOINT || "";
   const senderUid = currentUser.uid || getClientUid();
   const roleLower = (currentUser.role || "").toLowerCase();
-  const isOwnerRole =
-    roleLower === "owner" ||
-    roleLower === "malek" ||
-    roleLower === "المالك" ||
-    currentUser.role === "Owner" ||
-    currentUser.role === "Malek";
+  const isOwnerRole = roleLower === "owner";
   const isAdminRole = roleLower === "admin";
   const activeRoomBg = roomBgMap[activeRoomId] || ownerBgImage || DEFAULT_AMBIENT_BG;
   const isDefaultAmbientBg = activeRoomBg === DEFAULT_AMBIENT_BG;
@@ -228,7 +223,7 @@ export default function ChatScreen({
   const performSearch = async () => {
     if (!searchQuery) return;
     if (!geminiSearchEndpoint) {
-      alert("ميزة البحث بالذكاء الاصطناعي غير متاحة حالياً.");
+      showChatToast("ميزة البحث بالذكاء الاصطناعي غير متاحة حالياً.", "warn");
       return;
     }
     try {
@@ -266,7 +261,15 @@ export default function ChatScreen({
   const [subscription, setSubscription] = useState<any>(() => {
     const saved = localStorage.getItem("lamma_user_subscription");
     try {
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      // حماية من التلاعب: expiresAt لا يتجاوز سنتين من دلوقتي
+      const MAX_VALID_EXPIRY = Date.now() + 2 * 365 * 24 * 60 * 60 * 1000;
+      if (parsed.expiresAt && parsed.expiresAt > MAX_VALID_EXPIRY) {
+        localStorage.removeItem("lamma_user_subscription");
+        return null;
+      }
+      return parsed;
     } catch {
       return null;
     }
@@ -284,7 +287,12 @@ export default function ChatScreen({
     if (savedSub) {
       try {
         const sub = JSON.parse(savedSub);
-        if (sub.isActive && sub.expiresAt > Date.now()) {
+        const MAX_VALID_EXPIRY = Date.now() + 2 * 365 * 24 * 60 * 60 * 1000;
+        const isLegit =
+          sub.isActive &&
+          sub.expiresAt > Date.now() &&
+          sub.expiresAt <= MAX_VALID_EXPIRY;
+        if (isLegit) {
           initialRole = sub.type === "platinum" ? "platinum_vip" : "vip";
           initialColor = sub.color || initialColor;
           initialFrame = sub.frame || "";
@@ -327,30 +335,23 @@ export default function ChatScreen({
   const [isReconnectingDb, setIsReconnectingDb] = useState(false);
   const [dbStatusLogs, setDbStatusLogs] = useState<string[]>([]);
 
-  // Custom user suggestions friend request list
-  const [friendSuggestions, setFriendSuggestions] = useState([
-    {
-      id: "sug-1",
-      name: "أدهم التونسي 🇹🇳",
-      interest: "🎮 Trivia والمسابقات",
-      icon: "🎸",
-      status: "suggested",
-    },
-    {
-      id: "sug-2",
-      name: "رنا النمس 🇪🇬",
-      interest: "🎵 سماع وتحليل الموسيقى",
-      icon: "👩",
-      status: "suggested",
-    },
-    {
-      id: "sug-3",
-      name: "شريف الأخرس 🇸🇦",
-      interest: "🛡️ الإشراف والحوار الرصين",
-      icon: "👳",
-      status: "suggested",
-    },
-  ]);
+  // اقتراحات الأصدقاء — مبنية ديناميكياً من chatMembers الموجودين في الغرفة
+  // (مش من hardcoded names) عشان تكون حقيقية ومتوافقة مع المستخدمين الفعليين
+  const friendSuggestions = chatMembers
+    .filter(
+      (m) =>
+        m.nickname !== myActiveSession.nickname &&
+        !friendsList.includes(m.nickname) &&
+        m.status !== "banned",
+    )
+    .slice(0, 5)
+    .map((m) => ({
+      id: m.id,
+      name: m.nickname,
+      interest: m.status === "online" ? "متصل الآن" : "غير متصل",
+      icon: m.avatar || "👤",
+      status: "suggested" as const,
+    }));
 
   // Shop interactive state variables
   const [shopTab, setShopTab] = useState<
@@ -393,7 +394,7 @@ export default function ChatScreen({
     return ip;
   });
 
-  // Dynamic lists of banned users persisted in local storage
+  // Dynamic lists of banned users — تُحمَّل من Supabase ومُحفوظة احتياطياً في localStorage
   const [bannedUsersList, setBannedUsersList] = useState<BanInfo[]>(() => {
     const saved = localStorage.getItem("lamma_banned_list");
     try {
@@ -402,6 +403,36 @@ export default function ChatScreen({
       return [];
     }
   });
+
+  // تزامن قائمة الحظر مع Supabase عند التحميل
+  useEffect(() => {
+    if (!supabase) return;
+    const fetchBans = async () => {
+      const { data, error } = await supabase
+        .from("banned_users")
+        .select("*")
+        .order("banned_at", { ascending: false });
+      if (!error && data) {
+        const mapped: BanInfo[] = data.map((row: any) => ({
+          id: row.id,
+          nickname: row.nickname,
+          ip: row.ip || "",
+          fingerprint: row.fingerprint || "",
+          browserSignature: row.browser_signature || "",
+          localStorageId: row.local_storage_id || "",
+          bannedBy: row.banned_by || "",
+          reason: row.reason || "",
+          duration: row.duration || "permanent",
+          bannedAt: row.banned_at ? new Date(row.banned_at).getTime() : Date.now(),
+          expiresAt: row.expires_at ? new Date(row.expires_at).getTime() : undefined,
+          isSilent: row.is_silent || false,
+        }));
+        setBannedUsersList(mapped);
+        localStorage.setItem("lamma_banned_list", JSON.stringify(mapped));
+      }
+    };
+    fetchBans();
+  }, []);
 
   // Current ban tracking state for the active logged-in user
   const [isCurrentlyBanned, setIsCurrentlyBanned] = useState(false);
@@ -455,6 +486,24 @@ export default function ChatScreen({
 
   // Stateful invite/share modal
   const [showShareModalInChat, setShowShareModalInChat] = useState(false);
+
+  // ---- Toast notification system (يحل محل alert() في كل المشروع) ----
+  const [chatToast, setChatToast] = useState<{
+    text: string;
+    type: "info" | "success" | "warn" | "error";
+  } | null>(null);
+  const chatToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showChatToast = (
+    text: string,
+    type: "info" | "success" | "warn" | "error" = "info",
+  ) => {
+    if (chatToastTimerRef.current) clearTimeout(chatToastTimerRef.current);
+    // تنظيف emojis من النص عشان الـ toast اتمسك بيهم
+    const clean = text.replace(/^[^a-zA-Z\u0600-\u06FF\d\s]+\s*/u, "").trim();
+    setChatToast({ text: clean, type });
+    chatToastTimerRef.current = setTimeout(() => setChatToast(null), 4000);
+  };
 
   const handleCopyLink = () => {
     setShowShareModalInChat(true);
@@ -1529,13 +1578,14 @@ export default function ChatScreen({
     )
       return;
 
-    const cleanName = nickname
-      .replace(/\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g, "")
-      .trim();
+    const cleanName = nickname.trim();
 
+    // ابحث في chatMembers الحقيقيين أولاً
     let member = chatMembers.find(
       (m) => m.nickname.toLowerCase() === cleanName.toLowerCase(),
     );
+
+    // لو مش موجود في القائمة — عرض profile محدود بدون بيانات وهمية
     if (!member) {
       const isGuest =
         cleanName.startsWith("LammaGuest") ||
@@ -1543,39 +1593,19 @@ export default function ChatScreen({
         cleanName.startsWith("LC_Guest") ||
         cleanName.includes("زائر") ||
         cleanName.includes("Guest");
-      const derivedRole =
-        cleanName.includes("أدمن") || cleanName.includes("علي")
-          ? "admin"
-          : cleanName.includes("أحمد")
-            ? "owner"
-            : cleanName.includes("VIP") ||
-                cleanName.includes("سارة") ||
-                cleanName.includes("محمد")
-              ? "vip"
-              : isGuest
-                ? "guest"
-                : "user";
 
       member = {
-        id: `umock-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: `unknown-${cleanName}`,
         nickname: cleanName,
-        role: derivedRole as any,
+        role: isGuest ? "guest" : "user",
         color: "#10b981",
         avatar: isGuest ? "👤" : "👨",
-        status: "online",
-        email: isGuest
-          ? undefined
-          : `${cleanName.toLowerCase().replace(/\s+/g, "")}@email.com`,
-        fingerprint: `fp-${Math.floor(Math.random() * 9000 + 1000)}-${Math.floor(Math.random() * 9000 + 1000)}`,
-        browserSignature: navigator.userAgent,
-        ip: `197.34.82.${Math.floor(Math.random() * 253 + 2)}`,
-        localStorageId: `local-session-mock-${cleanName}`,
+        status: "offline",
+        // لا email، لا IP، لا fingerprint وهمية — بيانات فعلية مش متوفرة
       };
-
-      setChatMembers((prev) => [...prev, member!]);
     }
 
-    // Clear all other active overlays
+    // إغلاق كل القوائم الأخرى
     setActiveModal(null);
     setShowCommandsDropdown(false);
     setShowGamesDropdown(false);
@@ -1665,9 +1695,9 @@ export default function ChatScreen({
         b.roomId === roomId,
     );
     if (isBanned) {
-      alert(
+      showChatToast(
         `🚫 تنبيه الغرف: عذراً! أنت محظور من دخول هذه الغرفة بقرار إداري من قبل المشرفين.`,
-      );
+      , "info");
       return;
     }
 
@@ -1684,16 +1714,16 @@ export default function ChatScreen({
       isOwner;
 
     if (roomId === "owner" && !isOwner) {
-      alert(
+      showChatToast(
         `⚠️ الغرفة محمية بالكامل: نأسف، هذه هي غرفة المالك الذكية المحصنة بـ 'جدار حماية ناري أمني' لمنع التسلل والتحكم بقوانين الشات. الدخول مسموح فقط لمالك السيرفر الأساسي 👑.`,
-      );
+      , "warn");
       return;
     }
 
     if (roomId === "admin" && !isAdmin) {
-      alert(
+      showChatToast(
         `⚠️ الغرفة مغلقة أمنياً: عذراً، غرفة الإدارة العليا محمية ببروتوكولات الأمان. الدخول مخصص فقط للمشرفين وأعضاء الطاقم الإداري والمالك 🛡️.`,
-      );
+      , "warn");
       return;
     }
 
@@ -2045,7 +2075,7 @@ export default function ChatScreen({
 
   // Audio elements: background broadcast and call simulations
   const [isMuted, setIsMuted] = useState(false);
-  const [isCalling, setIsCalling] = useState(true); // default calling simulated
+  const [isCalling, setIsCalling] = useState(false);
   const [callingSeconds, setCallingSeconds] = useState(12);
 
   // Audio visualizer wave simulation
@@ -2139,16 +2169,16 @@ export default function ChatScreen({
   const handleAccelerateDays = (days: number) => {
     const savedSub = localStorage.getItem("lamma_user_subscription");
     if (!savedSub) {
-      alert(
+      showChatToast(
         "❌ لا يوجد اشتراك VIP نشط حالياً لتسريع عجلة الزمن عليه! يرجى شراء باقة VIP أولاً من واجهة المتجر.",
-      );
+      , "error");
       return;
     }
 
     try {
       const sub = JSON.parse(savedSub);
       if (!sub.isActive) {
-        alert("❌ الاشتراك الحالي معطل أو منتهي بالفعل!");
+        showChatToast("❌ الاشتراك الحالي معطل أو منتهي بالفعل!", "error");
         return;
       }
 
@@ -2404,9 +2434,9 @@ export default function ChatScreen({
         b.type === "mute",
     );
     if (isMuted) {
-      alert(
+      showChatToast(
         "🔇 تنبيه حظر الصوت: لقد تم كتم صوتك من الكتابة الشات بقرار من الإدارة لمخالفة قوانين الحوار والآداب العامة.",
-      );
+      , "success");
       setInputText("");
       return;
     }
@@ -2418,17 +2448,17 @@ export default function ChatScreen({
       myActiveSession.role === "admin";
 
     if (isMaintenanceMode && !isOwnerOrAdmin) {
-      alert(
+      showChatToast(
         "⚙️ الشات تحت الصيانة حالياً: يرجى الانتظار لحين انتهاء المالك من أعمال الصيانة والتحديث الفني المباشر.",
-      );
+      , "info");
       setInputText("");
       return;
     }
 
     if (isGlobalMute && !isOwnerOrAdmin) {
-      alert(
+      showChatToast(
         "🔇 الروم مغلق للكتابة: لقد قامت الإدارة بكتم الدردشة العامة لجميع الأعضاء مؤقتاً للمحافظة على هدوء واستقرار الحوار العامة.",
-      );
+      , "success");
       setInputText("");
       return;
     }
@@ -2707,9 +2737,9 @@ export default function ChatScreen({
   const triggerGiftFlying = (icon: string) => {
     const normalizedRole = currentUser.role.toLowerCase();
     if (normalizedRole === "guest" || normalizedRole === "زائر") {
-      alert(
+      showChatToast(
         "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإرسال الهدايا المتقدمة والمكالمات الصوتية! يرجى التسجيل مجاناً (عبر البريد أو غوغل) للاستمتاع بالمزايا اللامحدودة! 💚",
-      );
+      , "info");
       return;
     }
     // Append message about gift inside room
@@ -2729,7 +2759,7 @@ export default function ChatScreen({
       time: timeStr,
       type: "gift",
       giftIcon: icon,
-      giftName: "هدية تفاعلية",
+      giftName: "هدية تفاع��ية",
     };
 
     setRoomMessages((prev) => {
@@ -2864,28 +2894,28 @@ export default function ChatScreen({
 
   const uploadAndSendImage = async (file: File) => {
     if (!supabase) {
-      alert("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.");
+      showChatToast("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.", "warn");
       return;
     }
 
     if (currentUser.authProvider !== "supabase") {
-      alert("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.");
+      showChatToast("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.", "info");
       return;
     }
 
     if (!canSendMediaByRate()) {
-      alert("⏳ بعت وسائط كتير بسرعة. استنى دقيقة وجرب تاني.");
+      showChatToast("⏳ بعت وسائط كتير بسرعة. استنى دقيقة وجرب تاني.", "info");
       return;
     }
 
     if (!file.type.startsWith("image/")) {
-      alert("⚠️ الملف اللي اخترته مش صورة.");
+      showChatToast("⚠️ الملف اللي اخترته مش صورة.", "warn");
       return;
     }
 
     const maxBytes = 5 * 1024 * 1024;
     if (file.size > maxBytes) {
-      alert("⚠️ حجم الصورة كبير. الحد الأقصى 5MB.");
+      showChatToast("⚠️ حجم الصورة كبير. الحد الأقصى 5MB.", "warn");
       return;
     }
 
@@ -2903,7 +2933,7 @@ export default function ChatScreen({
         });
 
       if (uploadError) {
-        alert(`❌ فشل رفع الصورة: ${uploadError.message}`);
+        showChatToast(`❌ فشل رفع الصورة: ${uploadError.message}`, "error");
         return;
       }
 
@@ -2913,7 +2943,7 @@ export default function ChatScreen({
 
       const publicUrl = publicData?.publicUrl;
       if (!publicUrl) {
-        alert("❌ حصل خطأ في توليد رابط الصورة بعد الرفع.");
+        showChatToast("❌ حصل خطأ في توليد رابط الصورة بعد الرفع.", "error");
         return;
       }
 
@@ -2952,24 +2982,24 @@ export default function ChatScreen({
     e.target.value = "";
     if (!file) return;
     if (!canSendMediaByRate()) {
-      alert("⏳ بعت وسائط كتير بسرعة. استنى دقيقة وجرب تاني.");
+      showChatToast("⏳ بعت وسائط كتير بسرعة. استنى دقيقة وجرب تاني.", "info");
       return;
     }
     if (currentUser.authProvider !== "supabase") {
-      alert("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.");
+      showChatToast("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.", "info");
       return;
     }
     if (!supabase) {
-      alert("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.");
+      showChatToast("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.", "warn");
       return;
     }
     if (!file.type.startsWith("image/")) {
-      alert("⚠️ الملف اللي اخترته مش صورة.");
+      showChatToast("⚠️ الملف اللي اخترته مش صورة.", "warn");
       return;
     }
     const maxBytes = 5 * 1024 * 1024;
     if (file.size > maxBytes) {
-      alert("⚠️ حجم الصورة كبير. الحد الأقصى 5MB.");
+      showChatToast("⚠️ حجم الصورة كبير. الحد الأقصى 5MB.", "warn");
       return;
     }
     try {
@@ -2986,7 +3016,7 @@ export default function ChatScreen({
           upsert: false,
         });
       if (uploadError) {
-        alert(`❌ فشل رفع الصورة: ${uploadError.message}`);
+        showChatToast(`❌ فشل رفع الصورة: ${uploadError.message}`, "error");
         return;
       }
       const { data: publicData } = supabase.storage
@@ -2994,7 +3024,7 @@ export default function ChatScreen({
         .getPublicUrl(objectPath);
       const publicUrl = publicData?.publicUrl;
       if (!publicUrl) {
-        alert("❌ حصل خطأ في توليد رابط الصورة بعد الرفع.");
+        showChatToast("❌ حصل خطأ في توليد رابط الصورة بعد الرفع.", "error");
         return;
       }
       const timeStr = new Date().toLocaleTimeString("en-US", {
@@ -3032,24 +3062,24 @@ export default function ChatScreen({
       const perm =
         memberCustomPermissions[currentUser.nickname]?.recordingAllowed;
       if (!isOwner && !perm) {
-        alert(
+        showChatToast(
           "⚠️ عذراً: ميزة تسجيل وإرسال الرسائل الصوتية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 🎙️",
-        );
+        , "warn");
         return;
       }
     }
 
     if (type === "audio" && isGlobalMicMute && !isOwnerOrAdmin) {
-      alert(
+      showChatToast(
         "🎙️ الميكروفونات مقفلة: لقد قامت الإدارة بإغلاق الميكروفونات العامة، والحديث الفوري متاح للمدراء والملاك فقط.",
-      );
+      , "info");
       return;
     }
 
     if (isOnlyVIPCanSendImages && !isOwnerOrAdmin && !isVIP) {
-      alert(
+      showChatToast(
         "📸 عذراً: لقد قامت الإدارة بتفعيل وضع حصر الوسائط، بحيث لا يمكن إلا للأعضاء أصحاب رتبة VIP أو الإداريين مشاركة الصور والوسائط مجرياً.",
-      );
+      , "info");
       setShowAttachmentDropdown(false);
       return;
     }
@@ -3058,12 +3088,12 @@ export default function ChatScreen({
     if (type === "image") {
       if (isUploadingImage) return;
       if (currentUser.authProvider !== "supabase") {
-        alert("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.");
+        showChatToast("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.", "info");
         setShowAttachmentDropdown(false);
         return;
       }
       if (!supabase) {
-        alert("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.");
+        showChatToast("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.", "warn");
         setShowAttachmentDropdown(false);
         return;
       }
@@ -5112,9 +5142,9 @@ export default function ChatScreen({
                                   memberCustomPermissions[currentUser.nickname]
                                     ?.callsAllowed;
                                 if (!isOwner && !perm) {
-                                  alert(
-                                    "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
-                                  );
+                                  showChatToast(
+                                    "⚠️ عذراً: ميزة المكالمات الصو��ية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
+                                  , "warn");
                                   return;
                                 }
                                 const normalizedRole =
@@ -5123,9 +5153,9 @@ export default function ChatScreen({
                                   normalizedRole === "guest" ||
                                   normalizedRole === "زائر"
                                 ) {
-                                  alert(
+                                  showChatToast(
                                     "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإجراء المكالمات الصوتية والمرئية! يرجى غلق الجلسة والتسجيل كعضو للاستفادة بكافة الخدمات الفائقة 📞.",
-                                  );
+                                  , "info");
                                   return;
                                 }
                                 setIsCalling(!isCalling);
@@ -5424,11 +5454,11 @@ export default function ChatScreen({
                       size={isCompactView ? 16 : 22}
                       variant="circular"
                       glow={msg.author === myActiveSession.nickname}
-                      frame={getFrameFromAuthor(msg.author, myActiveSession)}
+                      frame={getFrameFromAuthor(msg.author, myActiveSession, chatMembers)}
                       crownRole={(() => {
                         const r = isSystem
                           ? "admin"
-                          : getRoleFromAuthor(msg.author, myActiveSession);
+                          : getRoleFromAuthor(msg.author, myActiveSession, chatMembers);
                         return (r === "platinum_vip" ? "vip" : r) as any;
                       })()}
                     />
@@ -5442,13 +5472,8 @@ export default function ChatScreen({
                     {(() => {
                       const role = isSystem
                         ? "admin"
-                        : getRoleFromAuthor(msg.author, myActiveSession);
-                      const cleanName = msg.author
-                        .replace(
-                          /\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g,
-                          "",
-                        )
-                        .trim();
+                        : getRoleFromAuthor(msg.author, myActiveSession, chatMembers);
+                      const cleanName = msg.author.trim();
                       const nameColor = isSystem
                         ? "#a3e635"
                         : msg.author === myActiveSession.nickname
@@ -5557,7 +5582,7 @@ export default function ChatScreen({
                               translations[
                                 Math.floor(Math.random() * translations.length)
                               ];
-                            alert(`الترجمة التقريبية:\n\n${randomTranslation}`);
+                            showChatToast(`الترجمة التقريبية:\n\n${randomTranslation}`, "info");
                           }}
                           className="text-[9px] text-[#10b981] hover:text-green-300 font-bold px-1 cursor-pointer"
                         >
@@ -5976,9 +6001,9 @@ export default function ChatScreen({
                       memberCustomPermissions[currentUser.nickname]
                         ?.musicRadioAllowed;
                     if (!isOwner && !perm) {
-                      alert(
+                      showChatToast(
                         "⚠️ عذراً: ميزة راديو لمة غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📻",
-                      );
+                      , "warn");
                       return;
                     }
                     toggleDropdown("radio");
@@ -6095,9 +6120,9 @@ export default function ChatScreen({
                       memberCustomPermissions[currentUser.nickname]
                         ?.musicRadioAllowed;
                     if (!isOwner && !perm) {
-                      alert(
+                      showChatToast(
                         "⚠️ عذراً: ميزة غناء وموسيقى لمة غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 🎵",
-                      );
+                      , "warn");
                       return;
                     }
                     toggleDropdown("music");
@@ -6691,16 +6716,16 @@ export default function ChatScreen({
                   const perm =
                     memberCustomPermissions[currentUser.nickname]?.callsAllowed;
                   if (!isOwner && !perm) {
-                    alert(
+                    showChatToast(
                       "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
-                    );
+                    , "warn");
                     return;
                   }
                   const normalizedRole = currentUser.role.toLowerCase();
                   if (normalizedRole === "guest" || normalizedRole === "زائر") {
-                    alert(
+                    showChatToast(
                       "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإجراء المكالمات الصوتية والمرئية! يرجى غلق الجلسة والتسجيل كعضو للاستفادة بكافة الخدمات الفائقة 📞.",
-                    );
+                    , "info");
                     return;
                   }
                   initiateCall(pmTarget.nickname, "audio");
@@ -6719,16 +6744,16 @@ export default function ChatScreen({
                   const perm =
                     memberCustomPermissions[currentUser.nickname]?.callsAllowed;
                   if (!isOwner && !perm) {
-                    alert(
+                    showChatToast(
                       "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
-                    );
+                    , "warn");
                     return;
                   }
                   const normalizedRole = currentUser.role.toLowerCase();
                   if (normalizedRole === "guest" || normalizedRole === "زائر") {
-                    alert(
+                    showChatToast(
                       "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإجراء المكالمات الصوتية والمرئية! يرجى غلق الجلسة والتسجيل كعضو للاستفادة بكافة الخدمات الفائقة 📞.",
-                    );
+                    , "info");
                     return;
                   }
                   initiateCall(pmTarget.nickname, "video");
@@ -6741,7 +6766,7 @@ export default function ChatScreen({
               <button
                 type="button"
                 onClick={() => {
-                  alert("🖥️ جاري بدء مشاركة الشاشة... (محاكاة)");
+                  showChatToast("🖥️ جاري بدء مشاركة الشاشة... (محاكاة)", "info");
                   setPmThreads((prev) => ({
                     ...prev,
                     [pmTarget.nickname]: [
@@ -6882,7 +6907,7 @@ export default function ChatScreen({
                       setShowPmAttachment(false);
                       if (isUploadingImage) return;
                       if (currentUser.authProvider !== "supabase") {
-                        alert("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.");
+                        showChatToast("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.", "info");
                         return;
                       }
                       pmImageUploadInputRef.current?.click();
@@ -7307,9 +7332,9 @@ export default function ChatScreen({
                                 inp.value.trim(),
                               );
                               setBrandLogoUrl(inp.value.trim());
-                              alert(
+                              showChatToast(
                                 "تم تحديث أيقونة التطبيق بنجاح! سيتم تطبيقها لجميع المستخدمين.",
-                              );
+                              , "success");
                               addSystemActivityLog(
                                 "promote",
                                 currentUser.nickname,
@@ -7318,7 +7343,7 @@ export default function ChatScreen({
                             } else {
                               localStorage.removeItem("lamma_custom_logo_url");
                               setBrandLogoUrl(null);
-                              alert("تم استعادة الأيقونة الافتراضية.");
+                              showChatToast("تم استعادة الأيقونة الافتراضية.", "success");
                             }
                           }}
                           className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-feature-primary"
@@ -7346,7 +7371,7 @@ export default function ChatScreen({
                                 inp.value.trim(),
                               );
                               setOwnerBgImage(inp.value.trim());
-                              alert("تم تطبيق تصميم الخلفية السيادي بنجاح!");
+                              showChatToast("تم تطبيق تصميم الخلفية السيادي بنجاح!", "success");
                               addSystemActivityLog(
                                 "promote",
                                 currentUser.nickname,
@@ -7355,7 +7380,7 @@ export default function ChatScreen({
                             } else {
                               localStorage.removeItem("lamma_owner_bg_image");
                               setOwnerBgImage(null);
-                              alert("تم استعادة تصميم الخلفية الافتراضية.");
+                              showChatToast("تم استعادة تصميم الخلفية الافتراضية.", "success");
                             }
                           }}
                           className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
@@ -7390,9 +7415,9 @@ export default function ChatScreen({
                             if (word) {
                               if (!bannedWords.includes(word)) {
                                 setBannedWords((prev) => [...prev, word]);
-                                alert(
+                                showChatToast(
                                   `تم إضافة الكلمة "${word}" لجدار الحماية!`,
-                                );
+                                , "success");
                                 addSystemActivityLog(
                                   "ban",
                                   currentUser.nickname,
@@ -7769,9 +7794,9 @@ export default function ChatScreen({
                                     activeRoomId,
                                     `🌟 تطهير إداري شامل: قام مالك الشات بتطهير ومسح كافة المحادثات الواردة في غرفة [${activeRoomId}] وتصفير سجلاتها بنجاح تام لسرعة مضاعفة ⚡!`,
                                   );
-                                  alert(
+                                  showChatToast(
                                     "✅ تم تطهير وبتر وحذف جميع رسائل الغرفة بأمان تام وسرعة خارقة!",
-                                  );
+                                  , "success");
                                 }
                               }}
                               className="p-2.5 rounded-xl bg-red-650/20 hover:bg-red-600/30 text-red-500 hover:text-white border border-red-500/25 transition-all flex items-center justify-between text-[10px] font-black cursor-pointer"
@@ -7981,9 +8006,9 @@ export default function ChatScreen({
                               onClick={() => {
                                 const nick = promoTargetNick.trim();
                                 if (!nick) {
-                                  alert(
+                                  showChatToast(
                                     "❌ يرجى اختيار اسم العضو المتواجد أو كتابة اللقب يدوياً أولاً لإصدار الصلاحيات والمزايا!",
-                                  );
+                                  , "error");
                                   return;
                                 }
 
@@ -8051,9 +8076,9 @@ export default function ChatScreen({
                                   `👑 قرار رئاسي: أصدر مالك شات الغالية مرسوماً رسمياً بترقية وتكليف العضو [${nick}] برتبة [<strong>${roleLabel}</strong>] وتعيين لون الشهرة [${promoTargetColor}] وشارة [${promoTargetBadge || "عضو نشط"}] ليكون ذو نفوذ فوري وصلاحية شاملة 🎉!`,
                                 );
 
-                                alert(
+                                showChatToast(
                                   `✅ تم ترقية ومنح العضو [${nick}] رتبة [${roleLabel}] بنجاح فوسفوري وتفعيل صلاحيتهم فوراً!`,
-                                );
+                                , "success");
 
                                 // Reset target fields
                                 setPromoTargetNick("");
@@ -8191,9 +8216,9 @@ export default function ChatScreen({
                                   item.nickname,
                                   `تم إلغاء حظر المعرف الفني واستعادة كافة رخص التفاعل للعضو ${item.nickname}.`,
                                 );
-                                alert(
+                                showChatToast(
                                   `تم إلغاء العقوبة بنجاح وإرجاع تراخيص العضو ${item.nickname}!`,
-                                );
+                                , "success");
                               }}
                               className="p-1.5 px-3 rounded-lg text-[9.5px] font-black self-end md:self-center transition-all cursor-pointer shrink-0 lamma-feature-primary"
                             >
@@ -8518,9 +8543,9 @@ export default function ChatScreen({
                                   !newProdPrice.trim() ||
                                   !newProdDesc.trim()
                                 ) {
-                                  alert(
+                                  showChatToast(
                                     "❌ يرجى ملء حقول الاسم، السعر، والوصف بنجاح لإتمام عملية النشر بالمتجر!",
-                                  );
+                                  , "error");
                                   return;
                                 }
 
@@ -8558,9 +8583,9 @@ export default function ChatScreen({
                                     `تعديل وإعادة نشر المنتج [${newProdName}] بالمتجر التلقائي.`,
                                     "👑 OWNER MODERATOR",
                                   );
-                                  alert(
+                                  showChatToast(
                                     "✅ تم تعديل المنتج وحفظ التغييرات بنجاح في نظام المتجر وذاكرة السيرفر!",
-                                  );
+                                  , "success");
                                   setEditingProduct(null);
                                 } else {
                                   // Create item
@@ -8590,9 +8615,9 @@ export default function ChatScreen({
                                     `إضافة وعرض ميزة متجر جديدة للمستخدمين: [${newProdName}] بقيمة ${newProdPrice}.`,
                                     "👑 OWNER MODERATOR",
                                   );
-                                  alert(
+                                  showChatToast(
                                     "✅ تم حقن ونشر الميزة الجديدة وتفعيل العرض فوسفورياً في المتجر بكفاءة!",
-                                  );
+                                  , "success");
                                 }
 
                                 // Reset form
@@ -9418,11 +9443,11 @@ export default function ChatScreen({
 - إجمالي رسائل اليوم بغرف الشات: 5,820 رسالة متبادلة رسائل حرة 💬.
 - عدد المسجلين النشطين على المنصة: 409 عضو فائق الفعالية 🚀.
 - أفضل الغرف حرقاً ونشاطاً بالساعة: [غرفة مصر الوازنة EG] بمستويات نشاط 58% ✨.
-- العضو الأكثر فاعلية وحضوراً لليوم: أحمد صاحب النخوة 👑.`,
+- العضو الأكثر فاعلية وحضوراً لليو��: أحمد صاحب النخوة 👑.`,
                             );
-                            alert(
+                            showChatToast(
                               "📊 تم بنجاح بث تقرير الإحصائيات الشامل التلقائي كرسالة رسمية مرئية للجميع بغرفة الدردشة!",
-                            );
+                            , "success");
                           }}
                           className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[10px] border border-emerald-500/20 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
                         >
@@ -9785,9 +9810,9 @@ export default function ChatScreen({
                                   payGateway === "instapay") &&
                                 !paymentAccountInput.trim()
                               ) {
-                                alert(
+                                showChatToast(
                                   "❌ يرجى إدخال محفظة التحويل أو عنوان إنستاباي بنجاح للمطابقة الآلية!",
-                                );
+                                , "error");
                                 return;
                               }
 
@@ -10509,9 +10534,9 @@ export default function ChatScreen({
                               selectedProfileMember.nickname,
                               `تم إصدار إنذار وتحذير أمني علني للعضو في غرفة [${activeRoomId}]`,
                             );
-                            alert(
+                            showChatToast(
                               `تم إرسال التحذير بنجاح كرسالة نظام في الغرفة.`,
-                            );
+                            , "warn");
                             setShowProfileModal(false);
                           }}
                           className="py-2 px-3 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 font-bold text-[10px] rounded-xl border border-yellow-500/20 text-center transition-all cursor-pointer flex items-center justify-center gap-1"
@@ -10544,7 +10569,7 @@ export default function ChatScreen({
                                 selectedProfileMember.nickname,
                                 `تم إلغاء كتم الصوت عن العضو ${selectedProfileMember.nickname} من قبل المشرف.`,
                               );
-                              alert(`تم إلغاء الكتم بنجاح!`);
+                              showChatToast(`تم إلغاء الكتم بنجاح!`, "success");
                             } else {
                               const muteBan: BanInfo = {
                                 id: `mute-${Date.now()}`,
@@ -10570,9 +10595,9 @@ export default function ChatScreen({
                                 selectedProfileMember.nickname,
                                 `تم كتم صوت العضو ${selectedProfileMember.nickname} وإيقاف رخصة حديثه.`,
                               );
-                              alert(
+                              showChatToast(
                                 `تم كتم العضو [${selectedProfileMember.nickname}] من التحدث بنجاح!`,
-                              );
+                              , "success");
                             }
                             setShowProfileModal(false);
                           }}
@@ -10623,9 +10648,9 @@ export default function ChatScreen({
                               selectedProfileMember.nickname,
                               `طرد فوري (Kick) للعضو الفوضوي من غرفة الدردشة.`,
                             );
-                            alert(
+                            showChatToast(
                               `تم إخضاع العضو للطرد الفوري خارج الغرفة بالتأكيد!`,
-                            );
+                            , "success");
                             setShowProfileModal(false);
                           }}
                           className="py-2 px-3 text-orange-300 font-bold text-[10px] rounded-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1 lamma-soft-warn"
@@ -10659,9 +10684,9 @@ export default function ChatScreen({
                               selectedProfileMember.nickname,
                               `تم مسح وسحب جميع رسائل العضو في غرفة [${activeRoomId}]`,
                             );
-                            alert(
+                            showChatToast(
                               `تم تصفية ومسح جميع رسائل العضو [${selectedProfileMember.nickname}] من شات الغرفة بنجاح!`,
-                            );
+                            , "success");
                             setShowProfileModal(false);
                           }}
                           className="py-2 px-3 text-red-400 font-bold text-[10px] rounded-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1 lamma-danger-btn"
@@ -10706,9 +10731,9 @@ export default function ChatScreen({
                                   selectedProfileMember.nickname,
                                   `تم فرض حظر دخول الغرفة لـ ${selectedProfileMember.nickname} من غرفة [${activeRoomId}]`,
                                 );
-                                alert(
+                                showChatToast(
                                   `تم حظر العضو بنجاح من دخول الغرفة الحالية [${activeRoomId}].`,
-                                );
+                                , "success");
                                 setShowProfileModal(false);
                               }}
                               className="py-2 px-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 font-bold text-[9.5px] rounded-xl border border-pink-500/20 text-center transition-all cursor-pointer"
@@ -10743,9 +10768,9 @@ export default function ChatScreen({
                                     selectedProfileMember.nickname,
                                     `تغيير وتعيين رتبة لعضو الشات إلى [${targetRole}]`,
                                   );
-                                  alert(
+                                  showChatToast(
                                     `تم تغيير وتحديث صلاحيات العضو إلى [${targetRole}] بنجاح!`,
-                                  );
+                                  , "success");
                                   setSelectedProfileMember((prev) =>
                                     prev ? { ...prev, role: targetRole } : null,
                                   );
@@ -11039,9 +11064,9 @@ export default function ChatScreen({
                                           selectedProfileMember.nickname.toLowerCase(),
                                       ),
                                     );
-                                    alert(
+                                    showChatToast(
                                       `تم إخضاع العضو المشاغب فوراً للحظر المطلق Mega Ban وتجميد كافة بيانات اتصاله!`,
-                                    );
+                                    , "success");
                                     setShowProfileModal(false);
                                   }}
                                   className="py-2.5 bg-red-600/25 hover:bg-red-600/35 text-red-400 font-extrabold text-[9.5px] rounded-xl border border-red-500/30 text-center transition-all cursor-pointer"
@@ -11074,7 +11099,7 @@ export default function ChatScreen({
                                         selectedProfileMember.nickname,
                                         `تم إلغاء الحظر الخفي (Shadow Ban) عن العضو ${selectedProfileMember.nickname}.`,
                                       );
-                                      alert(`تم إلغاء الحظر الخفي.`);
+                                      showChatToast(`تم إلغاء الحظر الخفي.`, "success");
                                     } else {
                                       const sb: BanInfo = {
                                         id: `shadow-${Date.now()}`,
@@ -11108,9 +11133,9 @@ export default function ChatScreen({
                                         selectedProfileMember.nickname,
                                         `تطبيق الحظر الخفي الشبح (Shadow Ban) للعضو.`,
                                       );
-                                      alert(
+                                      showChatToast(
                                         `تم تفعيل الحظر الشبح (Shadow Ban) بنجاح.`,
-                                      );
+                                      , "success");
                                     }
                                     setShowProfileModal(false);
                                   }}
@@ -11151,7 +11176,7 @@ export default function ChatScreen({
         onClose={() => setIsCreateRoomModalOpen(false)}
         onCreate={(details) => {
           // Logic to create room (simplified for demo)
-          alert(`تم إنشاء الغرفة: ${details.name}`);
+          showChatToast(`تم إنشاء الغرفة: ${details.name}`, "success");
           setIsCreateRoomModalOpen(false);
         }}
       />
@@ -11210,7 +11235,7 @@ export default function ChatScreen({
             <div className="flex-1 overflow-y-auto space-y-3 scroller-soft text-right">
               {searchQuery.trim() === "" ? (
                 <div className="text-center py-8 text-gray-500 text-[10px] font-bold">
-                  اكتب كلمة للبحث في رسائل الغرفة الحالية والأعضاء النشطين 🔍
+                  اكتب كلمة للبحث في ��سائل الغرفة الحالية والأعضاء النشطين 🔍
                 </div>
               ) : (
                 <>
@@ -11372,15 +11397,15 @@ export default function ChatScreen({
           },
           onToggleFriend: (target) => {
             if (friendsList.includes(target.nickname)) {
-              alert(
+              showChatToast(
                 `العضو [${target.nickname}] موجود بالفعل في قائمة أصدقائك! 🌟`,
-              );
+              , "info");
             } else {
               setFriendsList((prev) => [...prev, target.nickname]);
               triggerGiftFlying("💚");
-              alert(
+              showChatToast(
                 `🎉 تم إضافة [${target.nickname}] إلى قائمة الأصدقاء المفضلة لديك بنجاح!`,
-              );
+              , "success");
             }
             setShowUserContextPop(false);
           },
@@ -11389,15 +11414,15 @@ export default function ChatScreen({
               setIgnoredUsers((prev) =>
                 prev.filter((u) => u !== target.nickname),
               );
-              alert(`🔊 تم إلغاء كتم/تجاهل العضو [${target.nickname}].`);
+              showChatToast(`🔊 تم إلغاء كتم/تجاهل العضو [${target.nickname}].`, "success");
             } else {
               setIgnoredUsers((prev) => [...prev, target.nickname]);
               setFriendsList((prev) =>
                 prev.filter((u) => u !== target.nickname),
               );
-              alert(
+              showChatToast(
                 `🔕 تم تجاهل [${target.nickname}] وتصفية رسائله وغرفته تلقائياً!`,
-              );
+              , "success");
             }
             setShowUserContextPop(false);
           },
@@ -11406,15 +11431,15 @@ export default function ChatScreen({
               setBlockedUsers((prev) =>
                 prev.filter((u) => u !== target.nickname),
               );
-              alert(`🔓 تم إلغاء حظر العضو [${target.nickname}].`);
+              showChatToast(`🔓 تم إلغاء حظر العضو [${target.nickname}].`, "success");
             } else {
               setBlockedUsers((prev) => [...prev, target.nickname]);
               setFriendsList((prev) =>
                 prev.filter((u) => u !== target.nickname),
               );
-              alert(
+              showChatToast(
                 `🚫 تم حظر العضو [${target.nickname}] بالكامل وتجميد محادثاته فوسفورياً!`,
-              );
+              , "success");
             }
             setShowUserContextPop(false);
           },
@@ -11631,6 +11656,41 @@ export default function ChatScreen({
       {/* Real audio elements for Radio and Music streaming/playback */}
       <audio ref={radioAudioRef} src={currentRadioStation.url} preload="none" />
       <audio ref={musicAudioRef} src={currentMusicTrack.url} preload="none" />
+
+      {/* ---- Toast Notification ---- */}
+      <AnimatePresence>
+        {chatToast && (
+          <motion.div
+            key="lamma-toast"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ duration: 0.2 }}
+            role="status"
+            aria-live="polite"
+            className="fixed bottom-20 start-1/2 -translate-x-1/2 z-[9999] pointer-events-none"
+            style={{ direction: "rtl" }}
+          >
+            <div
+              className={`
+                flex items-center gap-3 px-4 py-3 rounded-2xl
+                lamma-glass backdrop-blur-xl text-sm font-medium
+                shadow-lg max-w-xs text-center
+                ${chatToast.type === "error" ? "lamma-soft-danger text-red-300" : ""}
+                ${chatToast.type === "warn" ? "lamma-soft-warn text-amber-300" : ""}
+                ${chatToast.type === "success" ? "lamma-soft-success text-emerald-300" : ""}
+                ${chatToast.type === "info" ? "text-white/80" : ""}
+              `}
+            >
+              {chatToast.type === "error" && <span className="text-red-400 text-base">✕</span>}
+              {chatToast.type === "warn" && <span className="text-amber-400 text-base">!</span>}
+              {chatToast.type === "success" && <span className="text-emerald-400 text-base">✓</span>}
+              {chatToast.type === "info" && <span className="text-blue-300 text-base">ℹ</span>}
+              <span>{chatToast.text}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

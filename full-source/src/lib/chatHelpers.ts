@@ -18,55 +18,55 @@ export function hexToRgba(hex: string, alpha: number) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+/**
+ * getRoleFromAuthor — النسخة الآمنة
+ *
+ * الدور يُحدَّد فقط من:
+ *   1. currentUserObj.role  (لو الرسالة من المستخدم الحالي)
+ *   2. chatMembers list المُمررة (لو الرسالة من عضو آخر)
+ *
+ * لا يعتمد أبداً على نص الاسم لأن أي مستخدم يقدر يحط
+ * "(المالك)" أو "Admin" في اسمه ويكسب صلاحيات بالخطأ.
+ */
 export const getRoleFromAuthor = (
   author: string,
   currentUserObj: any,
+  chatMembers?: Array<{ nickname: string; role: string }>,
 ): "owner" | "admin" | "platinum_vip" | "vip" | "none" => {
+  // --- المستخدم الحالي: استخدم الـ role المُخزن مباشرة ---
   if (author === currentUserObj.nickname) {
-    const roleLower = currentUserObj.role.toLowerCase();
-    if (
-      roleLower === "owner" ||
-      roleLower === "malek" ||
-      roleLower === "المالك"
-    )
-      return "owner";
-    if (roleLower === "admin" || roleLower === "أدمن" || roleLower === "مشرف")
-      return "admin";
+    const roleLower = (currentUserObj.role || "").toLowerCase();
+    if (roleLower === "owner") return "owner";
+    if (roleLower === "admin") return "admin";
     if (roleLower === "platinum_vip") return "platinum_vip";
     if (roleLower === "vip") return "vip";
     return "none";
   }
 
-  if (
-    author.includes("تاج المالك") ||
-    author.includes("(المالك)") ||
-    author.includes("المالك") ||
-    author.includes("Owner")
-  )
-    return "owner";
-  if (
-    author.includes("(أدمن)") ||
-    author.includes("أدمن") ||
-    author.includes("Admin")
-  )
-    return "admin";
-  if (author.includes("بلاتيني") || author.includes("platinum"))
-    return "platinum_vip";
-  if (
-    author.includes("(VIP)") ||
-    author.includes("VIP") ||
-    author.includes("vip")
-  )
-    return "vip";
+  // --- عضو آخر: ابحث في chatMembers فقط ---
+  if (chatMembers && chatMembers.length > 0) {
+    const member = chatMembers.find((m) => m.nickname === author);
+    if (member) {
+      const roleLower = (member.role || "").toLowerCase();
+      if (roleLower === "owner") return "owner";
+      if (roleLower === "admin") return "admin";
+      if (roleLower === "platinum_vip") return "platinum_vip";
+      if (roleLower === "vip") return "vip";
+    }
+  }
 
   return "none";
 };
 
-export const getFrameFromAuthor = (author: string, currentUserObj: any): string => {
+export const getFrameFromAuthor = (
+  author: string,
+  currentUserObj: any,
+  chatMembers?: Array<{ nickname: string; role: string }>,
+): string => {
   if (author === currentUserObj.nickname) {
     return currentUserObj.frame || "";
   }
-  const role = getRoleFromAuthor(author, currentUserObj);
+  const role = getRoleFromAuthor(author, currentUserObj, chatMembers);
   if (role === "platinum_vip") {
     return "from-yellow-400 via-amber-500 to-yellow-600";
   }
