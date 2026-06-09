@@ -1,19 +1,6 @@
-import React, { useState, useEffect } from "react";
-import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  ChevronRight,
-  RefreshCw,
-  Copy,
-  Sparkles,
-  Share2,
-  Zap,
-  Hash,
-} from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase.ts";
+import "./login-screen-legacy.css";
 
 interface LoginScreenProps {
   onLogin: (
@@ -28,23 +15,14 @@ interface LoginScreenProps {
   setPrimaryTheme: (theme: "dark" | "amoled") => void;
 }
 
-// Generate guest IDs like LC-Guest48291
-function generateRandomGuestId() {
-  const num = Math.floor(Math.random() * 90000) + 10000;
-  return `LC_Guest_${num}`;
-}
+type ViewMode = "main" | "options";
+type EmailTab = "login" | "register";
+type MessageType = "success" | "error" | "info";
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
 
-const NICKNAME_ADJECTIVES = [
-  "Shadow",
-  "Luna",
-  "Neon",
-  "Void",
-  "Solar",
-  "Glitch",
-  "Alpha",
-  "Cyber",
-  "Hunter",
-];
 const NICKNAME_COLORS = [
   "#22c55e",
   "#3fb950",
@@ -54,37 +32,90 @@ const NICKNAME_COLORS = [
   "#f59e0b",
 ];
 
-export default function LoginScreen({
-  onLogin,
-  primaryTheme,
-  setPrimaryTheme,
-}: LoginScreenProps) {
-  type WallTheme = "fire" | "ice" | "violet";
-  const brandName = import.meta.env.VITE_BRAND_NAME || "Lamma Chat";
-  const brandCredit = import.meta.env.VITE_BRAND_CREDIT || "MR mohamed samy";
-  const brandMarkSrc = "/images/am-logo.png";
-  const brandWordmarkSrc = "/images/lamma-wordmark.svg";
-  const fallbackMarkSrc = "/images/lamma-logo.png";
-  const fallbackWordmarkSrc = "/images/lamma-wordmark.svg";
-  const loginHeroBg =
-    import.meta.env.VITE_LOGIN_HERO_BG || "/images/login-hero.jpg";
+function randomGuestId() {
+  return `LC-Guest${Math.floor(10000 + Math.random() * 90000)}`;
+}
 
-  const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(() =>
-    localStorage.getItem("lamma_custom_logo_url"),
+function randomColor() {
+  return NICKNAME_COLORS[Math.floor(Math.random() * NICKNAME_COLORS.length)];
+}
+
+function deriveNicknameFromEmail(email: string) {
+  const localPart = email.split("@")[0] || "";
+  const cleaned = localPart
+    .replace(/[^a-zA-Z0-9_\u0600-\u06FF.-]/g, "")
+    .slice(0, 24);
+  return cleaned || `Member${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+function EnvelopeIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M4 6.5C4 5.67 4.67 5 5.5 5H18.5C19.33 5 20 5.67 20 6.5V17.5C20 18.33 19.33 19 18.5 19H5.5C4.67 19 4 18.33 4 17.5V6.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M5 7L12 12.2L19 7"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
-  const [wallTheme, setWallTheme] = useState<WallTheme>(() => {
-    const saved = localStorage.getItem("lamma_wall_theme");
-    if (saved === "fire" || saved === "ice" || saved === "violet") return saved;
-    return "fire";
-  });
-  const [signupNickname, setSignupNickname] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
-  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+}
+
+function QuickIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M13 2L3 14H11L9 22L21 9H13L13 2Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export default function LoginScreen(props: LoginScreenProps) {
+  const { onLogin } = props;
+  const brandName = import.meta.env.VITE_BRAND_NAME || "Lamma Chat";
+  const brandCredit = import.meta.env.VITE_BRAND_CREDIT || "MR / Mohamed Samy";
+  const appLink = import.meta.env.VITE_APP_URL || window.location.origin;
+
+  const [view, setView] = useState<ViewMode>("main");
+  const [emailTab, setEmailTab] = useState<EmailTab>("login");
+  const [emailOpen, setEmailOpen] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
-  const [showExtraOptions, setShowExtraOptions] = useState(false);
+  const [message, setMessage] = useState<{
+    text: string;
+    type: MessageType;
+  } | null>(null);
+
+  const [loginIdentifier, setLoginIdentifier] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [registerPassword2, setRegisterPassword2] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showRegisterPassword2, setShowRegisterPassword2] = useState(false);
+
   const [pendingProfileUser, setPendingProfileUser] = useState<any | null>(null);
   const [pendingProfileColor, setPendingProfileColor] = useState<string | null>(
     null,
@@ -93,217 +124,204 @@ export default function LoginScreen({
   const [showProfileNicknameModal, setShowProfileNicknameModal] =
     useState(false);
 
-  // Sound feedback preferences
-  const [soundOn, setSoundOn] = useState(true);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
 
-  // Suggested guest ID state
-  const [guestId, setGuestId] = useState(generateRandomGuestId());
+  useEffect(() => {
+    if (!message) return;
+    const timeout = window.setTimeout(() => setMessage(null), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [message]);
 
-  // Show a greeting banner toast at the top right of the screen
-  const [showSuccessToast, setShowSuccessToast] = useState(true);
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setDeferredInstallPrompt(event as BeforeInstallPromptEvent);
+    };
 
-  // Non-blocking in-app toast notification state
-  const [toastMsg, setToastMsg] = useState<{
-    text: string;
-    type: "success" | "error" | "info";
-  } | null>(null);
+    const handleAppInstalled = () => {
+      setDeferredInstallPrompt(null);
+      setMessage({
+        text: "تم تثبيت التطبيق بنجاح.",
+        type: "success",
+      });
+    };
 
-  const showToast = (
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt,
+      );
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  const showFeedback = (
     text: string,
-    type: "success" | "error" | "info" = "info",
+    type: MessageType = "info",
+    forceOptionsView = false,
   ) => {
-    setToastMsg({ text, type });
-    playBeepSound(
-      type === "error" ? 300 : type === "success" ? 800 : 600,
-      "sine",
-    );
-    // Auto dismiss after 5 seconds
-    setTimeout(() => {
-      setToastMsg((prev) => (prev?.text === text ? null : prev));
-    }, 5000);
+    setMessage({ text, type });
+    if (forceOptionsView) {
+      setView("options");
+    }
   };
 
-  // Stateful share/invite modal
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
-
-  const appLink = import.meta.env.VITE_APP_URL || window.location.origin;
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key !== "lamma_custom_logo_url") return;
-      setBrandLogoUrl(e.newValue);
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key !== "lamma_wall_theme") return;
-      const v = e.newValue;
-      if (v === "fire" || v === "ice" || v === "violet") setWallTheme(v);
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  const handleRegenerateGuestId = () => {
-    setGuestId(generateRandomGuestId());
-    playBeepSound(600, "sine");
+  const handleGoToOptions = () => {
+    setView("options");
   };
 
-  const setWallThemeSafe = (theme: WallTheme) => {
-    setWallTheme(theme);
-    localStorage.setItem("lamma_wall_theme", theme);
+  const handleGoBack = () => {
+    setView("main");
   };
 
-  const playBeepSound = (freq = 440, type: OscillatorType = "sine") => {
-    if (!soundOn) return;
+  const handleQuickLogin = () => {
+    onLogin(randomGuestId(), "guest", randomColor(), undefined, undefined, "guest");
+  };
+
+  const handleShare = async () => {
+    const shareData = { title: brandName, url: appLink };
+
     try {
-      const AudioCtx =
-        window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      gain.gain.setValueAtTime(0.06, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.15);
-    } catch (_) {}
+      if (navigator.share) {
+        await navigator.share(shareData);
+        showFeedback("تم فتح مشاركة الرابط.", "success", true);
+        return;
+      }
+    } catch {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(appLink);
+      showFeedback("اتنسخ الرابط.", "success", true);
+    } catch {
+      showFeedback(appLink, "info", true);
+    }
   };
 
-  const handleCopyGuestId = () => {
-    navigator.clipboard.writeText(guestId);
-    playBeepSound(800, "square");
-    showToast(`تم نسخ اسم المعرف بنجاح: ${guestId}`, "success");
+  const handleInstallApp = async () => {
+    const isStandalone =
+      window.matchMedia?.("(display-mode: standalone)")?.matches ||
+      window.matchMedia?.("(display-mode: fullscreen)")?.matches ||
+      window.matchMedia?.("(display-mode: minimal-ui)")?.matches;
+
+    if (isStandalone) {
+      showFeedback("التطبيق متثبت بالفعل على الجهاز.", "info");
+      return;
+    }
+
+    if (!deferredInstallPrompt) {
+      showFeedback(
+        'من قائمة المتصفح اختر "تثبيت التطبيق" أو "إضافة للشاشة الرئيسية".',
+        "info",
+      );
+      return;
+    }
+
+    await deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    setDeferredInstallPrompt(null);
   };
 
-  const handleFormLogin = (e: React.FormEvent) => {
+  const handleGoogleLogin = async () => {
+    if (!supabase) {
+      showFeedback("إعدادات السيرفر غير مكتملة حالياً.", "error", true);
+      return;
+    }
+
+    try {
+      setAuthLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
+
+      if (error) {
+        showFeedback(error.message || "تعذر بدء تسجيل الدخول عبر Google.", "error", true);
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (authMode === "signup" && !signupNickname.trim()) {
-      showToast("اكتب اسم المستخدم الأول.", "error");
+    const identifier = loginIdentifier.trim();
+    const password = loginPassword.trim();
+
+    if (!identifier) {
+      showFeedback("اكتب البريد الإلكتروني أولاً.", "error", true);
+      setEmailOpen(true);
+      setEmailTab("login");
       return;
     }
-    if (!email.trim()) {
-      showToast("اكتب البريد الإلكتروني الأول.", "error");
+
+    if (!password) {
+      showFeedback("اكتب كلمة المرور أولاً.", "error", true);
+      setEmailOpen(true);
+      setEmailTab("login");
       return;
     }
-    if (!password.trim()) {
-      showToast("اكتب كلمة المرور الأول.", "error");
+
+    if (!identifier.includes("@")) {
+      showFeedback(
+        "تسجيل الدخول هنا حالياً يدعم البريد الإلكتروني فقط.",
+        "error",
+        true,
+      );
+      setEmailOpen(true);
+      setEmailTab("login");
       return;
     }
 
     if (!supabase) {
-      showToast("⚠️ إعدادات السيرفر غير مكتملة حالياً. راجع إعدادات Supabase.", "error");
+      showFeedback("إعدادات السيرفر غير مكتملة حالياً.", "error", true);
       return;
     }
 
-    const assignedColor =
-      NICKNAME_COLORS[Math.floor(Math.random() * NICKNAME_COLORS.length)];
+    const assignedColor = randomColor();
 
-    setAuthLoading(true);
-    const doAuth =
-      authMode === "signup"
-        ? supabase.auth.signUp({
-            email: email.trim(),
-            password,
-            options: {
-              data: {
-                nickname: signupNickname.trim(),
-              },
-            },
-          })
-        : supabase.auth.signInWithPassword({ email: email.trim(), password });
-
-    doAuth
-      .then(({ data, error }) => {
-        if (error) {
-          showToast(error.message || "فشل تسجيل الدخول.", "error");
-          return;
-        }
-
-        if (authMode === "signup") {
-          showToast(
-            "✅ تم إنشاء الحساب. لو مشروع Supabase مفعل تأكيد الإيميل، راجع بريدك وبعدين سجل دخول.",
-            "success",
-          );
-          setAuthMode("login");
-          setPassword("");
-          setSignupNickname("");
-          return;
-        }
-
-        if (!data?.user) {
-          showToast("فشل تسجيل الدخول.", "error");
-          return;
-        }
-
-        const metaNick = data.user.user_metadata?.nickname || data.user.user_metadata?.name;
-        if (!metaNick) {
-          setPendingProfileUser(data.user);
-          setPendingProfileColor(assignedColor);
-          setProfileNickname("");
-          setShowProfileNicknameModal(true);
-          showToast("اختار اسم مستخدم للمتابعة.", "info");
-          return;
-        }
-
-        playBeepSound(520, "sine");
-        if (!rememberMe) {
-          localStorage.removeItem("lamma_user_session");
-        }
-        onLogin(
-          metaNick,
-          "user",
-          assignedColor,
-          data.user.id,
-          data.user.email,
-          "supabase",
-        );
-      })
-      .finally(() => setAuthLoading(false));
-  };
-
-  const handleSaveProfileNickname = async () => {
-    const nick = profileNickname.trim();
-    if (!nick) {
-      showToast("اكتب اسم المستخدم الأول.", "error");
-      return;
-    }
-    if (!supabase || !pendingProfileUser || !pendingProfileColor) {
-      showToast("⚠️ إعدادات Supabase غير مكتملة حالياً.", "error");
-      return;
-    }
-    setAuthLoading(true);
     try {
-      const { data, error } = await supabase.auth.updateUser({
-        data: { nickname: nick },
+      setAuthLoading(true);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: identifier,
+        password,
       });
+
       if (error) {
-        showToast(error.message, "error");
+        showFeedback(error.message || "فشل تسجيل الدخول.", "error", true);
         return;
       }
-      const user = data.user || pendingProfileUser;
-      setShowProfileNicknameModal(false);
-      setPendingProfileUser(null);
-      setPendingProfileColor(null);
-      playBeepSound(520, "sine");
-      if (!rememberMe) {
-        localStorage.removeItem("lamma_user_session");
+
+      if (!data.user) {
+        showFeedback("فشل تسجيل الدخول.", "error", true);
+        return;
       }
+
+      const metaNick =
+        data.user.user_metadata?.nickname || data.user.user_metadata?.name;
+
+      if (!metaNick) {
+        setPendingProfileUser(data.user);
+        setPendingProfileColor(assignedColor);
+        setProfileNickname("");
+        setShowProfileNicknameModal(true);
+        return;
+      }
+
       onLogin(
-        nick,
+        metaNick,
         "user",
-        pendingProfileColor,
-        user.id,
-        user.email,
+        assignedColor,
+        data.user.id,
+        data.user.email ?? undefined,
         "supabase",
       );
     } finally {
@@ -311,560 +329,545 @@ export default function LoginScreen({
     }
   };
 
-  const handleCopyLink = () => {
-    setShowShareModal(true);
-    playBeepSound(480, "sine");
-  };
+  const handleRegisterSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-  const fallbackCopy = (text: string) => {
+    const email = registerEmail.trim();
+    const password = registerPassword.trim();
+    const password2 = registerPassword2.trim();
+
+    if (!email) {
+      showFeedback("اكتب البريد الإلكتروني أولاً.", "error", true);
+      setEmailOpen(true);
+      setEmailTab("register");
+      return;
+    }
+
+    if (!password) {
+      showFeedback("اكتب كلمة المرور أولاً.", "error", true);
+      setEmailOpen(true);
+      setEmailTab("register");
+      return;
+    }
+
+    if (password.length < 6) {
+      showFeedback("كلمة المرور لازم تكون 6 أحرف على الأقل.", "error", true);
+      setEmailOpen(true);
+      setEmailTab("register");
+      return;
+    }
+
+    if (password !== password2) {
+      showFeedback("تأكيد كلمة المرور غير مطابق.", "error", true);
+      setEmailOpen(true);
+      setEmailTab("register");
+      return;
+    }
+
+    if (!supabase) {
+      showFeedback("إعدادات السيرفر غير مكتملة حالياً.", "error", true);
+      return;
+    }
+
     try {
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      textArea.style.top = "0";
-      textArea.style.left = "0";
-      textArea.style.position = "fixed";
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      const successful = document.execCommand("copy");
-      document.body.removeChild(textArea);
-      if (successful) {
-        setCopiedLink(true);
-        playBeepSound(800, "sine");
-        setTimeout(() => setCopiedLink(false), 3000);
-      } else {
-        throw new Error("fallback prompt");
+      setAuthLoading(true);
+      const nickname = deriveNicknameFromEmail(email);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            nickname,
+          },
+          emailRedirectTo: window.location.origin,
+        },
+      });
+
+      if (error) {
+        showFeedback(error.message || "فشل إنشاء الحساب.", "error", true);
+        return;
       }
-    } catch (err) {
-      prompt("يرجى نسخ الرابط يدوياً من المربع أدناه:", text);
+
+      if (data.session?.user) {
+        onLogin(
+          nickname,
+          "user",
+          randomColor(),
+          data.session.user.id,
+          data.session.user.email ?? undefined,
+          "supabase",
+        );
+        return;
+      }
+
+      setEmailTab("login");
+      setLoginIdentifier(email);
+      setRegisterPassword("");
+      setRegisterPassword2("");
+      showFeedback(
+        "تم إنشاء الحساب. لو تفعيل البريد مطلوب، راجع بريدك ثم سجل الدخول.",
+        "success",
+        true,
+      );
+    } finally {
+      setAuthLoading(false);
     }
   };
 
-  const handleSwiftGuestLogin = async () => {
-    const assignedColor =
-      NICKNAME_COLORS[Math.floor(Math.random() * NICKNAME_COLORS.length)];
+  const handleSaveProfileNickname = async () => {
+    const nickname = profileNickname.trim();
 
-    // Instant local-guest bypass
-    playBeepSound(440, "sine");
-    showToast("🚀 تم الدخول السريع بأمان بوضع الزائر المحلي!", "success");
-    setTimeout(() => {
-      onLogin(guestId, "guest", assignedColor, undefined, undefined, "guest");
-    }, 200);
-  };
+    if (!nickname) {
+      showFeedback("اكتب اسم المستخدم أولاً.", "error", true);
+      return;
+    }
 
-  const handleGoogleLogin = async () => {
+    if (!supabase || !pendingProfileUser || !pendingProfileColor) {
+      showFeedback("إعدادات Supabase غير مكتملة حالياً.", "error", true);
+      return;
+    }
+
     try {
       setAuthLoading(true);
-      if (!supabase) {
-        showToast("⚠️ إعدادات Supabase غير مكتملة حالياً.", "error");
+      const { data, error } = await supabase.auth.updateUser({
+        data: { nickname },
+      });
+
+      if (error) {
+        showFeedback(error.message || "تعذر حفظ اسم المستخدم.", "error", true);
         return;
       }
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.origin },
-      });
-      if (error) {
-        showToast(error.message, "error");
-      }
+
+      const user = data.user || pendingProfileUser;
+      setShowProfileNicknameModal(false);
+      setPendingProfileUser(null);
+      setPendingProfileColor(null);
+
+      onLogin(
+        nickname,
+        "user",
+        pendingProfileColor,
+        user.id,
+        user.email ?? undefined,
+        "supabase",
+      );
     } finally {
       setAuthLoading(false);
     }
   };
 
   return (
-    <div
-      className="min-h-[100dvh] w-full relative overflow-hidden font-sans bg-[#14080d] text-white"
-      dir="rtl"
-      data-lamma-wall={wallTheme}
-    >
-      <div className="pointer-events-none absolute inset-0">
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
-          style={{ backgroundImage: `url("${loginHeroBg}")` }}
-        />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_12%,rgba(110,48,64,0.18),rgba(15,7,10,0.95))]" />
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
-        <motion.div
-          className="absolute left-1/2 top-[7%] h-[18rem] w-[74rem] -translate-x-1/2 rounded-full blur-3xl opacity-70"
-          style={{
-            background:
-              "radial-gradient(ellipse at center, rgba(212,175,55,0.18) 0%, rgba(212,175,55,0.06) 34%, transparent 72%)",
-          }}
-          animate={{ x: [-20, 20, -20] }}
-          transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
-        />
-      </div>
+    <main className="page legacyLoginRoot" dir="rtl">
+      <section className="card" aria-label="تسجيل الدخول">
+        <div className="panel" id="panel" data-view={view}>
+          <div className="view view--main">
+            <header className="brand">
+              <img
+                className="brandLogo"
+                src="/images/lamma-logo-نايس.png"
+                alt={brandName}
+                loading="eager"
+                decoding="async"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  img.onerror = null;
+                  img.src = "/images/lamma-logo.png";
+                }}
+              />
+            </header>
 
-      <div className="relative z-10 flex min-h-[100dvh] items-center justify-center px-4 py-6 sm:px-6">
-        <motion.section
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55 }}
-          className="w-full max-w-[420px] rounded-[34px] border border-[rgba(212,175,55,0.18)] bg-[linear-gradient(180deg,rgba(12,11,16,0.58),rgba(8,12,18,0.78))] px-6 py-7 text-center shadow-[0_30px_80px_rgba(0,0,0,0.55)] backdrop-blur-[14px] sm:px-8"
-        >
-          <div className="mx-auto flex max-w-[250px] justify-center">
-            <img
-              src={brandMarkSrc}
-              alt={brandName}
-              onError={(e) => {
-                const img = e.currentTarget;
-                img.onerror = null;
-                img.src = fallbackMarkSrc;
-              }}
-              className="h-[180px] w-auto object-contain drop-shadow-[0_10px_28px_rgba(0,0,0,0.55)] sm:h-[220px]"
-              draggable={false}
-            />
-          </div>
+            <div className="afterLogo">
+              <div className="tagline" aria-label="وصف">
+                المتعه كلها بتستناك
+              </div>
 
-          <img
-            src={brandLogoUrl || brandWordmarkSrc}
-            alt={brandName}
-            onError={(e) => {
-              const img = e.currentTarget;
-              img.onerror = null;
-              img.src = fallbackWordmarkSrc;
-            }}
-            className="mx-auto mt-2 w-[118px] drop-shadow-xl"
-            draggable={false}
-          />
+              <div className="tagline2" aria-label="وصف إضافي">
+                شات بالروح المصرية بيجمع تلاقي مع الأصالة العربية
+              </div>
 
-          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-[rgba(212,175,55,0.35)] bg-[rgba(17,18,18,0.42)] px-4 py-2 text-[11px] font-black text-[#f3d98a] shadow-[0_10px_24px_rgba(0,0,0,0.28)]">
-            <span>المتعه كلها بتستناك</span>
-          </div>
+              <div className="badges" aria-label="مميزات">
+                <span className="badge">🛡️ خصوصية</span>
+                <span className="badge">⚡ أمان</span>
+                <span className="badge">رَوْقان</span>
+              </div>
 
-          <p className="mx-auto mt-4 max-w-[290px] text-[13px] leading-7 text-white/80">
-            شات بالروح المصرية بيجمع تلاقي مع الأصالة العربية
-          </p>
-
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-black text-white/85">
-              رَوْقان
-            </span>
-            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-black text-white/85">
-              أمان ⚡
-            </span>
-            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-black text-white/85">
-              خصوصية 🛡️
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowExtraOptions(true)}
-            className="mt-6 inline-flex w-full max-w-[230px] items-center justify-center gap-3 rounded-[18px] border border-[rgba(212,175,55,0.42)] bg-[linear-gradient(180deg,rgba(70,58,34,0.45),rgba(34,29,17,0.45))] px-6 py-3 text-[18px] font-black text-[#f3d98a] shadow-[0_16px_30px_rgba(0,0,0,0.34)] transition-all hover:brightness-110"
-          >
-            <ChevronRight size={18} className="rotate-180" />
-            <span>يالا بينا</span>
-          </button>
-
-          <div className="mt-7 text-[12px] leading-6 text-white/58">
-            © {new Date().getFullYear()} {brandName}. جميع الحقوق محفوظة - توثيق
-            وهوية خاصة:
-          </div>
-
-          <div className="mt-3 inline-flex items-center justify-center rounded-full border border-[rgba(212,175,55,0.28)] bg-[rgba(212,175,55,0.10)] px-5 py-3 text-[11px] font-black text-[#f5dda0] shadow-[0_12px_26px_rgba(0,0,0,0.24)]">
-            {brandCredit}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => showToast("التثبيت من المتصفح أو من قائمة المشاركة.", "info")}
-            className="mx-auto mt-4 block rounded-full border border-white/10 bg-black/20 px-4 py-2 text-[11px] font-black text-white/70 transition-all hover:bg-black/35 hover:text-white"
-          >
-            تثبيت التطبيق
-          </button>
-        </motion.section>
-      </div>
-
-      <AnimatePresence>
-        {showProfileNicknameModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100000] flex items-center justify-center p-4 overflow-y-auto"
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="w-full max-w-md rounded-[28px] p-6 text-right relative my-8 lamma-modal-shell"
-            >
-              <div className="flex items-center justify-between pb-4 mb-4 lamma-modal-header">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)] animate-pulse" />
-                  <h3 className="text-base font-black text-white">
-                    اختيار اسم المستخدم
-                  </h3>
-                </div>
+              <div className="mainActions">
                 <button
-                  onClick={() => {
-                    setShowProfileNicknameModal(false);
-                    setPendingProfileUser(null);
-                    setPendingProfileColor(null);
-                    if (supabase) supabase.auth.signOut();
-                    showToast("تم إلغاء الدخول.", "info");
-                  }}
-                  className="text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded-full transition-all cursor-pointer lamma-soft-action"
-                  disabled={authLoading}
+                  className="primaryBtn primaryBtn--go"
+                  type="button"
+                  id="openOptions"
+                  onClick={handleGoToOptions}
                 >
-                  إلغاء
+                  <span className="goArrow" aria-hidden="true">
+                    ←
+                  </span>
+                  <span className="goText">يالا بينا</span>
                 </button>
               </div>
 
-              <p className="text-xs text-gray-300 leading-relaxed">
-                علشان يظهر اسمك بدل الإيميل، اكتب اسم مستخدم واحد وهنحفظه على
-                الحساب.
-              </p>
-
-              <div className="mt-3 space-y-1">
-                <label
-                  htmlFor="profile-nickname-input"
-                  className="block text-[10px] text-gray-400 font-bold mb-1.5"
+              <footer className="legal" aria-label="حقوق ونظام">
+                <div>© 2026 Lamma Chat. جميع الحقوق محفوظة — توثيق وهوية خاصة:</div>
+                <div className="idCard">{brandCredit}</div>
+                <button
+                  className="appBtn"
+                  type="button"
+                  id="installApp"
+                  onClick={handleInstallApp}
                 >
-                  اسم المستخدم:
-                </label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
-                    <Hash size={16} />
-                  </span>
-                  <input
-                    id="profile-nickname-input"
-                    type="text"
-                    value={profileNickname}
-                    onChange={(e) => setProfileNickname(e.target.value)}
-                    className="w-full pr-11 pl-4 py-2 rounded-2xl text-[11px] focus:outline-none text-white transition-all text-right lamma-input-shell"
-                    placeholder="مثال: لَمّة_محمد"
-                    autoComplete="nickname"
-                  />
+                  تثبيت التطبيق
+                </button>
+              </footer>
+
+              {message && view === "main" ? (
+                <p className={`msg legacyMsg is${capitalize(message.type)}`}>
+                  {message.text}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="view view--options">
+            <section className="optionCard optionCard--empty" aria-label="مساحة فارغة">
+              <div className="optionTop">
+                <button
+                  className="backBtn"
+                  type="button"
+                  data-action="back"
+                  aria-label="رجوع"
+                  onClick={handleGoBack}
+                >
+                  ←
+                </button>
+              </div>
+              <div className="storyWrap">
+                <div className="storyCard" aria-label="وصف لمة">
+                  <div className="storyKicker">أهلاً بك يا شريكي في «لمة»</div>
+                  <div className="storyTitle">لمة.. قعدتنا الرقمية</div>
+                  <p className="storyP">لمة مش مجرد شات، دي قعدتنا الرقمية اللي بتجمعنا.</p>
+                  <p className="storyP">
+                    المكان اللي بنهرب فيه من ضجيج العالم عشان نلاقي{" "}
+                    <span className="storyGold">(ونس)</span>
+                    {" "}حقيقي.
+                  </p>
+                  <p className="storyP">
+                    هنا الفاصل الزمني بيختفي، وبتبدأ اللمة، والضحكة، والحكايات اللي بجد.
+                  </p>
+                  <p className="storyP storyP--end">
+                    لمة.. مكانكم اللي هنستناكم فيه دايمًا
+                  </p>
                 </div>
               </div>
+            </section>
 
+            <section className="optionCard optionCard--methods" aria-label="طرق التسجيل">
+              <div className="optionTop">
+                <button
+                  className="backBtn"
+                  type="button"
+                  data-action="back"
+                  aria-label="رجوع"
+                  onClick={handleGoBack}
+                >
+                  ←
+                </button>
+              </div>
+
+              <div className="methodsList">
+                <details className="methodDisclosure" open={emailOpen}>
+                  <summary
+                    className="methodSummary"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setEmailOpen((current) => !current);
+                    }}
+                  >
+                    <span className="methodLeft">
+                      <span className="methodIcon" aria-hidden="true">
+                        <EnvelopeIcon />
+                      </span>
+                      <span className="methodText">البريد الإلكتروني</span>
+                    </span>
+                    <span className="methodCaret" aria-hidden="true">
+                      ▾
+                    </span>
+                  </summary>
+
+                  <div className="methodPanel emailPanel" data-email-tab={emailTab}>
+                    <div className="emailTabs" role="tablist" aria-label="تبديل">
+                      <button
+                        className="tabBtn"
+                        type="button"
+                        data-email-tab-btn="login"
+                        onClick={() => setEmailTab("login")}
+                      >
+                        دخول
+                      </button>
+                      <button
+                        className="tabBtn"
+                        type="button"
+                        data-email-tab-btn="register"
+                        onClick={() => setEmailTab("register")}
+                      >
+                        حساب جديد
+                      </button>
+                    </div>
+
+                    <div className="emailPane emailPane--login">
+                      <form id="loginForm" className="form" noValidate onSubmit={handleLoginSubmit}>
+                        <div className="field">
+                          <label className="label" htmlFor="loginIdentifier">
+                            البريد الإلكتروني أو الاسم
+                          </label>
+                          <input
+                            className="input"
+                            id="loginIdentifier"
+                            name="identifier"
+                            type="text"
+                            autoComplete="username"
+                            inputMode="email"
+                            placeholder="example@email.com"
+                            value={loginIdentifier}
+                            onChange={(e) => setLoginIdentifier(e.target.value)}
+                            required
+                          />
+                        </div>
+
+                        <div className="field">
+                          <label className="label" htmlFor="loginPassword">
+                            كلمة المرور
+                          </label>
+                          <div className="passwordWrap">
+                            <input
+                              className="input"
+                              id="loginPassword"
+                              name="password"
+                              type={showLoginPassword ? "text" : "password"}
+                              autoComplete="current-password"
+                              placeholder="••••••••"
+                              value={loginPassword}
+                              onChange={(e) => setLoginPassword(e.target.value)}
+                              required
+                            />
+                            <button
+                              className="iconBtn"
+                              type="button"
+                              onClick={() => setShowLoginPassword((value) => !value)}
+                            >
+                              {showLoginPassword ? "إخفاء" : "إظهار"}
+                            </button>
+                          </div>
+                        </div>
+
+                        <button
+                          className={`primaryBtn${authLoading ? " isLoading" : ""}`}
+                          type="submit"
+                          disabled={authLoading}
+                        >
+                          <span className="btnText">
+                            {authLoading ? "جارٍ التنفيذ..." : "تسجيل الدخول"}
+                          </span>
+                          <span className="spinner" aria-hidden="true"></span>
+                        </button>
+                      </form>
+                    </div>
+
+                    <div className="emailPane emailPane--register">
+                      <form
+                        id="registerForm"
+                        className="form"
+                        noValidate
+                        onSubmit={handleRegisterSubmit}
+                      >
+                        <div className="field">
+                          <label className="label" htmlFor="registerEmail">
+                            البريد الإلكتروني
+                          </label>
+                          <input
+                            className="input"
+                            id="registerEmail"
+                            name="email"
+                            type="email"
+                            autoComplete="email"
+                            inputMode="email"
+                            placeholder="example@email.com"
+                            value={registerEmail}
+                            onChange={(e) => setRegisterEmail(e.target.value)}
+                            required
+                          />
+                        </div>
+
+                        <div className="field">
+                          <label className="label" htmlFor="registerPassword">
+                            كلمة المرور
+                          </label>
+                          <div className="passwordWrap">
+                            <input
+                              className="input"
+                              id="registerPassword"
+                              name="password"
+                              type={showRegisterPassword ? "text" : "password"}
+                              autoComplete="new-password"
+                              placeholder="••••••••"
+                              value={registerPassword}
+                              onChange={(e) => setRegisterPassword(e.target.value)}
+                              required
+                            />
+                            <button
+                              className="iconBtn"
+                              type="button"
+                              onClick={() => setShowRegisterPassword((value) => !value)}
+                            >
+                              {showRegisterPassword ? "إخفاء" : "إظهار"}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="field">
+                          <label className="label" htmlFor="registerPassword2">
+                            تأكيد كلمة المرور
+                          </label>
+                          <div className="passwordWrap">
+                            <input
+                              className="input"
+                              id="registerPassword2"
+                              name="password2"
+                              type={showRegisterPassword2 ? "text" : "password"}
+                              autoComplete="new-password"
+                              placeholder="••••••••"
+                              value={registerPassword2}
+                              onChange={(e) => setRegisterPassword2(e.target.value)}
+                              required
+                            />
+                            <button
+                              className="iconBtn"
+                              type="button"
+                              onClick={() => setShowRegisterPassword2((value) => !value)}
+                            >
+                              {showRegisterPassword2 ? "إخفاء" : "إظهار"}
+                            </button>
+                          </div>
+                        </div>
+
+                        <button
+                          className={`primaryBtn${authLoading ? " isLoading" : ""}`}
+                          type="submit"
+                          disabled={authLoading}
+                        >
+                          <span className="btnText">
+                            {authLoading ? "جارٍ التنفيذ..." : "إنشاء حساب"}
+                          </span>
+                          <span className="spinner" aria-hidden="true"></span>
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </details>
+
+                <button
+                  className="secondaryBtn methodRow"
+                  type="button"
+                  data-action="google"
+                  onClick={handleGoogleLogin}
+                  disabled={authLoading}
+                >
+                  <span className="methodLeft">
+                    <span className="methodIcon methodIcon--g" aria-hidden="true">
+                      G
+                    </span>
+                    <span className="methodText">Google</span>
+                  </span>
+                </button>
+
+                <button
+                  className="secondaryBtn methodRow"
+                  type="button"
+                  data-action="quick"
+                  onClick={handleQuickLogin}
+                  disabled={authLoading}
+                >
+                  <span className="methodLeft">
+                    <span className="methodIcon" aria-hidden="true">
+                      <QuickIcon />
+                    </span>
+                    <span className="methodText">دخول سريع</span>
+                  </span>
+                </button>
+
+                <button
+                  className="secondaryBtn methodRow methodRow--link"
+                  type="button"
+                  data-action="share"
+                  onClick={handleShare}
+                >
+                  هات الرابط بتاعي
+                </button>
+
+                {message ? (
+                  <p className={`msg legacyMsg is${capitalize(message.type)}`}>
+                    {message.text}
+                  </p>
+                ) : null}
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      {showProfileNicknameModal ? (
+        <div className="legacyProfileOverlay">
+          <div className="legacyProfileCard" role="dialog" aria-modal="true">
+            <h3 className="legacyProfileTitle">اختيار اسم المستخدم</h3>
+            <p className="legacyProfileText">
+              علشان يظهر اسمك بدل الإيميل، اكتب اسم مستخدم واحد وهنحفظه على الحساب.
+            </p>
+            <div className="field">
+              <label className="label" htmlFor="profileNickname">
+                اسم المستخدم
+              </label>
+              <input
+                className="input"
+                id="profileNickname"
+                type="text"
+                autoComplete="nickname"
+                placeholder="مثال: لمة_محمد"
+                value={profileNickname}
+                onChange={(e) => setProfileNickname(e.target.value)}
+              />
+            </div>
+            <div className="legacyProfileActions">
               <button
+                className="secondaryBtn"
+                type="button"
+                onClick={async () => {
+                  setShowProfileNicknameModal(false);
+                  setPendingProfileUser(null);
+                  setPendingProfileColor(null);
+                  await supabase?.auth.signOut();
+                  showFeedback("تم إلغاء الدخول.", "info", true);
+                }}
+                disabled={authLoading}
+              >
+                إلغاء
+              </button>
+              <button
+                className={`primaryBtn${authLoading ? " isLoading" : ""}`}
                 type="button"
                 onClick={handleSaveProfileNickname}
                 disabled={authLoading}
-                className="mt-4 w-full py-2.5 rounded-lg font-black text-xs transition-all cursor-pointer text-white disabled:opacity-60 disabled:cursor-not-allowed lamma-feature-primary"
               >
-                حفظ
+                <span className="btnText">
+                  {authLoading ? "جارٍ الحفظ..." : "حفظ"}
+                </span>
+                <span className="spinner" aria-hidden="true"></span>
               </button>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {showExtraOptions && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[99998] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
-            onClick={() => setShowExtraOptions(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative my-8 w-full max-w-lg rounded-[28px] p-5 text-right lamma-modal-shell max-h-[min(82vh,760px)] overflow-y-auto"
-            >
-              <div className="mb-4 flex items-center justify-between pb-4 lamma-modal-header">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.95)]" />
-                  <h3 className="text-base font-black text-white">
-                    خيارات إضافية
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setShowExtraOptions(false)}
-                  className="rounded-full px-3 py-1.5 text-xs text-gray-400 transition-all cursor-pointer lamma-soft-action hover:text-white"
-                >
-                  إغلاق
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="rounded-2xl p-3 lamma-section-card">
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2 rounded-full px-2.5 py-1 lamma-login-highlight">
-                      <Sparkles
-                        size={13}
-                        className="text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] animate-pulse"
-                      />
-                      <span className="text-[11px] font-black text-white">
-                        دخول سريع باستخدام {brandName}
-                      </span>
-                    </div>
-                    <span className="rounded-full bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] px-2 py-0.5 text-[9px] font-bold text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)]">
-                      تلقائي
-                    </span>
-                  </div>
-
-                  <p className="mb-3 text-right text-[10px] lamma-login-subtext">
-                    هيتجهز لك اسم زائر تلقائي وتدخل فورًا من غير زحمة أو خطوات كتير.
-                  </p>
-
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-12 sm:items-center">
-                    <div className="flex justify-center sm:col-span-3">
-                      <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-[0_0_12px_rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.10)] lamma-login-orb">
-                        <span>🤖</span>
-                        <span className="absolute bottom-1 right-1 h-2.5 w-2.5 animate-pulse rounded-full border border-black bg-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)]" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 sm:col-span-9">
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          id="guest-id-display"
-                          name="guestId"
-                          type="text"
-                          readOnly
-                          value={guestId}
-                          className="flex-1 rounded-xl px-2.5 py-1.5 text-center text-[11px] font-mono text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] focus:outline-none lamma-input-shell"
-                          autoComplete="off"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={handleCopyGuestId}
-                          className="rounded-lg p-2 text-gray-400 transition-all lamma-muted-btn hover:text-white"
-                          title="نسخ المعرف"
-                        >
-                          <Copy size={13} />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleRegenerateGuestId}
-                          className="group rounded-lg p-2 text-gray-400 transition-all lamma-muted-btn hover:text-white"
-                          title="توليد معرف جديد"
-                        >
-                          <RefreshCw
-                            size={13}
-                            className="transition-transform duration-500 group-hover:rotate-180"
-                          />
-                        </button>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowExtraOptions(false);
-                          handleSwiftGuestLogin();
-                        }}
-                        className="w-full rounded-xl py-2 text-[11px] font-black cursor-pointer transition-all lamma-primary-btn"
-                      >
-                        <span className="inline-flex items-center justify-center gap-2">
-                          <Zap size={14} />
-                          <span>دخول مباشر بالاسم المقترح</span>
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {import.meta.env.DEV && !supabase ? (
-                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const assignedColor =
-                            NICKNAME_COLORS[
-                              Math.floor(Math.random() * NICKNAME_COLORS.length)
-                            ];
-                          setShowExtraOptions(false);
-                          onLogin(
-                            guestId,
-                            "owner",
-                            assignedColor,
-                            undefined,
-                            undefined,
-                            "guest",
-                          );
-                        }}
-                        className="cursor-pointer rounded-xl border border-red-500/20 bg-red-500/5 py-2 text-xs font-black text-red-300 transition-all hover:border-red-500/60 hover:bg-red-500/15 hover:text-white"
-                      >
-                        👑 دخول كمالك (Demo)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const assignedColor =
-                            NICKNAME_COLORS[
-                              Math.floor(Math.random() * NICKNAME_COLORS.length)
-                            ];
-                          setShowExtraOptions(false);
-                          onLogin(
-                            guestId,
-                            "admin",
-                            assignedColor,
-                            undefined,
-                            undefined,
-                            "guest",
-                          );
-                        }}
-                        className="cursor-pointer rounded-xl border border-blue-500/20 bg-blue-500/5 py-2 text-xs font-black text-blue-200 transition-all hover:border-blue-500/60 hover:bg-blue-500/15 hover:text-white"
-                      >
-                        🛡️ دخول كأدمن (Demo)
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    id="continue-as-guest-btn"
-                    name="continueAsGuest"
-                    onClick={() => {
-                      setShowExtraOptions(false);
-                      handleSwiftGuestLogin();
-                    }}
-                    className="flex items-center justify-center gap-1.5 rounded-2xl border border-white/10 bg-black/20 px-4 py-2 text-[11px] font-black text-white transition-all backdrop-blur-md hover:bg-black/40"
-                  >
-                    <span>متابعة كضيف</span>
-                    <ChevronRight size={13} className="rotate-180 opacity-60" />
-                  </button>
-
-                  <button
-                    type="button"
-                    id="copy-app-link-btn"
-                    name="copyAppLink"
-                    onClick={() => {
-                      setShowExtraOptions(false);
-                      handleCopyLink();
-                    }}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-2 text-[10px] text-gray-200 transition-all backdrop-blur-md hover:bg-black/40 hover:text-white"
-                  >
-                    <Share2 size={12} />
-                    <span>هات الرابط بتاعى</span>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {showShareModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[99999] flex items-center justify-center p-4 overflow-y-auto"
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="w-full max-w-md rounded-[28px] p-6 text-right relative my-8 lamma-modal-shell"
-            >
-              <div className="flex items-center justify-between pb-4 mb-4 lamma-modal-header">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
-                  <h3 className="text-base font-black text-white">
-                    طريقة الدخول ومشاركة شات لمة 💚
-                  </h3>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowShareModal(false);
-                    setCopiedLink(false);
-                  }}
-                  className="text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full transition-all cursor-pointer"
-                >
-                  إغلاق
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <p className="text-xs text-gray-300 leading-relaxed">
-                  💡{" "}
-                  <strong className="text-green-400 font-black">
-                    ليه شات لمة مش بيظهر بالبحث على جوجل؟
-                  </strong>
-                  <br />
-                  شات لمة بيشتغل بخصوصية تامة ومشفر لتوفير غرف آمنة لك
-                  ولأصدقائك. محركات البحث مثل جوجل لا تقوم بأرشفة هذه الروابط
-                  لحماية خصوصيتك وسرية غرفتك من الغرباء أو المتسللين.
-                </p>
-
-                <div className="p-3 rounded-xl lamma-section-card">
-                  <label
-                    htmlFor="share-app-link-input"
-                    className="block text-[10px] text-gray-400 font-bold mb-1.5"
-                  >
-                    رابط الدخول المباشر للغرفة:
-                  </label>
-                  <div className="flex gap-2 items-center">
-                    <button
-                      onClick={() => {
-                        const u = appLink;
-                        try {
-                          if (
-                            navigator.clipboard &&
-                            navigator.clipboard.writeText
-                          ) {
-                            navigator.clipboard
-                              .writeText(u)
-                              .then(() => {
-                                setCopiedLink(true);
-                                playBeepSound(800, "sine");
-                                setTimeout(() => setCopiedLink(false), 3000);
-                              })
-                              .catch(() => fallbackCopy(u));
-                          } else {
-                            fallbackCopy(u);
-                          }
-                        } catch (err) {
-                          fallbackCopy(u);
-                        }
-                      }}
-                      className={`px-4 py-2.5 rounded-lg font-black text-xs transition-all flex-shrink-0 cursor-pointer ${
-                        copiedLink
-                          ? "bg-green-500/20 text-green-300 border border-green-500/30 animate-pulse"
-                          : "lamma-feature-primary"
-                      }`}
-                    >
-                      {copiedLink ? "✅ تم النسخ!" : "إسحب الرابط"}
-                    </button>
-                    <input
-                      id="share-app-link-input"
-                      type="text"
-                      readOnly
-                      value={appLink}
-                      onClick={(e) => {
-                        (e.target as HTMLInputElement).select();
-                      }}
-                      className="w-full rounded-lg p-2 text-center text-xs text-gray-200 font-mono select-all focus:outline-none lamma-input-shell"
-                    />
-                  </div>
-                  <span className="block text-[9px] text-gray-500 mt-1.5">
-                    💡 تلميح: لو كبس الزرار مش مدعوم في متصفحك بسبب الحماية،
-                    اضغط داخل المربع الفوقاني لتحديد العنوان كله ثم انسخه بنفسك
-                    يدوياً.
-                  </span>
-                </div>
-
-                <div className="flex flex-col items-center justify-center p-4 rounded-xl text-center lamma-section-card">
-                  <span className="text-[10px] text-gray-400 font-bold mb-2">
-                    أو وجّه كاميرا موبايلك (أو موبايل صديقك) نحو الكود ده للدخول
-                    فوراً:
-                  </span>
-                  <div className="bg-white p-2.5 rounded-2xl inline-block border-2 border-[#a3e635]/30">
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(appLink)}`}
-                      alt="QR Code"
-                      className="w-[140px] h-[140px]"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                  <span className="text-[9px] text-green-400 mt-2 font-black">
-                    🟢 اتصال مباشر آمن ومفعل بالكامل
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </main>
   );
+}
+
+function capitalize(value: MessageType) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
