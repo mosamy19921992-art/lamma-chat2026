@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import type { ChatScreenProps } from "../lib/chatTypes";
+import type { ChatMember, ChatScreenProps, Message } from "../lib/chatTypes";
+import { storage } from "../lib/storage";
 import {
   Send,
   Image,
@@ -148,21 +149,21 @@ export default function ChatScreen({
   type WallTheme = "fire" | "ice" | "violet";
 
   const [ownerBgImage, setOwnerBgImage] = useState<string | null>(() =>
-    localStorage.getItem("lamma_owner_bg_image"),
+    storage.getString("lamma_owner_bg_image") || null,
   );
   const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(() =>
-    localStorage.getItem("lamma_custom_logo_url"),
+    storage.getString("lamma_custom_logo_url") || null,
   );
   const [glowColor, setGlowColor] = useState<string>(() => {
-    return localStorage.getItem("lamma_glow_color") || "#10b981";
+    return storage.getString("lamma_glow_color") || "#10b981";
   });
   const [wallTheme, setWallTheme] = useState<WallTheme>(() => {
-    const saved = localStorage.getItem("lamma_wall_theme");
+    const saved = storage.getString("lamma_wall_theme");
     if (saved === "fire" || saved === "ice" || saved === "violet") return saved;
     return "fire";
   });
   const [roomBgMap, setRoomBgMap] = useState<Record<string, string>>(() => {
-    const raw = localStorage.getItem("lamma_room_bg_map");
+    const raw = storage.getString("lamma_room_bg_map");
     if (!raw) return {};
     try {
       const parsed = JSON.parse(raw);
@@ -258,14 +259,14 @@ export default function ChatScreen({
 
   // --- AUTOMATION AND STORE SYSTEM STATES ---
   const [subscription, setSubscription] = useState<any>(() => {
-    const saved = localStorage.getItem("lamma_user_subscription");
+    const saved = storage.getString("lamma_user_subscription");
     try {
       if (!saved) return null;
       const parsed = JSON.parse(saved);
       // حماية من التلاعب: expiresAt لا يتجاوز سنتين من دلوقتي
       const MAX_VALID_EXPIRY = Date.now() + 2 * 365 * 24 * 60 * 60 * 1000;
       if (parsed.expiresAt && parsed.expiresAt > MAX_VALID_EXPIRY) {
-        localStorage.removeItem("lamma_user_subscription");
+      storage.remove("lamma_user_subscription");
         return null;
       }
       return parsed;
@@ -275,7 +276,7 @@ export default function ChatScreen({
   });
 
   const [myActiveSession, setMyActiveSession] = useState(() => {
-    const savedSub = localStorage.getItem("lamma_user_subscription");
+    const savedSub = storage.getString("lamma_user_subscription");
     let initialRole = currentUser.role;
     let initialColor = currentUser.color;
     let initialFrame = "";
@@ -372,14 +373,14 @@ export default function ChatScreen({
 
   // Client simulated parameters for the Mega Ban fingerprinting system
   const [myFingerprint] = useState(() => {
-    let fp = localStorage.getItem("lamma_device_fp");
+    let fp = storage.getString("lamma_device_fp");
     if (!fp) {
       fp =
         "fp-" +
         Math.floor(Math.random() * 900000 + 100000).toString(16) +
         "-" +
         Math.floor(Math.random() * 9000 + 1000);
-      localStorage.setItem("lamma_device_fp", fp);
+      storage.setString("lamma_device_fp", fp);
     }
     return fp;
   });
@@ -391,17 +392,17 @@ export default function ChatScreen({
   const [myIp] = useState(() => {
     // IP الحقيقي يأتي من الـ server — نخزن placeholder فارغ فقط كـ identifier محلي
     // لا نولد IP وهمي من نطاق مصري لأنه مضلل ويُستخدم في قرارات الحظر
-    let ip = localStorage.getItem("lamma_device_ip");
+    let ip = storage.getString("lamma_device_ip");
     if (!ip) {
       ip = "";
-      localStorage.setItem("lamma_device_ip", ip);
+      storage.setString("lamma_device_ip", ip);
     }
     return ip;
   });
 
   // Dynamic lists of banned users — تُحمَّل من Supabase ومُحفوظة احتياطياً في localStorage
   const [bannedUsersList, setBannedUsersList] = useState<BanInfo[]>(() => {
-    const saved = localStorage.getItem("lamma_banned_list");
+    const saved = storage.getString("lamma_banned_list");
     try {
       return saved ? JSON.parse(saved) : [];
     } catch {
@@ -433,7 +434,7 @@ export default function ChatScreen({
           isSilent: row.is_silent || false,
         }));
         setBannedUsersList(mapped);
-        localStorage.setItem("lamma_banned_list", JSON.stringify(mapped));
+        storage.set("lamma_banned_list", mapped);
       }
     };
     fetchBans();
@@ -464,7 +465,7 @@ export default function ChatScreen({
           avatar: data.avatar || "",
         };
         setSubscription(sub);
-        localStorage.setItem("lamma_user_subscription", JSON.stringify(sub));
+        storage.set("lamma_user_subscription", sub);
       }
     };
     fetchSubscription();
@@ -493,15 +494,17 @@ export default function ChatScreen({
 
   // Lists of friends, ignored, and blocked users
   const [friendsList, setFriendsList] = useState<string[]>(() => {
-    const saved = localStorage.getItem("lamma_friends_list");
-    return saved ? JSON.parse(saved) : [];
+    const saved = storage.getString("lamma_friends_list");
+    if (saved) try { return JSON.parse(saved); } catch { /* ignore */ }
+    return [];
   });
   const [ignoredUsers, setIgnoredUsers] = useState<string[]>(() => {
-    const saved = localStorage.getItem("lamma_ignored_users");
-    return saved ? JSON.parse(saved) : [];
+    const saved = storage.getString("lamma_ignored_users");
+    if (saved) try { return JSON.parse(saved); } catch { /* ignore */ }
+    return [];
   });
   const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
-    const saved = localStorage.getItem("lamma_blocked_users");
+    const saved = storage.getString("lamma_blocked_users");
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -511,9 +514,9 @@ export default function ChatScreen({
   useEffect(() => {
     if (lsDebounceRef.current) clearTimeout(lsDebounceRef.current);
     lsDebounceRef.current = setTimeout(() => {
-      localStorage.setItem("lamma_friends_list", JSON.stringify(friendsList));
-      localStorage.setItem("lamma_ignored_users", JSON.stringify(ignoredUsers));
-      localStorage.setItem("lamma_blocked_users", JSON.stringify(blockedUsers));
+      storage.set("lamma_friends_list", friendsList);
+      storage.set("lamma_ignored_users", ignoredUsers);
+      storage.set("lamma_blocked_users", blockedUsers);
     }, 500);
     return () => {
       if (lsDebounceRef.current) clearTimeout(lsDebounceRef.current);
@@ -522,7 +525,7 @@ export default function ChatScreen({
 
   const [myCustomBio, setMyCustomBio] = useState(() => {
     return (
-      localStorage.getItem("lamma_user_bio") ||
+      storage.getString("lamma_user_bio") ||
       "شخص مميز يشغل حسابه في شات لمة الرائد 💚"
     );
   });
@@ -557,7 +560,7 @@ export default function ChatScreen({
   useEffect(() => {
     if (bioDebounceRef.current) clearTimeout(bioDebounceRef.current);
     bioDebounceRef.current = setTimeout(() => {
-      localStorage.setItem("lamma_user_bio", myCustomBio);
+      storage.setString("lamma_user_bio", myCustomBio);
     }, 500);
     return () => {
       if (bioDebounceRef.current) clearTimeout(bioDebounceRef.current);
@@ -625,7 +628,7 @@ export default function ChatScreen({
       const messagesInRoom = prev[activeRoomId] || [];
       const next = messagesInRoom.filter((m) => m.id !== msg.id);
       try {
-        localStorage.setItem(
+        storage.setString(
           `lamma_messages_${activeRoomId}`,
           JSON.stringify(next),
         );
@@ -650,7 +653,7 @@ export default function ChatScreen({
 
   // Dynamic products list stored inside the owner's reactive system
   const [storeProducts, setStoreProducts] = useState<any[]>(() => {
-    const saved = localStorage.getItem("lamma_store_products");
+    const saved = storage.getString("lamma_store_products");
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -725,7 +728,7 @@ export default function ChatScreen({
           "يضيف بجوار اسمك لقب 🛡️ حام الفضيلة وتخصيص لقب الشات إلى [زعيم السلام] بخلفية شفافة أنيقة.",
         price: "15 EGP",
         type: "title",
-        title: "زعيم السلام",
+        title: "زعي�� السلام",
         badge: "🛡️ حام الفضيلة",
       },
       {
@@ -747,7 +750,7 @@ export default function ChatScreen({
   useEffect(() => {
     if (storeDebounceRef.current) clearTimeout(storeDebounceRef.current);
     storeDebounceRef.current = setTimeout(() => {
-      localStorage.setItem("lamma_store_products", JSON.stringify(storeProducts));
+      storage.set("lamma_store_products", storeProducts);
     }, 500);
     return () => {
       if (storeDebounceRef.current) clearTimeout(storeDebounceRef.current);
@@ -765,13 +768,13 @@ export default function ChatScreen({
       const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
 
       const savedRemindersStr =
-        localStorage.getItem("lamma_bot_reminders") || "{}";
+        storage.getString("lamma_bot_reminders") || "{}";
       const savedReminders = JSON.parse(savedRemindersStr);
 
       if (remainingDays <= 0) {
         // EXPIRED! BOT REMOVES VIP AUTOMATICALLY
         const expiredSub = { ...subscription, isActive: false };
-        localStorage.setItem(
+        storage.setString(
           "lamma_user_subscription",
           JSON.stringify(expiredSub),
         );
@@ -798,7 +801,7 @@ export default function ChatScreen({
         );
       } else if (remainingDays === 1 && !savedReminders["1"]) {
         savedReminders["1"] = true;
-        localStorage.setItem(
+        storage.setString(
           "lamma_bot_reminders",
           JSON.stringify(savedReminders),
         );
@@ -808,7 +811,7 @@ export default function ChatScreen({
         );
       } else if (remainingDays <= 3 && !savedReminders["3"]) {
         savedReminders["3"] = true;
-        localStorage.setItem(
+        storage.setString(
           "lamma_bot_reminders",
           JSON.stringify(savedReminders),
         );
@@ -818,7 +821,7 @@ export default function ChatScreen({
         );
       } else if (remainingDays <= 7 && !savedReminders["7"]) {
         savedReminders["7"] = true;
-        localStorage.setItem(
+        storage.setString(
           "lamma_bot_reminders",
           JSON.stringify(savedReminders),
         );
@@ -859,7 +862,7 @@ export default function ChatScreen({
 
   // سجل نشاطات الغرفة — يبدأ فارغاً ويُحمَّل من localStorage أو يُبنى من أحداث Supabase
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
-    const saved = localStorage.getItem("lamma_activity_logs");
+    const saved = storage.getString("lamma_activity_logs");
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -879,33 +882,33 @@ export default function ChatScreen({
 
   // Global Owner Control Center states
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(() => {
-    return localStorage.getItem("lamma_maintenance_mode") === "true";
+    return storage.getString("lamma_maintenance_mode") === "true";
   });
   const [isGlobalMute, setIsGlobalMute] = useState<boolean>(() => {
-    return localStorage.getItem("lamma_global_mute") === "true";
+    return storage.getString("lamma_global_mute") === "true";
   });
   const [isGlobalMicMute, setIsGlobalMicMute] = useState<boolean>(() => {
-    return localStorage.getItem("lamma_global_mic_mute") === "true";
+    return storage.getString("lamma_global_mic_mute") === "true";
   });
   const [isOnlyVIPCanSendImages, setIsOnlyVIPCanSendImages] = useState<boolean>(
     () => {
-      return localStorage.getItem("lamma_vip_only_images") === "true";
+      return storage.getString("lamma_vip_only_images") === "true";
     },
   );
   const [isBotSilent, setIsBotSilent] = useState<boolean>(() => {
-    return localStorage.getItem("lamma_bot_silent") === "true";
+    return storage.getString("lamma_bot_silent") === "true";
   });
   const [isAdsEnabled, setIsAdsEnabled] = useState<boolean>(() => {
-    return localStorage.getItem("lamma_ads_enabled") !== "false";
+    return storage.getString("lamma_ads_enabled") !== "false";
   });
   const [isWelcomeToastEnabled, setIsWelcomeToastEnabled] = useState<boolean>(
     () => {
-      return localStorage.getItem("lamma_greetings_enabled") !== "false";
+      return storage.getString("lamma_greetings_enabled") !== "false";
     },
   );
   const [isAdBannerDismissed, setIsAdBannerDismissed] = useState<boolean>(
     () => {
-      return localStorage.getItem("lamma_ad_banner_dismissed") === "true";
+      return storage.getString("lamma_ad_banner_dismissed") === "true";
     },
   );
 
@@ -915,14 +918,14 @@ export default function ChatScreen({
   useEffect(() => {
     if (adminSettingsDebounceRef.current) clearTimeout(adminSettingsDebounceRef.current);
     adminSettingsDebounceRef.current = setTimeout(() => {
-      localStorage.setItem("lamma_ad_banner_dismissed", String(isAdBannerDismissed));
-      localStorage.setItem("lamma_maintenance_mode", String(isMaintenanceMode));
-      localStorage.setItem("lamma_global_mute", String(isGlobalMute));
-      localStorage.setItem("lamma_global_mic_mute", String(isGlobalMicMute));
-      localStorage.setItem("lamma_vip_only_images", String(isOnlyVIPCanSendImages));
-      localStorage.setItem("lamma_bot_silent", String(isBotSilent));
-      localStorage.setItem("lamma_ads_enabled", String(isAdsEnabled));
-      localStorage.setItem("lamma_greetings_enabled", String(isWelcomeToastEnabled));
+      storage.setString("lamma_ad_banner_dismissed", String(isAdBannerDismissed));
+      storage.setString("lamma_maintenance_mode", String(isMaintenanceMode));
+      storage.setString("lamma_global_mute", String(isGlobalMute));
+      storage.setString("lamma_global_mic_mute", String(isGlobalMicMute));
+      storage.setString("lamma_vip_only_images", String(isOnlyVIPCanSendImages));
+      storage.setString("lamma_bot_silent", String(isBotSilent));
+      storage.setString("lamma_ads_enabled", String(isAdsEnabled));
+      storage.setString("lamma_greetings_enabled", String(isWelcomeToastEnabled));
     }, 500);
     return () => {
       if (adminSettingsDebounceRef.current) clearTimeout(adminSettingsDebounceRef.current);
@@ -939,7 +942,7 @@ export default function ChatScreen({
   ]);
 
   const [bannedWords, setBannedWords] = useState<string[]>(() => {
-    const saved = localStorage.getItem("lamma_banned_words");
+    const saved = storage.getString("lamma_banned_words");
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -953,7 +956,7 @@ export default function ChatScreen({
   useEffect(() => {
     if (bannedWordsDebounceRef.current) clearTimeout(bannedWordsDebounceRef.current);
     bannedWordsDebounceRef.current = setTimeout(() => {
-      localStorage.setItem("lamma_banned_words", JSON.stringify(bannedWords));
+      storage.set("lamma_banned_words", bannedWords);
     }, 500);
     return () => {
       if (bannedWordsDebounceRef.current) clearTimeout(bannedWordsDebounceRef.current);
@@ -1100,7 +1103,7 @@ export default function ChatScreen({
   const [memberCustomPermissions, setMemberCustomPermissions] = useState<
     Record<string, MemberCustomPermissions>
   >(() => {
-    const saved = localStorage.getItem("lamma_custom_user_perms");
+    const saved = storage.getString("lamma_custom_user_perms");
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -1115,7 +1118,7 @@ export default function ChatScreen({
   useEffect(() => {
     if (permsDebounceRef.current) clearTimeout(permsDebounceRef.current);
     permsDebounceRef.current = setTimeout(() => {
-      localStorage.setItem(
+      storage.setString(
         "lamma_custom_user_perms",
         JSON.stringify(memberCustomPermissions),
       );
@@ -1312,7 +1315,7 @@ export default function ChatScreen({
     }[]
   >(() => {
     try {
-      const raw = localStorage.getItem("lamma_notifications");
+      const raw = storage.getString("lamma_notifications");
       if (raw) return JSON.parse(raw);
     } catch (e) {
       // ignore
@@ -1361,7 +1364,9 @@ export default function ChatScreen({
       | "privacy"
       | "settings"
       | "headerMenu"
-      | "pmList",
+      | "pmList"
+      | "rooms"
+      | "members",
   ) => {
     setActiveModal(null);
     setIsPmOpen(false);
@@ -1456,7 +1461,7 @@ export default function ChatScreen({
 
   // Sync banned list to localStorage
   useEffect(() => {
-    localStorage.setItem("lamma_banned_list", JSON.stringify(bannedUsersList));
+    storage.set("lamma_banned_list", bannedUsersList);
   }, [bannedUsersList]);
 
   // System Event Logging handler
@@ -1482,7 +1487,7 @@ export default function ChatScreen({
 
     setActivityLogs((prev) => {
       const updated = [newLog, ...prev];
-      localStorage.setItem("lamma_activity_logs", JSON.stringify(updated));
+      storage.set("lamma_activity_logs", updated);
       return updated;
     });
   };
@@ -1699,7 +1704,7 @@ export default function ChatScreen({
   );
   const [isEditingWelcome, setIsEditingWelcome] = useState(false);
 
-  // رسائل الغرف — تبدأ فارغة وتُحمَّل من Supabase عبر الـ realtime channel
+  // رسائل الغر�� — تبدأ فارغة وتُحمَّل من Supabase عبر الـ realtime channel
   const [roomMessages, setRoomMessages] = useState<Record<string, Message[]>>({});
 
   // Room mapped topics
@@ -1740,7 +1745,7 @@ export default function ChatScreen({
 
   // Local messages loading
   useEffect(() => {
-    const saved = localStorage.getItem(`lamma_messages_${activeRoomId}`);
+    const saved = storage.getString(`lamma_messages_${activeRoomId}`);
     if (saved) {
       try {
         setRoomMessages((prev) => ({
@@ -1847,7 +1852,7 @@ export default function ChatScreen({
                   minute: "numeric",
                   hour12: true,
                 }),
-            type: (sMsg.type as any) || "text",
+              type: (sMsg.type as Message["type"]) || "text",
             mediaUrl: sMsg.media_url,
             giftIcon: sMsg.gift_icon,
             giftName: sMsg.gift_name,
@@ -1885,7 +1890,7 @@ export default function ChatScreen({
             setNotifications((prevN) => {
               const next = [newNotif, ...prevN].slice(0, 30);
               try {
-                localStorage.setItem(
+                storage.setString(
                   "lamma_notifications",
                   JSON.stringify(next),
                 );
@@ -2027,7 +2032,7 @@ export default function ChatScreen({
   };
 
   const handleAccelerateDays = (days: number) => {
-    const savedSub = localStorage.getItem("lamma_user_subscription");
+    const savedSub = storage.getString("lamma_user_subscription");
     if (!savedSub) {
       showChatToast(
         "❌ لا يوجد اشتراك VIP نشط حالياً لتسريع عجلة الزمن عليه! يرجى شراء باقة VIP أولاً من واجهة المتجر.",
@@ -2047,7 +2052,7 @@ export default function ChatScreen({
         ...sub,
         expiresAt: sub.expiresAt - days * 24 * 60 * 60 * 1000,
       };
-      localStorage.setItem(
+      storage.setString(
         "lamma_user_subscription",
         JSON.stringify(adjustedSub),
       );
@@ -2121,8 +2126,8 @@ export default function ChatScreen({
       lastUserMsg.type === "text"
     ) {
       isBlocked = true;
-      warningMessage = `⚠️ تنبيه مكرر: يرجى عدم تكرار نفس العبارات المتعاقبة سريعاً يا العضو (${authorName}) حفاظاً على جمال وهدوء الشات.`;
-      logMsg = `رصد محاولة تكرار رسالة متطابقة (Spam) من [${authorName}] وتم حجبها لمنع الإزعاج.`;
+      warningMessage = `⚠️ تنبيه مكرر: يرجى عدم تكرار نفس العبارات ا��متعاقبة سريعاً يا العضو (${authorName}) حفاظاً على جمال وهدوء الشات.`;
+      logMsg = `رصد محاولة تكرار ر��الة متطابقة (Spam) من [${authorName}] وتم حجبها لمنع الإزعاج.`;
       logSeverity = "warn";
       return {
         isBlocked,
@@ -2402,7 +2407,7 @@ export default function ChatScreen({
 
           setBannedUsersList((prev) => {
             const updated = [autoBanInfo, ...prev];
-            localStorage.setItem("lamma_banned_list", JSON.stringify(updated));
+            storage.set("lamma_banned_list", updated);
             return updated;
           });
 
@@ -2420,7 +2425,7 @@ export default function ChatScreen({
                   b.nickname.toLowerCase() !== userNick.toLowerCase() ||
                   b.type !== "mute",
               );
-              localStorage.setItem(
+              storage.setString(
                 "lamma_banned_list",
                 JSON.stringify(filtered),
               );
@@ -2502,7 +2507,7 @@ export default function ChatScreen({
         ...prev,
         [activeRoomId]: updatedMessages,
       }));
-      localStorage.setItem(
+      storage.setString(
         `lamma_messages_${activeRoomId}`,
         JSON.stringify(updatedMessages),
       );
@@ -2725,7 +2730,7 @@ export default function ChatScreen({
       ...prev,
       [activeRoomId]: updatedMessages,
     }));
-    localStorage.setItem(
+    storage.setString(
       `lamma_messages_${activeRoomId}`,
       JSON.stringify(updatedMessages),
     );
@@ -3098,7 +3103,7 @@ export default function ChatScreen({
           <div className="flex gap-3">
             <button
               onClick={() => {
-                localStorage.removeItem("lamma_banned_list");
+                storage.remove("lamma_banned_list");
                 location.reload();
               }}
               className="flex-1 py-3 text-[10px] font-black bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl border border-white/10 transition-all cursor-pointer"
@@ -3320,7 +3325,7 @@ export default function ChatScreen({
                   <div className="relative dropdown-container flex items-center xl:hidden">
                     <button
                       onClick={() => {
-                        toggleDropdown("rooms" as any);
+                        toggleDropdown("rooms");
                         if (isSidebarOpen && activeSidebarTab === "rooms") {
                           setIsSidebarOpen(false);
                         } else {
@@ -3339,7 +3344,7 @@ export default function ChatScreen({
                   <div className="relative dropdown-container flex items-center xl:hidden">
                     <button
                       onClick={() => {
-                        toggleDropdown("members" as any);
+                        toggleDropdown("members");
                         if (isSidebarOpen && activeSidebarTab === "members") {
                           setIsSidebarOpen(false);
                         } else {
@@ -3612,7 +3617,7 @@ export default function ChatScreen({
                                   <div
                                     key={nickname}
                                     onClick={() => {
-                                      setPmTarget(targetUser as any);
+                                      setPmTarget(targetUser as ChatMember);
                                       if (window.innerWidth < 1280)
                                         setMobileTab("private");
                                       else setIsPmOpen(true);
@@ -3634,25 +3639,25 @@ export default function ChatScreen({
                                           >
                                             {nickname}
                                           </h4>
-                                          {(targetUser as any).role ===
+                                          {(targetUser as ChatMember).role ===
                                             "platinum_vip" && (
                                             <span className="text-[6px] lamma-role-chip lamma-role-plat">
                                               PLATINUM VIP
                                             </span>
                                           )}
-                                          {(targetUser as any).role ===
+                                          {(targetUser as ChatMember).role ===
                                             "vip" && (
                                             <span className="text-[6px] lamma-role-chip lamma-role-vip">
                                               VIP
                                             </span>
                                           )}
-                                          {(targetUser as any).role ===
+                                          {(targetUser as ChatMember).role ===
                                             "admin" && (
                                             <span className="text-[6px] lamma-role-chip lamma-role-admin">
                                               ADMIN
                                             </span>
                                           )}
-                                          {(targetUser as any).role ===
+                                          {(targetUser as ChatMember).role ===
                                             "owner" && (
                                             <span className="text-[6px] lamma-role-chip lamma-role-owner">
                                               OWNER
@@ -3702,7 +3707,7 @@ export default function ChatScreen({
                             <div
                               key={nickname}
                               onClick={() => {
-                                setPmTarget(targetUser as any);
+                                setPmTarget(targetUser as ChatMember);
                                 if (window.innerWidth < 1280)
                                   setMobileTab("private");
                                 else setIsPmOpen(true);
@@ -3724,23 +3729,23 @@ export default function ChatScreen({
                                     >
                                       {nickname}
                                     </h4>
-                                    {(targetUser as any).role ===
+                                    {(targetUser as ChatMember).role ===
                                       "platinum_vip" && (
                                       <span className="text-[6px] lamma-role-chip lamma-role-plat">
                                         PLATINUM VIP
                                       </span>
                                     )}
-                                    {(targetUser as any).role === "vip" && (
+                                    {(targetUser as ChatMember).role === "vip" && (
                                       <span className="text-[6px] lamma-role-chip lamma-role-vip">
                                         VIP
                                       </span>
                                     )}
-                                    {(targetUser as any).role === "admin" && (
+                                    {(targetUser as ChatMember).role === "admin" && (
                                       <span className="text-[6px] lamma-role-chip lamma-role-admin">
                                         ADMIN
                                       </span>
                                     )}
-                                    {(targetUser as any).role === "owner" && (
+                                    {(targetUser as ChatMember).role === "owner" && (
                                       <span className="text-[6px] lamma-role-chip lamma-role-owner">
                                         OWNER
                                       </span>
@@ -3768,7 +3773,7 @@ export default function ChatScreen({
                     <button
                       onClick={() => toggleDropdown("notifications")}
                       className={`flex items-center justify-center transition-colors relative cursor-pointer ml-1 sm:ml-2 lamma-header-mini-btn ${showNotificationsDropdown ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
-                      title="الإشعارات"
+                      title="الإشعارا��"
                     >
                       <Bell size={11} strokeWidth={2.2} />
                       {unreadNotificationsCount > 0 ? (
@@ -3845,7 +3850,7 @@ export default function ChatScreen({
                                         read: true,
                                       }));
                                       try {
-                                        localStorage.setItem(
+                                        storage.setString(
                                           "lamma_notifications",
                                           JSON.stringify(next),
                                         );
@@ -3864,7 +3869,7 @@ export default function ChatScreen({
                                     e.stopPropagation();
                                     setNotifications([]);
                                     try {
-                                      localStorage.removeItem(
+                                      storage.remove(
                                         "lamma_notifications",
                                       );
                                     } catch (err) {
@@ -3900,7 +3905,7 @@ export default function ChatScreen({
                                             : x,
                                         );
                                         try {
-                                          localStorage.setItem(
+                                          storage.setString(
                                             "lamma_notifications",
                                             JSON.stringify(next),
                                           );
@@ -4248,7 +4253,7 @@ export default function ChatScreen({
                   </div>
                   <button
                     type="button"
-                    onClick={() => toggleDropdown("radio" as any)}
+                    onClick={() => toggleDropdown("radio")}
                     className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
                     title="فتح الراديو"
                   >
@@ -4271,7 +4276,7 @@ export default function ChatScreen({
                     <div className="mt-3 flex items-center justify-between">
                       <button
                         type="button"
-                        onClick={() => toggleDropdown("radio" as any)}
+                        onClick={() => toggleDropdown("radio")}
                         className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
                         title="تشغيل/إيقاف"
                       >
@@ -4280,7 +4285,7 @@ export default function ChatScreen({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => toggleDropdown("radio" as any)}
+                          onClick={() => toggleDropdown("radio")}
                           className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
                           title="السابق"
                         >
@@ -4288,7 +4293,7 @@ export default function ChatScreen({
                         </button>
                         <button
                           type="button"
-                          onClick={() => toggleDropdown("radio" as any)}
+                          onClick={() => toggleDropdown("radio")}
                           className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
                           title="التالي"
                         >
@@ -4353,7 +4358,7 @@ export default function ChatScreen({
                   </div>
                   <button
                     type="button"
-                    onClick={() => toggleDropdown("music" as any)}
+                    onClick={() => toggleDropdown("music")}
                     className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
                     title="فتح الموسيقى"
                   >
@@ -4372,7 +4377,7 @@ export default function ChatScreen({
                     </div>
                     <button
                       type="button"
-                      onClick={() => toggleDropdown("music" as any)}
+                      onClick={() => toggleDropdown("music")}
                       className="px-3 py-2 rounded-xl text-[color:var(--accent-primary)] text-[10px] font-black transition-all cursor-pointer lamma-toggle-on"
                     >
                       فتح
@@ -5281,7 +5286,7 @@ export default function ChatScreen({
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 11.99 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    دخول سريع بـ Google للمزامنة
+                    دخو�� سريع بـ Google للمزامنة
                   </button>
                 )}
               </div>
@@ -5323,7 +5328,8 @@ export default function ChatScreen({
                         const r = isSystem
                           ? "admin"
                           : getRoleFromAuthor(msg.author, myActiveSession, chatMembers);
-                        return (r === "platinum_vip" ? "vip" : r) as any;
+                        return (r === "platinum_vip" ? "vip" : r) as
+                          | "guest" | "user" | "vip" | "mod" | "admin" | "owner";
                       })()}
                     />
                   </div>
@@ -5604,7 +5610,7 @@ export default function ChatScreen({
                 <div className="flex-1 overflow-hidden relative h-5 flex items-center">
                   <div className="absolute whitespace-nowrap animate-marquee flex items-center gap-10 lamma-banner-marquee">
                     <span>
-                      🔥 عروض المتجر التأسيسي: احصل على رتبة VIP بلاتينية الآن
+                      🔥 عروض المتجر التأسيسي: احصل على رتبة VIP بلات��نية الآن
                       بخصم 45%!
                     </span>
                     <span>
@@ -6157,7 +6163,7 @@ export default function ChatScreen({
               <div className="relative dropdown-container flex-shrink-0">
                 <button
                   type="button"
-                  onClick={() => toggleDropdown("settings" as any)}
+                  onClick={() => toggleDropdown("settings")}
                   className={`transition-all cursor-pointer mx-0.5 sm:mx-1 flex items-center justify-center lamma-composer-tool ${showSettingsDropdown ? "bg-white/10 text-white" : "text-gray-400 hover:text-white lamma-toolbar-btn"}`}
                   title="الإعدادات"
                 >
@@ -6910,7 +6916,7 @@ export default function ChatScreen({
                     {activeModal === "owner" &&
                       "لوحة تحكم سيادة المالك (Owner's Dashboard)"}
                     {activeModal === "admin" &&
-                      "لوحة الإدارة الشاملة (Admin Dashboard)"}
+                      "لوحة الإدارة الشامل�� (Admin Dashboard)"}
                     {activeModal === "guard" &&
                       "حماة لمة الغالية • Lamma Guard Center"}
                     {activeModal === "store" &&
@@ -7058,7 +7064,7 @@ export default function ChatScreen({
                             onClick={() => {
                               const newVal = !isMaintenanceMode;
                               setIsMaintenanceMode(newVal);
-                              localStorage.setItem(
+                              storage.setString(
                                 "lamma_maintenance_mode",
                                 String(newVal),
                               );
@@ -7091,7 +7097,7 @@ export default function ChatScreen({
                             onClick={() => {
                               const newVal = !isGlobalMute;
                               setIsGlobalMute(newVal);
-                              localStorage.setItem(
+                              storage.setString(
                                 "lamma_global_mute",
                                 String(newVal),
                               );
@@ -7121,7 +7127,7 @@ export default function ChatScreen({
                             onClick={() => {
                               const newVal = !isGlobalMicMute;
                               setIsGlobalMicMute(newVal);
-                              localStorage.setItem(
+                              storage.setString(
                                 "lamma_global_mic_mute",
                                 String(newVal),
                               );
@@ -7151,7 +7157,7 @@ export default function ChatScreen({
                             onClick={() => {
                               const newVal = !isOnlyVIPCanSendImages;
                               setIsOnlyVIPCanSendImages(newVal);
-                              localStorage.setItem(
+                              storage.setString(
                                 "lamma_vip_only_images",
                                 String(newVal),
                               );
@@ -7192,7 +7198,7 @@ export default function ChatScreen({
                               "owner_logo_url_input",
                             ) as HTMLInputElement;
                             if (inp && inp.value.trim() !== "") {
-                              localStorage.setItem(
+                              storage.setString(
                                 "lamma_custom_logo_url",
                                 inp.value.trim(),
                               );
@@ -7206,7 +7212,7 @@ export default function ChatScreen({
                                 "قام المالك بتحديث أيقونة التطبيق السيادية.",
                               );
                             } else {
-                              localStorage.removeItem("lamma_custom_logo_url");
+                              storage.remove("lamma_custom_logo_url");
                               setBrandLogoUrl(null);
                               showChatToast("تم استعادة الأيقونة الافتراضية.", "success");
                             }
@@ -7231,7 +7237,7 @@ export default function ChatScreen({
                               "owner_bg_url_input",
                             ) as HTMLInputElement;
                             if (inp && inp.value.trim() !== "") {
-                              localStorage.setItem(
+                              storage.setString(
                                 "lamma_owner_bg_image",
                                 inp.value.trim(),
                               );
@@ -7243,7 +7249,7 @@ export default function ChatScreen({
                                 "قام المالك بتغيير تصميم خلفية الشات.",
                               );
                             } else {
-                              localStorage.removeItem("lamma_owner_bg_image");
+                              storage.remove("lamma_owner_bg_image");
                               setOwnerBgImage(null);
                               showChatToast("تم استعادة تصميم الخلفية الافتراضية.", "success");
                             }
@@ -8022,7 +8028,7 @@ export default function ChatScreen({
                       <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
                         <div className="text-[10px] text-gray-400 font-bold mb-1">
                           التحكم في المعرفات المحظورة كلياً (Mega Ban) وحظر
-                          الغرف والكتم:
+                          الغ��ف والكتم:
                         </div>
                         {bannedUsersList.map((item) => (
                           <div
@@ -8481,7 +8487,7 @@ export default function ChatScreen({
                                     "👑 OWNER MODERATOR",
                                   );
                                   showChatToast(
-                                    "✅ تم حقن ونشر الميزة الجديدة وتفعيل العرض فوسفورياً في المتجر بكفاءة!",
+                                    "✅ تم حقن ونشر الميزة الج��يدة وتفعيل العرض فوسفورياً في المتجر بكفاءة!",
                                   , "success");
                                 }
 
@@ -8876,7 +8882,7 @@ export default function ChatScreen({
                           </h4>
                         </div>
                         <p className="text-[9.5px] text-gray-400 font-bold leading-relaxed font-sans mt-0.5">
-                          تفعيل فوري لرتب VIP، الأشكال، الألقاب، الأصدقاء
+                          تفعيل فوري لرتب VIP، الأشكال، الألقاب، الأصدقا��
                           ��لأذكياء، وفحص سلامة وأمان المنصة آلياً بالكامل.
                         </p>
                       </div>
@@ -9065,7 +9071,7 @@ export default function ChatScreen({
                           {storeProducts.filter((p) => p.tab === "skins")
                             .length === 0 && (
                             <p className="col-span-3 text-center text-gray-500 text-[10px] font-bold py-6">
-                              ⚠️ لا توجد مظاهر أو إطارات ملوّنة حالياً.
+                              ⚠️ لا توجد مظاهر أو إطارات ملوّنة ��الياً.
                             </p>
                           )}
                         </div>
@@ -9722,7 +9728,7 @@ export default function ChatScreen({
                                     avatar: selectedProduct.avatar || "👤",
                                     expiresAt: expiresAtMs,
                                   };
-                                  localStorage.setItem(
+                                  storage.setString(
                                     "lamma_user_subscription",
                                     JSON.stringify(subInfo),
                                   );
@@ -9931,7 +9937,7 @@ export default function ChatScreen({
                               type="button"
                               onClick={() => {
                                 setWallTheme("fire");
-                                localStorage.setItem("lamma_wall_theme", "fire");
+                                storage.setString("lamma_wall_theme", "fire");
                               }}
                               className={`p-3 rounded-xl border transition-all ${
                                 wallTheme === "fire"
@@ -9948,7 +9954,7 @@ export default function ChatScreen({
                               type="button"
                               onClick={() => {
                                 setWallTheme("ice");
-                                localStorage.setItem("lamma_wall_theme", "ice");
+                                storage.setString("lamma_wall_theme", "ice");
                               }}
                               className={`p-3 rounded-xl border transition-all ${
                                 wallTheme === "ice"
@@ -9965,7 +9971,7 @@ export default function ChatScreen({
                               type="button"
                               onClick={() => {
                                 setWallTheme("violet");
-                                localStorage.setItem(
+                                storage.setString(
                                   "lamma_wall_theme",
                                   "violet",
                                 );
@@ -10012,13 +10018,13 @@ export default function ChatScreen({
                                 "leadership_logo_url_input",
                               ) as HTMLInputElement;
                               if (inp && inp.value.trim() !== "") {
-                                localStorage.setItem(
+                                storage.setString(
                                   "lamma_custom_logo_url",
                                   inp.value.trim(),
                                 );
                                 setBrandLogoUrl(inp.value.trim());
                               } else {
-                                localStorage.removeItem("lamma_custom_logo_url");
+                                storage.remove("lamma_custom_logo_url");
                                 setBrandLogoUrl(null);
                               }
                             }}
@@ -10040,7 +10046,7 @@ export default function ChatScreen({
                             onChange={(e) => {
                               const next = e.target.value;
                               setGlowColor(next);
-                              localStorage.setItem("lamma_glow_color", next);
+                              storage.setString("lamma_glow_color", next);
                             }}
                             className="w-10 h-10 rounded-lg bg-transparent lamma-input-shell"
                           />
@@ -10050,7 +10056,7 @@ export default function ChatScreen({
                             onChange={(e) => {
                               const next = e.target.value;
                               setGlowColor(next);
-                              localStorage.setItem("lamma_glow_color", next);
+                              storage.setString("lamma_glow_color", next);
                             }}
                             className="flex-1 rounded-lg text-[11px] text-white px-2 py-2 focus:outline-none lamma-input-shell"
                             dir="ltr"
@@ -10085,7 +10091,7 @@ export default function ChatScreen({
                               if (next) updated[activeRoomId] = next;
                               else delete updated[activeRoomId];
                               setRoomBgMap(updated);
-                              localStorage.setItem(
+                              storage.setString(
                                 "lamma_room_bg_map",
                                 JSON.stringify(updated),
                               );
@@ -10101,7 +10107,7 @@ export default function ChatScreen({
                             const updated = { ...roomBgMap };
                             delete updated[activeRoomId];
                             setRoomBgMap(updated);
-                            localStorage.setItem(
+                            storage.setString(
                               "lamma_room_bg_map",
                               JSON.stringify(updated),
                             );
@@ -10131,13 +10137,13 @@ export default function ChatScreen({
                                 "leadership_bg_url_input",
                               ) as HTMLInputElement;
                               if (inp && inp.value.trim() !== "") {
-                                localStorage.setItem(
+                                storage.setString(
                                   "lamma_owner_bg_image",
                                   inp.value.trim(),
                                 );
                                 setOwnerBgImage(inp.value.trim());
                               } else {
-                                localStorage.removeItem("lamma_owner_bg_image");
+                                storage.remove("lamma_owner_bg_image");
                                 setOwnerBgImage(null);
                               }
                             }}

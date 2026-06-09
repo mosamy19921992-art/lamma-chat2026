@@ -103,6 +103,87 @@ create policy "Only admins can unban users" on public.banned_users
   using (public.is_admin());
 
 -- Realtime setup
--- Add tables to the publication so clients can listen to changes
 alter publication supabase_realtime add table public.messages;
 alter publication supabase_realtime add table public.banned_users;
+
+-- 3. جدول VIP Subscriptions
+-- يُستخدم لتخزين اشتراكات VIP الفعّالة لكل مستخدم
+-- الـ role الفعلي يُقرأ من هنا ويُكتب في user_metadata عبر Admin SDK أو Supabase trigger
+create table if not exists public.vip_subscriptions (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  user_id text not null,
+  plan text not null default 'vip',
+  is_active boolean not null default true,
+  expires_at timestamp with time zone not null,
+  badge text,
+  avatar text,
+  granted_by text
+);
+
+alter table public.vip_subscriptions enable row level security;
+
+-- المستخدم يقرأ اشتراكاته فقط
+drop policy if exists "Users read own subscriptions" on public.vip_subscriptions;
+create policy "Users read own subscriptions" on public.vip_subscriptions
+  for select
+  using (user_id = auth.uid()::text or public.is_admin());
+
+-- فقط الأدمن يضيف أو يعدل أو يحذف اشتراكات
+drop policy if exists "Admins manage subscriptions" on public.vip_subscriptions;
+create policy "Admins manage subscriptions" on public.vip_subscriptions
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+alter publication supabase_realtime add table public.vip_subscriptions;
+
+-- 4. جدول PM Messages (الرسائل الخاصة)
+-- يحفظ المحادثات الخاصة بشكل دائم بدل localStorage فقط
+-- sender_uid و receiver_uid هما uid المستخدمين المتحدثَين
+create table if not exists public.pm_messages (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  sender_uid text not null,
+  sender_nickname text not null,
+  receiver_uid text not null,
+  receiver_nickname text not null,
+  text text,
+  type text not null default 'text',
+  media_url text,
+  is_read boolean not null default false
+);
+
+alter table public.pm_messages enable row level security;
+
+-- كل طرف يرى رسائله فقط (مُرسِل أو مُستقبِل)
+drop policy if exists "Users read own pm messages" on public.pm_messages;
+create policy "Users read own pm messages" on public.pm_messages
+  for select
+  using (
+    sender_uid = auth.uid()::text
+    or receiver_uid = auth.uid()::text
+  );
+
+-- المرسِل فقط يُرسِل
+drop policy if exists "Users insert own pm messages" on public.pm_messages;
+create policy "Users insert own pm messages" on public.pm_messages
+  for insert
+  with check (sender_uid = auth.uid()::text);
+
+-- المرسِل أو المستقبِل يمكنه حذف الرسالة
+drop policy if exists "Users delete own pm messages" on public.pm_messages;
+create policy "Users delete own pm messages" on public.pm_messages
+  for delete
+  using (
+    sender_uid = auth.uid()::text
+    or receiver_uid = auth.uid()::text
+  );
+
+-- الأدمن يرى كل الرسائل الخاصة (للإشراف)
+drop policy if exists "Admins read all pm messages" on public.pm_messages;
+create policy "Admins read all pm messages" on public.pm_messages
+  for select
+  using (public.is_admin());
+
+alter publication supabase_realtime add table public.pm_messages;

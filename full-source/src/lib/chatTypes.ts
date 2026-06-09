@@ -71,8 +71,9 @@ export interface ChatMember {
   badge?: string;
   fingerprint: string;
   browserSignature: string;
-  ip: string;
+  ip?: string;
   localStorageId: string;
+  bio?: string;
 }
 
 export interface PMThreadMessage {

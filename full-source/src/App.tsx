@@ -54,6 +54,27 @@ function clearGuestSession() {
   localStorage.removeItem(GUEST_SESSION_KEY);
 }
 
+// استخراج بيانات المستخدم من Supabase session
+// role: يُقرأ من user_metadata.role لو موجود (يُعيَّن من Admin SDK أو trigger)
+// fallback: 'user' للمستخدمين العاديين
+type SupabaseUser = NonNullable<import('@supabase/supabase-js').Session['user']>;
+function sessionToUserSession(supaUser: SupabaseUser): UserSession {
+  const meta = (supaUser.user_metadata ?? {}) as Record<string, string>;
+  const validRoles = new Set(['guest', 'user', 'vip', 'platinum_vip', 'mod', 'admin', 'owner']);
+  const role = validRoles.has(meta.role) ? meta.role : 'user';
+  return {
+    nickname: meta.nickname || meta.name || supaUser.email || 'User',
+    role,
+    color: meta.color || 'white',
+    uid: supaUser.id,
+    email: supaUser.email ?? null,
+    authProvider: 'supabase',
+    badge: meta.badge,
+    avatar: meta.avatar,
+    frame: meta.frame,
+  };
+}
+
 export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
   const [primaryTheme, setPrimaryTheme] = useState<Theme>('dark');
@@ -76,18 +97,7 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         clearGuestSession();
-        const nick =
-          (session.user.user_metadata as any)?.nickname ||
-          (session.user.user_metadata as any)?.name ||
-          (session.user.email ?? 'User');
-        setUser({
-          nickname: nick,
-          role: 'user',
-          color: 'white',
-          uid: session.user.id,
-          email: session.user.email ?? null,
-          authProvider: 'supabase',
-        });
+        setUser(sessionToUserSession(session.user));
         return;
       }
 
@@ -102,17 +112,7 @@ export default function App() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         clearGuestSession();
-        setUser({
-          nickname:
-            (session.user.user_metadata as any)?.nickname ||
-            (session.user.user_metadata as any)?.name ||
-            (session.user.email ?? 'User'),
-          role: 'user',
-          color: 'white',
-          uid: session.user.id,
-          email: session.user.email ?? null,
-          authProvider: 'supabase',
-        });
+        setUser(sessionToUserSession(session.user));
         return;
       }
 
