@@ -1,16 +1,31 @@
 // Chat types extracted from ChatScreen.tsx — pure refactor, no behavior change.
 
+// MemberRole — type alias مشترك بين UserSession وChatMember بدل تكرار الـ union
+export type MemberRole =
+  | "guest"
+  | "user"
+  | "vip"
+  | "platinum_vip"
+  | "mod"
+  | "admin"
+  | "owner";
+
+// ProductTab — للمتجر
+export type ProductTab = "vip" | "skins" | "badges";
+
+// ProductType — نوع الاشتراك/المنتج
+export type ProductType =
+  | "bronze"
+  | "silver"
+  | "gold"
+  | "platinum"
+  | "frame"
+  | "title";
+
 export interface UserSession {
   nickname: string;
-  role:
-    | "guest"
-    | "user"
-    | "vip"
-    | "platinum_vip"
-    | "mod"
-    | "admin"
-    | "owner"
-    | string;
+  // | string ضروري للـ backward compat مع guest sessions القديمة في localStorage
+  role: MemberRole | string;
   color: string;
   uid?: string;
   email?: string | null;
@@ -19,7 +34,6 @@ export interface UserSession {
   title?: string;
   badge?: string;
   avatar?: string;
-  [key: string]: any;
 }
 
 export interface ChatScreenProps {
@@ -56,14 +70,7 @@ export interface Message {
 export interface ChatMember {
   id: string;
   nickname: string;
-  role:
-    | "guest"
-    | "user"
-    | "vip"
-    | "platinum_vip"
-    | "mod"
-    | "admin"
-    | "owner";
+  role: MemberRole;
   color: string;
   avatar: string;
   status: "online" | "offline" | "idle";

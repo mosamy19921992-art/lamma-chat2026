@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import type { ChatMember, ChatScreenProps, Message } from "../lib/chatTypes";
+import type {
+  ChatMember,
+  ChatScreenProps,
+  Message,
+  MemberRole,
+  ProductTab,
+  ProductType,
+  PMThreadMessage,
+} from "../lib/chatTypes";
 import { storage } from "../lib/storage";
 import {
   Send,
@@ -162,17 +170,9 @@ export default function ChatScreen({
     if (saved === "fire" || saved === "ice" || saved === "violet") return saved;
     return "fire";
   });
-  const [roomBgMap, setRoomBgMap] = useState<Record<string, string>>(() => {
-    const raw = storage.getString("lamma_room_bg_map");
-    if (!raw) return {};
-    try {
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== "object") return {};
-      return parsed;
-    } catch {
-      return {};
-    }
-  });
+  const [roomBgMap, setRoomBgMap] = useState<Record<string, string>>(
+    () => storage.get<Record<string, string>>("lamma_room_bg_map", {}),
+  );
   const [inputText, setInputText] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showSearchPop, setShowSearchPop] = useState(false);
@@ -401,14 +401,9 @@ export default function ChatScreen({
   });
 
   // Dynamic lists of banned users — تُحمَّل من Supabase ومُحفوظة احتياطياً في localStorage
-  const [bannedUsersList, setBannedUsersList] = useState<BanInfo[]>(() => {
-    const saved = storage.getString("lamma_banned_list");
-    try {
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [bannedUsersList, setBannedUsersList] = useState<BanInfo[]>(
+    () => storage.get<BanInfo[]>("lamma_banned_list", []),
+  );
 
   // تزامن قائمة الحظر مع Supabase عند التحميل
   useEffect(() => {
@@ -493,20 +488,15 @@ export default function ChatScreen({
     useState<ChatMember | null>(null);
 
   // Lists of friends, ignored, and blocked users
-  const [friendsList, setFriendsList] = useState<string[]>(() => {
-    const saved = storage.getString("lamma_friends_list");
-    if (saved) try { return JSON.parse(saved); } catch { /* ignore */ }
-    return [];
-  });
-  const [ignoredUsers, setIgnoredUsers] = useState<string[]>(() => {
-    const saved = storage.getString("lamma_ignored_users");
-    if (saved) try { return JSON.parse(saved); } catch { /* ignore */ }
-    return [];
-  });
-  const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
-    const saved = storage.getString("lamma_blocked_users");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [friendsList, setFriendsList] = useState<string[]>(
+    () => storage.get<string[]>("lamma_friends_list", []),
+  );
+  const [ignoredUsers, setIgnoredUsers] = useState<string[]>(
+    () => storage.get<string[]>("lamma_ignored_users", []),
+  );
+  const [blockedUsers, setBlockedUsers] = useState<string[]>(
+    () => storage.get<string[]>("lamma_blocked_users", []),
+  );
 
   // debounce ref لتقليل الكتابة على localStorage
   const lsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -652,98 +642,20 @@ export default function ChatScreen({
   };
 
   // Dynamic products list stored inside the owner's reactive system
-  const [storeProducts, setStoreProducts] = useState<any[]>(() => {
-    const saved = storage.getString("lamma_store_products");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        // ignore
-      }
-    }
+  // DEFAULT_CATALOG هو الكتالوج الافتراضي — يُستبدل بالمحفوظ في localStorage لو موجود
+  const DEFAULT_STORE_CATALOG = [
+    { id: "prod-vip-bronze", tab: "vip", name: "💎 باقة كبار الشخصيات البرونزية", description: "شارة VIP خضراء ملفتة، تمكين ألوان الاسم، رخصة مكالمات صوتية بلا قيود.", price: "50 EGP", type: "bronze", badge: "VIP", color: "#10b981", ext: "vip" },
+    { id: "prod-vip-platinum", tab: "vip", name: "👑 باقة كبار الشخصيات البلاتينية", description: "شارة متدرجة متوهجة، اسم متدرج الألوان، إطار ذهبي، هدايا مروحية وصاروخية.", price: "150 EGP", type: "platinum", badge: "PLATINUM", color: "gradient", ext: "platinum_vip" },
+    { id: "prod-skin-fire", tab: "skins", name: "🔥 إطار اللهب المتوهج", description: "هالة نارية مشتعلة تدور بجمال لافت حول صورتك.", price: "25 EGP", type: "frame", frame: "from-red-500 via-orange-500 to-yellow-500" },
+    { id: "prod-skin-ice", tab: "skins", name: "❄️ إطار الجليد الكوني", description: "إطار بارد من أطياف الضوء الطبيعي.", price: "25 EGP", type: "frame", frame: "from-cyan-500 via-indigo-500 to-purple-500" },
+    { id: "prod-skin-rainbow", tab: "skins", name: "🌈 إطار قوس قزح السحري", description: "سبعة ألوان طيفية حول صورتك بشكل متحرك.", price: "30 EGP", type: "frame", frame: "from-pink-500 via-purple-500 to-cyan-500" },
+    { id: "prod-badge-peace", tab: "badges", name: "🛡️ لقب حامي السلام", description: "يضيف لقب حام الفضيلة بجوار اسمك.", price: "15 EGP", type: "title", title: "زعيم السلام", badge: "🛡️ حام الفضيلة" },
+    { id: "prod-badge-emperor", tab: "badges", name: "⚡ لقب الإمبراطور", description: "يمنحك لقب القيصر المضيء بجوار اسمك.", price: "35 EGP", type: "title", title: "الإمبراطور العظيم", badge: "⚡ القيصر" },
+  ] as const;
 
-    return [
-      // VIP Bundles
-      {
-        id: "prod-vip-bronze",
-        tab: "vip",
-        name: "💎 باقة كبار الشخصيات البرونزية",
-        description:
-          "شارة VIP خضراء ملفتة، تمكين ألوان الاسم، رخصة مكالمات صوتية بلا قيود، والحصول على شارات التميز الأساسية لاسمك.",
-        price: "50 EGP",
-        type: "bronze",
-        badge: "VIP",
-        color: "#10b981",
-        ext: "vip",
-      },
-      {
-        id: "prod-vip-platinum",
-        tab: "vip",
-        name: "👑 باقة كبار الشخصيات البلاتينية",
-        description:
-          "شارة متدرجة متوهجة، اسم متدرج الألوان، إطار ذهبي لافت، تمكين هدايا مروحية وصاروخية طائرة تلقائياً، وأولوية رعاية من البوت.",
-        price: "150 EGP",
-        type: "platinum",
-        badge: "PLATINUM",
-        color: "gradient",
-        ext: "platinum_vip",
-      },
-      // Skins & Cosmetics
-      {
-        id: "prod-skin-fire",
-        tab: "skins",
-        name: "🔥 إطار اللهب المتوهج",
-        description:
-          "يمنح صورتك الشخصية والرسائل والملف هالة نارية مشتعلة تدور بجمال لافت.",
-        price: "25 EGP",
-        type: "frame",
-        frame: "from-red-500 via-orange-500 to-yellow-500",
-      },
-      {
-        id: "prod-skin-ice",
-        tab: "skins",
-        name: "❄️ إطار الجليد الكوني",
-        description:
-          "إطار متحلزن بارد من أطياف الضوء الطبيعي ينير تواجدك في الدردشة.",
-        price: "25 EGP",
-        type: "frame",
-        frame: "from-cyan-500 via-indigo-500 to-purple-500",
-      },
-      {
-        id: "prod-skin-rainbow",
-        tab: "skins",
-        name: "🌈 إطار قوس قزح السحري",
-        description:
-          "تداول فوري لسبعة ألوان طيفية حول صورتك بشكل متحرك يلفت كل الأنظار.",
-        price: "30 EGP",
-        type: "frame",
-        frame: "from-pink-500 via-purple-500 to-cyan-500",
-      },
-      // Badges & Titles
-      {
-        id: "prod-badge-peace",
-        tab: "badges",
-        name: "🛡️ لقب حامي السلام (Peacekeeper)",
-        description:
-          "يضيف بجوار اسمك لقب 🛡️ حام الفضيلة وتخصيص لقب الشات إلى [زعيم السلام] بخلفية شفافة أنيقة.",
-        price: "15 EGP",
-        type: "title",
-        title: "زعي�� السلام",
-        badge: "🛡️ حام الفضيلة",
-      },
-      {
-        id: "prod-badge-emperor",
-        tab: "badges",
-        name: "⚡ لقب الإمبراطور (Emperor Authority)",
-        description:
-          "يمنحك لقب ⚡ القيصر وتعيين اللقب المطبوع [الإمبراطور العظيم] المضيء بجوار لقبك بالدردشة والفعاليات.",
-        price: "35 EGP",
-        type: "title",
-        title: "الإمبراطور العظيم",
-        badge: "⚡ القيصر",
-      },
-    ];
-  });
+  const [storeProducts, setStoreProducts] = useState<any[]>(
+    () => storage.get<any[]>("lamma_store_products", [...DEFAULT_STORE_CATALOG]),
+  );
 
   // Sync products list to dynamic localStorage
   const storeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -839,14 +751,12 @@ export default function ChatScreen({
 
   // Product addition and modification variables
   const [newProdName, setNewProdName] = useState("");
-  const [newProdTab, setNewProdTab] = useState<"vip" | "skins" | "badges">(
+  const [newProdTab, setNewProdTab] = useState<ProductTab>(
     "vip",
   );
   const [newProdPrice, setNewProdPrice] = useState("");
   const [newProdDesc, setNewProdDesc] = useState("");
-  const [newProdType, setNewProdType] = useState<
-    "bronze" | "platinum" | "frame" | "title"
-  >("title");
+  const [newProdType, setNewProdType] = useState<ProductType>("title");
   const [newProdBadge, setNewProdBadge] = useState("");
   const [newProdColor, setNewProdColor] = useState("#10b981");
   const [newProdFrame, setNewProdFrame] = useState(
@@ -860,18 +770,13 @@ export default function ChatScreen({
   // القائمة تبدأ فارغة وتتملأ تلقائياً عند انضمام المستخدمين
   const [chatMembers, setChatMembers] = useState<ChatMember[]>([]);
 
+  // عدد المستخدمين في كل غرفة — يُحسب من الـ presence channel
+  const [roomCounts, setRoomCounts] = useState<Record<string, number>>({});
+
   // سجل نشاطات الغرفة — يبدأ فارغاً ويُحمَّل من localStorage أو يُبنى من أحداث Supabase
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
-    const saved = storage.getString("lamma_activity_logs");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        // ignore — return empty
-      }
-    }
-    return [];
-  });
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(
+    () => storage.get<ActivityLog[]>("lamma_activity_logs", []),
+  );
 
   // Lamma AI Guard Bot Settings & States
   const [isBotEnabled, setIsBotEnabled] = useState(true);
@@ -941,16 +846,9 @@ export default function ChatScreen({
     isWelcomeToastEnabled,
   ]);
 
-  const [bannedWords, setBannedWords] = useState<string[]>(() => {
-    const saved = storage.getString("lamma_banned_words");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {}
-    }
-    // قائمة افتراضية خفيفة — الإشراف يضيف كلماته الخاصة
-    return ["spam", "scam", "روابط"];
-  });
+  const [bannedWords, setBannedWords] = useState<string[]>(
+    () => storage.get<string[]>("lamma_banned_words", ["spam", "scam", "روابط"]),
+  );
 
   const bannedWordsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -966,7 +864,7 @@ export default function ChatScreen({
 
   // User rapid promotion panel states
   const [promoTargetNick, setPromoTargetNick] = useState("");
-  const [promoTargetRole, setPromoTargetRole] = useState<string>("vip");
+  const [promoTargetRole, setPromoTargetRole] = useState<MemberRole>("vip");
   const [promoTargetColor, setPromoTargetColor] = useState("#10b981");
   const [promoTargetBadge, setPromoTargetBadge] = useState("");
 
@@ -1102,17 +1000,7 @@ export default function ChatScreen({
   // صلاحيات مخصصة لكل عضو — تبدأ فارغة (تُعيَّن يدوياً من الأدمن)
   const [memberCustomPermissions, setMemberCustomPermissions] = useState<
     Record<string, MemberCustomPermissions>
-  >(() => {
-    const saved = storage.getString("lamma_custom_user_perms");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        // ignore
-      }
-    }
-    return {};
-  });
+  >(() => storage.get<Record<string, MemberCustomPermissions>>("lamma_custom_user_perms", {}));
 
   const permsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -1163,7 +1051,7 @@ export default function ChatScreen({
     {
       id: "track1",
       title: "موسيقى ترحيبية كلاسيكية 🌸",
-      desc: "Classic ambient track",
+      desc: "موسيقى هادئة للخلفية",
       url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
     },
     {
@@ -1326,8 +1214,9 @@ export default function ChatScreen({
   const messageAudioCtxRef = useRef<AudioContext | null>(null);
   const playMessageSound = () => {
     try {
-      const Ctx =
-        (window as any).AudioContext || (window as any).webkitAudioContext;
+      const win = window as Window &
+        typeof globalThis & { webkitAudioContext?: typeof AudioContext };
+      const Ctx = win.AudioContext || win.webkitAudioContext;
       if (!Ctx) return;
       if (!messageAudioCtxRef.current) messageAudioCtxRef.current = new Ctx();
       const ctx = messageAudioCtxRef.current;
@@ -1753,7 +1642,8 @@ export default function ChatScreen({
           [activeRoomId]: JSON.parse(saved),
         }));
       } catch (e) {
-        console.error("Failed to parse messages from localStorage", e);
+        console.error("[v0] Failed to parse cached messages:", e);
+        showChatToast("تعذر تحميل الرسائل المحفوظة محلياً", "error");
       }
     } else {
       setRoomMessages((prev) => ({
@@ -1905,8 +1795,61 @@ export default function ChatScreen({
       )
       .subscribe();
 
+    // ── Presence Tracking ──────────────────────────────────────────────────
+    // كل مستخدم يبعت بياناته على الـ channel عشان باقي الأعضاء يشوفوه
+    const presenceChannel = supabase
+      .channel(`presence:${activeRoomId}`)
+      .on("presence", { event: "sync" }, () => {
+        const state = presenceChannel.presenceState<{
+          nickname: string;
+          role: string;
+          color: string;
+          avatar: string;
+          fingerprint: string;
+          browserSignature: string;
+          localStorageId: string;
+        }>();
+
+        const members: ChatMember[] = Object.entries(state).flatMap(
+          ([, presences]) =>
+            presences.map((p) => ({
+              id: p.presence_ref ?? p.localStorageId,
+              nickname: p.nickname,
+              role: (p.role as ChatMember["role"]) || "user",
+              color: p.color || "#94a3b8",
+              avatar: p.avatar || "👤",
+              status: "online" as const,
+              fingerprint: p.fingerprint || "",
+              browserSignature: p.browserSignature || "",
+              localStorageId: p.localStorageId || "",
+            })),
+        );
+
+        setChatMembers(members);
+
+        // roomCounts — عدد الحاضرين لكل غرفة
+        setRoomCounts((prev) => ({
+          ...prev,
+          [activeRoomId]: members.length,
+        }));
+      })
+      .subscribe(async (status) => {
+        if (status !== "SUBSCRIBED") return;
+        // إرسال بيانات المستخدم الحالي
+        await presenceChannel.track({
+          nickname: myActiveSession.nickname,
+          role: myActiveSession.role,
+          color: myActiveSession.color,
+          avatar: myActiveSession.avatar || "👤",
+          fingerprint: myDeviceFingerprint,
+          browserSignature: navigator.userAgent,
+          localStorageId: myDeviceLocalStorageId,
+        });
+      });
+
     return () => {
       supabase.removeChannel(subscription);
+      supabase.removeChannel(presenceChannel);
     };
   }, [activeRoomId, currentUser.nickname]);
 
@@ -2127,7 +2070,7 @@ export default function ChatScreen({
     ) {
       isBlocked = true;
       warningMessage = `⚠️ تنبيه مكرر: يرجى عدم تكرار نفس العبارات ا��متعاقبة سريعاً يا العضو (${authorName}) حفاظاً على جمال وهدوء الشات.`;
-      logMsg = `رصد محاولة تكرار ر��الة متطابقة (Spam) من [${authorName}] وتم حجبها لمنع الإزعاج.`;
+      logMsg = `رصد محاولة تكرا�� ر��الة متطابقة (Spam) من [${authorName}] وتم حجبها لمنع الإزعاج.`;
       logSeverity = "warn";
       return {
         isBlocked,
@@ -3773,7 +3716,7 @@ export default function ChatScreen({
                     <button
                       onClick={() => toggleDropdown("notifications")}
                       className={`flex items-center justify-center transition-colors relative cursor-pointer ml-1 sm:ml-2 lamma-header-mini-btn ${showNotificationsDropdown ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
-                      title="الإشعارا��"
+                      title="الإش��ارا��"
                     >
                       <Bell size={11} strokeWidth={2.2} />
                       {unreadNotificationsCount > 0 ? (
@@ -4502,7 +4445,7 @@ export default function ChatScreen({
                                 <span>{room.name}</span>
                               </div>
                               <span className="bg-black/60 px-2 py-0.5 rounded-full border border-green-500/10 text-[9px] text-[#a3e635] font-black font-mono">
-                                {room.count}
+                                {roomCounts[room.id] ?? 0}
                               </span>
                             </div>
                           ))}
@@ -4648,7 +4591,7 @@ export default function ChatScreen({
                 {/* Category: Normal users and guests */}
                 <div>
                   <div className="text-[10px] text-gray-400 font-extrabold flex items-center justify-between mb-1.5 font-sans mt-3">
-                    <span className="flex items-center gap-1 font-sans uppercase tracking-widest text-[9px]">👥 Users & Guests</span>
+                    <span className="flex items-center gap-1 font-sans uppercase tracking-widest text-[9px]">الأعضاء والضيوف</span>
                     <span className="text-[9px] font-mono text-gray-500">{chatMembers.filter(m => m.role === "user" || m.role === "guest").length} Active</span>
                   </div>
                   <div className="pl-1 space-y-1 font-sans rounded-2xl overflow-hidden bg-white/[0.02] lamma-list-panel p-1.5">
@@ -4783,8 +4726,8 @@ export default function ChatScreen({
                       dir="ltr"
                     >
                       {systemActivity.type === "join"
-                        ? "Join to room"
-                        : "Leave room"}
+                        ? "انضم للغرفة"
+                        : "غادر الغرفة"}
                     </span>
                   </div>
                 </motion.div>
@@ -7503,7 +7446,7 @@ export default function ChatScreen({
                                 );
                                 addLammaBotMessage(
                                   activeRoomId,
-                                  `🤖 قرار ضبط المايكات: تم ${nextVal ? "إغلاق وتأمين ميكروفونات الشات لعامة الأعضاء" : "فتح قنوات التحدث الصوتي الحر مجرياً للأعضاء"}، تفضلوا بكل ترحيب 🎙️.`,
+                                  `🤖 قرار ضبط ا��مايكات: تم ${nextVal ? "إغلاق وتأمين ميكروفونات الشات لعامة الأعضاء" : "فتح قنوات التحدث الصوتي الحر مجرياً للأعضاء"}، تفضلوا بكل ترحيب 🎙️.`,
                                 );
                               }}
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
@@ -7683,7 +7626,7 @@ export default function ChatScreen({
                         {/* SECTION B: DYNAMIC INSTANT USER ROLE & VIP PROMOTION SUITE */}
                         <div className="p-4 rounded-2xl space-y-3.5 lamma-section-card">
                           <h5 className="text-[10px] font-black text-lime-400 border-b border-white/5 pb-1.5">
-                            👤 لوحة التحكم بالترقيات والعزل السريع للأعضاء
+                            👤 لوحة التحكم بالترقيات والعزل السريع لل��عضاء
                             (Instant Member Promotion Suite)
                           </h5>
 
@@ -7769,7 +7712,7 @@ export default function ChatScreen({
                                 name="promoTargetRole"
                                 value={promoTargetRole}
                                 onChange={(e) =>
-                                  setPromoTargetRole(e.target.value as any)
+                                  setPromoTargetRole(e.target.value as MemberRole)
                                 }
                                 className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
                               >
@@ -7892,10 +7835,9 @@ export default function ChatScreen({
                                     ) {
                                       return {
                                         ...m,
-                                        role: (promoTargetRole ===
-                                        "platinum_vip"
+                                        role: (promoTargetRole === "platinum_vip"
                                           ? "vip"
-                                          : promoTargetRole) as any,
+                                          : promoTargetRole) as MemberRole,
                                         color: promoTargetColor || m.color,
                                         badge: promoTargetBadge || m.badge,
                                       };
@@ -7911,7 +7853,7 @@ export default function ChatScreen({
                                 ) {
                                   setMyActiveSession((prev) => ({
                                     ...prev,
-                                    role: promoTargetRole as any,
+                                    role: promoTargetRole as MemberRole,
                                     color: promoTargetColor || prev.color,
                                     badge: promoTargetBadge || prev.badge,
                                     frame:
@@ -8163,7 +8105,7 @@ export default function ChatScreen({
                                 name="newProdTab"
                                 value={newProdTab}
                                 onChange={(e) =>
-                                  setNewProdTab(e.target.value as any)
+                                  setNewProdTab(e.target.value as ProductTab)
                                 }
                                 className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
                               >
@@ -8212,7 +8154,7 @@ export default function ChatScreen({
                                 name="newProdType"
                                 value={newProdType}
                                 onChange={(e) =>
-                                  setNewProdType(e.target.value as any)
+                                  setNewProdType(e.target.value as ProductType)
                                 }
                                 className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
                               >
@@ -8487,7 +8429,7 @@ export default function ChatScreen({
                                     "👑 OWNER MODERATOR",
                                   );
                                   showChatToast(
-                                    "✅ تم حقن ونشر الميزة الج��يدة وتفعيل العرض فوسفورياً في المتجر بكفاءة!",
+                                    "✅ تم حقن ونشر المي��ة الج��يدة وتفعيل العرض فوسفورياً في المتجر بكفاءة!",
                                   , "success");
                                 }
 
@@ -9306,7 +9248,7 @@ export default function ChatScreen({
                               activeRoomId,
                               `📊 تقرير الإحصائيات (Lamma Analytics):\n- عدد الأعضاء المتصلين حالياً: ${chatMembers.length} عضو.\n- العضو الأكثر حضوراً: ${topMember}.`,
                             );
-                            showChatToast("تم بث تقرير الإحصائيات في الغرفة", "success");
+                            showChatToast("تم بث تقرير الإحصائيات ��ي الغرفة", "success");
                           }}
                           className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[10px] border border-emerald-500/20 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
                         >
@@ -9737,7 +9679,7 @@ export default function ChatScreen({
                                   // Apply update to current user session
                                   setMyActiveSession((prev) => ({
                                     ...prev,
-                                    role: subInfo.role as any,
+                                    role: subInfo.role as MemberRole,
                                     color:
                                       subInfo.color === "gradient"
                                         ? undefined
@@ -10610,7 +10552,7 @@ export default function ChatScreen({
                                 name="profileRoleSelect"
                                 value={selectedProfileMember.role}
                                 onChange={(e) => {
-                                  const targetRole = e.target.value as any;
+                                  const targetRole = e.target.value as MemberRole;
                                   setChatMembers((prev) =>
                                     prev.map((m) => {
                                       if (
@@ -11211,24 +11153,41 @@ export default function ChatScreen({
           onSendPM: (target) => {
             setPmTarget({
               nickname: target.nickname,
-              role: target.role || "member",
+              role: target.role || "user",
               avatar: target.avatar || "👤",
             });
-            if (!pmThreads[target.nickname]) {
-              setPmThreads((prev) => ({
-                ...prev,
-                [target.nickname]: [
-                  {
-                    text: `مرحباً بك! أنا ${target.nickname} ���`,
-                    isOwn: false,
-                    time: new Date().toLocaleTimeString("en-US", {
+
+            // تحميل المحادثة من Supabase لو مش موجودة في الـ state
+            if (!pmThreads[target.nickname] && supabase && myActiveSession.uid) {
+              supabase
+                .from("pm_messages")
+                .select("*")
+                .or(
+                  `and(sender_uid.eq.${myActiveSession.uid},receiver_nickname.eq.${target.nickname}),and(receiver_uid.eq.${myActiveSession.uid},sender_nickname.eq.${target.nickname})`,
+                )
+                .order("created_at", { ascending: true })
+                .limit(50)
+                .then(({ data, error }) => {
+                  if (error) {
+                    console.error("[v0] PM load error:", error);
+                    return;
+                  }
+                  const msgs: PMThreadMessage[] = (data || []).map((row: any) => ({
+                    text: row.text || "",
+                    isOwn: row.sender_uid === myActiveSession.uid,
+                    time: new Date(row.created_at).toLocaleTimeString("ar-EG", {
                       hour: "numeric",
                       minute: "numeric",
                       hour12: true,
                     }),
-                  },
-                ],
-              }));
+                    mediaUrl: row.media_url,
+                    type: row.type || "text",
+                  }));
+                  setPmThreads((prev) => ({
+                    ...prev,
+                    [target.nickname]: msgs,
+                  }));
+                });
             }
             if (window.innerWidth < 1280) {
               setMobileTab("private");
@@ -11325,24 +11284,41 @@ export default function ChatScreen({
           onSendPM: (target) => {
             setPmTarget({
               nickname: target.nickname,
-              role: target.role || "member",
+              role: target.role || "user",
               avatar: target.avatar || "👤",
             });
-            if (!pmThreads[target.nickname]) {
-              setPmThreads((prev) => ({
-                ...prev,
-                [target.nickname]: [
-                  {
-                    text: `مرحباً بك! أنا ${target.nickname} 😇`,
-                    isOwn: false,
-                    time: new Date().toLocaleTimeString("en-US", {
+
+            // تحميل المحادثة من Supabase لو مش موجودة في الـ state
+            if (!pmThreads[target.nickname] && supabase && myActiveSession.uid) {
+              supabase
+                .from("pm_messages")
+                .select("*")
+                .or(
+                  `and(sender_uid.eq.${myActiveSession.uid},receiver_nickname.eq.${target.nickname}),and(receiver_uid.eq.${myActiveSession.uid},sender_nickname.eq.${target.nickname})`,
+                )
+                .order("created_at", { ascending: true })
+                .limit(50)
+                .then(({ data, error }) => {
+                  if (error) {
+                    console.error("[v0] PM load error:", error);
+                    return;
+                  }
+                  const msgs: PMThreadMessage[] = (data || []).map((row: any) => ({
+                    text: row.text || "",
+                    isOwn: row.sender_uid === myActiveSession.uid,
+                    time: new Date(row.created_at).toLocaleTimeString("ar-EG", {
                       hour: "numeric",
                       minute: "numeric",
                       hour12: true,
                     }),
-                  },
-                ],
-              }));
+                    mediaUrl: row.media_url,
+                    type: row.type || "text",
+                  }));
+                  setPmThreads((prev) => ({
+                    ...prev,
+                    [target.nickname]: msgs,
+                  }));
+                });
             }
             if (window.innerWidth < 1280) {
               setMobileTab("private");
