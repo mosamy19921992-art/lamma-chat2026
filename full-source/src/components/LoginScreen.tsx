@@ -18,10 +18,6 @@ interface LoginScreenProps {
 type ViewMode = "main" | "options";
 type EmailTab = "login" | "register";
 type MessageType = "success" | "error" | "info";
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
 
 const NICKNAME_COLORS = [
   "#22c55e",
@@ -117,47 +113,15 @@ export default function LoginScreen(props: LoginScreenProps) {
   const [showRegisterPassword2, setShowRegisterPassword2] = useState(false);
 
   const [pendingProfileUser, setPendingProfileUser] = useState<any | null>(null);
-  const [pendingProfileColor, setPendingProfileColor] = useState<string | null>(
-    null,
-  );
+  const [pendingProfileColor, setPendingProfileColor] = useState<string | null>(null);
   const [profileNickname, setProfileNickname] = useState("");
-  const [showProfileNicknameModal, setShowProfileNicknameModal] =
-    useState(false);
-
-  const [deferredInstallPrompt, setDeferredInstallPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
+  const [showProfileNicknameModal, setShowProfileNicknameModal] = useState(false);
 
   useEffect(() => {
     if (!message) return;
     const timeout = window.setTimeout(() => setMessage(null), 5000);
     return () => window.clearTimeout(timeout);
   }, [message]);
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setDeferredInstallPrompt(event as BeforeInstallPromptEvent);
-    };
-
-    const handleAppInstalled = () => {
-      setDeferredInstallPrompt(null);
-      setMessage({
-        text: "تم تثبيت التطبيق بنجاح.",
-        type: "success",
-      });
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    window.addEventListener("appinstalled", handleAppInstalled);
-
-    return () => {
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstallPrompt,
-      );
-      window.removeEventListener("appinstalled", handleAppInstalled);
-    };
-  }, []);
 
   const showFeedback = (
     text: string,
@@ -201,30 +165,6 @@ export default function LoginScreen(props: LoginScreenProps) {
     } catch {
       showFeedback(appLink, "info", true);
     }
-  };
-
-  const handleInstallApp = async () => {
-    const isStandalone =
-      window.matchMedia?.("(display-mode: standalone)")?.matches ||
-      window.matchMedia?.("(display-mode: fullscreen)")?.matches ||
-      window.matchMedia?.("(display-mode: minimal-ui)")?.matches;
-
-    if (isStandalone) {
-      showFeedback("التطبيق متثبت بالفعل على الجهاز.", "info");
-      return;
-    }
-
-    if (!deferredInstallPrompt) {
-      showFeedback(
-        'من قائمة المتصفح اختر "تثبيت التطبيق" أو "إضافة للشاشة الرئيسية".',
-        "info",
-      );
-      return;
-    }
-
-    await deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
-    setDeferredInstallPrompt(null);
   };
 
   const handleGoogleLogin = async () => {
@@ -496,26 +436,19 @@ export default function LoginScreen(props: LoginScreenProps) {
                   className="primaryBtn primaryBtn--go"
                   type="button"
                   id="openOptions"
+                  aria-label="يالا بينا — انتقل لصفحة تسجيل الدخول"
                   onClick={handleGoToOptions}
                 >
-                  <span className="goArrow" aria-hidden="true">
-                    ←
-                  </span>
                   <span className="goText">يالا بينا</span>
+                  <span className="goArrow" aria-hidden="true">
+                    →
+                  </span>
                 </button>
               </div>
 
               <footer className="legal" aria-label="حقوق ونظام">
                 <div>© 2026 Lamma Chat. جميع الحقوق محفوظة — توثيق وهوية خاصة:</div>
                 <div className="idCard">{brandCredit}</div>
-                <button
-                  className="appBtn"
-                  type="button"
-                  id="installApp"
-                  onClick={handleInstallApp}
-                >
-                  تثبيت التطبيق
-                </button>
               </footer>
 
               {message && view === "main" ? (
@@ -597,6 +530,8 @@ export default function LoginScreen(props: LoginScreenProps) {
                       <button
                         className="tabBtn"
                         type="button"
+                        role="tab"
+                        aria-selected={emailTab === "login"}
                         data-email-tab-btn="login"
                         onClick={() => setEmailTab("login")}
                       >
@@ -605,6 +540,8 @@ export default function LoginScreen(props: LoginScreenProps) {
                       <button
                         className="tabBtn"
                         type="button"
+                        role="tab"
+                        aria-selected={emailTab === "register"}
                         data-email-tab-btn="register"
                         onClick={() => setEmailTab("register")}
                       >
@@ -616,14 +553,14 @@ export default function LoginScreen(props: LoginScreenProps) {
                       <form id="loginForm" className="form" noValidate onSubmit={handleLoginSubmit}>
                         <div className="field">
                           <label className="label" htmlFor="loginIdentifier">
-                            البريد الإلكتروني أو الاسم
+                            البريد الإلكتروني
                           </label>
                           <input
                             className="input"
                             id="loginIdentifier"
                             name="identifier"
-                            type="text"
-                            autoComplete="username"
+                            type="email"
+                            autoComplete="email"
                             inputMode="email"
                             placeholder="example@email.com"
                             value={loginIdentifier}
@@ -651,6 +588,7 @@ export default function LoginScreen(props: LoginScreenProps) {
                             <button
                               className="iconBtn"
                               type="button"
+                              aria-label={showLoginPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                               onClick={() => setShowLoginPassword((value) => !value)}
                             >
                               {showLoginPassword ? "إخفاء" : "إظهار"}
@@ -715,6 +653,7 @@ export default function LoginScreen(props: LoginScreenProps) {
                             <button
                               className="iconBtn"
                               type="button"
+                              aria-label={showRegisterPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                               onClick={() => setShowRegisterPassword((value) => !value)}
                             >
                               {showRegisterPassword ? "إخفاء" : "إظهار"}
@@ -741,6 +680,7 @@ export default function LoginScreen(props: LoginScreenProps) {
                             <button
                               className="iconBtn"
                               type="button"
+                              aria-label={showRegisterPassword2 ? "إخفاء تأكيد كلمة المرور" : "إظهار تأكيد كلمة المرور"}
                               onClick={() => setShowRegisterPassword2((value) => !value)}
                             >
                               {showRegisterPassword2 ? "إخفاء" : "إظهار"}
@@ -797,9 +737,10 @@ export default function LoginScreen(props: LoginScreenProps) {
                   className="secondaryBtn methodRow methodRow--link"
                   type="button"
                   data-action="share"
+                  aria-label="شارك رابط تطبيق لمة مع أصحابك"
                   onClick={handleShare}
                 >
-                  هات الرابط بتاعي
+                  شارك رابط لمة
                 </button>
 
                 {message ? (
