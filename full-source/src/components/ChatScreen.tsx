@@ -829,127 +829,21 @@ export default function ChatScreen({
   const [newProdExt, setNewProdExt] = useState("");
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
 
-  // Dynamic online chat members state
-  const [chatMembers, setChatMembers] = useState<ChatMember[]>([
-    {
-      id: "u1",
-      nickname: "أحمد",
-      role: "owner",
-      color: "#f59e0b",
-      avatar: "👑",
-      status: "online",
-      email: "ahmed@lamma.chat",
-      fingerprint: "fp-83a3-9281",
-      browserSignature: "Mozilla/5.0 (Windows NT 10.0) Chrome/125.0.0.0",
-      ip: "197.34.82.110",
-      localStorageId: "local-u1",
-    },
-    {
-      id: "u2",
-      nickname: "علي (أدمن)",
-      role: "admin",
-      color: "#f43f5e",
-      avatar: "🛡️",
-      status: "online",
-      email: "ali_admin@lamma.chat",
-      fingerprint: "fp-10af-9bbb",
-      browserSignature:
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1.15",
-      ip: "102.43.190.22",
-      localStorageId: "local-u2",
-    },
-    {
-      id: "u3",
-      nickname: "محمد (VIP)",
-      role: "vip",
-      color: "#58a6ff",
-      avatar: "👨",
-      status: "online",
-      email: "mohamed@lamma.chat",
-      fingerprint: "fp-72bc-11a0",
-      browserSignature: "Mozilla/5.0 (X11; Linux x86_64) Firefox/124.0",
-      ip: "196.20.122.5",
-      localStorageId: "local-u3",
-    },
-    {
-      id: "u4",
-      nickname: "سارة (VIP)",
-      role: "vip",
-      color: "#ec4899",
-      avatar: "👩",
-      status: "online",
-      email: "sara@lamma.chat",
-      fingerprint: "fp-fa22-38ef",
-      browserSignature:
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1) Safari/605.1.15",
-      ip: "156.210.15.80",
-      localStorageId: "local-u4",
-    },
-    {
-      id: "u5",
-      nickname: "نور الدين",
-      role: "user",
-      color: "#10b981",
-      avatar: "🧔",
-      status: "online",
-      email: "nour@email.com",
-      fingerprint: "fp-89ff-ea22",
-      browserSignature: "Mozilla/5.0 (Android; Mobile) Chrome/124.0",
-      ip: "197.43.199.30",
-      localStorageId: "local-u5",
-    },
-    {
-      id: "u6",
-      nickname: "LammaGuest_4829",
-      role: "guest",
-      color: "#94a3b8",
-      avatar: "👤",
-      status: "online",
-      fingerprint: "fp-8bbc-31ff",
-      browserSignature: "Mozilla/5.0 Chrome/125.0 Windows",
-      ip: "41.65.120.25",
-      localStorageId: "local-u6",
-    },
-  ]);
+  // أعضاء الغرفة — تُحمَّل من Supabase عبر الـ realtime presence
+  // القائمة تبدأ فارغة وتتملأ تلقائياً عند انضمام المستخدمين
+  const [chatMembers, setChatMembers] = useState<ChatMember[]>([]);
 
-  // System Logs & Event Tracker state
+  // سجل نشاطات الغرفة — يبدأ فارغاً ويُحمَّل من localStorage أو يُبنى من أحداث Supabase
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
     const saved = localStorage.getItem("lamma_activity_logs");
     if (saved) {
       try {
         return JSON.parse(saved);
       } catch (e) {
-        // ignore
+        // ignore — return empty
       }
     }
-    return [
-      {
-        id: "log-seed-1",
-        time: "10:30 م",
-        type: "promote",
-        userNickname: "سارة",
-        operatorNickname: "أحمد (المالك)",
-        details:
-          "تم تجديد وترقية العضو سارة إلى رتبة VIP تقديراً لتفاعلها الأسبوعي بالنقاش.",
-      },
-      {
-        id: "log-seed-2",
-        time: "10:15 م",
-        type: "login",
-        userNickname: "محمد",
-        operatorNickname: "محمد",
-        details: "تسجيل دخول عضو VIP محمد عبر Google Login بنجاح.",
-      },
-      {
-        id: "log-seed-3",
-        time: "09:44 م",
-        type: "ban",
-        userNickname: "SuperSpammer",
-        operatorNickname: "🛡️ بوت الحماية",
-        details:
-          "حظر تلقائي ومؤقت (Kick) بسبب إرسال نكات وعبارات سبام هجومية متعاقبة بسرعة فاقة.",
-      },
-    ];
+    return [];
   });
 
   // Lamma AI Guard Bot Settings & States
@@ -991,46 +885,34 @@ export default function ChatScreen({
     },
   );
 
-  // Persistent state synchronization loops
+  // دمج كل admin boolean settings في useEffect واحد بـ debounce
+  // بدل 8 useEffects منفصلين يكتبوا على localStorage في كل تغيير
+  const adminSettingsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    localStorage.setItem(
-      "lamma_ad_banner_dismissed",
-      String(isAdBannerDismissed),
-    );
-  }, [isAdBannerDismissed]);
-  useEffect(() => {
-    localStorage.setItem("lamma_maintenance_mode", String(isMaintenanceMode));
-  }, [isMaintenanceMode]);
-
-  useEffect(() => {
-    localStorage.setItem("lamma_global_mute", String(isGlobalMute));
-  }, [isGlobalMute]);
-
-  useEffect(() => {
-    localStorage.setItem("lamma_global_mic_mute", String(isGlobalMicMute));
-  }, [isGlobalMicMute]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      "lamma_vip_only_images",
-      String(isOnlyVIPCanSendImages),
-    );
-  }, [isOnlyVIPCanSendImages]);
-
-  useEffect(() => {
-    localStorage.setItem("lamma_bot_silent", String(isBotSilent));
-  }, [isBotSilent]);
-
-  useEffect(() => {
-    localStorage.setItem("lamma_ads_enabled", String(isAdsEnabled));
-  }, [isAdsEnabled]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      "lamma_greetings_enabled",
-      String(isWelcomeToastEnabled),
-    );
-  }, [isWelcomeToastEnabled]);
+    if (adminSettingsDebounceRef.current) clearTimeout(adminSettingsDebounceRef.current);
+    adminSettingsDebounceRef.current = setTimeout(() => {
+      localStorage.setItem("lamma_ad_banner_dismissed", String(isAdBannerDismissed));
+      localStorage.setItem("lamma_maintenance_mode", String(isMaintenanceMode));
+      localStorage.setItem("lamma_global_mute", String(isGlobalMute));
+      localStorage.setItem("lamma_global_mic_mute", String(isGlobalMicMute));
+      localStorage.setItem("lamma_vip_only_images", String(isOnlyVIPCanSendImages));
+      localStorage.setItem("lamma_bot_silent", String(isBotSilent));
+      localStorage.setItem("lamma_ads_enabled", String(isAdsEnabled));
+      localStorage.setItem("lamma_greetings_enabled", String(isWelcomeToastEnabled));
+    }, 500);
+    return () => {
+      if (adminSettingsDebounceRef.current) clearTimeout(adminSettingsDebounceRef.current);
+    };
+  }, [
+    isAdBannerDismissed,
+    isMaintenanceMode,
+    isGlobalMute,
+    isGlobalMicMute,
+    isOnlyVIPCanSendImages,
+    isBotSilent,
+    isAdsEnabled,
+    isWelcomeToastEnabled,
+  ]);
 
   const [bannedWords, setBannedWords] = useState<string[]>(() => {
     const saved = localStorage.getItem("lamma_banned_words");
@@ -1193,6 +1075,7 @@ export default function ChatScreen({
   const [scanResult, setScanResult] = useState<string | null>(null);
 
   // Custom user permissions managed exclusively by the owner
+  // صلاحيات مخصصة لكل عضو — تبدأ فارغة (تُعيَّن يدوياً من الأدمن)
   const [memberCustomPermissions, setMemberCustomPermissions] = useState<
     Record<string, MemberCustomPermissions>
   >(() => {
@@ -1204,32 +1087,7 @@ export default function ChatScreen({
         // ignore
       }
     }
-    return {
-      سارة: {
-        recordingAllowed: true,
-        callsAllowed: true,
-        musicRadioAllowed: true,
-        roomCreationAllowed: true,
-      },
-      عمر: {
-        recordingAllowed: false,
-        callsAllowed: false,
-        musicRadioAllowed: false,
-        roomCreationAllowed: false,
-      },
-      ياسمين: {
-        recordingAllowed: false,
-        callsAllowed: false,
-        musicRadioAllowed: false,
-        roomCreationAllowed: false,
-      },
-      خالد: {
-        recordingAllowed: false,
-        callsAllowed: false,
-        musicRadioAllowed: false,
-        roomCreationAllowed: false,
-      },
-    };
+    return {};
   });
 
   useEffect(() => {
@@ -1813,47 +1671,8 @@ export default function ChatScreen({
   );
   const [isEditingWelcome, setIsEditingWelcome] = useState(false);
 
-  // Room main chats, initially seeded with the exact conversation seen in screenshot 1
-  const [roomMessages, setRoomMessages] = useState<Record<string, Message[]>>({
-    egypt: [
-      {
-        id: "seed-1",
-        author: "محمد (VIP)",
-        text: "مساء الخير عليكم جميعاً 🌹",
-        color: "#58a6ff",
-        isOwn: false,
-        time: "10:31 PM",
-        type: "text",
-      },
-      {
-        id: "seed-2",
-        author: "علي (أدمن)",
-        text: "هلا محمد، كيف حالك؟",
-        color: "#f43f5e",
-        isOwn: false,
-        time: "10:32 PM",
-        type: "text",
-      },
-      {
-        id: "seed-3",
-        author: "1234_زائر",
-        text: "مرحباً بالجميع 👋",
-        color: "#94a3b8",
-        isOwn: false,
-        time: "10:32 PM",
-        type: "text",
-      },
-      {
-        id: "seed-4",
-        author: "سارة (VIP)",
-        text: "أهلاً زائر، نورت شاتنا 😍",
-        color: "#ec4899",
-        isOwn: false,
-        time: "10:33 PM",
-        type: "text",
-      },
-    ],
-  });
+  // رسائل الغرف — تبدأ فارغة وتُحمَّل من Supabase عبر الـ realtime channel
+  const [roomMessages, setRoomMessages] = useState<Record<string, Message[]>>({});
 
   // Room mapped topics
   const [roomTopics, setRoomTopics] = useState<Record<string, string>>({
@@ -1868,7 +1687,7 @@ export default function ChatScreen({
   // System Log Simulation
   const [systemActivity, setSystemActivity] = useState({
     id: 0,
-    name: "Ali",
+    name: "",
     type: "join",
   });
   useEffect(() => {
@@ -2694,21 +2513,9 @@ export default function ChatScreen({
     setShowEmojiPicker(false);
   };
 
-  const getDynamicReply = (nickname: string) => {
-    const lower = nickname.toLowerCase();
-    if (lower.includes("سارة") || lower.includes("sara")) {
-      return "يا هلا بيك في شاتي الخاص، تسعدني جداً معرفتكم 🌸!";
-    }
-    if (lower.includes("محمد") || lower.includes("mohamed")) {
-      return "أهلاً صديقي، يسعدني الحديث معك بالخاص! كيف يمكنني مشاركتك اليوم؟ 🎧";
-    }
-    if (lower.includes("أحمد") || lower.includes("ahmed")) {
-      return "مرحباً بك بالخاص، شات لمة صمم من أجلكم وأنا سعيد بتواصلكم معي 👑.";
-    }
-    if (lower.includes("علي") || lower.includes("ali")) {
-      return "أهلاً بك، معك المشرف علي بالخاص. كيف يمكنني مساعدتك؟ يرجى إبلاغي بأي شكاوى 🛡️.";
-    }
-    return `مرحباً بك! يسعدني جداً حديثنا هنا على الخاص مع تمنياتي لك بوقت ممتع في شات لمة 💚.`;
+  // رد تلقائي generic في الـ PM — لا يعتمد على اسم المستخدم
+  const getDynamicReply = (_nickname: string) => {
+    return "مرحباً! يسعدني حديثنا هنا. كيف يمكنني مساعدتك؟";
   };
 
   const handleSendPM = () => {
@@ -4154,7 +3961,7 @@ export default function ChatScreen({
                               طلب صداقة جديد
                             </h4>
                             <p className="text-[9px] text-gray-400 mt-0.5 pointer-events-none">
-                              أرسل لك <strong>سارة</strong> طلب صداقة.
+                              لديك طلب صداقة جديد في قائمة الطلبات.
                             </p>
                             <div className="flex gap-1.5 mt-1.5">
                               <button className="px-2.5 py-1 font-bold text-[8px] rounded-md cursor-pointer lamma-feature-primary">
@@ -7272,7 +7079,7 @@ export default function ChatScreen({
                           </button>
                         </div>
                         <p className="text-[10px] text-gray-500">
-                          منع جميع الأعضاء من الكتابة (شات كتابي).
+                          م��ع جميع الأعضاء من الكتابة (شات كتابي).
                         </p>
                       </div>
 
@@ -8886,7 +8693,7 @@ export default function ChatScreen({
                         </p>
                         <div className="flex flex-col gap-1 mt-1">
                           <div className="px-2 py-1.5 rounded-lg text-[9px] font-bold text-center lamma-section-card text-purple-300">
-                            خوادم جوجل وكلاودفلير متصلة وتعمل تلقائياً ⚡
+                            خوادم جوجل وكلاودف��ير متصلة وتعمل تلقائياً ⚡
                           </div>
                         </div>
                       </div>
@@ -9958,7 +9765,7 @@ export default function ChatScreen({
                                   addSystemActivityLog(
                                     "promote",
                                     currentUser.nickname,
-                                    `تثبيت لقب العضو الفخري المميز [${selectedProduct.title}] بنجاح آلياً.`,
+                                    `��ثبيت لقب العضو الفخري المميز [${selectedProduct.title}] بنجاح آلياً.`,
                                     "🤖 LAMMA AUTO-VERIFIER",
                                   );
                                 }
@@ -11390,7 +11197,7 @@ export default function ChatScreen({
                 ...prev,
                 [target.nickname]: [
                   {
-                    text: `مرحباً بك! أنا ${target.nickname} 😇`,
+                    text: `مرحباً بك! أنا ${target.nickname} ���`,
                     isOwn: false,
                     time: new Date().toLocaleTimeString("en-US", {
                       hour: "numeric",
