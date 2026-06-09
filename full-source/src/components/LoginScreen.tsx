@@ -373,180 +373,137 @@ export default function LoginScreen({
 
   return (
     <div
-      className="h-[100dvh] w-full relative overflow-hidden font-sans bg-transparent text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app"
+      className="min-h-[100dvh] w-full relative overflow-hidden font-sans bg-[#14080d] text-white"
       dir="rtl"
       data-lamma-wall={wallTheme}
     >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden bg-slate-900">
+      <div className="pointer-events-none absolute inset-0">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
           style={{ backgroundImage: `url("${loginHeroBg}")` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/60 via-slate-900/50 to-black/80 mix-blend-multiply" />
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(83,35,48,0.18),rgba(17,7,11,0.93))]" />
+        <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" />
         <motion.div
-          className="absolute left-1/2 top-[6%] h-[18rem] w-[78rem] -translate-x-1/2 rounded-[50%] blur-3xl opacity-80"
+          className="absolute left-1/2 top-[8%] h-[16rem] w-[72rem] -translate-x-1/2 rounded-full blur-3xl opacity-70"
           style={{
             background:
-              "radial-gradient(ellipse at center, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.14) 0%, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.06) 38%, transparent 74%)",
+              "radial-gradient(ellipse at center, rgba(212,175,55,0.20) 0%, rgba(212,175,55,0.08) 34%, transparent 72%)",
           }}
-          animate={{ x: [-24, 22, -24], scaleX: [1, 1.05, 1] }}
+          animate={{ x: [-24, 20, -24] }}
           transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute left-1/2 top-[18%] h-[14rem] w-[64rem] -translate-x-1/2 rounded-[50%] blur-[88px] opacity-75"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent 0%, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04) 20%, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12) 50%, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04) 80%, transparent 100%)",
-          }}
-          animate={{ x: [30, -26, 30], y: [0, 10, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute right-[9%] top-[10%] h-40 w-40 rounded-full blur-3xl opacity-50"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(255, 131, 61, 0.22) 0%, rgba(255, 131, 61, 0.08) 35%, transparent 72%)",
-          }}
-          animate={{ scale: [1, 1.08, 1], opacity: [0.35, 0.52, 0.35] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <div
-          className="absolute inset-x-0 bottom-[-10%] h-[20rem] opacity-50 blur-3xl"
-          style={{
-            background:
-              "radial-gradient(ellipse at center, rgba(255, 151, 73, 0.08) 0%, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.03) 42%, transparent 78%)",
-          }}
         />
       </div>
 
-      <div className="relative z-10 h-full w-full overflow-y-auto lg:overflow-hidden">
-        <div className="min-h-full w-full flex items-center justify-center px-4 py-6 sm:py-8 lg:py-10">
-          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] lg:h-[min(86dvh,760px)] gap-4 sm:gap-5 lg:gap-6 items-stretch">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.05 }}
-              className="relative order-2 lg:order-1 overflow-hidden rounded-[34px] p-5 sm:p-6 md:p-7 lamma-login-art-frame lamma-column-frame h-full min-h-0"
-            >
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute -top-32 -right-40 h-[26rem] w-[26rem] rounded-full blur-3xl opacity-60"
-                  style={{
-                    background:
-                      "radial-gradient(circle, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.16) 0%, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.06) 42%, transparent 72%)",
-                  }}
-                />
-                <div className="absolute -bottom-36 -left-44 h-[28rem] w-[28rem] rounded-full blur-3xl opacity-50"
-                  style={{
-                    background:
-                      "radial-gradient(circle, rgba(59, 130, 246, 0.16) 0%, rgba(59, 130, 246, 0.06) 40%, transparent 72%)",
-                  }}
-                />
+      <div className="relative z-10 min-h-[100dvh] flex items-center justify-center px-4 py-6 sm:px-6 sm:py-10">
+        <div className="w-full max-w-6xl grid grid-cols-1 gap-5 lg:grid-cols-[1.05fr_0.95fr] items-stretch">
+          <motion.div
+            initial={{ opacity: 0, y: 28 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55 }}
+            className="order-2 lg:order-1 rounded-[34px] border border-[rgba(212,175,55,0.18)] bg-black/20 p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
+          >
+            <div className="rounded-[28px] border border-[rgba(212,175,55,0.24)] bg-[linear-gradient(180deg,rgba(33,15,20,0.82),rgba(18,8,12,0.92))] p-5 sm:p-7">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.08)] px-3 py-1.5 text-[10px] font-black text-[#f2d58d]">
+                <span>واجهة الدخول الجديدة</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-[#e8c873]" />
               </div>
 
-              <div className="relative z-10">
-                <div className="rounded-[34px] border border-white/10 bg-black/25 shadow-[0_28px_80px_rgba(0,0,0,0.48)] backdrop-blur-2xl overflow-hidden px-5 py-6 sm:px-7 sm:py-8">
-                  <div className="flex items-center justify-center">
-                    <img
-                      src={brandMarkSrc}
-                      alt={brandName}
-                      onError={(e) => {
-                        const img = e.currentTarget;
-                        img.onerror = null;
-                        img.src = fallbackMarkSrc;
-                      }}
-                      className="h-[min(34dvh,220px)] w-[120%] max-w-none object-contain object-center sm:h-[260px] md:h-[320px] scale-[1.12]"
-                      draggable={false}
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-4 hidden grid-cols-1 gap-2 sm:grid">
-                  <div className="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-[10px] font-black border border-white/10 bg-black/25 text-gray-100 backdrop-blur-xl">
-                    <span
-                      className="inline-block h-2 w-2 rounded-full"
-                      style={{
-                        backgroundColor:
-                          "rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.95)",
-                      }}
-                    />
-                    <span>دخول محترم وواضح من أول مرة</span>
-                  </div>
-
-                  <div className="rounded-full px-4 py-2 text-[10px] font-black flex items-center justify-center gap-2 lamma-gold-signature">
-                    <span>البطاقة الذهبية</span>
-                    <strong>{brandCredit}</strong>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-center gap-1.5">
-                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
-                      🛡️ خصوصية
-                    </span>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
-                      ⚡ غرف فورية
-                    </span>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black text-gray-200">
-                      🔗 مشاركة
-                    </span>
-                  </div>
+              <div className="flex items-center justify-center">
+                <div className="relative w-full max-w-[330px] overflow-hidden rounded-[28px] border border-[rgba(212,175,55,0.28)] bg-[radial-gradient(circle_at_top,rgba(241,210,128,0.18),rgba(73,38,18,0.82))] p-4 shadow-[0_18px_40px_rgba(0,0,0,0.4)]">
+                  <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.16)_0%,transparent_32%)]" />
+                  <img
+                    src={brandMarkSrc}
+                    alt={brandName}
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      img.onerror = null;
+                      img.src = fallbackMarkSrc;
+                    }}
+                    className="relative z-10 mx-auto h-[220px] w-auto object-contain sm:h-[280px]"
+                    draggable={false}
+                  />
                 </div>
               </div>
 
-              <div className="relative z-10 mt-4 sm:mt-6 flex flex-col gap-3">
-                <h1 className="text-[22px] sm:text-[26px] md:text-[30px] font-black leading-tight text-white">
-                  شات عربي
+              <div className="mt-6 text-center">
+                <img
+                  src={brandLogoUrl || brandWordmarkSrc}
+                  alt={brandName}
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    img.onerror = null;
+                    img.src = fallbackWordmarkSrc;
+                  }}
+                  className="mx-auto w-[140px] drop-shadow-xl sm:w-[160px]"
+                  draggable={false}
+                />
+                <h1 className="mt-4 text-[30px] font-black tracking-tight text-[#f3d98a] sm:text-[38px]">
+                  لَامّة شات
                 </h1>
-                <p className="text-[12px] sm:text-[13px] leading-relaxed text-gray-200/90">
-                  غرف عامة وخاصّة، ودخول سريع من غير خطوات كتير. نفس ستايل الشات من
-                  أول صفحة.
+                <p className="mt-2 text-[12px] leading-6 text-[#f4e9d3]/80 sm:text-[13px]">
+                  نفس روح الشات من أول ما تفتحيه: دخول واضح، شكل موحّد، ومن غير
+                  خلط بين نسخة قديمة وجديدة.
                 </p>
               </div>
-            </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.12 }}
-              className="w-full order-1 lg:order-2 flex flex-col h-full relative"
-            >
-              <div
-                className={`w-full h-auto relative rounded-[34px] p-5 sm:p-6 md:p-7 overflow-hidden transition-all duration-300 flex flex-col shadow-[0_18px_70px_rgba(0,0,0,0.55)] lamma-login-shell lamma-column-frame ${
-                  primaryTheme === "amoled" ? "bg-black/40" : ""
-                }`}
-              >
-                <div className="absolute top-0 right-0 left-0 h-[2px] bg-gradient-to-r from-transparent via-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.7)] to-transparent" />
-
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div className="flex flex-col">
-                    <img
-                      src={brandLogoUrl || brandWordmarkSrc}
-                      alt={brandName}
-                      onError={(e) => {
-                        const img = e.currentTarget;
-                        img.onerror = null;
-                        img.src = fallbackWordmarkSrc;
-                      }}
-                      className="w-[112px] sm:w-[128px] drop-shadow-xl"
-                      draggable={false}
-                    />
-                    <h2 className="mt-2 m-0 text-[18px] sm:text-[20px] font-black text-white">
-                      {authMode === "signup" ? "إنشاء حساب" : "تسجيل الدخول"}
-                    </h2>
-                    <p className="mt-1 text-[10px] sm:text-[11px] text-gray-300 leading-relaxed">
-                      {authMode === "signup"
-                        ? "خطوة واحدة وتبدأ معانا."
-                        : "دخول سريع ومرتب من غير ما يطول المشهد."}
-                    </p>
+              <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-center">
+                  <div className="text-[10px] font-black text-[#f2d58d]">
+                    غرف فورية
                   </div>
+                  <div className="mt-1 text-[10px] text-white/70">
+                    تدخل وتكمل بسرعة
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-center">
+                  <div className="text-[10px] font-black text-[#f2d58d]">
+                    خصوصية
+                  </div>
+                  <div className="mt-1 text-[10px] text-white/70">
+                    رابط ومشاركة آمنة
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-center">
+                  <div className="text-[10px] font-black text-[#f2d58d]">
+                    دخول كضيف
+                  </div>
+                  <div className="mt-1 text-[10px] text-white/70">
+                    من غير تعقيد
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
 
-                  <div className="flex items-center gap-1 rounded-full p-1 border border-white/10 bg-black/25 backdrop-blur-xl">
+          <motion.div
+            initial={{ opacity: 0, y: 36 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.08 }}
+            className="order-1 lg:order-2"
+          >
+            <div className="rounded-[34px] border border-[rgba(212,175,55,0.16)] bg-[rgba(21,10,14,0.72)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-2xl sm:p-6">
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-[22px] font-black text-white sm:text-[26px]">
+                    {authMode === "signup" ? "اعملي حساب وادخلي" : "يلا ادخل اللمة"}
+                  </h2>
+                  <p className="mt-1 text-[11px] leading-5 text-white/70">
+                    {authMode === "signup"
+                      ? "نسخة الدخول الحقيقية نفسها، لكن بشكل أوضح وأهدى."
+                      : "دخول مرتب وسريع بنفس الهوية البصرية الجديدة."}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 rounded-full border border-white/10 bg-black/25 p-1">
                     <button
                       type="button"
                       onClick={() => setAuthMode("login")}
-                      className={`px-3 py-1.5 rounded-full text-[10px] font-black transition-all ${
+                      className={`rounded-full px-3 py-1.5 text-[10px] font-black transition-all ${
                         authMode === "login"
-                          ? "bg-white/10 text-white shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
-                          : "text-gray-300 hover:text-white"
+                          ? "bg-[rgba(212,175,55,0.16)] text-[#f3d98a]"
+                          : "text-white/65 hover:text-white"
                       }`}
                     >
                       دخول
@@ -554,192 +511,256 @@ export default function LoginScreen({
                     <button
                       type="button"
                       onClick={() => setAuthMode("signup")}
-                      className={`px-3 py-1.5 rounded-full text-[10px] font-black transition-all ${
+                      className={`rounded-full px-3 py-1.5 text-[10px] font-black transition-all ${
                         authMode === "signup"
-                          ? "bg-white/10 text-white shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
-                          : "text-gray-300 hover:text-white"
+                          ? "bg-[rgba(212,175,55,0.16)] text-[#f3d98a]"
+                          : "text-white/65 hover:text-white"
                       }`}
                     >
                       حساب جديد
                     </button>
                   </div>
-                </div>
 
-                <div className="flex-1 min-h-0 overflow-visible lg:overflow-y-auto lg:pr-1">
-                  <form onSubmit={handleFormLogin} className="space-y-3">
-                  <div className="space-y-1">
-                    <label
-                      htmlFor="email-field"
-                      className="block text-[10px] font-black text-gray-300 mr-1 text-right"
-                    >
-                      البريد الإلكتروني
-                    </label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
-                        <Mail size={16} />
-                      </span>
-                      <input
-                        id="email-field"
-                        name="email"
-                        type="text"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full pr-11 pl-4 py-2.5 rounded-2xl text-[12px] focus:outline-none text-white transition-all text-left placeholder-gray-400 lamma-input-shell"
-                        placeholder="example@email.com"
-                        autoComplete="email"
-                        dir="ltr"
-                      />
-                    </div>
-                  </div>
-
-                  {authMode === "signup" && (
-                    <div className="space-y-1">
-                      <label
-                        htmlFor="nickname-field"
-                        className="block text-[10px] font-black text-gray-300 mr-1 text-right"
-                      >
-                        اسم المستخدم
-                      </label>
-                      <div className="relative">
-                        <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
-                          <Hash size={16} />
-                        </span>
-                        <input
-                          id="nickname-field"
-                          name="nickname"
-                          type="text"
-                          required
-                          value={signupNickname}
-                          onChange={(e) => setSignupNickname(e.target.value)}
-                          className="w-full pr-11 pl-4 py-2.5 rounded-2xl text-[12px] focus:outline-none text-white transition-all text-right placeholder-gray-400 lamma-input-shell"
-                          placeholder="مثال: لَمّة_محمد"
-                          autoComplete="nickname"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="space-y-1">
-                    <label
-                      htmlFor="password-field"
-                      className="block text-[10px] font-black text-gray-300 mr-1 text-right"
-                    >
-                      كلمة المرور
-                    </label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)] pointer-events-none">
-                        <Lock size={16} />
-                      </span>
-                      <input
-                        id="password-field"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pr-11 pl-12 py-2.5 rounded-2xl text-[12px] focus:outline-none text-white transition-all text-left placeholder-gray-400 lamma-input-shell"
-                        autoComplete="current-password"
-                        dir="ltr"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500 hover:text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] transition-colors"
-                      >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center text-[10px] pt-0.5 select-none">
-                    <label
-                      htmlFor="rememberMe"
-                      className="flex items-center gap-2 cursor-pointer text-gray-200 hover:text-white"
-                    >
-                      <input
-                        id="rememberMe"
-                        name="rememberMe"
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="w-4 h-4 rounded border-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.22)] bg-black/50 text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.9)] accent-[rgb(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b))] focus:ring-0"
-                      />
-                      <span className="font-black">تذكرني</span>
-                    </label>
-
+                  <div className="hidden items-center gap-1 rounded-full border border-white/10 bg-black/20 p-1 sm:flex">
                     <button
                       type="button"
-                      onClick={() => {
-                        const targetEmail = email.trim();
-                        if (!targetEmail) {
-                          showToast("اكتب البريد الإلكتروني الأول.", "error");
-                          return;
-                        }
-                        if (!supabase) {
-                          showToast(
-                            "⚠️ إعدادات Supabase غير مكتملة حالياً.",
-                            "error",
-                          );
-                          return;
-                        }
-                        setAuthLoading(true);
-                        supabase.auth
-                          .resetPasswordForEmail(targetEmail, {
-                            redirectTo: window.location.origin,
-                          })
-                          .then(({ error }) => {
-                            if (error) {
-                              showToast(error.message, "error");
-                              return;
-                            }
-                            showToast(
-                              "📧 تم إرسال رسالة إعادة تعيين كلمة المرور. راجع بريدك.",
-                              "success",
-                            );
-                          })
-                          .finally(() => setAuthLoading(false));
-                      }}
-                      className="px-3 py-1.5 rounded-full font-black transition-all lamma-login-soft-link"
+                      onClick={() => setPrimaryTheme("dark")}
+                      className={`rounded-full px-2.5 py-1 text-[10px] font-black transition-all ${
+                        primaryTheme === "dark"
+                          ? "bg-white/10 text-white"
+                          : "text-white/60"
+                      }`}
                     >
-                      نسيت كلمة المرور؟
+                      Dark
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPrimaryTheme("amoled")}
+                      className={`rounded-full px-2.5 py-1 text-[10px] font-black transition-all ${
+                        primaryTheme === "amoled"
+                          ? "bg-white/10 text-white"
+                          : "text-white/60"
+                      }`}
+                    >
+                      Amoled
                     </button>
                   </div>
+                </div>
+              </div>
+
+              <div className="mb-4 grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWallThemeSafe("fire")}
+                  className={`rounded-2xl border px-3 py-2 text-[10px] font-black transition-all ${
+                    wallTheme === "fire"
+                      ? "border-[#f2d58d]/40 bg-[#f2d58d]/10 text-[#f2d58d]"
+                      : "border-white/10 bg-white/5 text-white/70"
+                  }`}
+                >
+                  Fire
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWallThemeSafe("ice")}
+                  className={`rounded-2xl border px-3 py-2 text-[10px] font-black transition-all ${
+                    wallTheme === "ice"
+                      ? "border-[#9dd6ff]/40 bg-[#9dd6ff]/10 text-[#9dd6ff]"
+                      : "border-white/10 bg-white/5 text-white/70"
+                  }`}
+                >
+                  Ice
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWallThemeSafe("violet")}
+                  className={`rounded-2xl border px-3 py-2 text-[10px] font-black transition-all ${
+                    wallTheme === "violet"
+                      ? "border-[#d0a8ff]/40 bg-[#d0a8ff]/10 text-[#d0a8ff]"
+                      : "border-white/10 bg-white/5 text-white/70"
+                  }`}
+                >
+                  Violet
+                </button>
+              </div>
+
+              <form onSubmit={handleFormLogin} className="space-y-3">
+                <div className="space-y-1">
+                  <label
+                    htmlFor="email-field"
+                    className="mr-1 block text-[10px] font-black text-white/75"
+                  >
+                    البريد الإلكتروني
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)]">
+                      <Mail size={16} />
+                    </span>
+                    <input
+                      id="email-field"
+                      name="email"
+                      type="text"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="lamma-input-shell w-full rounded-2xl py-3 pl-4 pr-11 text-left text-[12px] text-white placeholder-white/35 focus:outline-none"
+                      placeholder="example@email.com"
+                      autoComplete="email"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                {authMode === "signup" && (
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="nickname-field"
+                      className="mr-1 block text-[10px] font-black text-white/75"
+                    >
+                      اسم المستخدم
+                    </label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)]">
+                        <Hash size={16} />
+                      </span>
+                      <input
+                        id="nickname-field"
+                        name="nickname"
+                        type="text"
+                        required
+                        value={signupNickname}
+                        onChange={(e) => setSignupNickname(e.target.value)}
+                        className="lamma-input-shell w-full rounded-2xl py-3 pl-4 pr-11 text-right text-[12px] text-white placeholder-white/35 focus:outline-none"
+                        placeholder="مثال: لمة_محمد"
+                        autoComplete="nickname"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label
+                    htmlFor="password-field"
+                    className="mr-1 block text-[10px] font-black text-white/75"
+                  >
+                    كلمة المرور
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)]">
+                      <Lock size={16} />
+                    </span>
+                    <input
+                      id="password-field"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="lamma-input-shell w-full rounded-2xl py-3 pl-12 pr-11 text-left text-[12px] text-white placeholder-white/35 focus:outline-none"
+                      autoComplete="current-password"
+                      dir="ltr"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-white/45 transition-colors hover:text-white"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 text-[10px]">
+                  <label
+                    htmlFor="rememberMe"
+                    className="flex cursor-pointer items-center gap-2 text-white/75"
+                  >
+                    <input
+                      id="rememberMe"
+                      name="rememberMe"
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="h-4 w-4 rounded border-white/10 bg-black/40 accent-[rgb(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b))] focus:ring-0"
+                    />
+                    <span className="font-black">افتكرني</span>
+                  </label>
 
                   <button
-                    type="submit"
-                    disabled={authLoading}
-                    className="w-full py-2.5 text-white rounded-2xl font-black text-[12px] flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed lamma-primary-btn"
+                    type="button"
+                    onClick={() => {
+                      const targetEmail = email.trim();
+                      if (!targetEmail) {
+                        showToast("اكتب البريد الإلكتروني الأول.", "error");
+                        return;
+                      }
+                      if (!supabase) {
+                        showToast(
+                          "⚠️ إعدادات Supabase غير مكتملة حالياً.",
+                          "error",
+                        );
+                        return;
+                      }
+                      setAuthLoading(true);
+                      supabase.auth
+                        .resetPasswordForEmail(targetEmail, {
+                          redirectTo: window.location.origin,
+                        })
+                        .then(({ error }) => {
+                          if (error) {
+                            showToast(error.message, "error");
+                            return;
+                          }
+                          showToast(
+                            "📧 تم إرسال رسالة إعادة تعيين كلمة المرور. راجع بريدك.",
+                            "success",
+                          );
+                        })
+                        .finally(() => setAuthLoading(false));
+                    }}
+                    className="rounded-full px-3 py-1.5 font-black text-white/70 transition-all hover:bg-white/5 hover:text-white"
                   >
-                    <span>
-                      {authLoading
-                        ? "جاري التنفيذ..."
-                        : authMode === "signup"
-                          ? "إنشاء حساب"
-                          : "تسجيل الدخول"}
-                    </span>
-                    <ChevronRight size={16} className="rotate-180" />
+                    نسيت كلمة المرور؟
                   </button>
-
-                  <p className="text-[9px] text-gray-400 leading-relaxed text-center">
-                    بالضغط على المتابعة أنت توافق على سياسة الاستخدام والخصوصية
-                    الخاصة بالمشروع.
-                  </p>
-                  </form>
-
-                <div className="flex items-center gap-2 my-3 text-gray-400 text-[9px] font-bold">
-                  <span className="flex-1 h-[1px] bg-gradient-to-l from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
-                  <span>أو</span>
-                  <span className="flex-1 h-[1px] bg-gradient-to-r from-[rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.16)] to-transparent" />
                 </div>
 
                 <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="w-full rounded-2xl border border-[rgba(212,175,55,0.22)] bg-[linear-gradient(180deg,#f3d98a,#c89b3c)] px-4 py-3 text-[13px] font-black text-[#2a1410] shadow-[0_12px_24px_rgba(212,175,55,0.18)] transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <span>
+                      {authLoading
+                        ? "ثانية واحدة..."
+                        : authMode === "signup"
+                          ? "اعملي الحساب"
+                          : "يلا ادخل اللمة"}
+                    </span>
+                    <ChevronRight size={16} className="rotate-180" />
+                  </span>
+                </button>
+
+                <p className="text-center text-[9px] leading-relaxed text-white/45">
+                  بالدخول هنا أنتِ بتكمّلي على النسخة الأساسية الحقيقية للموقع،
+                  مش على معاينة مؤقتة.
+                </p>
+              </form>
+
+              <div className="my-4 flex items-center gap-2 text-[9px] font-bold text-white/40">
+                <span className="h-px flex-1 bg-gradient-to-l from-[#d5b063]/40 to-transparent" />
+                <span>أو</span>
+                <span className="h-px flex-1 bg-gradient-to-r from-[#d5b063]/40 to-transparent" />
+              </div>
+
+              <div className="space-y-2">
+                <button
                   type="button"
                   onClick={handleGoogleLogin}
-                  className="w-full py-2 rounded-2xl text-[12px] font-black flex items-center justify-between px-4 transition-all text-gray-200 hover:text-white bg-black/20 hover:bg-black/40 border border-white/10 backdrop-blur-md"
+                  className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[12px] font-black text-white transition-all hover:bg-white/10"
                 >
                   <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24">
                       <path
                         fill="#4285f4"
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -757,7 +778,7 @@ export default function LoginScreen({
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 11.99 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    <span>متابعة باستخدام Google</span>
+                    <span>دخول بـ Google</span>
                   </div>
                   <ChevronRight size={13} className="rotate-180 opacity-60" />
                 </button>
@@ -765,25 +786,24 @@ export default function LoginScreen({
                 <button
                   type="button"
                   onClick={() => setShowExtraOptions(true)}
-                  className="mt-2 w-full py-2 rounded-2xl text-[12px] font-black text-gray-200 hover:text-white transition-all flex items-center justify-between px-4 bg-black/20 hover:bg-black/40 border border-white/10 backdrop-blur-md"
+                  className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-[12px] font-black text-white/90 transition-all hover:bg-black/35"
                 >
-                  <span>خيارات إضافية</span>
+                  <span>دخول كضيف ومشاركة الرابط</span>
                   <ChevronRight size={13} className="rotate-180 opacity-60" />
                 </button>
-                </div>
+              </div>
 
-              <div className="mt-3 space-y-1 text-center">
-                <div className="text-[10px] text-gray-400/80 font-bold">
-                  © {new Date().getFullYear()} {brandName}. جميع الحقوق محفوظة
+              <div className="mt-5 text-center">
+                <div className="text-[10px] font-bold text-white/50">
+                  © {new Date().getFullYear()} {brandName}
                 </div>
-                <div className="mx-auto inline-flex max-w-full rounded-full px-3 py-1 text-[8px] font-semibold lamma-footer-credit">
-                  توثيق وهوية خاصة:{" "}
-                  <strong className="mr-1">{brandCredit}</strong>
+                <div className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full border border-[rgba(212,175,55,0.24)] bg-[rgba(212,175,55,0.08)] px-3 py-1 text-[9px] font-semibold text-[#f2d58d]">
+                  <span>هوية وتوقيع</span>
+                  <strong>{brandCredit}</strong>
                 </div>
               </div>
             </div>
-            </motion.div>
-          </div>
+          </motion.div>
         </div>
       </div>
 

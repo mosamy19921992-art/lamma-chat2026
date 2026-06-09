@@ -5,7 +5,7 @@
 //  - Network-First  for HTML / routes
 //  - Offline fallback page
 
-const VERSION = "lamma-v1.0.11";
+const VERSION = "lamma-v1.0.12";
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const IMAGE_CACHE = `${VERSION}-images`;
@@ -14,7 +14,6 @@ const API_CACHE = `${VERSION}-api`;
 const PRECACHE_URLS = [
   "/",
   "/index.html",
-  "/login.html",
   "/manifest.json",
   "/images/lamma-favicon.svg",
   "/images/lamma-logo.png",
@@ -22,8 +21,6 @@ const PRECACHE_URLS = [
   "/images/lamma-wordmark.svg",
   "/images/login-hero-1.jpg.jpg",
   "/offline.html",
-  "/assets/login.css",
-  "/assets/login.js",
 ];
 
 // ─────────────────────────────────────────────
