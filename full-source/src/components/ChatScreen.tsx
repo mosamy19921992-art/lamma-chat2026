@@ -236,11 +236,10 @@ export default function ChatScreen({
       setInputText((prev) => prev + `\nبحث عن "${searchQuery}": ${data.text}`);
       setSearchQuery("");
     } catch (err) {
-      console.error(err);
+      console.error("[v0] Gemini search failed:", err);
+      showChatToast("فشل البحث، حاول مرة أخرى", "error");
     }
   };
-
-  // Missing systems active overlay
   const [activeModal, setActiveModal] = useState<
     | "admin"
     | "games"
@@ -301,13 +300,9 @@ export default function ChatScreen({
           initialAvatar = sub.avatar || "👤";
         }
       } catch (e) {
-        console.error(e);
+        console.error("[v0] Failed to parse user subscription from localStorage:", e);
+        // لا نوقف التطبيق — نرجع القيم الافتراضية
       }
-    }
-
-    return {
-      nickname: currentUser.nickname,
-      role: initialRole,
       color: initialColor,
       frame: initialFrame,
       title: initialTitle,
@@ -434,7 +429,36 @@ export default function ChatScreen({
     fetchBans();
   }, []);
 
-  // Current ban tracking state for the active logged-in user
+  // تزامن VIP subscription مع Supabase عند التحميل
+  // لو المستخدم اتجدد له الـ VIP من الأدمن، هيظهر من غير ما يعمل logout
+  useEffect(() => {
+    if (!supabase || !currentUser?.id) return;
+    const fetchSubscription = async () => {
+      const { data, error } = await supabase
+        .from("vip_subscriptions")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .eq("is_active", true)
+        .order("expires_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error || !data) return;
+      const MAX_VALID = Date.now() + 2 * 365 * 24 * 60 * 60 * 1000;
+      const expiresAt = new Date(data.expires_at).getTime();
+      if (expiresAt > Date.now() && expiresAt <= MAX_VALID) {
+        const sub = {
+          isActive: true,
+          plan: data.plan || "vip",
+          expiresAt,
+          badge: data.badge || "",
+          avatar: data.avatar || "",
+        };
+        setSubscription(sub);
+        localStorage.setItem("lamma_user_subscription", JSON.stringify(sub));
+      }
+    };
+    fetchSubscription();
+  }, [currentUser?.id]);
   const [isCurrentlyBanned, setIsCurrentlyBanned] = useState(false);
   const [banDetails, setBanDetails] = useState<BanInfo | null>(null);
 
@@ -471,10 +495,19 @@ export default function ChatScreen({
     return saved ? JSON.parse(saved) : [];
   });
 
+  // debounce ref لتقليل الكتابة على localStorage
+  const lsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    localStorage.setItem("lamma_friends_list", JSON.stringify(friendsList));
-    localStorage.setItem("lamma_ignored_users", JSON.stringify(ignoredUsers));
-    localStorage.setItem("lamma_blocked_users", JSON.stringify(blockedUsers));
+    if (lsDebounceRef.current) clearTimeout(lsDebounceRef.current);
+    lsDebounceRef.current = setTimeout(() => {
+      localStorage.setItem("lamma_friends_list", JSON.stringify(friendsList));
+      localStorage.setItem("lamma_ignored_users", JSON.stringify(ignoredUsers));
+      localStorage.setItem("lamma_blocked_users", JSON.stringify(blockedUsers));
+    }, 500);
+    return () => {
+      if (lsDebounceRef.current) clearTimeout(lsDebounceRef.current);
+    };
   }, [friendsList, ignoredUsers, blockedUsers]);
 
   const [myCustomBio, setMyCustomBio] = useState(() => {
@@ -1743,43 +1776,24 @@ export default function ChatScreen({
   const [showPmEmojiPicker, setShowPmEmojiPicker] = useState(false);
 
   // Available system rooms
-  const systemRooms = [
-    { id: "egypt", name: "مصر", flag: "🇪🇬" },
-    { id: "arab", name: "كل العرب", flag: "🌍" },
-    { id: "romance", name: "رومانسية", flag: "💖" },
-    { id: "youth", name: "لمة شباب وبنات", flag: "👫" },
-    { id: "fun", name: "فرفشة", flag: "🥳" },
-    { id: "palestine", name: "فلسطين", flag: "🇵🇸" },
-    { id: "games", name: "ألعاب", flag: "🎮" },
-    { id: "admin", name: "الإدارة", flag: "🛡️" },
-    { id: "owner", name: "المالك", flag: "👑" },
-  ];
+  // استخدام ROOMS_DEF من chatConstants بدل تعريف قائمة ثانية مكررة
+  const systemRooms = ROOMS_DEF.map((r) => ({ id: r.id, name: r.name, flag: r.icon }));
 
-  // Active open PM recipient/target state
-  const [pmTarget, setPmTarget] = useState({
-    nickname: "سارة",
-    role: "VIP",
-    avatar: "🌸",
-  });
+  // Active open PM recipient/target state — يبدأ فارغ حتى يختار المستخدم شخصاً
+  const [pmTarget, setPmTarget] = useState<{
+    nickname: string;
+    role: string;
+    avatar: string;
+  } | null>(null);
 
-  // Deep private message threads map grouped by nickname
-  const [pmThreads, setPmThreads] = useState<Record<string, PMThreadMessage[]>>({
-    سارة: [
-      { text: "مرحباً 😇", isOwn: false, time: "10:40 PM" },
-      { text: "مساء النور 🌹", isOwn: true, time: "10:40 PM" },
-      { text: "كيف حالك? 😄", isOwn: true, time: "10:40 PM" },
-      { text: "بخير الحمد لله", isOwn: false, time: "10:41 PM" },
-      { text: "ماذا تفعلين الآن؟", isOwn: true, time: "10:41 PM" },
-      { text: "أتحدث مع الأصدقاء في الشات 🎉", isOwn: false, time: "10:41 PM" },
-      { text: "جميل جداً، استمري 😊", isOwn: true, time: "10:42 PM" },
-    ],
-  });
+  // خيوط الرسائل الخاصة — تبدأ فارغة (مش بيانات وهمية)
+  const [pmThreads, setPmThreads] = useState<Record<string, PMThreadMessage[]>>({});
 
-  const pmMessages = pmThreads[pmTarget.nickname] || [];
+  const pmMessages = (pmTarget ? pmThreads[pmTarget.nickname] : null) || [];
   const [pmInputText, setPmInputText] = useState("");
   const [isPmTyping, setIsPmTyping] = useState(false);
 
-  // PM Fake typing effect
+  // PM typing indicator — يشتغل بس لو في target محدد ونافذة PM مفتوحة
   useEffect(() => {
     if (isPmOpen && pmTarget) {
       const t = setTimeout(() => setIsPmTyping(true), 2000);
@@ -1789,7 +1803,7 @@ export default function ChatScreen({
         clearTimeout(t2);
       };
     }
-  }, [isPmOpen, pmTarget, pmMessages.length]);
+  }, [isPmOpen, pmTarget?.nickname, pmMessages.length]);
 
   // Chat Header Welcome Message editability for owner
   const [welcomeMessage, setWelcomeMessage] = useState(
@@ -2696,7 +2710,8 @@ export default function ChatScreen({
       minute: "numeric",
       hour12: true,
     });
-    const targetNickname = pmTarget.nickname;
+    const targetNickname = pmTarget?.nickname;
+    if (!targetNickname) return;
 
     const updatedThread = [
       ...(pmThreads[targetNickname] || []),
@@ -3032,8 +3047,8 @@ export default function ChatScreen({
         minute: "numeric",
         hour12: true,
       });
-      const targetNickname = pmTarget.nickname;
-      setPmThreads((prev) => ({
+      const targetNickname = pmTarget?.nickname;
+      if (!targetNickname) return;
         ...prev,
         [targetNickname]: [
           ...(prev[targetNickname] || []),
@@ -6680,20 +6695,20 @@ export default function ChatScreen({
               <span className="lamma-icon-dot" />
               <div>
                 <div className="text-xs font-black text-white flex items-center gap-1.5 flex-wrap">
-                  <span>{pmTarget.nickname}</span>
-                  {pmTarget.role === "platinum_vip" ? (
+                  <span>{pmTarget?.nickname ?? "..."}</span>
+                  {pmTarget?.role === "platinum_vip" ? (
                     <span className="text-[8px] lamma-role-chip lamma-role-plat">
                       PLATINUM VIP
                     </span>
-                  ) : pmTarget.role === "vip" ? (
+                  ) : pmTarget?.role === "vip" ? (
                     <span className="text-[8px] lamma-role-chip lamma-role-vip">
                       VIP
                     </span>
-                  ) : pmTarget.role === "owner" ? (
+                  ) : pmTarget?.role === "owner" ? (
                     <span className="text-[8px] lamma-role-chip lamma-role-owner">
                       OWNER
                     </span>
-                  ) : pmTarget.role === "admin" ? (
+                  ) : pmTarget?.role === "admin" ? (
                     <span className="text-[8px] lamma-role-chip lamma-role-admin">
                       ADMIN
                     </span>
@@ -6728,7 +6743,7 @@ export default function ChatScreen({
                     , "info");
                     return;
                   }
-                  initiateCall(pmTarget.nickname, "audio");
+                  initiateCall(pmTarget?.nickname ?? "", "audio");
                 }}
                 className="w-7 h-7 rounded-lg text-green-300 flex items-center justify-center lamma-quiet-power-btn"
                 title="الاتصال الهاتفي"
@@ -6756,7 +6771,7 @@ export default function ChatScreen({
                     , "info");
                     return;
                   }
-                  initiateCall(pmTarget.nickname, "video");
+                  initiateCall(pmTarget?.nickname ?? "", "video");
                 }}
                 className="w-7 h-7 rounded-lg text-[#c1d86a] flex items-center justify-center lamma-quiet-power-btn"
                 title="مكالمة الفيديو"
@@ -6766,7 +6781,8 @@ export default function ChatScreen({
               <button
                 type="button"
                 onClick={() => {
-                  showChatToast("🖥️ جاري بدء مشاركة الشاشة... (محاكاة)", "info");
+                  if (!pmTarget) return;
+                  showChatToast("جاري بدء مشاركة الشاشة... (محاكاة)", "info");
                   setPmThreads((prev) => ({
                     ...prev,
                     [pmTarget.nickname]: [
@@ -6859,7 +6875,7 @@ export default function ChatScreen({
                       style={{ animationDelay: "0.2s" }}
                     ></span>
                     <span className="text-[9px] text-gray-400 mr-2">
-                      {pmTarget.nickname} يكتب الان...
+                      {pmTarget?.nickname} يكتب الان...
                     </span>
                   </div>
                 </motion.div>
@@ -9012,7 +9028,7 @@ export default function ChatScreen({
                         </div>
                         <p className="text-[9.5px] text-gray-400 font-bold leading-relaxed font-sans mt-0.5">
                           تفعيل فوري لرتب VIP، الأشكال، الألقاب، الأصدقاء
-                          الأذكياء، وفحص سلامة وأمان المنصة آلياً بالكامل.
+                          ��لأذكياء، وفحص سلامة وأمان المنصة آلياً بالكامل.
                         </p>
                       </div>
                       <div className="shrink-0 text-left">
@@ -9443,7 +9459,7 @@ export default function ChatScreen({
 - إجمالي رسائل اليوم بغرف الشات: 5,820 رسالة متبادلة رسائل حرة 💬.
 - عدد المسجلين النشطين على المنصة: 409 عضو فائق الفعالية 🚀.
 - أفضل الغرف حرقاً ونشاطاً بالساعة: [غرفة مصر الوازنة EG] بمستويات نشاط 58% ✨.
-- العضو الأكثر فاعلية وحضوراً لليو��: أحمد صاحب النخوة 👑.`,
+- العضو الأكثر فاعلية وحضوراً لليو����: أحمد صاحب النخوة 👑.`,
                             );
                             showChatToast(
                               "📊 تم بنجاح بث تقرير الإحصائيات الشامل التلقائي كرسالة رسمية مرئية للجميع بغرفة الدردشة!",
@@ -9978,7 +9994,7 @@ export default function ChatScreen({
                           </h6>
                           <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
                             تم تفعيل الطلب واحتساب رتبك ودمج المزايا بالدردشة
-                            تلقائياً. تم تسجيل الحدث وإشعار جميع الغرف في أمان
+                            تلقائياً. تم تس��يل الحدث وإشعار جميع الغرف في أمان
                             وسلام.
                           </p>
                         </div>
@@ -10532,7 +10548,7 @@ export default function ChatScreen({
                             addSystemActivityLog(
                               "demote",
                               selectedProfileMember.nickname,
-                              `تم إصدار إنذار وتحذير أمني علني للعضو في غرفة [${activeRoomId}]`,
+                              `تم إصدار إنذار وتحذير أمني علن�� للعضو في غرفة [${activeRoomId}]`,
                             );
                             showChatToast(
                               `تم إرسال التحذير بنجاح كرسالة نظام في الغرفة.`,
