@@ -382,36 +382,31 @@ export default function LoginScreen({
           className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
           style={{ backgroundImage: `url("${loginHeroBg}")` }}
         />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(83,35,48,0.18),rgba(17,7,11,0.93))]" />
-        <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_12%,rgba(110,48,64,0.18),rgba(15,7,10,0.95))]" />
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
         <motion.div
-          className="absolute left-1/2 top-[8%] h-[16rem] w-[72rem] -translate-x-1/2 rounded-full blur-3xl opacity-70"
+          className="absolute left-1/2 top-[7%] h-[18rem] w-[74rem] -translate-x-1/2 rounded-full blur-3xl opacity-70"
           style={{
             background:
-              "radial-gradient(ellipse at center, rgba(212,175,55,0.20) 0%, rgba(212,175,55,0.08) 34%, transparent 72%)",
+              "radial-gradient(ellipse at center, rgba(212,175,55,0.18) 0%, rgba(212,175,55,0.06) 34%, transparent 72%)",
           }}
-          animate={{ x: [-24, 20, -24] }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+          animate={{ x: [-20, 20, -20] }}
+          transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
         />
       </div>
 
-      <div className="relative z-10 min-h-[100dvh] flex items-center justify-center px-4 py-6 sm:px-6 sm:py-10">
-        <div className="w-full max-w-6xl grid grid-cols-1 gap-5 lg:grid-cols-[1.05fr_0.95fr] items-stretch">
-          <motion.div
-            initial={{ opacity: 0, y: 28 }}
+      <div className="relative z-10 min-h-[100dvh] px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+          <motion.section
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55 }}
-            className="order-2 lg:order-1 rounded-[34px] border border-[rgba(212,175,55,0.18)] bg-black/20 p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
+            transition={{ duration: 0.5 }}
+            className="overflow-hidden rounded-[34px] border border-[rgba(212,175,55,0.18)] bg-[linear-gradient(180deg,rgba(17,8,11,0.72),rgba(17,8,11,0.88))] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl sm:p-7"
           >
-            <div className="rounded-[28px] border border-[rgba(212,175,55,0.24)] bg-[linear-gradient(180deg,rgba(33,15,20,0.82),rgba(18,8,12,0.92))] p-5 sm:p-7">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.08)] px-3 py-1.5 text-[10px] font-black text-[#f2d58d]">
-                <span>واجهة الدخول الجديدة</span>
-                <span className="h-1.5 w-1.5 rounded-full bg-[#e8c873]" />
-              </div>
-
-              <div className="flex items-center justify-center">
-                <div className="relative w-full max-w-[330px] overflow-hidden rounded-[28px] border border-[rgba(212,175,55,0.28)] bg-[radial-gradient(circle_at_top,rgba(241,210,128,0.18),rgba(73,38,18,0.82))] p-4 shadow-[0_18px_40px_rgba(0,0,0,0.4)]">
-                  <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.16)_0%,transparent_32%)]" />
+            <div className="grid grid-cols-1 items-center gap-5 lg:grid-cols-[280px_1fr]">
+              <div className="flex justify-center">
+                <div className="relative w-full max-w-[240px] overflow-hidden rounded-[28px] border border-[rgba(212,175,55,0.28)] bg-[radial-gradient(circle_at_top,rgba(241,210,128,0.2),rgba(73,38,18,0.82))] p-4 shadow-[0_18px_40px_rgba(0,0,0,0.4)]">
+                  <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.16)_0%,transparent_34%)]" />
                   <img
                     src={brandMarkSrc}
                     alt={brandName}
@@ -420,13 +415,13 @@ export default function LoginScreen({
                       img.onerror = null;
                       img.src = fallbackMarkSrc;
                     }}
-                    className="relative z-10 mx-auto h-[220px] w-auto object-contain sm:h-[280px]"
+                    className="relative z-10 mx-auto h-[210px] w-auto object-contain sm:h-[240px]"
                     draggable={false}
                   />
                 </div>
               </div>
 
-              <div className="mt-6 text-center">
+              <div className="text-center lg:text-right">
                 <img
                   src={brandLogoUrl || brandWordmarkSrc}
                   alt={brandName}
@@ -435,153 +430,185 @@ export default function LoginScreen({
                     img.onerror = null;
                     img.src = fallbackWordmarkSrc;
                   }}
-                  className="mx-auto w-[140px] drop-shadow-xl sm:w-[160px]"
+                  className="mx-auto w-[150px] drop-shadow-xl lg:mx-0"
                   draggable={false}
                 />
-                <h1 className="mt-4 text-[30px] font-black tracking-tight text-[#f3d98a] sm:text-[38px]">
+                <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[rgba(212,175,55,0.3)] bg-[rgba(212,175,55,0.08)] px-3 py-1.5 text-[10px] font-black text-[#f2d58d]">
+                  <span>المتعة كلها بتستناك</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#e8c873]" />
+                </div>
+                <h1 className="mt-4 text-[28px] font-black tracking-tight text-[#f3d98a] sm:text-[36px]">
                   لَامّة شات
                 </h1>
-                <p className="mt-2 text-[12px] leading-6 text-[#f4e9d3]/80 sm:text-[13px]">
-                  نفس روح الشات من أول ما تفتحيه: دخول واضح، شكل موحّد، ومن غير
-                  خلط بين نسخة قديمة وجديدة.
+                <p className="mt-2 text-[13px] leading-7 text-[#f4e9d3]/82">
+                  شات بالروح المصرية بيجمع تلاقي مع الأصالة العربية. نفس الخلفية
+                  والهوية، لكن على شاشة الدخول الحقيقية للموقع.
                 </p>
-              </div>
 
-              <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-center">
-                  <div className="text-[10px] font-black text-[#f2d58d]">
-                    غرف فورية
-                  </div>
-                  <div className="mt-1 text-[10px] text-white/70">
-                    تدخل وتكمل بسرعة
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-center">
-                  <div className="text-[10px] font-black text-[#f2d58d]">
-                    خصوصية
-                  </div>
-                  <div className="mt-1 text-[10px] text-white/70">
-                    رابط ومشاركة آمنة
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-center">
-                  <div className="text-[10px] font-black text-[#f2d58d]">
-                    دخول كضيف
-                  </div>
-                  <div className="mt-1 text-[10px] text-white/70">
-                    من غير تعقيد
-                  </div>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black text-white/85">
+                    🛡️ خصوصية
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black text-white/85">
+                    ⚡ أمان
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black text-white/85">
+                    رَوْقان
+                  </span>
                 </div>
               </div>
             </div>
-          </motion.div>
+          </motion.section>
 
-          <motion.div
-            initial={{ opacity: 0, y: 36 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.08 }}
-            className="order-1 lg:order-2"
-          >
-            <div className="rounded-[34px] border border-[rgba(212,175,55,0.16)] bg-[rgba(21,10,14,0.72)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-2xl sm:p-6">
-              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-[22px] font-black text-white sm:text-[26px]">
-                    {authMode === "signup" ? "اعملي حساب وادخلي" : "يلا ادخل اللمة"}
-                  </h2>
-                  <p className="mt-1 text-[11px] leading-5 text-white/70">
-                    {authMode === "signup"
-                      ? "نسخة الدخول الحقيقية نفسها، لكن بشكل أوضح وأهدى."
-                      : "دخول مرتب وسريع بنفس الهوية البصرية الجديدة."}
-                  </p>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+            <motion.section
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+              className="rounded-[30px] border border-[rgba(212,175,55,0.14)] bg-[rgba(17,9,12,0.76)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.42)] backdrop-blur-2xl sm:p-6"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <div className="rounded-full border border-[rgba(212,175,55,0.24)] bg-[rgba(212,175,55,0.08)] px-3 py-1 text-[10px] font-black text-[#f2d58d]">
+                  لمة.. قعدتنا الرقمية
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 rounded-full border border-white/10 bg-black/25 p-1">
-                    <button
-                      type="button"
-                      onClick={() => setAuthMode("login")}
-                      className={`rounded-full px-3 py-1.5 text-[10px] font-black transition-all ${
-                        authMode === "login"
-                          ? "bg-[rgba(212,175,55,0.16)] text-[#f3d98a]"
-                          : "text-white/65 hover:text-white"
-                      }`}
-                    >
-                      دخول
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAuthMode("signup")}
-                      className={`rounded-full px-3 py-1.5 text-[10px] font-black transition-all ${
-                        authMode === "signup"
-                          ? "bg-[rgba(212,175,55,0.16)] text-[#f3d98a]"
-                          : "text-white/65 hover:text-white"
-                      }`}
-                    >
-                      حساب جديد
-                    </button>
-                  </div>
-
-                  <div className="hidden items-center gap-1 rounded-full border border-white/10 bg-black/20 p-1 sm:flex">
-                    <button
-                      type="button"
-                      onClick={() => setPrimaryTheme("dark")}
-                      className={`rounded-full px-2.5 py-1 text-[10px] font-black transition-all ${
-                        primaryTheme === "dark"
-                          ? "bg-white/10 text-white"
-                          : "text-white/60"
-                      }`}
-                    >
-                      Dark
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPrimaryTheme("amoled")}
-                      className={`rounded-full px-2.5 py-1 text-[10px] font-black transition-all ${
-                        primaryTheme === "amoled"
-                          ? "bg-white/10 text-white"
-                          : "text-white/60"
-                      }`}
-                    >
-                      Amoled
-                    </button>
-                  </div>
+                <div className="hidden items-center gap-1 rounded-full border border-white/10 bg-black/20 p-1 sm:flex">
+                  <button
+                    type="button"
+                    onClick={() => setPrimaryTheme("dark")}
+                    className={`rounded-full px-2.5 py-1 text-[10px] font-black transition-all ${
+                      primaryTheme === "dark"
+                        ? "bg-white/10 text-white"
+                        : "text-white/60"
+                    }`}
+                  >
+                    Dark
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrimaryTheme("amoled")}
+                    className={`rounded-full px-2.5 py-1 text-[10px] font-black transition-all ${
+                      primaryTheme === "amoled"
+                        ? "bg-white/10 text-white"
+                        : "text-white/60"
+                    }`}
+                  >
+                    Amoled
+                  </button>
                 </div>
               </div>
 
-              <div className="mb-4 grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setWallThemeSafe("fire")}
-                  className={`rounded-2xl border px-3 py-2 text-[10px] font-black transition-all ${
-                    wallTheme === "fire"
-                      ? "border-[#f2d58d]/40 bg-[#f2d58d]/10 text-[#f2d58d]"
-                      : "border-white/10 bg-white/5 text-white/70"
-                  }`}
-                >
-                  Fire
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWallThemeSafe("ice")}
-                  className={`rounded-2xl border px-3 py-2 text-[10px] font-black transition-all ${
-                    wallTheme === "ice"
-                      ? "border-[#9dd6ff]/40 bg-[#9dd6ff]/10 text-[#9dd6ff]"
-                      : "border-white/10 bg-white/5 text-white/70"
-                  }`}
-                >
-                  Ice
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWallThemeSafe("violet")}
-                  className={`rounded-2xl border px-3 py-2 text-[10px] font-black transition-all ${
-                    wallTheme === "violet"
-                      ? "border-[#d0a8ff]/40 bg-[#d0a8ff]/10 text-[#d0a8ff]"
-                      : "border-white/10 bg-white/5 text-white/70"
-                  }`}
-                >
-                  Violet
-                </button>
+              <div className="rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(31,16,21,0.76),rgba(16,9,13,0.92))] p-5">
+                <div className="text-[12px] font-black text-[#f3d98a]">
+                  أهلاً بك يا شريكي في «لمة»
+                </div>
+                <div className="mt-2 text-[24px] font-black text-white">
+                  لمة.. مكانكم اللي هنستناكم فيه دايمًا
+                </div>
+                <p className="mt-4 text-[13px] leading-7 text-white/80">
+                  لمة مش مجرد شات، دي قعدتنا الرقمية اللي بتجمعنا.
+                </p>
+                <p className="mt-2 text-[13px] leading-7 text-white/80">
+                  المكان اللي بنهرب فيه من ضجيج العالم عشان نلاقي{" "}
+                  <span className="font-black text-[#f3d98a]">(ونس)</span> حقيقي.
+                </p>
+                <p className="mt-2 text-[13px] leading-7 text-white/80">
+                  هنا الفاصل الزمني بيختفي، وبتبدأ اللمة، والضحكة، والحكايات اللي
+                  بجد.
+                </p>
+
+                <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <button
+                    type="button"
+                    onClick={() => setWallThemeSafe("fire")}
+                    className={`rounded-2xl border px-3 py-2 text-[10px] font-black transition-all ${
+                      wallTheme === "fire"
+                        ? "border-[#f2d58d]/40 bg-[#f2d58d]/10 text-[#f2d58d]"
+                        : "border-white/10 bg-white/5 text-white/70"
+                    }`}
+                  >
+                    Fire
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWallThemeSafe("ice")}
+                    className={`rounded-2xl border px-3 py-2 text-[10px] font-black transition-all ${
+                      wallTheme === "ice"
+                        ? "border-[#9dd6ff]/40 bg-[#9dd6ff]/10 text-[#9dd6ff]"
+                        : "border-white/10 bg-white/5 text-white/70"
+                    }`}
+                  >
+                    Ice
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWallThemeSafe("violet")}
+                    className={`rounded-2xl border px-3 py-2 text-[10px] font-black transition-all ${
+                      wallTheme === "violet"
+                        ? "border-[#d0a8ff]/40 bg-[#d0a8ff]/10 text-[#d0a8ff]"
+                        : "border-white/10 bg-white/5 text-white/70"
+                    }`}
+                  >
+                    Violet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowExtraOptions(true)}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-black text-white/85 transition-all hover:bg-white/10"
+                  >
+                    يالا بينا
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 text-center text-[10px] font-bold text-white/55">
+                © {new Date().getFullYear()} {brandName}. جميع الحقوق محفوظة
+                <span className="mx-1">—</span>
+                <span className="text-[#f2d58d]">{brandCredit}</span>
+              </div>
+            </motion.section>
+
+            <motion.section
+              initial={{ opacity: 0, y: 28 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.08 }}
+              className="rounded-[30px] border border-[rgba(212,175,55,0.16)] bg-[rgba(21,10,14,0.74)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.45)] backdrop-blur-2xl sm:p-6"
+            >
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-[22px] font-black text-white sm:text-[26px]">
+                    {authMode === "signup" ? "حساب جديد" : "تسجيل الدخول"}
+                  </h2>
+                  <p className="mt-1 text-[11px] leading-5 text-white/70">
+                    {authMode === "signup"
+                      ? "اعملي حساب وادخلي على طول من نفس واجهتك."
+                      : "ادخلي من الكارت الحقيقي من غير صفحة غلط في النص."}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1 rounded-full border border-white/10 bg-black/25 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("login")}
+                    className={`rounded-full px-3 py-1.5 text-[10px] font-black transition-all ${
+                      authMode === "login"
+                        ? "bg-[rgba(212,175,55,0.16)] text-[#f3d98a]"
+                        : "text-white/65 hover:text-white"
+                    }`}
+                  >
+                    دخول
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("signup")}
+                    className={`rounded-full px-3 py-1.5 text-[10px] font-black transition-all ${
+                      authMode === "signup"
+                        ? "bg-[rgba(212,175,55,0.16)] text-[#f3d98a]"
+                        : "text-white/65 hover:text-white"
+                    }`}
+                  >
+                    حساب جديد
+                  </button>
+                </div>
               </div>
 
               <form onSubmit={handleFormLogin} className="space-y-3">
@@ -734,17 +761,12 @@ export default function LoginScreen({
                       {authLoading
                         ? "ثانية واحدة..."
                         : authMode === "signup"
-                          ? "اعملي الحساب"
-                          : "يلا ادخل اللمة"}
+                          ? "إنشاء حساب"
+                          : "تسجيل الدخول"}
                     </span>
                     <ChevronRight size={16} className="rotate-180" />
                   </span>
                 </button>
-
-                <p className="text-center text-[9px] leading-relaxed text-white/45">
-                  بالدخول هنا أنتِ بتكمّلي على النسخة الأساسية الحقيقية للموقع،
-                  مش على معاينة مؤقتة.
-                </p>
               </form>
 
               <div className="my-4 flex items-center gap-2 text-[9px] font-bold text-white/40">
@@ -778,7 +800,7 @@ export default function LoginScreen({
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 11.99 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    <span>دخول بـ Google</span>
+                    <span>Google</span>
                   </div>
                   <ChevronRight size={13} className="rotate-180 opacity-60" />
                 </button>
@@ -788,22 +810,12 @@ export default function LoginScreen({
                   onClick={() => setShowExtraOptions(true)}
                   className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-[12px] font-black text-white/90 transition-all hover:bg-black/35"
                 >
-                  <span>دخول كضيف ومشاركة الرابط</span>
+                  <span>دخول سريع</span>
                   <ChevronRight size={13} className="rotate-180 opacity-60" />
                 </button>
               </div>
-
-              <div className="mt-5 text-center">
-                <div className="text-[10px] font-bold text-white/50">
-                  © {new Date().getFullYear()} {brandName}
-                </div>
-                <div className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full border border-[rgba(212,175,55,0.24)] bg-[rgba(212,175,55,0.08)] px-3 py-1 text-[9px] font-semibold text-[#f2d58d]">
-                  <span>هوية وتوقيع</span>
-                  <strong>{brandCredit}</strong>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+            </motion.section>
+          </div>
         </div>
       </div>
 
