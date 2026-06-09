@@ -65,6 +65,13 @@ export function useServiceWorker(): ServiceWorkerState {
           return;
         }
 
+        // Clean up the cache_reset param left over from the redirect above.
+        if (window.location.search.includes("cache_reset")) {
+          const clean = new URL(window.location.href);
+          clean.searchParams.delete("cache_reset");
+          window.history.replaceState(null, "", clean.toString());
+        }
+
         setNeedRefresh(false);
         setOfflineReady(false);
       })
