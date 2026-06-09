@@ -395,428 +395,85 @@ export default function LoginScreen({
         />
       </div>
 
-      <div className="relative z-10 min-h-[100dvh] px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
-          <motion.section
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="overflow-hidden rounded-[34px] border border-[rgba(212,175,55,0.18)] bg-[linear-gradient(180deg,rgba(17,8,11,0.72),rgba(17,8,11,0.88))] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl sm:p-7"
-          >
-            <div className="grid grid-cols-1 items-center gap-5 lg:grid-cols-[280px_1fr]">
-              <div className="flex justify-center">
-                <div className="relative w-full max-w-[240px] overflow-hidden rounded-[28px] border border-[rgba(212,175,55,0.28)] bg-[radial-gradient(circle_at_top,rgba(241,210,128,0.2),rgba(73,38,18,0.82))] p-4 shadow-[0_18px_40px_rgba(0,0,0,0.4)]">
-                  <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.16)_0%,transparent_34%)]" />
-                  <img
-                    src={brandMarkSrc}
-                    alt={brandName}
-                    onError={(e) => {
-                      const img = e.currentTarget;
-                      img.onerror = null;
-                      img.src = fallbackMarkSrc;
-                    }}
-                    className="relative z-10 mx-auto h-[210px] w-auto object-contain sm:h-[240px]"
-                    draggable={false}
-                  />
-                </div>
-              </div>
-
-              <div className="text-center lg:text-right">
-                <img
-                  src={brandLogoUrl || brandWordmarkSrc}
-                  alt={brandName}
-                  onError={(e) => {
-                    const img = e.currentTarget;
-                    img.onerror = null;
-                    img.src = fallbackWordmarkSrc;
-                  }}
-                  className="mx-auto w-[150px] drop-shadow-xl lg:mx-0"
-                  draggable={false}
-                />
-                <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[rgba(212,175,55,0.3)] bg-[rgba(212,175,55,0.08)] px-3 py-1.5 text-[10px] font-black text-[#f2d58d]">
-                  <span>المتعة كلها بتستناك</span>
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#e8c873]" />
-                </div>
-                <h1 className="mt-4 text-[28px] font-black tracking-tight text-[#f3d98a] sm:text-[36px]">
-                  لَامّة شات
-                </h1>
-                <p className="mt-2 text-[13px] leading-7 text-[#f4e9d3]/82">
-                  شات بالروح المصرية بيجمع تلاقي مع الأصالة العربية. نفس الخلفية
-                  والهوية، لكن على شاشة الدخول الحقيقية للموقع.
-                </p>
-
-                <div className="mt-4 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black text-white/85">
-                    🛡️ خصوصية
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black text-white/85">
-                    ⚡ أمان
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black text-white/85">
-                    رَوْقان
-                  </span>
-                </div>
-              </div>
-            </div>
-          </motion.section>
-
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.05fr_0.95fr]">
-            <motion.section
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.05 }}
-              className="rounded-[30px] border border-[rgba(212,175,55,0.14)] bg-[rgba(17,9,12,0.76)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.42)] backdrop-blur-2xl sm:p-6"
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <div className="rounded-full border border-[rgba(212,175,55,0.24)] bg-[rgba(212,175,55,0.08)] px-3 py-1 text-[10px] font-black text-[#f2d58d]">
-                  لمة.. قعدتنا الرقمية
-                </div>
-                <div className="hidden items-center gap-1 rounded-full border border-white/10 bg-black/20 p-1 sm:flex">
-                  <button
-                    type="button"
-                    onClick={() => setPrimaryTheme("dark")}
-                    className={`rounded-full px-2.5 py-1 text-[10px] font-black transition-all ${
-                      primaryTheme === "dark"
-                        ? "bg-white/10 text-white"
-                        : "text-white/60"
-                    }`}
-                  >
-                    Dark
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPrimaryTheme("amoled")}
-                    className={`rounded-full px-2.5 py-1 text-[10px] font-black transition-all ${
-                      primaryTheme === "amoled"
-                        ? "bg-white/10 text-white"
-                        : "text-white/60"
-                    }`}
-                  >
-                    Amoled
-                  </button>
-                </div>
-              </div>
-
-              <div className="rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(31,16,21,0.76),rgba(16,9,13,0.92))] p-5">
-                <div className="text-[12px] font-black text-[#f3d98a]">
-                  أهلاً بك يا شريكي في «لمة»
-                </div>
-                <div className="mt-2 text-[24px] font-black text-white">
-                  لمة.. مكانكم اللي هنستناكم فيه دايمًا
-                </div>
-                <p className="mt-4 text-[13px] leading-7 text-white/80">
-                  لمة مش مجرد شات، دي قعدتنا الرقمية اللي بتجمعنا.
-                </p>
-                <p className="mt-2 text-[13px] leading-7 text-white/80">
-                  المكان اللي بنهرب فيه من ضجيج العالم عشان نلاقي{" "}
-                  <span className="font-black text-[#f3d98a]">(ونس)</span> حقيقي.
-                </p>
-                <p className="mt-2 text-[13px] leading-7 text-white/80">
-                  هنا الفاصل الزمني بيختفي، وبتبدأ اللمة، والضحكة، والحكايات اللي
-                  بجد.
-                </p>
-
-                <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <button
-                    type="button"
-                    onClick={() => setWallThemeSafe("fire")}
-                    className={`rounded-2xl border px-3 py-2 text-[10px] font-black transition-all ${
-                      wallTheme === "fire"
-                        ? "border-[#f2d58d]/40 bg-[#f2d58d]/10 text-[#f2d58d]"
-                        : "border-white/10 bg-white/5 text-white/70"
-                    }`}
-                  >
-                    Fire
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWallThemeSafe("ice")}
-                    className={`rounded-2xl border px-3 py-2 text-[10px] font-black transition-all ${
-                      wallTheme === "ice"
-                        ? "border-[#9dd6ff]/40 bg-[#9dd6ff]/10 text-[#9dd6ff]"
-                        : "border-white/10 bg-white/5 text-white/70"
-                    }`}
-                  >
-                    Ice
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWallThemeSafe("violet")}
-                    className={`rounded-2xl border px-3 py-2 text-[10px] font-black transition-all ${
-                      wallTheme === "violet"
-                        ? "border-[#d0a8ff]/40 bg-[#d0a8ff]/10 text-[#d0a8ff]"
-                        : "border-white/10 bg-white/5 text-white/70"
-                    }`}
-                  >
-                    Violet
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowExtraOptions(true)}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-black text-white/85 transition-all hover:bg-white/10"
-                  >
-                    يالا بينا
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-4 text-center text-[10px] font-bold text-white/55">
-                © {new Date().getFullYear()} {brandName}. جميع الحقوق محفوظة
-                <span className="mx-1">—</span>
-                <span className="text-[#f2d58d]">{brandCredit}</span>
-              </div>
-            </motion.section>
-
-            <motion.section
-              initial={{ opacity: 0, y: 28 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.08 }}
-              className="rounded-[30px] border border-[rgba(212,175,55,0.16)] bg-[rgba(21,10,14,0.74)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.45)] backdrop-blur-2xl sm:p-6"
-            >
-              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-[22px] font-black text-white sm:text-[26px]">
-                    {authMode === "signup" ? "حساب جديد" : "تسجيل الدخول"}
-                  </h2>
-                  <p className="mt-1 text-[11px] leading-5 text-white/70">
-                    {authMode === "signup"
-                      ? "اعملي حساب وادخلي على طول من نفس واجهتك."
-                      : "ادخلي من الكارت الحقيقي من غير صفحة غلط في النص."}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-1 rounded-full border border-white/10 bg-black/25 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setAuthMode("login")}
-                    className={`rounded-full px-3 py-1.5 text-[10px] font-black transition-all ${
-                      authMode === "login"
-                        ? "bg-[rgba(212,175,55,0.16)] text-[#f3d98a]"
-                        : "text-white/65 hover:text-white"
-                    }`}
-                  >
-                    دخول
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAuthMode("signup")}
-                    className={`rounded-full px-3 py-1.5 text-[10px] font-black transition-all ${
-                      authMode === "signup"
-                        ? "bg-[rgba(212,175,55,0.16)] text-[#f3d98a]"
-                        : "text-white/65 hover:text-white"
-                    }`}
-                  >
-                    حساب جديد
-                  </button>
-                </div>
-              </div>
-
-              <form onSubmit={handleFormLogin} className="space-y-3">
-                <div className="space-y-1">
-                  <label
-                    htmlFor="email-field"
-                    className="mr-1 block text-[10px] font-black text-white/75"
-                  >
-                    البريد الإلكتروني
-                  </label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)]">
-                      <Mail size={16} />
-                    </span>
-                    <input
-                      id="email-field"
-                      name="email"
-                      type="text"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="lamma-input-shell w-full rounded-2xl py-3 pl-4 pr-11 text-left text-[12px] text-white placeholder-white/35 focus:outline-none"
-                      placeholder="example@email.com"
-                      autoComplete="email"
-                      dir="ltr"
-                    />
-                  </div>
-                </div>
-
-                {authMode === "signup" && (
-                  <div className="space-y-1">
-                    <label
-                      htmlFor="nickname-field"
-                      className="mr-1 block text-[10px] font-black text-white/75"
-                    >
-                      اسم المستخدم
-                    </label>
-                    <div className="relative">
-                      <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)]">
-                        <Hash size={16} />
-                      </span>
-                      <input
-                        id="nickname-field"
-                        name="nickname"
-                        type="text"
-                        required
-                        value={signupNickname}
-                        onChange={(e) => setSignupNickname(e.target.value)}
-                        className="lamma-input-shell w-full rounded-2xl py-3 pl-4 pr-11 text-right text-[12px] text-white placeholder-white/35 focus:outline-none"
-                        placeholder="مثال: لمة_محمد"
-                        autoComplete="nickname"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <label
-                    htmlFor="password-field"
-                    className="mr-1 block text-[10px] font-black text-white/75"
-                  >
-                    كلمة المرور
-                  </label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-[color:rgba(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b),0.85)]">
-                      <Lock size={16} />
-                    </span>
-                    <input
-                      id="password-field"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="lamma-input-shell w-full rounded-2xl py-3 pl-12 pr-11 text-left text-[12px] text-white placeholder-white/35 focus:outline-none"
-                      autoComplete="current-password"
-                      dir="ltr"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-white/45 transition-colors hover:text-white"
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 text-[10px]">
-                  <label
-                    htmlFor="rememberMe"
-                    className="flex cursor-pointer items-center gap-2 text-white/75"
-                  >
-                    <input
-                      id="rememberMe"
-                      name="rememberMe"
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-4 w-4 rounded border-white/10 bg-black/40 accent-[rgb(var(--lamma-wall-r),var(--lamma-wall-g),var(--lamma-wall-b))] focus:ring-0"
-                    />
-                    <span className="font-black">افتكرني</span>
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const targetEmail = email.trim();
-                      if (!targetEmail) {
-                        showToast("اكتب البريد الإلكتروني الأول.", "error");
-                        return;
-                      }
-                      if (!supabase) {
-                        showToast(
-                          "⚠️ إعدادات Supabase غير مكتملة حالياً.",
-                          "error",
-                        );
-                        return;
-                      }
-                      setAuthLoading(true);
-                      supabase.auth
-                        .resetPasswordForEmail(targetEmail, {
-                          redirectTo: window.location.origin,
-                        })
-                        .then(({ error }) => {
-                          if (error) {
-                            showToast(error.message, "error");
-                            return;
-                          }
-                          showToast(
-                            "📧 تم إرسال رسالة إعادة تعيين كلمة المرور. راجع بريدك.",
-                            "success",
-                          );
-                        })
-                        .finally(() => setAuthLoading(false));
-                    }}
-                    className="rounded-full px-3 py-1.5 font-black text-white/70 transition-all hover:bg-white/5 hover:text-white"
-                  >
-                    نسيت كلمة المرور؟
-                  </button>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={authLoading}
-                  className="w-full rounded-2xl border border-[rgba(212,175,55,0.22)] bg-[linear-gradient(180deg,#f3d98a,#c89b3c)] px-4 py-3 text-[13px] font-black text-[#2a1410] shadow-[0_12px_24px_rgba(212,175,55,0.18)] transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <span className="inline-flex items-center justify-center gap-2">
-                    <span>
-                      {authLoading
-                        ? "ثانية واحدة..."
-                        : authMode === "signup"
-                          ? "إنشاء حساب"
-                          : "تسجيل الدخول"}
-                    </span>
-                    <ChevronRight size={16} className="rotate-180" />
-                  </span>
-                </button>
-              </form>
-
-              <div className="my-4 flex items-center gap-2 text-[9px] font-bold text-white/40">
-                <span className="h-px flex-1 bg-gradient-to-l from-[#d5b063]/40 to-transparent" />
-                <span>أو</span>
-                <span className="h-px flex-1 bg-gradient-to-r from-[#d5b063]/40 to-transparent" />
-              </div>
-
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[12px] font-black text-white transition-all hover:bg-white/10"
-                >
-                  <div className="flex items-center gap-2">
-                    <svg className="h-4 w-4" viewBox="0 0 24 24">
-                      <path
-                        fill="#4285f4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="#34a853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="#fbbc05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      />
-                      <path
-                        fill="#ea4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 11.99 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      />
-                    </svg>
-                    <span>Google</span>
-                  </div>
-                  <ChevronRight size={13} className="rotate-180 opacity-60" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowExtraOptions(true)}
-                  className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-[12px] font-black text-white/90 transition-all hover:bg-black/35"
-                >
-                  <span>دخول سريع</span>
-                  <ChevronRight size={13} className="rotate-180 opacity-60" />
-                </button>
-              </div>
-            </motion.section>
+      <div className="relative z-10 flex min-h-[100dvh] items-center justify-center px-4 py-6 sm:px-6">
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55 }}
+          className="w-full max-w-[420px] rounded-[34px] border border-[rgba(212,175,55,0.18)] bg-[linear-gradient(180deg,rgba(12,11,16,0.58),rgba(8,12,18,0.78))] px-6 py-7 text-center shadow-[0_30px_80px_rgba(0,0,0,0.55)] backdrop-blur-[14px] sm:px-8"
+        >
+          <div className="mx-auto flex max-w-[250px] justify-center">
+            <img
+              src={brandMarkSrc}
+              alt={brandName}
+              onError={(e) => {
+                const img = e.currentTarget;
+                img.onerror = null;
+                img.src = fallbackMarkSrc;
+              }}
+              className="h-[180px] w-auto object-contain drop-shadow-[0_10px_28px_rgba(0,0,0,0.55)] sm:h-[220px]"
+              draggable={false}
+            />
           </div>
-        </div>
+
+          <img
+            src={brandLogoUrl || brandWordmarkSrc}
+            alt={brandName}
+            onError={(e) => {
+              const img = e.currentTarget;
+              img.onerror = null;
+              img.src = fallbackWordmarkSrc;
+            }}
+            className="mx-auto mt-2 w-[118px] drop-shadow-xl"
+            draggable={false}
+          />
+
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-[rgba(212,175,55,0.35)] bg-[rgba(17,18,18,0.42)] px-4 py-2 text-[11px] font-black text-[#f3d98a] shadow-[0_10px_24px_rgba(0,0,0,0.28)]">
+            <span>المتعه كلها بتستناك</span>
+          </div>
+
+          <p className="mx-auto mt-4 max-w-[290px] text-[13px] leading-7 text-white/80">
+            شات بالروح المصرية بيجمع تلاقي مع الأصالة العربية
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-black text-white/85">
+              رَوْقان
+            </span>
+            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-black text-white/85">
+              أمان ⚡
+            </span>
+            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-black text-white/85">
+              خصوصية 🛡️
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowExtraOptions(true)}
+            className="mt-6 inline-flex w-full max-w-[230px] items-center justify-center gap-3 rounded-[18px] border border-[rgba(212,175,55,0.42)] bg-[linear-gradient(180deg,rgba(70,58,34,0.45),rgba(34,29,17,0.45))] px-6 py-3 text-[18px] font-black text-[#f3d98a] shadow-[0_16px_30px_rgba(0,0,0,0.34)] transition-all hover:brightness-110"
+          >
+            <ChevronRight size={18} className="rotate-180" />
+            <span>يالا بينا</span>
+          </button>
+
+          <div className="mt-7 text-[12px] leading-6 text-white/58">
+            © {new Date().getFullYear()} {brandName}. جميع الحقوق محفوظة - توثيق
+            وهوية خاصة:
+          </div>
+
+          <div className="mt-3 inline-flex items-center justify-center rounded-full border border-[rgba(212,175,55,0.28)] bg-[rgba(212,175,55,0.10)] px-5 py-3 text-[11px] font-black text-[#f5dda0] shadow-[0_12px_26px_rgba(0,0,0,0.24)]">
+            {brandCredit}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => showToast("التثبيت من المتصفح أو من قائمة المشاركة.", "info")}
+            className="mx-auto mt-4 block rounded-full border border-white/10 bg-black/20 px-4 py-2 text-[11px] font-black text-white/70 transition-all hover:bg-black/35 hover:text-white"
+          >
+            تثبيت التطبيق
+          </button>
+        </motion.section>
       </div>
 
       <AnimatePresence>
