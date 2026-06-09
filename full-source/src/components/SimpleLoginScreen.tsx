@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { ChevronRight, LogIn, Mail, Shield, Sparkles } from "lucide-react";
 import LoginScreen from "./LoginScreen";
 import { supabase } from "../lib/supabase";
@@ -66,6 +66,15 @@ export default function SimpleLoginScreen({
     localStorage.setItem("lamma_wall_theme", theme);
   };
 
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const loginErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showLoginError = (msg: string) => {
+    if (loginErrorTimerRef.current) clearTimeout(loginErrorTimerRef.current);
+    setLoginError(msg);
+    loginErrorTimerRef.current = setTimeout(() => setLoginError(null), 4500);
+  };
+
   const handleGuestEnter = () => {
     const assignedColor =
       NICKNAME_COLORS[Math.floor(Math.random() * NICKNAME_COLORS.length)];
@@ -74,14 +83,14 @@ export default function SimpleLoginScreen({
 
   const handleGoogleLogin = async () => {
     if (!supabase) {
-      alert("⚠️ إعدادات Supabase غير مكتملة حالياً.");
+      showLoginError("اعدادات Supabase غير مكتملة. تواصل مع المشرف.");
       return;
     }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: window.location.origin },
     });
-    if (error) alert(error.message);
+    if (error) showLoginError(error.message);
   };
 
   return (
@@ -274,6 +283,17 @@ export default function SimpleLoginScreen({
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Error toast */}
+      {loginError && (
+        <div
+          role="alert"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] px-4 py-3 rounded-2xl text-sm font-bold text-red-300 lamma-glass backdrop-blur-xl shadow-lg max-w-xs text-center"
+          style={{ direction: "rtl" }}
+        >
+          {loginError}
         </div>
       )}
     </div>

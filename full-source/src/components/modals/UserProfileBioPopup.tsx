@@ -48,27 +48,18 @@ function getRoleBadge(role: string) {
   return ROLE_BADGE[role] ?? DEFAULT_BADGE;
 }
 
-function getSimulatedBio(nickname: string): string {
-  const lower = nickname.toLowerCase();
-  if (lower.includes("سارة") || lower.includes("sara")) {
-    return "عضوة نشطة من الجيل الذهبي، أعشق الدردشة الرائعة وتصميم غرف الاستقبال 🌸. متواجدة دائماً للمساعدة!";
-  }
-  if (lower.includes("محمد") || lower.includes("mohamed")) {
-    return "مطور ويب من عشاق الهدوء والموسيقى، أبحث عن تبادل الكلمات الطيبة والأصدقاء الأوفياء 🎧.";
-  }
-  if (lower.includes("أحمد") || lower.includes("ahmed")) {
-    return "المالك التأسيسي لموقع شات لمة الرائد 👑. نرحب بجميع الضيوف الكرام ونتمنى لهم أسعد الأوقات الهادفة.";
-  }
-  if (lower.includes("علي") || lower.includes("ali")) {
-    return "مشرف أمني أول 🛡️. يرجى الحفاظ على الآداب العامة والتقيد بالقوانين لراحة الجميع.";
-  }
-  if (lower.includes("نور") || lower.includes("nour")) {
-    return "عاشق السفر وتبادل الثقافات العربية بوقار 🗺️. مرحباً بكل من يسأل أو يريد الصداقة!";
-  }
-  if (lower.includes("guest") || lower.includes("زائر")) {
-    return "زائر مميز يستمتع بالحديث وغرف الدردشة الفورية الآمنة في شات لمة المتكامل 💫.";
-  }
-  return "عضو مميز مسجل بملف شخصي مكتمل في شات لمة الرائع 🌟. أهلاً وسهلاً بالجميع.";
+// البيو يُقرأ من الـ member.bio الحقيقي القادم من Supabase
+// لو مفيش بيو محفوظ يُعرض نص افتراضي عام بدون افتراضات على الاسم
+function getDisplayBio(member: ChatMember, savedBio?: string): string {
+  if (savedBio && savedBio.trim()) return savedBio.trim();
+  if ((member as any).bio && (member as any).bio.trim()) return (member as any).bio.trim();
+  const isGuest =
+    member.role === "guest" ||
+    member.nickname.toLowerCase().includes("guest") ||
+    member.nickname.includes("زائر");
+  return isGuest
+    ? "زائر في شات لمة."
+    : "لم يُضف هذا العضو نبذة تعريفية بعد.";
 }
 
 export interface UserProfileBioHandlers {
@@ -186,7 +177,7 @@ export function UserProfileBioPopup({
                 </div>
               ) : (
                 <div className="p-3 rounded-xl text-[10px] text-gray-300 leading-relaxed break-words font-semibold text-right lamma-section-card">
-                  {getSimulatedBio(target.nickname)}
+                  {getDisplayBio(target)}
                 </div>
               )}
             </div>

@@ -332,6 +332,11 @@ export default function ChatScreen({
 
   // اقتراحات الأصدقاء — مبنية ديناميكياً من chatMembers الموجودين في الغرفة
   // (مش من hardcoded names) عشان تكون حقيقية ومتوافقة مع المستخدمين الفعليين
+  // حالات الـ pending/accepted تُخزن في state منفصل عشان computed values مش قابلة للتعديل
+  const [friendSuggestionsStatus, setFriendSuggestionsStatus] = useState<
+    Record<string, "suggested" | "pending" | "accepted">
+  >({});
+
   const friendSuggestions = chatMembers
     .filter(
       (m) =>
@@ -345,7 +350,10 @@ export default function ChatScreen({
       name: m.nickname,
       interest: m.status === "online" ? "متصل الآن" : "غير متصل",
       icon: m.avatar || "👤",
-      status: "suggested" as const,
+      status: (friendSuggestionsStatus[m.id] ?? "suggested") as
+        | "suggested"
+        | "pending"
+        | "accepted",
     }));
 
   // Shop interactive state variables
@@ -381,9 +389,11 @@ export default function ChatScreen({
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0.0.0",
   );
   const [myIp] = useState(() => {
+    // IP الحقيقي يأتي من الـ server — نخزن placeholder فارغ فقط كـ identifier محلي
+    // لا نولد IP وهمي من نطاق مصري لأنه مضلل ويُستخدم في قرارات الحظر
     let ip = localStorage.getItem("lamma_device_ip");
     if (!ip) {
-      ip = "197.34.82." + Math.floor(Math.random() * 253 + 2);
+      ip = "";
       localStorage.setItem("lamma_device_ip", ip);
     }
     return ip;
@@ -543,8 +553,15 @@ export default function ChatScreen({
   };
 
   const [showStatus, setShowStatus] = useState(false);
+  const bioDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    localStorage.setItem("lamma_user_bio", myCustomBio);
+    if (bioDebounceRef.current) clearTimeout(bioDebounceRef.current);
+    bioDebounceRef.current = setTimeout(() => {
+      localStorage.setItem("lamma_user_bio", myCustomBio);
+    }, 500);
+    return () => {
+      if (bioDebounceRef.current) clearTimeout(bioDebounceRef.current);
+    };
   }, [myCustomBio]);
   useEffect(() => {
     if (showStatus) {
@@ -726,8 +743,15 @@ export default function ChatScreen({
   });
 
   // Sync products list to dynamic localStorage
+  const storeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    localStorage.setItem("lamma_store_products", JSON.stringify(storeProducts));
+    if (storeDebounceRef.current) clearTimeout(storeDebounceRef.current);
+    storeDebounceRef.current = setTimeout(() => {
+      localStorage.setItem("lamma_store_products", JSON.stringify(storeProducts));
+    }, 500);
+    return () => {
+      if (storeDebounceRef.current) clearTimeout(storeDebounceRef.current);
+    };
   }, [storeProducts]);
 
   // Global Automatic Bot Subscription Monitor
@@ -921,22 +945,19 @@ export default function ChatScreen({
         return JSON.parse(saved);
       } catch (e) {}
     }
-    return [
-      "شتيمة",
-      "هبل",
-      "غبي",
-      "احمق",
-      "روابط",
-      "spam",
-      "scam",
-      "حيوان",
-      "كلب",
-      "حمار",
-    ];
+    // قائمة افتراضية خفيفة — الإشراف يضيف كلماته الخاصة
+    return ["spam", "scam", "روابط"];
   });
 
+  const bannedWordsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    localStorage.setItem("lamma_banned_words", JSON.stringify(bannedWords));
+    if (bannedWordsDebounceRef.current) clearTimeout(bannedWordsDebounceRef.current);
+    bannedWordsDebounceRef.current = setTimeout(() => {
+      localStorage.setItem("lamma_banned_words", JSON.stringify(bannedWords));
+    }, 500);
+    return () => {
+      if (bannedWordsDebounceRef.current) clearTimeout(bannedWordsDebounceRef.current);
+    };
   }, [bannedWords]);
   const [newBannedWordInput, setNewBannedWordInput] = useState("");
 
@@ -1090,11 +1111,18 @@ export default function ChatScreen({
     return {};
   });
 
+  const permsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    localStorage.setItem(
-      "lamma_custom_user_perms",
-      JSON.stringify(memberCustomPermissions),
-    );
+    if (permsDebounceRef.current) clearTimeout(permsDebounceRef.current);
+    permsDebounceRef.current = setTimeout(() => {
+      localStorage.setItem(
+        "lamma_custom_user_perms",
+        JSON.stringify(memberCustomPermissions),
+      );
+    }, 500);
+    return () => {
+      if (permsDebounceRef.current) clearTimeout(permsDebounceRef.current);
+    };
   }, [memberCustomPermissions]);
 
   // Audio refs and states for separate Radio & Music players
@@ -6553,7 +6581,7 @@ export default function ChatScreen({
                     memberCustomPermissions[currentUser.nickname]?.callsAllowed;
                   if (!isOwner && !perm) {
                     showChatToast(
-                      "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
+                      "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير م��علة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
                     , "warn");
                     return;
                   }
@@ -6581,7 +6609,7 @@ export default function ChatScreen({
                     memberCustomPermissions[currentUser.nickname]?.callsAllowed;
                   if (!isOwner && !perm) {
                     showChatToast(
-                      "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
+                      "⚠️ عذراً: ميزة المكالمات الصو��ية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
                     , "warn");
                     return;
                   }
@@ -7614,7 +7642,7 @@ export default function ChatScreen({
                               onClick={() => {
                                 if (
                                   confirm(
-                                    "☠️ تحذير إخلاء وتطهير الروم العام: هل أنت متأكد تماماً من الرغبة في بتر ومسح كافة البيانات والمحادثات لجميع الأعضاء في الغرفة الحالية فوراً؟ لا يمكن استعادة البيانات!",
+                                    "☠️ تحذير إخلاء وتطهير الروم العام: هل أنت متأكد تماماً من الرغبة في بتر ومسح كافة البيانات والمحادثات لجميع الأعضاء في الغرفة الحالية فوراً؟ لا يمكن است��ادة البيانات!",
                                   )
                                 ) {
                                   setRoomMessages((prev) => ({
@@ -9114,49 +9142,39 @@ export default function ChatScreen({
                               ) : (
                                 <button
                                   onClick={() => {
-                                    // Set pending status
-                                    setFriendSuggestions((prev) =>
-                                      prev.map((item) =>
-                                        item.id === sug.id
-                                          ? { ...item, status: "pending" }
-                                          : item,
-                                      ),
-                                    );
+                                    setFriendSuggestionsStatus((prev) => ({
+                                      ...prev,
+                                      [sug.id]: "pending",
+                                    }));
 
-                                    // Send bot notification
-                                    const timeStr =
-                                      new Date().toLocaleTimeString("ar-EG", {
-                                        hour: "numeric",
-                                        minute: "numeric",
-                                        hour12: true,
-                                      });
+                                    const timeStr = new Date().toLocaleTimeString("ar-EG", {
+                                      hour: "numeric",
+                                      minute: "numeric",
+                                      hour12: true,
+                                    });
                                     setBotLogs((prev) => [
                                       {
                                         id: `${Date.now()}`,
                                         time: timeStr,
-                                        text: `ماتش أوفر للتلقين: جاري مطابقة بيانات الاهتمام والصداقة مع ${sug.name} آلياً.`,
+                                        text: `جاري إرسال طلب صداقة إلى ${sug.name}.`,
                                         severity: "info",
                                       },
                                       ...prev,
                                     ]);
 
                                     setTimeout(() => {
-                                      setFriendSuggestions((prev) =>
-                                        prev.map((item) =>
-                                          item.id === sug.id
-                                            ? { ...item, status: "accepted" }
-                                            : item,
-                                        ),
-                                      );
-                                      addLammaBotMessage(
-                                        activeRoomId,
-                                        `🤖 تهانينا الوفيرة: تم التوصيل الآلي وقبول طلب الصداقة المقترح بنجاح بين [${currentUser.nickname}] والزميل العضو الفعال [${sug.name}] بفضل خوارزمية الذكاء الاصطناعي بنسبة توافق 98% 🎉!`,
+                                      setFriendSuggestionsStatus((prev) => ({
+                                        ...prev,
+                                        [sug.id]: "accepted",
+                                      }));
+                                      setFriendsList((prev) =>
+                                        prev.includes(sug.name) ? prev : [...prev, sug.name],
                                       );
                                     }, 2000);
                                   }}
                                   className="py-1 px-3 font-bold text-[9.5px] rounded-lg transition-all cursor-pointer lamma-feature-primary"
                                 >
-                                  📨 إرسال طلب صداقة آلي
+                                  إرسال طلب صداقة
                                 </button>
                               )}
 
@@ -9274,17 +9292,15 @@ export default function ChatScreen({
 
                         <button
                           onClick={() => {
+                            const topMember =
+                              chatMembers.length > 0
+                                ? chatMembers[0].nickname
+                                : "غير محدد";
                             addLammaBotMessage(
                               activeRoomId,
-                              `📊 التقرير الإحصائي العام التلقائي (Lamma Analytics Report):
-- إجمالي رسائل اليوم بغرف الشات: 5,820 رسالة متبادلة رسائل حرة 💬.
-- عدد المسجلين النشطين على المنصة: 409 عضو فائق الفعالية 🚀.
-- أفضل الغرف حرقاً ونشاطاً بالساعة: [غرفة مصر الوازنة EG] بمستويات نشاط 58% ✨.
-- العضو الأكثر فاعلية وحضوراً لليو����: أحمد صاحب النخوة 👑.`,
+                              `📊 تقرير الإحصائيات (Lamma Analytics):\n- عدد الأعضاء المتصلين حالياً: ${chatMembers.length} عضو.\n- العضو الأكثر حضوراً: ${topMember}.`,
                             );
-                            showChatToast(
-                              "📊 تم بنجاح بث تقرير الإحصائيات الشامل التلقائي كرسالة رسمية مرئية للجميع بغرفة الدردشة!",
-                            , "success");
+                            showChatToast("تم بث تقرير الإحصائيات في الغرفة", "success");
                           }}
                           className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[10px] border border-emerald-500/20 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
                         >
@@ -9411,7 +9427,7 @@ export default function ChatScreen({
                           </button>
                         ) : (
                           <div className="py-2.5 rounded-xl text-center text-yellow-300 text-[10px] font-black font-sans lamma-soft-warn">
-                            ⏳ جاري تنفيذ معالجات التعافي الذاتي من خلال البوت
+                            ⏳ جاري تنفيذ معالجات التعافي الذات�� من خلال البوت
                             الذكي... انتظر ثانية واحدة!
                           </div>
                         )}
@@ -10556,7 +10572,7 @@ export default function ChatScreen({
                                   roomId: activeRoomId,
                                   banner: currentUser.nickname,
                                   reason:
-                                    "مخالفة آداب النقاش في الغرفة المحددة",
+                                    "مخالفة آداب النقاش ��ي الغرفة المحددة",
                                   time: new Date().toLocaleTimeString("ar-EG", {
                                     hour: "numeric",
                                     minute: "numeric",
