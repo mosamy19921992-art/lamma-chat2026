@@ -1,6 +1,0 @@
-{
-  "name": "Lamma Chat",
-  "description": "تطبيق غرف دردشة عربية تفاعلية وآمنة بالوقت الفعلي مع دعم غرف متعددة ومحادثات خاصة هاتفية وصوتية",
-  "requestFramePermissions": ["microphone"],
-  "majorCapabilities": []
-}
