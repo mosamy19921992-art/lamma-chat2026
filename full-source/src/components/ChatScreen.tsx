@@ -634,7 +634,7 @@ export default function ChatScreen({
         .eq("id", msg.id)
         .then(({ error }) => {
           if (error) {
-            console.error("Error deleting message from Supabase:", error);
+            console.error("[v0] Error deleting message from Supabase:", error);
             showChatToast("فشل حذف الرسالة، حاول مرة أخرى", "error");
           }
         });
@@ -1511,7 +1511,7 @@ export default function ChatScreen({
     );
     if (isBanned) {
       showChatToast(
-        `🚫 تنبيه الغرف: عذراً! أنت محظور من دخول هذه الغرفة بقرار إداري من قبل المشرفين.`,
+        `🚫 تنبيه الغرف: عذراً! أنت محظور من دخول هذه الغرفة بقرار إد��ري من قبل المشرفين.`,
       , "info");
       return;
     }
@@ -1643,7 +1643,7 @@ export default function ChatScreen({
         }));
       } catch (e) {
         console.error("[v0] Failed to parse cached messages:", e);
-        showChatToast("تعذر تحميل الرسائل المحفوظة محلياً", "error");
+        showChatToast("تعذر تحميل الرسائل المحف��ظة محلياً", "error");
       }
     } else {
       setRoomMessages((prev) => ({
@@ -2472,7 +2472,7 @@ export default function ChatScreen({
           ])
           .then(({ error }) => {
             if (error) {
-              console.error("Error sending to Supabase:", error);
+              console.error("[v0] Error sending to Supabase:", error);
               showChatToast("فشل إرسال الرسالة، تحقق من الاتصال", "error");
             }
           });
@@ -2544,7 +2544,7 @@ export default function ChatScreen({
     const normalizedRole = currentUser.role.toLowerCase();
     if (normalizedRole === "guest" || normalizedRole === "زائر") {
       showChatToast(
-        "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإرسال الهدايا المتقدمة والمكالمات الصوتية! يرجى التسجيل مجاناً (عبر البريد أو غوغل) للاستمتاع بالمزايا اللامحدودة! 💚",
+        "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإرسال الهدايا المتقدمة والمكالمات الصوتية! يرجى التسجيل مجاناً (عب�� البريد أو غوغل) للاستمتاع بالمزايا اللامحدودة! 💚",
       , "info");
       return;
     }
@@ -2594,7 +2594,7 @@ export default function ChatScreen({
         ])
         .then(({ error }) => {
           if (error) {
-            console.error("Error sending gift to Supabase:", error);
+            console.error("[v0] Error sending gift to Supabase:", error);
             showChatToast("فشل إرسال الهدية", "error");
           }
         });
@@ -2695,7 +2695,7 @@ export default function ChatScreen({
         ])
         .then(({ error }) => {
           if (error) {
-            console.error("Error sending media to Supabase:", error);
+            console.error("[v0] Error sending media to Supabase:", error);
             showChatToast("فشل إرسال الملف، تحقق من الاتصال", "error");
           }
         });
@@ -7441,7 +7441,7 @@ export default function ChatScreen({
                                 addSystemActivityLog(
                                   "ban",
                                   currentUser.nickname,
-                                  `تعديل إذن الميكروفونات والبث العام إلى: [${nextVal ? "مغلقة" : "مفتوحة"}]`,
+                                  `تعديل ��ذن الميكروفونات والبث العام إلى: [${nextVal ? "مغلقة" : "مفتوحة"}]`,
                                   "👑 OWNER MODERATOR",
                                 );
                                 addLammaBotMessage(
@@ -9533,7 +9533,7 @@ export default function ChatScreen({
                                 id="instapay-address-input"
                                 name="instapayAddress"
                                 autoComplete="off"
-                                placeholder="username@instapay (عنوان إرسالك للتسوية)"
+                                placeholder="username@instapay (عنوان إرسالك للتسوي��)"
                                 value={paymentAccountInput}
                                 onChange={(e) =>
                                   setPaymentAccountInput(e.target.value)
