@@ -60,7 +60,14 @@ import ShareModal from "./modals/ShareModal.tsx";
 import CreateRoomModal from "./modals/CreateRoomModal.tsx";
 import UserContextPopup from "./modals/UserContextPopup.tsx";
 import UserProfileBioPopup from "./modals/UserProfileBioPopup.tsx";
-import { getClientUid, supabase, SupabaseMessage } from "../lib/supabase.ts";
+import {
+  getClientUid,
+  supabase,
+  SupabaseMessage,
+  type OwnerActivityLogRow,
+  type OwnerMemberPermissionRow,
+  type OwnerSettingsRow,
+} from "../lib/supabase.ts";
 import {
   ROOMS_DEF,
   ROOM_CATEGORIES,
@@ -143,6 +150,22 @@ function MobileBottomSheet({
       )}
     </AnimatePresence>
   );
+}
+
+const OWNER_SETTINGS_ROW_ID = "global";
+const OWNER_SYNC_DEBOUNCE_MS = 350;
+
+function sanitizeRoomBgMap(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object") return {};
+
+  return Object.entries(value as Record<string, unknown>).reduce<
+    Record<string, string>
+  >((acc, [key, entry]) => {
+    if (typeof entry === "string" && entry.trim()) {
+      acc[key] = entry.trim();
+    }
+    return acc;
+  }, {});
 }
 
 function PostsFeedRoom({
@@ -1236,34 +1259,7 @@ export default function ChatScreen({
         // ignore
       }
     }
-    return [
-      {
-        id: "log-seed-1",
-        time: "10:30 م",
-        type: "promote",
-        userNickname: "سارة",
-        operatorNickname: "أحمد (المالك)",
-        details:
-          "تم تجديد وترقية العضو سارة إلى رتبة VIP تقديراً لتفاعلها الأسبوعي بالنقاش.",
-      },
-      {
-        id: "log-seed-2",
-        time: "10:15 م",
-        type: "login",
-        userNickname: "محمد",
-        operatorNickname: "محمد",
-        details: "تسجيل دخول عضو VIP محمد عبر Google Login بنجاح.",
-      },
-      {
-        id: "log-seed-3",
-        time: "09:44 م",
-        type: "ban",
-        userNickname: "SuperSpammer",
-        operatorNickname: "🛡️ بوت الحماية",
-        details:
-          "حظر تلقائي ومؤقت (Kick) بسبب إرسال نكات وعبارات سبام هجومية متعاقبة بسرعة فاقة.",
-      },
-    ];
+    return [];
   });
 
   // Lamma AI Guard Bot Settings & States
@@ -1508,32 +1504,7 @@ export default function ChatScreen({
         // ignore
       }
     }
-    return {
-      سارة: {
-        recordingAllowed: true,
-        callsAllowed: true,
-        musicRadioAllowed: true,
-        roomCreationAllowed: true,
-      },
-      عمر: {
-        recordingAllowed: false,
-        callsAllowed: false,
-        musicRadioAllowed: false,
-        roomCreationAllowed: false,
-      },
-      ياسمين: {
-        recordingAllowed: false,
-        callsAllowed: false,
-        musicRadioAllowed: false,
-        roomCreationAllowed: false,
-      },
-      خالد: {
-        recordingAllowed: false,
-        callsAllowed: false,
-        musicRadioAllowed: false,
-        roomCreationAllowed: false,
-      },
-    };
+    return {};
   });
 
   useEffect(() => {
@@ -1542,6 +1513,274 @@ export default function ChatScreen({
       JSON.stringify(memberCustomPermissions),
     );
   }, [memberCustomPermissions]);
+
+  const ownerSettingsSyncReadyRef = useRef(false);
+  const ownerPermissionsSyncReadyRef = useRef(false);
+  const ownerSettingsSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const ownerPermissionsSyncTimeoutRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const canPersistOwnerSettings =
+    currentUser.role === "owner" && currentUser.authProvider === "supabase";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadOwnerData = async () => {
+      ownerSettingsSyncReadyRef.current = false;
+      ownerPermissionsSyncReadyRef.current = false;
+
+      if (!supabase) {
+        ownerSettingsSyncReadyRef.current = true;
+        ownerPermissionsSyncReadyRef.current = true;
+        return;
+      }
+
+      try {
+        const settingsRequest = supabase
+          .from("owner_settings")
+          .select("*")
+          .eq("id", OWNER_SETTINGS_ROW_ID)
+          .maybeSingle<OwnerSettingsRow>();
+        const permissionsRequest = supabase
+          .from("owner_member_permissions")
+          .select("*");
+        const logsRequest =
+          currentUser.role === "owner" || currentUser.role === "admin"
+            ? supabase
+                .from("owner_activity_logs")
+                .select("*")
+                .order("created_at", { ascending: false })
+                .limit(100)
+            : Promise.resolve({ data: null, error: null });
+
+        const [settingsResult, permissionsResult, logsResult] =
+          await Promise.all([
+            settingsRequest,
+            permissionsRequest,
+            logsRequest,
+          ]);
+
+        if (cancelled) return;
+
+        if (settingsResult.data) {
+          const settings = settingsResult.data;
+          setIsGhostMode(Boolean(settings.ghost_mode));
+          setIsSpyMode(Boolean(settings.spy_mode));
+          setIsMaintenanceMode(Boolean(settings.maintenance_mode));
+          setIsGlobalMute(Boolean(settings.global_mute));
+          setIsGlobalMicMute(Boolean(settings.global_mic_mute));
+          setIsOnlyVIPCanSendImages(Boolean(settings.vip_only_images));
+          setIsBotSilent(Boolean(settings.bot_silent));
+          setIsAdsEnabled(settings.ads_enabled !== false);
+          setIsWelcomeToastEnabled(settings.greetings_enabled !== false);
+          setBannedWords(
+            Array.isArray(settings.banned_words)
+              ? settings.banned_words.filter(
+                  (word): word is string =>
+                    typeof word === "string" && word.trim().length > 0,
+                )
+              : [],
+          );
+          setOwnerBgImage(settings.owner_bg_image?.trim() || null);
+          setBrandLogoUrl(settings.custom_logo_url?.trim() || null);
+          setGlowColor(settings.glow_color?.trim() || "#e4e4e7");
+          if (
+            settings.wall_theme === "fire" ||
+            settings.wall_theme === "ice" ||
+            settings.wall_theme === "violet"
+          ) {
+            setWallTheme(settings.wall_theme);
+          }
+          setRoomBgMap(sanitizeRoomBgMap(settings.room_bg_map));
+        }
+
+        if (Array.isArray(permissionsResult.data)) {
+          const nextPermissions = (
+            permissionsResult.data as OwnerMemberPermissionRow[]
+          ).reduce<Record<string, MemberCustomPermissions>>((acc, row) => {
+            if (!row.nickname?.trim()) return acc;
+            acc[row.nickname] = {
+              recordingAllowed: Boolean(row.recording_allowed),
+              callsAllowed: Boolean(row.calls_allowed),
+              musicRadioAllowed: Boolean(row.music_radio_allowed),
+              roomCreationAllowed: Boolean(row.room_creation_allowed),
+            };
+            return acc;
+          }, {});
+
+          setMemberCustomPermissions(nextPermissions);
+        }
+
+        if (Array.isArray(logsResult.data)) {
+          const nextLogs = (logsResult.data as OwnerActivityLogRow[]).map(
+            (row) => ({
+              id: row.id || `syslog-${row.time}-${row.user_nickname}`,
+              time: row.time,
+              type: row.type,
+              userNickname: row.user_nickname,
+              operatorNickname: row.operator_nickname,
+              details: row.details,
+            }),
+          );
+          setActivityLogs(nextLogs);
+          localStorage.setItem("lamma_activity_logs", JSON.stringify(nextLogs));
+        }
+      } catch (error) {
+        console.warn("Owner state fallback to localStorage", error);
+      } finally {
+        if (!cancelled) {
+          ownerSettingsSyncReadyRef.current = true;
+          ownerPermissionsSyncReadyRef.current = true;
+        }
+      }
+    };
+
+    loadOwnerData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser.authProvider, currentUser.role, currentUser.uid]);
+
+  useEffect(() => {
+    if (ownerBgImage?.trim()) {
+      localStorage.setItem("lamma_owner_bg_image", ownerBgImage.trim());
+    } else {
+      localStorage.removeItem("lamma_owner_bg_image");
+    }
+  }, [ownerBgImage]);
+
+  useEffect(() => {
+    if (brandLogoUrl?.trim()) {
+      localStorage.setItem("lamma_custom_logo_url", brandLogoUrl.trim());
+    } else {
+      localStorage.removeItem("lamma_custom_logo_url");
+    }
+  }, [brandLogoUrl]);
+
+  useEffect(() => {
+    localStorage.setItem("lamma_glow_color", glowColor);
+  }, [glowColor]);
+
+  useEffect(() => {
+    localStorage.setItem("lamma_wall_theme", wallTheme);
+  }, [wallTheme]);
+
+  useEffect(() => {
+    localStorage.setItem("lamma_room_bg_map", JSON.stringify(roomBgMap));
+  }, [roomBgMap]);
+
+  useEffect(() => {
+    if (
+      !ownerSettingsSyncReadyRef.current ||
+      !supabase ||
+      !canPersistOwnerSettings
+    ) {
+      return;
+    }
+
+    if (ownerSettingsSyncTimeoutRef.current) {
+      clearTimeout(ownerSettingsSyncTimeoutRef.current);
+    }
+
+    ownerSettingsSyncTimeoutRef.current = setTimeout(async () => {
+      const payload: OwnerSettingsRow = {
+        id: OWNER_SETTINGS_ROW_ID,
+        ghost_mode: isGhostMode,
+        spy_mode: isSpyMode,
+        maintenance_mode: isMaintenanceMode,
+        global_mute: isGlobalMute,
+        global_mic_mute: isGlobalMicMute,
+        vip_only_images: isOnlyVIPCanSendImages,
+        bot_silent: isBotSilent,
+        ads_enabled: isAdsEnabled,
+        greetings_enabled: isWelcomeToastEnabled,
+        banned_words: bannedWords,
+        owner_bg_image: ownerBgImage,
+        custom_logo_url: brandLogoUrl,
+        glow_color: glowColor,
+        wall_theme: wallTheme,
+        room_bg_map: roomBgMap,
+      };
+
+      const { error } = await supabase
+        .from("owner_settings")
+        .upsert(payload, { onConflict: "id" });
+
+      if (error) {
+        console.warn("Failed to sync owner settings", error);
+      }
+    }, OWNER_SYNC_DEBOUNCE_MS);
+
+    return () => {
+      if (ownerSettingsSyncTimeoutRef.current) {
+        clearTimeout(ownerSettingsSyncTimeoutRef.current);
+      }
+    };
+  }, [
+    bannedWords,
+    brandLogoUrl,
+    canPersistOwnerSettings,
+    glowColor,
+    isAdsEnabled,
+    isBotSilent,
+    isGhostMode,
+    isGlobalMicMute,
+    isGlobalMute,
+    isMaintenanceMode,
+    isOnlyVIPCanSendImages,
+    isSpyMode,
+    isWelcomeToastEnabled,
+    ownerBgImage,
+    roomBgMap,
+    wallTheme,
+  ]);
+
+  useEffect(() => {
+    if (
+      !ownerPermissionsSyncReadyRef.current ||
+      !supabase ||
+      !canPersistOwnerSettings
+    ) {
+      return;
+    }
+
+    if (ownerPermissionsSyncTimeoutRef.current) {
+      clearTimeout(ownerPermissionsSyncTimeoutRef.current);
+    }
+
+    ownerPermissionsSyncTimeoutRef.current = setTimeout(async () => {
+      const rows: OwnerMemberPermissionRow[] = Object.entries(
+        memberCustomPermissions,
+      ).map(([nickname, permissions]) => ({
+        nickname,
+        updated_by: currentUser.nickname,
+        recording_allowed: permissions.recordingAllowed,
+        calls_allowed: permissions.callsAllowed,
+        music_radio_allowed: permissions.musicRadioAllowed,
+        room_creation_allowed: permissions.roomCreationAllowed,
+      }));
+
+      if (rows.length === 0) return;
+
+      const { error } = await supabase
+        .from("owner_member_permissions")
+        .upsert(rows, { onConflict: "nickname" });
+
+      if (error) {
+        console.warn("Failed to sync owner member permissions", error);
+      }
+    }, OWNER_SYNC_DEBOUNCE_MS);
+
+    return () => {
+      if (ownerPermissionsSyncTimeoutRef.current) {
+        clearTimeout(ownerPermissionsSyncTimeoutRef.current);
+      }
+    };
+  }, [canPersistOwnerSettings, currentUser.nickname, memberCustomPermissions]);
 
   // Audio refs and states for separate Radio & Music players
   const radioAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -2001,6 +2240,26 @@ export default function ChatScreen({
       localStorage.setItem("lamma_activity_logs", JSON.stringify(updated));
       return updated;
     });
+
+    if (
+      supabase &&
+      (currentUser.role === "owner" || currentUser.role === "admin") &&
+      currentUser.authProvider === "supabase"
+    ) {
+      const payload: OwnerActivityLogRow = {
+        time: timeStr,
+        type,
+        user_nickname: userNickname,
+        operator_nickname: operatorNickname,
+        details,
+      };
+
+      void supabase.from("owner_activity_logs").insert(payload).then(({ error }) => {
+        if (error) {
+          console.warn("Failed to sync owner activity log", error);
+        }
+      });
+    }
   };
 
   // Open user profile popover/modal dynamically with full network metadata fingerprinting details
@@ -2127,7 +2386,7 @@ export default function ChatScreen({
 
   // System Action Trigger Logout with audit logs
   const handleInitiateLogout = () => {
-    cleanupPublicChatSession();
+    cleanupPublicChatSession(true);
     addSystemActivityLog(
       "logout",
       currentUser.nickname,
@@ -8304,10 +8563,6 @@ export default function ChatScreen({
                             onClick={() => {
                               const newVal = !isMaintenanceMode;
                               setIsMaintenanceMode(newVal);
-                              localStorage.setItem(
-                                "lamma_maintenance_mode",
-                                String(newVal),
-                              );
                               addSystemActivityLog(
                                 "promote",
                                 currentUser.nickname,
@@ -8337,10 +8592,6 @@ export default function ChatScreen({
                             onClick={() => {
                               const newVal = !isGlobalMute;
                               setIsGlobalMute(newVal);
-                              localStorage.setItem(
-                                "lamma_global_mute",
-                                String(newVal),
-                              );
                               addSystemActivityLog(
                                 "ban",
                                 currentUser.nickname,
@@ -8367,10 +8618,6 @@ export default function ChatScreen({
                             onClick={() => {
                               const newVal = !isGlobalMicMute;
                               setIsGlobalMicMute(newVal);
-                              localStorage.setItem(
-                                "lamma_global_mic_mute",
-                                String(newVal),
-                              );
                               addSystemActivityLog(
                                 "ban",
                                 currentUser.nickname,
@@ -8397,10 +8644,6 @@ export default function ChatScreen({
                             onClick={() => {
                               const newVal = !isOnlyVIPCanSendImages;
                               setIsOnlyVIPCanSendImages(newVal);
-                              localStorage.setItem(
-                                "lamma_vip_only_images",
-                                String(newVal),
-                              );
                             }}
                             className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isOnlyVIPCanSendImages ? "lamma-toggle-on" : "lamma-soft-action text-gray-300"}`}
                           >
@@ -8438,10 +8681,6 @@ export default function ChatScreen({
                               "owner_logo_url_input",
                             ) as HTMLInputElement;
                             if (inp && inp.value.trim() !== "") {
-                              localStorage.setItem(
-                                "lamma_custom_logo_url",
-                                inp.value.trim(),
-                              );
                               setBrandLogoUrl(inp.value.trim());
                               alert(
                                 "تم تحديث أيقونة التطبيق بنجاح! سيتم تطبيقها لجميع المستخدمين.",
@@ -8452,7 +8691,6 @@ export default function ChatScreen({
                                 "قام المالك بتحديث أيقونة التطبيق السيادية.",
                               );
                             } else {
-                              localStorage.removeItem("lamma_custom_logo_url");
                               setBrandLogoUrl(null);
                               alert("تم استعادة الأيقونة الافتراضية.");
                             }
@@ -8477,10 +8715,6 @@ export default function ChatScreen({
                               "owner_bg_url_input",
                             ) as HTMLInputElement;
                             if (inp && inp.value.trim() !== "") {
-                              localStorage.setItem(
-                                "lamma_owner_bg_image",
-                                inp.value.trim(),
-                              );
                               setOwnerBgImage(inp.value.trim());
                               alert("تم تطبيق تصميم الخلفية السيادي بنجاح!");
                               addSystemActivityLog(
@@ -8489,7 +8723,6 @@ export default function ChatScreen({
                                 "قام المالك بتغيير تصميم خلفية الشات.",
                               );
                             } else {
-                              localStorage.removeItem("lamma_owner_bg_image");
                               setOwnerBgImage(null);
                               alert("تم استعادة تصميم الخلفية الافتراضية.");
                             }
@@ -11180,7 +11413,6 @@ export default function ChatScreen({
                             type="button"
                             onClick={() => {
                               setWallTheme("fire");
-                              localStorage.setItem("lamma_wall_theme", "fire");
                             }}
                             className={`p-3 rounded-xl border transition-all ${
                               wallTheme === "fire"
@@ -11197,7 +11429,6 @@ export default function ChatScreen({
                             type="button"
                             onClick={() => {
                               setWallTheme("ice");
-                              localStorage.setItem("lamma_wall_theme", "ice");
                             }}
                             className={`p-3 rounded-xl border transition-all ${
                               wallTheme === "ice"
@@ -11214,10 +11445,6 @@ export default function ChatScreen({
                             type="button"
                             onClick={() => {
                               setWallTheme("violet");
-                              localStorage.setItem(
-                                "lamma_wall_theme",
-                                "violet",
-                              );
                             }}
                             className={`p-3 rounded-xl border transition-all ${
                               wallTheme === "violet"
@@ -11261,13 +11488,8 @@ export default function ChatScreen({
                               "leadership_logo_url_input",
                             ) as HTMLInputElement;
                             if (inp && inp.value.trim() !== "") {
-                              localStorage.setItem(
-                                "lamma_custom_logo_url",
-                                inp.value.trim(),
-                              );
                               setBrandLogoUrl(inp.value.trim());
                             } else {
-                              localStorage.removeItem("lamma_custom_logo_url");
                               setBrandLogoUrl(null);
                             }
                           }}
@@ -11289,7 +11511,6 @@ export default function ChatScreen({
                           onChange={(e) => {
                             const next = e.target.value;
                             setGlowColor(next);
-                            localStorage.setItem("lamma_glow_color", next);
                           }}
                           className="w-10 h-10 rounded-lg bg-transparent lamma-input-shell"
                         />
@@ -11299,7 +11520,6 @@ export default function ChatScreen({
                           onChange={(e) => {
                             const next = e.target.value;
                             setGlowColor(next);
-                            localStorage.setItem("lamma_glow_color", next);
                           }}
                           className="flex-1 rounded-lg text-[11px] text-white px-2 py-2 focus:outline-none lamma-input-shell"
                           dir="ltr"
@@ -11334,10 +11554,6 @@ export default function ChatScreen({
                             if (next) updated[activeRoomId] = next;
                             else delete updated[activeRoomId];
                             setRoomBgMap(updated);
-                            localStorage.setItem(
-                              "lamma_room_bg_map",
-                              JSON.stringify(updated),
-                            );
                           }}
                           className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
                         >
@@ -11350,10 +11566,6 @@ export default function ChatScreen({
                           const updated = { ...roomBgMap };
                           delete updated[activeRoomId];
                           setRoomBgMap(updated);
-                          localStorage.setItem(
-                            "lamma_room_bg_map",
-                            JSON.stringify(updated),
-                          );
                         }}
                         className="w-full py-2.5 rounded-xl font-black text-[10px] transition-all lamma-danger-btn"
                       >
@@ -11380,13 +11592,8 @@ export default function ChatScreen({
                               "leadership_bg_url_input",
                             ) as HTMLInputElement;
                             if (inp && inp.value.trim() !== "") {
-                              localStorage.setItem(
-                                "lamma_owner_bg_image",
-                                inp.value.trim(),
-                              );
                               setOwnerBgImage(inp.value.trim());
                             } else {
-                              localStorage.removeItem("lamma_owner_bg_image");
                               setOwnerBgImage(null);
                             }
                           }}

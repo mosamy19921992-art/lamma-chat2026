@@ -92,6 +92,26 @@ $$;
 revoke all on function public.is_admin() from public;
 grant execute on function public.is_admin() to authenticated, anon;
 
+create or replace function public.is_owner()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from auth.users
+    where id = auth.uid()
+    and (
+      raw_user_meta_data->>'role' in ('owner', 'Owner', 'malek', 'المالك')
+    )
+  );
+$$;
+
+revoke all on function public.is_owner() from public;
+grant execute on function public.is_owner() to authenticated, anon;
+
 drop policy if exists "Allow anonymous insert access on banned_users" on public.banned_users;
 create policy "Only admins can ban users" on public.banned_users
   for insert
@@ -187,3 +207,94 @@ create policy "Admins read all pm messages" on public.pm_messages
   using (public.is_admin());
 
 alter publication supabase_realtime add table public.pm_messages;
+
+-- 5. إعدادات المالك العامة (مصدر مركزي بدلاً من localStorage فقط)
+create table if not exists public.owner_settings (
+  id text primary key default 'global',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  ghost_mode boolean not null default false,
+  spy_mode boolean not null default false,
+  maintenance_mode boolean not null default false,
+  global_mute boolean not null default false,
+  global_mic_mute boolean not null default false,
+  vip_only_images boolean not null default false,
+  bot_silent boolean not null default false,
+  ads_enabled boolean not null default true,
+  greetings_enabled boolean not null default true,
+  banned_words jsonb not null default '[]'::jsonb,
+  owner_bg_image text,
+  custom_logo_url text,
+  glow_color text default '#e4e4e7',
+  wall_theme text default 'fire',
+  room_bg_map jsonb not null default '{}'::jsonb
+);
+
+alter table public.owner_settings enable row level security;
+
+drop policy if exists "Owner settings readable by all" on public.owner_settings;
+create policy "Owner settings readable by all" on public.owner_settings
+  for select
+  using (true);
+
+drop policy if exists "Only owner manages owner settings" on public.owner_settings;
+create policy "Only owner manages owner settings" on public.owner_settings
+  for all
+  using (public.is_owner())
+  with check (public.is_owner());
+
+insert into public.owner_settings (id)
+values ('global')
+on conflict (id) do nothing;
+
+-- 6. صلاحيات الأعضاء الخاصة التي يحددها المالك
+create table if not exists public.owner_member_permissions (
+  nickname text primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_by text,
+  recording_allowed boolean not null default false,
+  calls_allowed boolean not null default false,
+  music_radio_allowed boolean not null default false,
+  room_creation_allowed boolean not null default false
+);
+
+alter table public.owner_member_permissions enable row level security;
+
+drop policy if exists "Owner member permissions readable by all" on public.owner_member_permissions;
+create policy "Owner member permissions readable by all" on public.owner_member_permissions
+  for select
+  using (true);
+
+drop policy if exists "Only owner manages member permissions" on public.owner_member_permissions;
+create policy "Only owner manages member permissions" on public.owner_member_permissions
+  for all
+  using (public.is_owner())
+  with check (public.is_owner());
+
+-- 7. سجل نشاطات المالك والإدارة
+create table if not exists public.owner_activity_logs (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  time text not null,
+  type text not null,
+  user_nickname text not null,
+  operator_nickname text not null,
+  details text not null
+);
+
+alter table public.owner_activity_logs enable row level security;
+
+drop policy if exists "Admins read owner activity logs" on public.owner_activity_logs;
+create policy "Admins read owner activity logs" on public.owner_activity_logs
+  for select
+  using (public.is_admin());
+
+drop policy if exists "Admins insert owner activity logs" on public.owner_activity_logs;
+create policy "Admins insert owner activity logs" on public.owner_activity_logs
+  for insert
+  with check (public.is_admin());
+
+alter publication supabase_realtime add table public.owner_settings;
+alter publication supabase_realtime add table public.owner_member_permissions;
+alter publication supabase_realtime add table public.owner_activity_logs;

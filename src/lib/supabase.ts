@@ -58,3 +58,44 @@ export interface SupabaseMessage {
   reactions?: Record<string, number>;
 }
 
+export interface OwnerSettingsRow {
+  id: string;
+  created_at?: string;
+  updated_at?: string;
+  ghost_mode?: boolean;
+  spy_mode?: boolean;
+  maintenance_mode?: boolean;
+  global_mute?: boolean;
+  global_mic_mute?: boolean;
+  vip_only_images?: boolean;
+  bot_silent?: boolean;
+  ads_enabled?: boolean;
+  greetings_enabled?: boolean;
+  banned_words?: string[] | null;
+  owner_bg_image?: string | null;
+  custom_logo_url?: string | null;
+  glow_color?: string | null;
+  wall_theme?: string | null;
+  room_bg_map?: Record<string, string> | null;
+}
+
+export interface OwnerMemberPermissionRow {
+  nickname: string;
+  updated_at?: string;
+  updated_by?: string | null;
+  recording_allowed?: boolean;
+  calls_allowed?: boolean;
+  music_radio_allowed?: boolean;
+  room_creation_allowed?: boolean;
+}
+
+export interface OwnerActivityLogRow {
+  id?: string;
+  created_at?: string;
+  time: string;
+  type: "login" | "logout" | "ban" | "promote" | "demote";
+  user_nickname: string;
+  operator_nickname: string;
+  details: string;
+}
+
