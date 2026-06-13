@@ -1,49 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://lamma-chat2026.vercel.app/</loc>
+    <loc>https://lamma-arabic-chat-room.vercel.app/</loc>
     <lastmod>2025-01-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://lamma-chat2026.vercel.app/?room=egypt</loc>
+    <loc>https://lamma-arabic-chat-room.vercel.app/?room=egypt</loc>
     <lastmod>2025-01-15</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://lamma-chat2026.vercel.app/?room=arab</loc>
+    <loc>https://lamma-arabic-chat-room.vercel.app/?room=arab</loc>
     <lastmod>2025-01-15</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://lamma-chat2026.vercel.app/?room=youth</loc>
+    <loc>https://lamma-arabic-chat-room.vercel.app/?room=youth</loc>
     <lastmod>2025-01-15</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://lamma-chat2026.vercel.app/?room=palestine</loc>
+    <loc>https://lamma-arabic-chat-room.vercel.app/?room=palestine</loc>
     <lastmod>2025-01-15</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://lamma-chat2026.vercel.app/?room=fun</loc>
+    <loc>https://lamma-arabic-chat-room.vercel.app/?room=fun</loc>
     <lastmod>2025-01-15</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://lamma-chat2026.vercel.app/?room=games</loc>
+    <loc>https://lamma-arabic-chat-room.vercel.app/?room=games</loc>
     <lastmod>2025-01-15</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://lamma-chat2026.vercel.app/?room=romance</loc>
+    <loc>https://lamma-arabic-chat-room.vercel.app/?room=romance</loc>
     <lastmod>2025-01-15</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>

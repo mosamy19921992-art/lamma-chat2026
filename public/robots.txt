@@ -1,11 +1,11 @@
 # robots.txt for Lamma Chat
-# https://lamma-chat2026.vercel.app
+# https://lamma-arabic-chat-room.vercel.app
 
 User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://lamma-chat2026.vercel.app/sitemap.xml
+Sitemap: https://lamma-arabic-chat-room.vercel.app/sitemap.xml
 
 # Disallow private/admin areas (if any)
 Disallow: /admin
