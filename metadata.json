@@ -1,0 +1,6 @@
+{
+  "name": "Lamma Arabic Chat Room",
+  "description": "A high-fidelity multi-room Arabic group chat application with glassmorphic styling, side columns, active moderators/owners user-rails, private messages, and system integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

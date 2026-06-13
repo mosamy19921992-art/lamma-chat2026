@@ -1,0 +1,3442 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;800;900&family=Tajawal:wght@400;700;900&family=Space+Grotesk:wght@400;600;700&display=swap');
+@import "./components/login-screen-legacy.css";
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Cairo", "Tajawal", "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "Space Grotesk", monospace;
+}
+
+:root {
+  --bg-primary: #040705;
+  --bg-secondary: #090b0d;
+  --bg-surface: #0f1316;
+  --accent-primary: #e5e7eb;
+  --accent-secondary: #aeb6bf;
+  --accent-soft: rgba(255, 255, 255, 0.08);
+  --text-primary: #f8fafc;
+  --text-secondary: #8ea0a7;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --glass-bg: rgba(14, 18, 22, 0.68);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glow-color: rgba(255, 255, 255, 0.06);
+  --lamma-wall-r: 214;
+  --lamma-wall-g: 219;
+  --lamma-wall-b: 225;
+}
+
+/* Theme variables — overridden at runtime by useTheme().
+   Important: the in-chat experience is later skinned by
+   `.lamma-neutral-glass`, which intentionally keeps the current
+   production look neutral/golden regardless of the preset palette.
+   These root defaults therefore match the shipped shell, not the
+   older green marketing palette. */
+:root {
+  --theme-primary: #d1d5db;
+  --theme-accent: #f3f4f6;
+  --theme-bg-1: #0b0d10;
+  --theme-bg-2: #101317;
+  --theme-bg-3: #161a1f;
+  --theme-text: #ffffff;
+  --theme-text-muted: #9ca3af;
+  --theme-primary-rgb: 209, 213, 219;
+  --theme-accent-rgb: 243, 244, 246;
+}
+
+[data-lamma-wall="fire"] {
+  --lamma-wall-r: 16;
+  --lamma-wall-g: 185;
+  --lamma-wall-b: 129;
+}
+
+[data-lamma-wall="ice"] {
+  --lamma-wall-r: 45;
+  --lamma-wall-g: 212;
+  --lamma-wall-b: 191;
+}
+
+[data-lamma-wall="violet"] {
+  --lamma-wall-r: 99;
+  --lamma-wall-g: 102;
+  --lamma-wall-b: 241;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.03), transparent 24%),
+    linear-gradient(135deg, #06080a 0%, #0b0e12 38%, #0a0d11 72%, #05070a 100%);
+  background-attachment: fixed;
+  color: var(--text-primary);
+}
+
+.lamma-glass {
+  background: linear-gradient(
+    180deg,
+    rgba(9, 15, 14, 0.8),
+    rgba(6, 10, 9, 0.7)
+  );
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(194, 222, 204, 0.065);
+  border-radius: 32px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.lamma-glass::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 72px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
+  pointer-events: none;
+}
+
+.lamma-glass::after {
+  display: none;
+}
+
+.lamma-header {
+  height: 46px;
+  backdrop-filter: blur(10px);
+  background: linear-gradient(180deg, rgba(7, 11, 11, 0.64), rgba(5, 8, 9, 0.46));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: none;
+  position: relative;
+}
+
+.lamma-header::before {
+  display: none;
+}
+
+.lamma-header::after {
+  display: none;
+}
+
+.lamma-header-rail {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.008));
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: none;
+  backdrop-filter: blur(10px);
+}
+
+.lamma-header-brand-rail {
+  padding: 0.32rem 0.5rem 0.32rem 0.4rem;
+  border-radius: 1.15rem;
+}
+
+.lamma-header-user-rail {
+  padding: 0.28rem 0.45rem;
+  border-radius: 1.1rem;
+}
+
+.lamma-header-center-badge {
+  padding: 0.24rem 0.46rem;
+  border-radius: 9999px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.lamma-brand-mark {
+  width: 2.7rem;
+  height: 2.7rem;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.028),
+    0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+.lamma-header-wordmark {
+  letter-spacing: 0.22em;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.04);
+}
+
+.lamma-fire-underline {
+  position: relative;
+}
+
+.lamma-fire-underline::after {
+  display: none;
+}
+
+.lamma-fire-overline {
+  position: relative;
+}
+
+.lamma-fire-overline::before {
+  display: none;
+}
+
+.lamma-soft-glow {
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.03);
+}
+
+.lamma-message {
+  background: linear-gradient(180deg, rgba(8, 13, 16, 0.34), rgba(5, 8, 10, 0.22));
+  border: 1px solid rgba(220, 235, 228, 0.055);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 10px 12px;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.024);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.lamma-message:hover {
+  transform: translateY(-1px);
+  border-color: rgba(202, 226, 210, 0.085);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.042);
+}
+
+.lamma-fire-border {
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.22);
+  box-shadow:
+    0 0 28px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.08),
+    0 0 60px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04);
+}
+
+.lamma-fire-frame {
+  position: relative;
+  --lamma-frame-inset: 10px;
+  --lamma-frame-radius: 30px;
+  border-radius: var(--lamma-frame-radius);
+  box-shadow:
+    0 0 0 1px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.10),
+    0 12px 30px rgba(0, 0, 0, 0.24),
+    0 0 26px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.025);
+}
+
+.lamma-fire-frame::before {
+  content: "";
+  position: absolute;
+  inset: var(--lamma-frame-inset);
+  border-radius: var(--lamma-frame-radius);
+  border: 0.75px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.22);
+  box-shadow:
+    0 0 36px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12),
+    0 0 90px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+  z-index: 40;
+  opacity: 0;
+}
+
+.lamma-fire-frame-app {
+  --lamma-frame-inset: 0px;
+  --lamma-frame-radius: 0px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.lamma-fire-frame-app::before {
+  display: none;
+}
+
+.lamma-fire-frame-panel {
+  --lamma-frame-inset: 10px;
+  --lamma-frame-radius: 28px;
+}
+
+.lamma-column-frame {
+  position: relative;
+  border-radius: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.lamma-column-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    0 0 0 1px rgba(255, 248, 228, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.075),
+    inset 0 -1px 0 rgba(255, 230, 170, 0.05);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.lamma-column-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(7, 11, 13, 0.14), rgba(5, 8, 10, 0.08)),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.014), transparent 42%);
+  -webkit-backdrop-filter: blur(4px) saturate(0.96);
+  backdrop-filter: blur(4px) saturate(0.96);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.lamma-surface-card {
+  background: linear-gradient(180deg, rgba(8, 14, 18, 0.34), rgba(5, 8, 12, 0.22));
+  border: 1px solid rgba(214, 229, 220, 0.08);
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.lamma-login-shell {
+  background:
+    linear-gradient(180deg, rgba(14, 20, 17, 0.9), rgba(7, 10, 9, 0.82));
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.16);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.5),
+    0 0 34px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.08);
+  -webkit-backdrop-filter: blur(26px);
+  backdrop-filter: blur(26px);
+}
+
+.lamma-input-shell {
+  background: rgba(3, 6, 4, 0.72);
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 6px 16px rgba(0, 0, 0, 0.16);
+}
+
+.lamma-input-shell:focus,
+.lamma-input-shell:focus-visible {
+  border-color: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.28);
+  box-shadow:
+    0 0 0 1px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12),
+    0 0 0 4px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.05);
+}
+
+.lamma-primary-btn {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.11),
+    rgba(255, 255, 255, 0.05)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.22),
+    0 0 12px rgba(255, 255, 255, 0.03);
+}
+
+.lamma-primary-btn:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.14),
+    rgba(255, 255, 255, 0.07)
+  );
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.lamma-muted-btn {
+  background: rgba(255, 255, 255, 0.028);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.lamma-muted-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.18);
+}
+
+.lamma-login-hero-badge {
+  background: linear-gradient(180deg, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12), rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.05));
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.16);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.2),
+    0 0 16px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.07);
+}
+
+.lamma-login-subtext {
+  color: #aeb8bd;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+}
+
+.lamma-login-soft-link {
+  color: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.9);
+  background: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.06);
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.lamma-login-soft-link:hover {
+  color: #fff;
+  background: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.1);
+  border-color: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.2);
+}
+
+.lamma-login-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.014));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 12px 26px rgba(0, 0, 0, 0.12);
+}
+
+.lamma-login-highlight {
+  background: linear-gradient(180deg, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.1), rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04));
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.lamma-login-orb {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.016));
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.18);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.16),
+    0 0 14px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.06);
+}
+
+.lamma-login-art-frame {
+  background: linear-gradient(180deg, rgba(5, 9, 7, 0.92), rgba(4, 7, 5, 0.82));
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.16);
+  box-shadow:
+    0 24px 52px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.lamma-gold-signature {
+  color: #f6dfab;
+  background: linear-gradient(180deg, rgba(255, 222, 146, 0.24), rgba(214, 151, 58, 0.12));
+  border: 1px solid rgba(255, 222, 146, 0.34);
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.22),
+    0 0 24px rgba(245, 190, 92, 0.12),
+    inset 0 1px 0 rgba(255, 245, 214, 0.22);
+  text-shadow: 0 1px 12px rgba(255, 201, 102, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.lamma-gold-signature strong {
+  color: #fff0c8;
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 16px rgba(255, 213, 120, 0.22);
+}
+
+.lamma-footer-credit {
+  color: rgba(232, 235, 236, 0.82);
+  line-height: 1.7;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.lamma-footer-credit strong {
+  color: #ffe4a3;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-shadow: 0 1px 14px rgba(255, 208, 101, 0.18);
+}
+
+.lamma-panel-shell {
+  background: linear-gradient(180deg, rgba(255, 247, 227, 0.12), rgba(255, 255, 255, 0.045) 24%, rgba(13, 17, 24, 0.2));
+  border: 1px solid rgba(255, 235, 188, 0.11);
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.24),
+    0 0 18px rgba(247, 231, 180, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(20px) saturate(1.06);
+  backdrop-filter: blur(20px) saturate(1.06);
+}
+
+.lamma-list-panel {
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 248, 228, 0.12), rgba(255, 255, 255, 0.05) 26%, rgba(15, 19, 25, 0.14));
+  border: 1px solid rgba(255, 235, 188, 0.11);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 26px rgba(0, 0, 0, 0.16);
+}
+
+.lamma-list-item {
+  background: linear-gradient(180deg, rgba(255, 250, 239, 0.11), rgba(255, 255, 255, 0.05) 24%, rgba(16, 19, 26, 0.12));
+  border: 1px solid rgba(255, 239, 210, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.065),
+    0 10px 18px rgba(0, 0, 0, 0.12);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.lamma-list-item:hover {
+  background: linear-gradient(180deg, rgba(255, 249, 231, 0.17), rgba(255, 226, 170, 0.08) 30%, rgba(21, 26, 34, 0.12));
+  border-color: rgba(255, 228, 170, 0.16);
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 14px 24px rgba(0, 0, 0, 0.16),
+    0 0 24px rgba(247, 231, 180, 0.08);
+}
+
+.lamma-toolbar-btn {
+  background: linear-gradient(180deg, rgba(255, 249, 232, 0.12), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 235, 188, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 16px rgba(0, 0, 0, 0.14);
+}
+
+.lamma-toolbar-btn:hover {
+  background: linear-gradient(180deg, rgba(255, 248, 224, 0.18), rgba(255, 225, 160, 0.07));
+  border-color: rgba(255, 228, 170, 0.16);
+}
+
+.lamma-header-user-rail .lamma-header-mini-btn.lamma-toolbar-btn {
+  background: linear-gradient(180deg, rgba(255, 248, 228, 0.26), rgba(22, 28, 38, 0.82));
+  border: 1px solid rgba(255, 236, 196, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 22px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
+  -webkit-backdrop-filter: blur(24px) saturate(1.08);
+  backdrop-filter: blur(24px) saturate(1.08);
+}
+
+.lamma-header-user-rail .lamma-header-mini-btn.lamma-toolbar-btn:hover,
+.lamma-header-user-rail .lamma-header-mini-btn.lamma-quiet-power-btn-active {
+  background: linear-gradient(180deg, rgba(255, 248, 224, 0.3), rgba(20, 26, 36, 0.88));
+  border-color: rgba(255, 230, 176, 0.26);
+}
+
+.lamma-header-mini-btn {
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  padding: 0.18rem;
+  border-radius: 0.55rem;
+}
+
+.lamma-composer-tool {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.lamma-composer-cluster {
+  gap: 0.35rem;
+}
+
+@media (max-width: 640px) {
+  .lamma-header-mini-btn {
+    min-width: 1.38rem;
+    min-height: 1.38rem;
+    padding: 0.14rem;
+  }
+
+  .lamma-composer-tool {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+
+  .lamma-composer-cluster {
+    gap: 0.25rem;
+  }
+}
+
+.lamma-popover-shell {
+  background: linear-gradient(180deg, rgba(255, 250, 240, 0.14), rgba(255, 255, 255, 0.05) 24%, rgba(10, 14, 19, 0.46));
+  border: 1px solid rgba(255, 234, 186, 0.16);
+  box-shadow:
+    0 20px 46px rgba(0, 0, 0, 0.34),
+    0 0 24px rgba(247, 231, 180, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(22px) saturate(1.08);
+  backdrop-filter: blur(22px) saturate(1.08);
+}
+
+.lamma-chat-input-shell {
+  background: linear-gradient(180deg, rgba(8, 12, 16, 0.035), rgba(5, 8, 12, 0.008));
+  border: 1px solid rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.lamma-neutral-glass .lamma-chat-input-shell {
+  border-bottom-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.lamma-room-header {
+  background: linear-gradient(180deg, rgba(255, 248, 227, 0.12), rgba(255, 255, 255, 0.045) 24%, rgba(10, 14, 19, 0.08));
+  border-bottom: 1px solid rgba(255, 235, 188, 0.08);
+  box-shadow:
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  backdrop-filter: blur(14px) saturate(1.05);
+}
+
+.lamma-topic-shell {
+  background: linear-gradient(180deg, rgba(255, 250, 239, 0.1), rgba(255, 255, 255, 0.04));
+  box-shadow:
+    inset 0 -1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.lamma-column-shell {
+  background: linear-gradient(180deg, rgba(255, 248, 227, 0.11), rgba(255, 255, 255, 0.045) 24%, rgba(10, 14, 19, 0.12));
+}
+
+.lamma-side-column {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 248, 228, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(255, 248, 227, 0.14), rgba(255, 255, 255, 0.05) 20%, rgba(10, 14, 19, 0.2) 62%, rgba(8, 11, 16, 0.28) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(255, 235, 188, 0.06),
+    0 18px 42px rgba(0, 0, 0, 0.22);
+}
+
+.lamma-side-column::before {
+  box-shadow:
+    0 0 0 1px rgba(255, 243, 214, 0.11),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -1px 0 rgba(255, 226, 170, 0.07);
+}
+
+.lamma-side-column::after {
+  background:
+    linear-gradient(180deg, rgba(9, 13, 16, 0.2), rgba(5, 8, 10, 0.1)),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.018), transparent 46%);
+  -webkit-backdrop-filter: blur(8px) saturate(1.02);
+  backdrop-filter: blur(8px) saturate(1.02);
+}
+
+.lamma-chat-core-shell {
+  background: linear-gradient(180deg, rgba(255, 248, 227, 0.1), rgba(255, 255, 255, 0.04) 22%, rgba(10, 14, 19, 0.08));
+}
+
+.lamma-mobile-sidebar-shell {
+  background: rgba(5, 8, 12, 0.50);
+  -webkit-backdrop-filter: blur(24px) saturate(1.04);
+  backdrop-filter: blur(24px) saturate(1.04);
+}
+
+.lamma-mobile-sidebar-header,
+.lamma-mobile-sidebar-footer {
+  background: rgba(0, 0, 0, 0.14);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.lamma-topic-pin {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 0.45rem;
+}
+
+.lamma-room-strip-action {
+  min-width: 2rem;
+  min-height: 1.9rem;
+  padding: 0.22rem 0.38rem;
+  border-radius: 0.6rem;
+}
+
+@media (max-width: 640px) {
+  .lamma-room-strip-action {
+    min-width: 1.85rem;
+    min-height: 1.75rem;
+    padding: 0.18rem 0.28rem;
+  }
+}
+
+.lamma-room-tab {
+  background: linear-gradient(180deg, rgba(255, 248, 227, 0.1), rgba(255, 255, 255, 0.03));
+  border-top: 1px solid transparent;
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 8px 18px rgba(0, 0, 0, 0.08);
+}
+
+.lamma-room-tab:hover {
+  background: linear-gradient(180deg, rgba(255, 248, 227, 0.16), rgba(255, 226, 168, 0.06));
+}
+
+.lamma-room-tab-active {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 248, 227, 0.24),
+    rgba(247, 231, 180, 0.08) 40%,
+    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.05)
+  );
+  border-top: 1px solid rgba(255, 232, 178, 0.32);
+  border-left: 1px solid rgba(255, 226, 170, 0.22);
+  border-right: 1px solid rgba(255, 226, 170, 0.22);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.14),
+    0 0 22px rgba(247, 231, 180, 0.12);
+}
+
+.lamma-mobile-tabs {
+  background:
+    linear-gradient(180deg, rgba(4, 6, 5, 0.96), rgba(4, 6, 5, 0.9));
+  border-bottom: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.08);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+}
+
+.lamma-mobile-tab-btn {
+  position: relative;
+  background: transparent;
+}
+
+.lamma-mobile-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.lamma-mobile-tab-btn-active {
+  color: rgb(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b));
+  background: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.05);
+  box-shadow: inset 0 -3px 0 rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.9);
+}
+
+.lamma-msg-meta {
+  color: #7f8b90;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.lamma-neutral-glass[data-reading-mode="true"] .lamma-message {
+  font-size: 14px !important;
+  line-height: 1.75 !important;
+  color: rgba(245, 247, 250, 0.96) !important;
+  background: linear-gradient(180deg, rgba(6, 8, 12, 0.78), rgba(4, 6, 10, 0.66)) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  transform: none !important;
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+}
+
+.lamma-neutral-glass[data-reading-mode="true"] .lamma-message:hover {
+  transform: none !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow:
+    0 12px 26px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045) !important;
+}
+
+.lamma-neutral-glass[data-reading-mode="true"] .lamma-msg-meta {
+  color: rgba(225, 231, 236, 0.56) !important;
+}
+
+.lamma-neutral-glass[data-reading-mode="true"] .lamma-chat-input-shell {
+  background:
+    linear-gradient(180deg, rgba(255, 248, 228, 0.07), rgba(255, 255, 255, 0.03) 22%, rgba(8, 12, 16, 0.28)) !important;
+  border-color: rgba(255, 235, 188, 0.1) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 34px rgba(0, 0, 0, 0.22) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.05) !important;
+  backdrop-filter: blur(14px) saturate(1.05) !important;
+}
+
+.lamma-neutral-glass[data-reading-mode="true"] .lamma-composer-field::placeholder {
+  color: rgba(225, 231, 236, 0.62) !important;
+}
+
+.lamma-neutral-glass[data-chat-theme] {
+  isolation: isolate;
+}
+
+.lamma-neutral-glass[data-chat-theme="night-paper"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(900px 540px at 14% 18%, rgba(214, 179, 91, 0.085), transparent 62%),
+    radial-gradient(840px 560px at 84% 76%, rgba(16, 185, 129, 0.055), transparent 64%),
+    radial-gradient(900px 780px at 50% 120%, rgba(255, 248, 228, 0.03), transparent 68%),
+    linear-gradient(180deg, rgba(10, 11, 12, 0.88) 0%, rgba(8, 9, 10, 0.92) 60%, rgba(6, 7, 8, 0.94) 100%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.012) 0 2px, rgba(0, 0, 0, 0.012) 2px 4px);
+}
+
+.lamma-neutral-glass[data-chat-theme="charcoal-calm"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(820px 540px at 18% 22%, rgba(148, 163, 184, 0.06), transparent 64%),
+    radial-gradient(900px 620px at 86% 78%, rgba(56, 189, 248, 0.045), transparent 66%),
+    linear-gradient(180deg, rgba(8, 10, 14, 0.9) 0%, rgba(6, 8, 12, 0.94) 60%, rgba(5, 6, 10, 0.96) 100%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.01) 0 1px, rgba(0, 0, 0, 0.012) 1px 3px);
+}
+
+.lamma-neutral-glass[data-chat-theme="olive-ink"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(860px 560px at 16% 22%, rgba(16, 185, 129, 0.055), transparent 64%),
+    radial-gradient(900px 620px at 84% 78%, rgba(214, 179, 91, 0.05), transparent 66%),
+    linear-gradient(180deg, rgba(7, 11, 10, 0.9) 0%, rgba(6, 9, 8, 0.94) 60%, rgba(4, 7, 6, 0.96) 100%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.01) 0 2px, rgba(0, 0, 0, 0.012) 2px 4px);
+}
+
+.lamma-neutral-glass[data-chat-theme="violet-night"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(900px 560px at 18% 20%, rgba(167, 139, 250, 0.06), transparent 64%),
+    radial-gradient(880px 620px at 86% 78%, rgba(99, 102, 241, 0.05), transparent 66%),
+    linear-gradient(180deg, rgba(10, 8, 16, 0.9) 0%, rgba(8, 7, 14, 0.94) 60%, rgba(6, 6, 12, 0.96) 100%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.01) 0 2px, rgba(0, 0, 0, 0.012) 2px 4px);
+}
+
+.lamma-author-line {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  flex-wrap: wrap;
+  line-height: 1;
+}
+
+.lamma-author-name {
+  line-height: 1;
+}
+
+.lamma-author-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.12rem;
+  position: relative;
+}
+
+.lamma-msg-bubble-own {
+  background: linear-gradient(180deg, rgba(24, 181, 123, 0.08), rgba(24, 181, 123, 0.03));
+  border-color: rgba(24, 181, 123, 0.16);
+}
+
+.lamma-msg-bubble-system {
+  background: linear-gradient(180deg, rgba(24, 181, 123, 0.07), rgba(24, 181, 123, 0.022));
+  border-color: rgba(24, 181, 123, 0.16);
+}
+
+.lamma-composer-field {
+  color: #f8fafc;
+  caret-color: rgb(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b));
+}
+
+.lamma-composer-field::placeholder {
+  color: #7d8a91;
+  letter-spacing: 0.01em;
+}
+
+.lamma-room-list-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.012));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.lamma-room-list-card:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018));
+  border-color: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.11);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.024),
+    0 14px 24px rgba(0, 0, 0, 0.14);
+}
+
+.lamma-room-count-pill {
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.lamma-quiet-power-btn {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.015));
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.018),
+    0 8px 18px rgba(0, 0, 0, 0.12);
+}
+
+.lamma-quiet-power-btn:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025));
+  border-color: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.14);
+}
+
+.lamma-quiet-power-btn-active {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.03)
+  );
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.14),
+    0 0 10px rgba(255, 255, 255, 0.03);
+}
+
+.lamma-feature-shell {
+  background: linear-gradient(180deg, rgba(9, 13, 11, 0.96), rgba(6, 9, 7, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.32),
+    0 0 20px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.lamma-feature-header {
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lamma-feature-action {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.lamma-feature-action:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.14);
+}
+
+.lamma-feature-primary {
+  background: linear-gradient(135deg, rgba(24, 181, 123, 0.82), rgba(162, 213, 96, 0.82));
+  color: #06100a;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.18),
+    0 0 14px rgba(24, 181, 123, 0.08);
+}
+
+.lamma-feature-primary:hover {
+  filter: brightness(1.04);
+}
+
+.lamma-soft-status {
+  color: #819097;
+  letter-spacing: 0.01em;
+}
+
+.lamma-role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.12rem 0.38rem;
+  border-radius: 9999px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.lamma-role-vip {
+  color: #81e6b4;
+  background: rgba(24, 181, 123, 0.1);
+  border-color: rgba(24, 181, 123, 0.18);
+}
+
+.lamma-role-plat {
+  color: #f8d977;
+  background: rgba(234, 179, 8, 0.1);
+  border-color: rgba(234, 179, 8, 0.18);
+}
+
+.lamma-role-owner {
+  color: #f4c15d;
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.18);
+}
+
+.lamma-role-admin {
+  color: #7cc7ff;
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.18);
+}
+
+.lamma-role-mod {
+  color: #d5a6ff;
+  background: rgba(168, 85, 247, 0.1);
+  border-color: rgba(168, 85, 247, 0.18);
+}
+
+.lamma-title-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.4rem;
+  border-radius: 9999px;
+  font-weight: 800;
+  background: rgba(193, 216, 106, 0.08);
+  color: #c9dd7e;
+  border: 1px solid rgba(193, 216, 106, 0.12);
+}
+
+.lamma-badge-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.4rem;
+  border-radius: 9999px;
+  font-weight: 800;
+  background: rgba(245, 158, 11, 0.1);
+  color: #f4c15d;
+  border: 1px solid rgba(245, 158, 11, 0.16);
+}
+
+.lamma-boss-sigil {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  transform: translateY(-0.5px);
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.28))
+    drop-shadow(0 0 10px rgba(245, 158, 11, 0.22));
+}
+
+.lamma-boss-sigil > div {
+  position: relative;
+  z-index: 2;
+}
+
+.lamma-boss-sigil::before {
+  content: "";
+  position: absolute;
+  inset: -55%;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 234, 186, 0.82), rgba(255, 159, 67, 0.32) 42%, rgba(255, 0, 0, 0) 72%),
+    radial-gradient(circle at 65% 60%, rgba(255, 140, 64, 0.78), rgba(255, 0, 0, 0) 70%),
+    conic-gradient(from 220deg, rgba(255, 0, 0, 0) 0 22%, rgba(255, 97, 0, 0.36) 22% 42%, rgba(245, 158, 11, 0.46) 42% 58%, rgba(255, 0, 0, 0) 58% 100%);
+  filter: blur(7px) saturate(1.22);
+  opacity: 0.85;
+  mix-blend-mode: screen;
+  z-index: 1;
+  pointer-events: none;
+  animation: lammaBossFlame 1800ms ease-in-out infinite;
+}
+
+.lamma-boss-sigil::after {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 62%);
+  opacity: 0.7;
+  z-index: 3;
+  pointer-events: none;
+}
+
+@keyframes lammaBossFlame {
+  0% {
+    transform: rotate(-4deg) scale(0.98);
+    opacity: 0.76;
+  }
+  50% {
+    transform: rotate(5deg) scale(1.04);
+    opacity: 0.94;
+  }
+  100% {
+    transform: rotate(-4deg) scale(0.98);
+    opacity: 0.76;
+  }
+}
+
+.lamma-prestige-seal {
+  width: 0.92rem;
+  height: 0.92rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.022));
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+}
+
+.lamma-prestige-owner {
+  color: #f4c15d;
+  border-color: rgba(245, 158, 11, 0.2);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.04));
+}
+
+.lamma-prestige-admin {
+  color: #7cc7ff;
+  border-color: rgba(59, 130, 246, 0.18);
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.11), rgba(59, 130, 246, 0.04));
+}
+
+.lamma-prestige-vip {
+  color: #81e6b4;
+  border-color: rgba(24, 181, 123, 0.18);
+  background: linear-gradient(180deg, rgba(24, 181, 123, 0.11), rgba(24, 181, 123, 0.04));
+}
+
+.lamma-prestige-plat {
+  color: #f8d977;
+  border-color: rgba(234, 179, 8, 0.18);
+  background: linear-gradient(180deg, rgba(234, 179, 8, 0.12), rgba(234, 179, 8, 0.04));
+}
+
+.lamma-system-note {
+  background: linear-gradient(180deg, rgba(24, 181, 123, 0.045), rgba(24, 181, 123, 0.016));
+  border: 1px solid rgba(24, 181, 123, 0.11);
+  border-radius: 16px;
+  padding: 0.46rem 0.62rem;
+}
+
+.lamma-system-label {
+  color: #9fe3be;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.lamma-icon-dot {
+  width: 0.31rem;
+  height: 0.31rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.08);
+}
+
+.lamma-notify-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 0.28rem;
+  border-radius: 9999px;
+  background: rgba(239, 68, 68, 0.82);
+  color: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.72);
+  font-weight: 700;
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.14),
+    0 0 10px rgba(239, 68, 68, 0.12);
+}
+
+.lamma-send-orb {
+  background: linear-gradient(180deg, rgba(146, 214, 77, 0.88), rgba(20, 161, 110, 0.76));
+  border: 1px solid rgba(193, 216, 106, 0.12);
+  color: #07110b;
+  box-shadow:
+    0 6px 14px rgba(24, 181, 123, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.lamma-send-orb:hover {
+  transform: translateY(-1px) scale(1.03);
+  box-shadow:
+    0 10px 20px rgba(24, 181, 123, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.lamma-notification-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.014));
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.018),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.lamma-notification-card-unread {
+  background: linear-gradient(180deg, rgba(24, 181, 123, 0.08), rgba(24, 181, 123, 0.03));
+  border-color: rgba(24, 181, 123, 0.14);
+}
+
+.lamma-banner-shell {
+  background: linear-gradient(90deg, rgba(10, 12, 12, 0.028), rgba(8, 10, 10, 0.04), rgba(10, 12, 12, 0.028));
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: none;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.lamma-banner-marquee {
+  color: #d6dde4;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.lamma-banner-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  color: rgba(210, 220, 226, 0.78);
+}
+
+.lamma-soft-action {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.lamma-soft-action:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.lamma-modal-shell {
+  background: linear-gradient(180deg, rgba(9, 13, 11, 0.97), rgba(6, 9, 7, 0.94));
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.16);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.4),
+    0 0 28px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.05);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.lamma-modal-header {
+  background: rgba(255, 255, 255, 0.028);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lamma-section-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.014));
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.018),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.lamma-danger-btn {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.06));
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  color: #f87171;
+}
+
+.lamma-danger-btn:hover {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.08));
+  border-color: rgba(239, 68, 68, 0.24);
+  color: #fff;
+}
+
+.lamma-accent-btn {
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.06));
+  border: 1px solid rgba(59, 130, 246, 0.16);
+  color: #7cc7ff;
+}
+
+.lamma-accent-btn:hover {
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.18), rgba(59, 130, 246, 0.08));
+  border-color: rgba(59, 130, 246, 0.22);
+}
+
+.lamma-stat-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.012));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.016),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.lamma-search-result {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.012));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lamma-call-shell {
+  background: linear-gradient(180deg, rgba(9, 13, 11, 0.97), rgba(6, 9, 7, 0.94));
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.16);
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.42),
+    0 0 28px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.06);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.lamma-call-status {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.014));
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.lamma-admin-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.012));
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.016),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.lamma-toggle-on {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f3f4f6;
+}
+
+/* The authoritative production chat skin.
+   This layer deliberately normalizes the chat UI to the current
+   neutral/golden design without changing the broader app structure.
+   If you want to restyle chat globally, update this block first. */
+.lamma-neutral-glass {
+  --theme-primary: #d1d5db !important;
+  --theme-accent: #f3f4f6 !important;
+  --theme-bg-1: #070b11 !important;
+  --theme-bg-2: #0b0f15 !important;
+  --theme-bg-3: #10151a !important;
+  --theme-primary-rgb: 209, 213, 219 !important;
+  --theme-accent-rgb: 243, 244, 246 !important;
+  --glow-color: rgba(255, 255, 255, 0.06) !important;
+  --lamma-wall-r: 214 !important;
+  --lamma-wall-g: 219 !important;
+  --lamma-wall-b: 225 !important;
+  --lamma-ios-card-top: rgba(255, 255, 255, 0.04) !important;
+  --lamma-ios-card-mid: rgba(255, 255, 255, 0.02) !important;
+  --lamma-ios-card-bottom: rgba(6, 9, 13, 0.32) !important;
+  --lamma-ios-stroke: rgba(255, 255, 255, 0.08) !important;
+  --lamma-ios-stroke-strong: rgba(255, 255, 255, 0.15) !important;
+  --lamma-ios-shadow: rgba(0, 0, 0, 0.25) !important;
+  --lamma-ios-gold: rgba(255, 255, 255, 0.01) !important;
+  --lamma-ios-sheen: rgba(255, 255, 255, 0.08) !important;
+  --lamma-ios-gold-veil: rgba(255, 255, 255, 0.01) !important;
+  --lamma-ios-gold-veil-strong: rgba(255, 255, 255, 0.01) !important;
+  --lamma-ios-surface-mask: rgba(14, 18, 24, 0.85) !important;
+}
+
+.lamma-neutral-glass .lamma-glass,
+.lamma-neutral-glass .lamma-column-shell,
+.lamma-neutral-glass .lamma-chat-core-shell,
+.lamma-neutral-glass .lamma-room-header,
+.lamma-neutral-glass .lamma-topic-shell,
+.lamma-neutral-glass .lamma-chat-input-shell,
+.lamma-neutral-glass .lamma-panel-shell,
+.lamma-neutral-glass .lamma-list-panel,
+.lamma-neutral-glass .lamma-list-item,
+.lamma-neutral-glass .lamma-popover-shell,
+.lamma-neutral-glass .lamma-feature-shell,
+.lamma-neutral-glass .lamma-feature-header,
+.lamma-neutral-glass .lamma-admin-card,
+.lamma-neutral-glass .lamma-section-card,
+.lamma-neutral-glass .lamma-modal-shell,
+.lamma-neutral-glass .lamma-modal-header {
+  background:
+    radial-gradient(circle at 16% 10%, transparent, transparent),
+    radial-gradient(circle at 84% 0%, transparent, transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02) 22%, rgba(12, 16, 22, 0.82) 100%) !important;
+  border-color: var(--lamma-ios-stroke) !important;
+  box-shadow:
+    inset 0 1px 0 var(--lamma-ios-sheen),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 44px var(--lamma-ios-shadow),
+    0 0 0 1px rgba(255, 255, 255, 0.02) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.08) !important;
+  backdrop-filter: blur(22px) saturate(1.08) !important;
+}
+
+.lamma-neutral-glass .lamma-list-item:hover,
+.lamma-neutral-glass .lamma-toolbar-btn:hover,
+.lamma-neutral-glass .lamma-soft-action:hover,
+.lamma-neutral-glass .lamma-feature-action:hover,
+.lamma-neutral-glass .lamma-muted-btn:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)) !important;
+  border-color: var(--lamma-ios-stroke-strong) !important;
+}
+
+.lamma-chat-input-shell .lamma-popover-shell,
+.lamma-chat-input-shell .lamma-feature-shell {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.04), transparent 40%),
+    radial-gradient(circle at 50% 100%, transparent, transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02) 20%, rgba(10, 13, 18, 0.92) 80%, rgba(6, 8, 11, 0.98) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 26px 56px rgba(0, 0, 0, 0.48),
+    0 0 30px rgba(255, 255, 255, 0.01) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(1.14) !important;
+  backdrop-filter: blur(32px) saturate(1.14) !important;
+}
+
+.lamma-neutral-glass .lamma-topic-shell,
+.lamma-neutral-glass .lamma-room-header {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 8px 18px rgba(0, 0, 0, 0.08) !important;
+}
+
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-column-frame::after {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-column-shell,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-room-header,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-topic-shell,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-list-panel,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-list-item,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-popover-shell,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-feature-shell,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-modal-shell,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-section-card {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.015), transparent 45%),
+    radial-gradient(circle at 50% 100%, transparent, transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01) 22%, rgba(12, 16, 22, 0.65) 100%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.04) !important;
+  backdrop-filter: blur(18px) saturate(1.04) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 26px rgba(0, 0, 0, 0.16),
+    0 0 22px rgba(255, 255, 255, 0.01) !important;
+}
+
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-side-column {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.015), transparent 45%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01) 20%, rgba(10, 13, 18, 0.60) 62%, rgba(6, 8, 11, 0.72) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 20px 42px rgba(0, 0, 0, 0.25) !important;
+}
+
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-chat-core-shell {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.005) 18%, rgba(14, 18, 24, 0.15) 64%, rgba(8, 12, 17, 0.22) 100%) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 10px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-chat-core-shell::before {
+  opacity: 0.42;
+}
+
+.lamma-post-feed-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 2px 2px 10px;
+}
+
+.lamma-post-hero,
+.lamma-post-card,
+.lamma-post-empty {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 234, 186, 0.18);
+  background:
+    radial-gradient(circle at 14% 10%, rgba(247, 231, 180, 0.16), transparent 26%),
+    radial-gradient(circle at 86% 0%, rgba(214, 179, 91, 0.12), transparent 24%),
+    linear-gradient(180deg, rgba(255, 248, 228, 0.16), rgba(255, 255, 255, 0.04) 18%, rgba(14, 18, 24, 0.58) 64%, rgba(10, 14, 20, 0.72) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 40px rgba(0, 0, 0, 0.2),
+    0 0 24px rgba(247, 231, 180, 0.05);
+  -webkit-backdrop-filter: blur(18px) saturate(1.04);
+  backdrop-filter: blur(18px) saturate(1.04);
+}
+
+.lamma-post-hero {
+  padding: 14px 16px;
+}
+
+.lamma-post-card {
+  padding: 14px 14px 12px;
+}
+
+.lamma-post-body {
+  margin-top: 10px;
+  border-radius: 20px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(7, 10, 14, 0.14));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lamma-post-empty {
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 18px;
+}
+
+.lamma-post-composer-note {
+  flex-basis: 100%;
+  padding: 0 6px 2px;
+  color: rgba(245, 219, 162, 0.9);
+  font-size: 10px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.lamma-neutral-glass .lamma-column-shell,
+.lamma-neutral-glass .lamma-chat-core-shell {
+  position: relative;
+}
+
+.lamma-neutral-glass .lamma-column-shell::before,
+.lamma-neutral-glass .lamma-chat-core-shell::before,
+.lamma-neutral-glass .lamma-list-panel::before,
+.lamma-neutral-glass .lamma-popover-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(255, 244, 211, 0.18), transparent 30%),
+    radial-gradient(circle at 84% 0%, rgba(214, 179, 91, 0.14), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 42%);
+  opacity: 0.92;
+}
+
+.lamma-neutral-glass [class*="text-green-"],
+.lamma-neutral-glass [class*="text-yellow-"],
+.lamma-neutral-glass [class*="text-orange-"],
+.lamma-neutral-glass [class*="text-amber-"],
+.lamma-neutral-glass [class*="text-lime-"],
+.lamma-neutral-glass [class*="text-blue-"],
+.lamma-neutral-glass [class*="text-sky-"],
+.lamma-neutral-glass [class*="text-cyan-"],
+.lamma-neutral-glass [class*="text-teal-"],
+.lamma-neutral-glass [class*="text-indigo-"],
+.lamma-neutral-glass [class*="text-violet-"],
+.lamma-neutral-glass [class*="text-purple-"],
+.lamma-neutral-glass [class*="text-fuchsia-"],
+.lamma-neutral-glass [class*="text-pink-"],
+.lamma-neutral-glass [class*="text-emerald-"],
+.lamma-neutral-glass [class*="text-red-"],
+.lamma-neutral-glass [class*="text-[#a3e635]"],
+.lamma-neutral-glass [class*="text-[#10b981]"] {
+  color: #d7dce2 !important;
+}
+
+.lamma-neutral-glass [class*="bg-green-"],
+.lamma-neutral-glass [class*="bg-yellow-"],
+.lamma-neutral-glass [class*="bg-orange-"],
+.lamma-neutral-glass [class*="bg-amber-"],
+.lamma-neutral-glass [class*="bg-lime-"],
+.lamma-neutral-glass [class*="bg-blue-"],
+.lamma-neutral-glass [class*="bg-sky-"],
+.lamma-neutral-glass [class*="bg-cyan-"],
+.lamma-neutral-glass [class*="bg-teal-"],
+.lamma-neutral-glass [class*="bg-indigo-"],
+.lamma-neutral-glass [class*="bg-violet-"],
+.lamma-neutral-glass [class*="bg-purple-"],
+.lamma-neutral-glass [class*="bg-fuchsia-"],
+.lamma-neutral-glass [class*="bg-pink-"],
+.lamma-neutral-glass [class*="bg-red-"],
+.lamma-neutral-glass [class*="bg-emerald-"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.lamma-neutral-glass [class*="border-green-"],
+.lamma-neutral-glass [class*="border-yellow-"],
+.lamma-neutral-glass [class*="border-orange-"],
+.lamma-neutral-glass [class*="border-amber-"],
+.lamma-neutral-glass [class*="border-lime-"],
+.lamma-neutral-glass [class*="border-blue-"],
+.lamma-neutral-glass [class*="border-sky-"],
+.lamma-neutral-glass [class*="border-cyan-"],
+.lamma-neutral-glass [class*="border-teal-"],
+.lamma-neutral-glass [class*="border-indigo-"],
+.lamma-neutral-glass [class*="border-violet-"],
+.lamma-neutral-glass [class*="border-purple-"],
+.lamma-neutral-glass [class*="border-fuchsia-"],
+.lamma-neutral-glass [class*="border-pink-"],
+.lamma-neutral-glass [class*="border-red-"],
+.lamma-neutral-glass [class*="border-emerald-"] {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.lamma-neutral-glass [class*="from-green-"],
+.lamma-neutral-glass [class*="from-yellow-"],
+.lamma-neutral-glass [class*="from-orange-"],
+.lamma-neutral-glass [class*="from-amber-"],
+.lamma-neutral-glass [class*="from-lime-"],
+.lamma-neutral-glass [class*="from-blue-"],
+.lamma-neutral-glass [class*="from-sky-"],
+.lamma-neutral-glass [class*="from-cyan-"],
+.lamma-neutral-glass [class*="from-teal-"],
+.lamma-neutral-glass [class*="from-indigo-"],
+.lamma-neutral-glass [class*="from-violet-"],
+.lamma-neutral-glass [class*="from-purple-"],
+.lamma-neutral-glass [class*="from-fuchsia-"],
+.lamma-neutral-glass [class*="from-pink-"],
+.lamma-neutral-glass [class*="from-red-"],
+.lamma-neutral-glass [class*="via-green-"],
+.lamma-neutral-glass [class*="via-yellow-"],
+.lamma-neutral-glass [class*="via-orange-"],
+.lamma-neutral-glass [class*="via-amber-"],
+.lamma-neutral-glass [class*="via-lime-"],
+.lamma-neutral-glass [class*="via-blue-"],
+.lamma-neutral-glass [class*="via-sky-"],
+.lamma-neutral-glass [class*="via-cyan-"],
+.lamma-neutral-glass [class*="via-teal-"],
+.lamma-neutral-glass [class*="via-indigo-"],
+.lamma-neutral-glass [class*="via-violet-"],
+.lamma-neutral-glass [class*="via-purple-"],
+.lamma-neutral-glass [class*="via-fuchsia-"],
+.lamma-neutral-glass [class*="via-pink-"],
+.lamma-neutral-glass [class*="via-red-"],
+.lamma-neutral-glass [class*="to-green-"],
+.lamma-neutral-glass [class*="to-yellow-"],
+.lamma-neutral-glass [class*="to-orange-"],
+.lamma-neutral-glass [class*="to-amber-"],
+.lamma-neutral-glass [class*="to-lime-"],
+.lamma-neutral-glass [class*="to-blue-"],
+.lamma-neutral-glass [class*="to-sky-"],
+.lamma-neutral-glass [class*="to-cyan-"],
+.lamma-neutral-glass [class*="to-teal-"],
+.lamma-neutral-glass [class*="to-indigo-"],
+.lamma-neutral-glass [class*="to-violet-"],
+.lamma-neutral-glass [class*="to-purple-"],
+.lamma-neutral-glass [class*="to-fuchsia-"],
+.lamma-neutral-glass [class*="to-pink-"],
+.lamma-neutral-glass [class*="to-red-"],
+.lamma-neutral-glass [class*="to-[#a3e635]"] {
+  --tw-gradient-from: rgba(255, 255, 255, 0.14) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgba(255, 255, 255, 0.06) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.lamma-neutral-glass [class*="text-transparent"][class*="bg-clip-text"],
+.lamma-neutral-glass .bg-clip-text {
+  color: #e5e7eb !important;
+  background-image: none !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.lamma-neutral-glass [class*="shadow-[0_0_10px_rgba(16,185,129"],
+.lamma-neutral-glass [class*="shadow-[0_0_15px_rgba(16,185,129"],
+.lamma-neutral-glass [class*="shadow-[0_0_50px_rgba(16,185,129"],
+.lamma-neutral-glass [class*="shadow-[0_0_15px_rgba(6,182,212"],
+.lamma-neutral-glass [class*="shadow-[0_0_25px_rgba(16,185,129"] {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 22px rgba(0, 0, 0, 0.14) !important;
+}
+
+.lamma-neutral-glass .lamma-role-chip,
+.lamma-neutral-glass .lamma-role-vip,
+.lamma-neutral-glass .lamma-role-plat,
+.lamma-neutral-glass .lamma-role-owner,
+.lamma-neutral-glass .lamma-role-admin,
+.lamma-neutral-glass .lamma-role-mod,
+.lamma-neutral-glass .lamma-title-chip,
+.lamma-neutral-glass .lamma-badge-chip,
+.lamma-neutral-glass .lamma-prestige-seal,
+.lamma-neutral-glass .lamma-prestige-owner,
+.lamma-neutral-glass .lamma-prestige-admin,
+.lamma-neutral-glass .lamma-prestige-vip,
+.lamma-neutral-glass .lamma-prestige-plat,
+.lamma-neutral-glass .lamma-system-note,
+.lamma-neutral-glass .lamma-notification-card-unread,
+.lamma-neutral-glass .lamma-msg-bubble-own,
+.lamma-neutral-glass .lamma-msg-bubble-system,
+.lamma-neutral-glass .lamma-soft-success,
+.lamma-neutral-glass .lamma-soft-warn,
+.lamma-neutral-glass .lamma-soft-danger,
+.lamma-neutral-glass .lamma-status-online,
+.lamma-neutral-glass .lamma-status-offline,
+.lamma-neutral-glass .lamma-danger-btn,
+.lamma-neutral-glass .lamma-accent-btn,
+.lamma-neutral-glass .lamma-toggle-off,
+.lamma-neutral-glass .lamma-toggle-on,
+.lamma-neutral-glass .lamma-send-orb,
+.lamma-neutral-glass .lamma-feature-primary,
+.lamma-neutral-glass .lamma-room-tab-active,
+.lamma-neutral-glass .lamma-mobile-tab-btn-active,
+.lamma-neutral-glass .lamma-notify-pill {
+  color: #edf2f7 !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.045)) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 18px rgba(0, 0, 0, 0.14) !important;
+}
+
+.lamma-neutral-glass .lamma-system-label,
+.lamma-neutral-glass .lamma-banner-marquee,
+.lamma-neutral-glass .lamma-soft-status,
+.lamma-neutral-glass .lamma-msg-meta {
+  color: #cfd6de !important;
+}
+
+.lamma-neutral-glass .lamma-send-orb,
+.lamma-neutral-glass .lamma-feature-primary {
+  filter: none !important;
+}
+
+.lamma-neutral-glass .lamma-mobile-tab-btn-active {
+  box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+.lamma-neutral-glass .lamma-notify-pill {
+  min-width: 14px;
+}
+
+.lamma-toggle-off {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.045));
+  border: 1px solid rgba(239, 68, 68, 0.16);
+  color: #f87171;
+}
+
+.lamma-soft-success {
+  background: linear-gradient(180deg, rgba(24, 181, 123, 0.08), rgba(24, 181, 123, 0.03));
+  border: 1px solid rgba(24, 181, 123, 0.14);
+}
+
+.lamma-soft-warn {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.03));
+  border: 1px solid rgba(245, 158, 11, 0.14);
+}
+
+.lamma-soft-danger {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.03));
+  border: 1px solid rgba(239, 68, 68, 0.14);
+}
+
+.lamma-tab-soft {
+  background: rgba(255, 255, 255, 0.028);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.lamma-tab-soft:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.lamma-sheet-shell {
+  background: linear-gradient(180deg, rgba(9, 13, 11, 0.98), rgba(6, 9, 7, 0.94));
+  border-top: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.14);
+  box-shadow:
+    0 -24px 60px rgba(0, 0, 0, 0.36),
+    0 0 24px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.04);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.lamma-sheet-header {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lamma-pwa-card {
+  background: linear-gradient(135deg, rgba(10, 18, 13, 0.96), rgba(8, 11, 9, 0.94));
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.18);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.34),
+    0 0 24px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.05);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+.lamma-status-online {
+  background: linear-gradient(90deg, rgba(24, 181, 123, 0.12), rgba(24, 181, 123, 0.06));
+  border: 1px solid rgba(24, 181, 123, 0.18);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+}
+
+.lamma-status-offline {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.12), rgba(249, 115, 22, 0.06));
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+}
+
+.lamma-fallback-shell {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(24, 181, 123, 0.08), transparent 28%),
+    linear-gradient(180deg, #060907, #0a110d 42%, #050806);
+}
+
+.lamma-fallback-card {
+  background: linear-gradient(180deg, rgba(9, 13, 11, 0.97), rgba(6, 9, 7, 0.94));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.38),
+    0 0 28px rgba(24, 181, 123, 0.05);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.lamma-loading-orb {
+  border: 4px solid rgba(24, 181, 123, 0.12);
+  border-top-color: rgba(24, 181, 123, 0.9);
+  box-shadow:
+    0 0 18px rgba(24, 181, 123, 0.08),
+    inset 0 0 10px rgba(24, 181, 123, 0.06);
+}
+
+.lamma-fire-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.55)
+    rgba(0, 0, 0, 0.25);
+}
+
+.lamma-fire-scroll::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.lamma-fire-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.lamma-fire-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.22),
+    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.62)
+  );
+  border-radius: 9999px;
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.22);
+  box-shadow: 0 0 18px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12);
+}
+
+.lamma-fire-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.34),
+    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.70)
+  );
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.28);
+  box-shadow: 0 0 24px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.16);
+}
+
+.lamma-fire-divider {
+  height: 12px;
+  position: relative;
+  cursor: ns-resize;
+  border-radius: 9999px;
+  touch-action: none;
+}
+
+.lamma-fire-divider::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-50%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.22),
+    transparent
+  );
+  box-shadow: 0 0 18px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12);
+  pointer-events: none;
+}
+
+.lamma-fire-divider::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 42px;
+  height: 7px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.08);
+  border: 0.75px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.18);
+  box-shadow:
+    0 0 22px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.lamma-fire-divider:hover::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.34),
+    transparent
+  );
+  box-shadow: 0 0 26px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.18);
+}
+
+.lamma-fire-divider:hover::after {
+  background: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12);
+  border: 0.75px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.26);
+  box-shadow:
+    0 0 28px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* =========================
+   LAMMA GOLD LOGO
+========================= */
+
+.login-logo-wrap{
+    display:flex;
+    justify-content:center;
+}
+
+.login-logo{
+    max-width:100%;
+    height:auto;
+    display:block;
+}
+
+.lamma-logo{
+    text-align:center;
+    margin-bottom:30px;
+    user-select:none;
+}
+
+.lamma-am{
+    font-family: "Times New Roman", serif;
+    font-size:120px;
+    font-weight:700;
+    line-height:1;
+
+    background: linear-gradient(
+        180deg,
+        #fff3a0 0%,
+        #f6d365 25%,
+        #d4af37 50%,
+        #f6d365 75%,
+        #fff3a0 100%
+    );
+
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+
+    text-shadow:
+        0 0 10px rgba(212,175,55,.6),
+        0 0 20px rgba(212,175,55,.5),
+        0 0 40px rgba(212,175,55,.4);
+
+    letter-spacing:-8px;
+}
+
+.lamma-ar{
+    margin-top:-10px;
+
+    font-size:52px;
+    font-weight:800;
+
+    background: linear-gradient(
+        180deg,
+        #fff3a0,
+        #d4af37
+    );
+
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+
+    text-shadow:
+        0 0 12px rgba(212,175,55,.5);
+}
+
+.lamma-en{
+    margin-top:12px;
+
+    color:#ffffff;
+
+    letter-spacing:12px;
+
+    font-size:22px;
+
+    font-weight:300;
+}
+
+/* Custom gorgeous scrollbar aesthetics for smooth dark transitions */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(34, 197, 90, 0.15);
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 197, 90, 0.4);
+}
+
+@keyframes marquee {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
+.lamma-simple-hero {
+  position: relative;
+}
+
+.lamma-simple-hero::after {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 28% 14%, rgba(34, 197, 94, 0.12), transparent 42%),
+    radial-gradient(circle at 72% 18%, rgba(59, 130, 246, 0.12), transparent 40%),
+    radial-gradient(circle at 52% 36%, rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12), transparent 44%),
+    radial-gradient(circle at 38% 62%, rgba(34, 197, 94, 0.08), transparent 46%),
+    radial-gradient(circle at 70% 70%, rgba(59, 130, 246, 0.08), transparent 46%);
+  filter: blur(18px);
+  opacity: 0.85;
+}
+
+.lamma-simple-card {
+  background: linear-gradient(180deg, rgba(10, 14, 12, 0.52), rgba(6, 9, 8, 0.46));
+  border: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.12);
+  box-shadow:
+    0 32px 120px rgba(0, 0, 0, 0.62),
+    0 0 44px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  -webkit-backdrop-filter: blur(30px);
+  backdrop-filter: blur(30px);
+}
+
+.lamma-simple-brand-pill {
+  background: linear-gradient(180deg, rgba(255, 222, 146, 0.12), rgba(0, 0, 0, 0.22));
+  border: 1px solid rgba(255, 222, 146, 0.18);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.22),
+    0 0 18px rgba(255, 222, 146, 0.06),
+    inset 0 1px 0 rgba(255, 245, 214, 0.12);
+  color: #ffe7b3;
+}
+
+.lamma-simple-cta {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.34), rgba(0, 0, 0, 0.22));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.lamma-simple-cta:hover {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.26));
+  border-color: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.18);
+}
+
+.lamma-simple-modal-shell {
+  background: linear-gradient(180deg, rgba(6, 8, 7, 0.92), rgba(3, 4, 4, 0.88));
+  border: 1px solid rgba(255, 222, 146, 0.16);
+  box-shadow:
+    0 34px 120px rgba(0, 0, 0, 0.65),
+    0 0 38px rgba(255, 222, 146, 0.06),
+    inset 0 1px 0 rgba(255, 245, 214, 0.08);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.lamma-simple-panel {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.30), rgba(0, 0, 0, 0.18));
+  border: 1px solid rgba(255, 222, 146, 0.10);
+  box-shadow:
+    0 18px 46px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.lamma-simple-option {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.26), rgba(0, 0, 0, 0.18));
+  border: 1px solid rgba(255, 222, 146, 0.10);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* ==========================================
+   AUTHORITATIVE GLASSMORPHIC OVERRIDES (زجاجية شفافة ومخططة)
+   ========================================== */
+
+/* 1. Make the main active chat core and feed viewport fully transparent glass with elegant glass borders and blurs */
+.lamma-neutral-glass {
+  background: rgba(14, 18, 24, 0.12) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.2) !important;
+  backdrop-filter: blur(28px) saturate(1.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.lamma-neutral-glass .lamma-chat-core-shell,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-chat-core-shell {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure no background overlays cover the general/public chat area */
+.lamma-neutral-glass .lamma-chat-core-shell::before,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-chat-core-shell::before,
+.lamma-chat-core-shell::before {
+  background: transparent !important;
+  opacity: 0 !important;
+  display: none !important;
+}
+
+/* 2. Glassmorphic styling for all/any headers, top-bars, titles, and icons */
+.lamma-neutral-glass .lamma-room-header,
+.lamma-neutral-glass .lamma-topic-shell,
+.lamma-neutral-glass .lamma-modal-header,
+.lamma-neutral-glass .lamma-feature-header,
+.lamma-neutral-glass .lamma-mobile-sidebar-header,
+.lamma-neutral-glass .lamma-mobile-sidebar-footer {
+  background: rgba(255, 255, 255, 0.04) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+
+/* Outlined icons and icon containers (مخططة بأيقونات) */
+.lamma-neutral-glass svg,
+.lamma-neutral-glass .lamma-toolbar-btn,
+.lamma-neutral-glass .lamma-soft-action {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 3. Glassmorphic styling for all cards, panels, and settings blocks (بطاقات) */
+.lamma-neutral-glass .lamma-admin-card,
+.lamma-neutral-glass .lamma-section-card,
+.lamma-neutral-glass .lamma-post-card,
+.lamma-neutral-glass .lamma-list-panel,
+.lamma-neutral-glass .lamma-popover-shell,
+.lamma-neutral-glass .lamma-feature-shell,
+.lamma-neutral-glass .lamma-modal-shell,
+.lamma-neutral-glass .lamma-glass,
+.lamma-neutral-glass .lamma-simple-modal-shell,
+.lamma-neutral-glass .lamma-simple-panel {
+  background: rgba(218, 165, 32, 0.015) !important;
+  -webkit-backdrop-filter: blur(4px) saturate(1.1) !important;
+  backdrop-filter: blur(4px) saturate(1.1) !important;
+  border: 1px solid rgba(218, 165, 32, 0.08) !important;
+  box-shadow: 
+    inset 0 1px 0 rgba(218, 165, 32, 0.05),
+    0 12px 36px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 16px !important;
+}
+
+/* List items (عناصر القوائم) */
+.lamma-neutral-glass .lamma-list-item {
+  background: rgba(255, 255, 255, 0.015) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  margin-bottom: 4px !important;
+}
+.lamma-neutral-glass .lamma-list-item:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* 4. Complete wipe out/clearing of any remaining/odd solid background colors of tables, listings, and dialog content */
+.lamma-neutral-glass .bg-\[\#0c120d\],
+.lamma-neutral-glass .bg-\[\#0a0f0c\],
+.lamma-neutral-glass .bg-\[\#0b100c\],
+.lamma-neutral-glass .bg-\[\#060a08\],
+.lamma-neutral-glass .bg-slate-\[900\],
+.lamma-neutral-glass .bg-gray-900,
+.lamma-neutral-glass .bg-zinc-900,
+.lamma-neutral-glass .bg-black,
+.lamma-neutral-glass *[class*="bg-black"],
+.lamma-neutral-glass *[class*="bg-[#0a"],
+.lamma-neutral-glass *[class*="bg-[#0b"],
+.lamma-neutral-glass *[class*="bg-[#0c"],
+.lamma-neutral-glass *[class*="bg-[#06"],
+.lamma-neutral-glass *[class*="bg-zinc-"],
+.lamma-neutral-glass *[class*="bg-slate-"],
+.lamma-neutral-glass *[class*="bg-neutral-"],
+.lamma-neutral-glass div[class*="bg-zinc-"],
+.lamma-neutral-glass div[class*="bg-slate-"],
+.lamma-neutral-glass div[class*="bg-neutral-"] {
+  background-color: rgba(14, 18, 24, 0.12) !important;
+  background-image: none !important;
+  backdrop-filter: blur(24px) saturate(1.1) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.1) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Clear static table background styles */
+.lamma-neutral-glass table,
+.lamma-neutral-glass thead,
+.lamma-neutral-glass tbody,
+.lamma-neutral-glass tr,
+.lamma-neutral-glass th,
+.lamma-neutral-glass td {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #f3f4f6 !important;
+}
+
+.lamma-neutral-glass tr:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Nullify all and any inline dark/colorized linear/radial background ambient theme overlay divs to guarantee 100% clean, clear glass transparency */
+.lamma-neutral-glass div[style*="radial-gradient"],
+.lamma-neutral-glass div[style*="linear-gradient"],
+.lamma-neutral-glass div[style*="background-color:"],
+.lamma-neutral-glass div[style*="background:"],
+.lamma-neutral-glass .lamma-ambient-overlay,
+.lamma-neutral-glass .absolute[className*="pointer-events-none"] {
+  background: transparent !important;
+  background-image: none !important;
+  opacity: 0 !important;
+  display: none !important;
+}
+
+/* Explicit overlay safeguard to prevent custom avatar styles and other content from being broken when nullifying backgrounds */
+.lamma-neutral-glass div[style*="background-image"][style*="url("]:not(.lamma-active-wallpaper) {
+  background-image: inherit !important;
+  opacity: 1 !important;
+  display: block !important;
+}
+
+/* Custom premium chat background image (wallpaper) styling to make it fully visible, complete, unblurred and centered */
+.lamma-neutral-glass .lamma-active-wallpaper {
+  background-size: cover !important; /* Full screen cover */
+  background-repeat: no-repeat !important; /* No repetition */
+  background-position: center center !important; /* Perfectly centered */
+  opacity: 1 !important;
+  filter: none !important; /* No blur, noise or distortion */
+  display: block !important;
+  z-index: 0 !important;
+}
+
+/* Authoritative overrides for the two top-bars, headers, user-rails and username-header area to be pure translucent neutral glass */
+.lamma-neutral-glass .lamma-header {
+  background: rgba(14, 18, 24, 0.16) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.2) !important;
+  backdrop-filter: blur(28px) saturate(1.2) !important;
+  box-shadow: none !important;
+}
+
+.lamma-neutral-glass .lamma-header-rail {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.1) !important;
+  backdrop-filter: blur(20px) saturate(1.1) !important;
+}
+
+.lamma-neutral-glass .lamma-header-user-rail {
+  height: 48.9375px !important;
+}
+
+.lamma-neutral-glass .lamma-header-brand-rail {
+  height: 44.4062px !important;
+}
+
+.lamma-neutral-glass .lamma-header-user-rail .flex.flex-col > span:first-of-type {
+  height: 11px !important;
+  width: 83.75px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.lamma-neutral-glass .lamma-header-wordmark {
+  height: 7px !important;
+  width: 160.922px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.lamma-neutral-glass .lamma-header-brand-rail > .flex.items-center.gap-2 {
+  height: 35.1875px !important;
+  width: 127.625px !important;
+  border-radius: 0px !important;
+}
+
+.lamma-neutral-glass .lamma-header-brand-rail .lamma-brand-mark {
+  width: 36.1875px !important;
+  height: 34.1875px !important;
+}
+
+.lamma-neutral-glass .lamma-header-brand-rail .lamma-brand-mark > div {
+  height: 34px !important;
+  width: 40px !important;
+}
+
+.lamma-neutral-glass .lamma-header-brand-rail .lamma-brand-mark > div > svg {
+  height: 34px !important;
+  width: 47.1875px !important;
+}
+
+.lamma-neutral-glass .lamma-header-user-rail .lamma-header-mini-btn.lamma-toolbar-btn,
+.lamma-neutral-glass .lamma-header-user-rail .lamma-header-mini-btn.lamma-toolbar-btn:hover,
+.lamma-neutral-glass .lamma-header-user-rail .lamma-header-mini-btn.lamma-quiet-power-btn-active {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+}
+
+.lamma-neutral-glass .lamma-room-header,
+.lamma-neutral-glass .lamma-feature-header {
+  background: rgba(255, 255, 255, 0.04) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.1) !important;
+  backdrop-filter: blur(20px) saturate(1.1) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Authoritative override to disable any remaining fire-wall green glow frame borders or shadows */
+.lamma-neutral-glass .lamma-fire-frame,
+.lamma-neutral-glass .lamma-fire-frame-app,
+.lamma-neutral-glass.lamma-fire-frame,
+.lamma-neutral-glass.lamma-fire-frame-app {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-width: 0px !important;
+  box-shadow: none !important;
+}
+.lamma-neutral-glass .lamma-fire-frame::before,
+.lamma-neutral-glass .lamma-fire-frame-app::before,
+.lamma-neutral-glass.lamma-fire-frame::before,
+.lamma-neutral-glass.lamma-fire-frame-app::before {
+  display: none !important;
+  opacity: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* 5. Glassmorphism styling for all input bars, search bars and buttons (شرايط) */
+.lamma-neutral-glass .lamma-chat-input-shell,
+.lamma-neutral-glass input,
+.lamma-neutral-glass textarea,
+.lamma-neutral-glass select {
+  background: rgba(255, 255, 255, 0.03) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #f3f4f6 !important;
+}
+
+.lamma-neutral-glass input::placeholder,
+.lamma-neutral-glass textarea::placeholder {
+  color: rgba(243, 244, 246, 0.35) !important;
+}
+
+/* Ensure the sidebars are also beautifully glassy transparent */
+.lamma-neutral-glass .lamma-side-column {
+  background: rgba(14, 18, 24, 0.12) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.1) !important;
+  backdrop-filter: blur(24px) saturate(1.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+.lamma-neutral-glass .lamma-side-column::after {
+  background: transparent !important;
+  opacity: 0 !important;
+  display: none !important;
+}
+
+.lamma-simple-option:hover {
+  border-color: rgba(255, 222, 146, 0.16);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.34), rgba(0, 0, 0, 0.22));
+}
+
+/* ==========================================================================
+   NEUTRAL GLASS PURE TRANSCLUSENCY & ANTI-FLICKER SYSTEM OVERRIDES
+   ========================================================================== */
+
+/* 1. Ensure the side columns and column shells are 100% pure glass without top radial lighting spots or shadows */
+.lamma-neutral-glass .lamma-side-column,
+.lamma-neutral-glass .lamma-column-shell {
+  background: rgba(14, 18, 24, 0.65) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.1) !important;
+  backdrop-filter: blur(24px) saturate(1.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+  border-top: none !important;
+}
+
+/* Super clear mode for the side columns with zero ambient glare at the top */
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-side-column,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-column-shell {
+  background: rgba(7, 10, 15, 0.50) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  box-shadow: none !important;
+  border-top: none !important;
+}
+
+/* Authoritatively disable top glowing frames, gold shadows, warm radial spots, and any extra overlay pseudo-elements */
+.lamma-neutral-glass .lamma-side-column::before,
+.lamma-neutral-glass .lamma-side-column::after,
+.lamma-neutral-glass .lamma-column-shell::before,
+.lamma-neutral-glass .lamma-column-shell::after,
+.lamma-neutral-glass .lamma-chat-core-shell::before,
+.lamma-neutral-glass .lamma-chat-core-shell::after,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-side-column::before,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-side-column::after,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-column-shell::before,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-column-shell::after,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-chat-core-shell::before,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-chat-core-shell::after {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Prevent double-nested backdrop-filter compositing conflicts. Disable inner glass filters inside the side-columns */
+.lamma-neutral-glass .lamma-side-column .lamma-glass,
+.lamma-neutral-glass .lamma-side-column .lamma-glass::before,
+.lamma-neutral-glass .lamma-side-column .lamma-glass::after,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-side-column .lamma-glass,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-side-column .lamma-glass::before,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-side-column .lamma-glass::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  box-shadow: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+/* 2. Strip double-nested backdrop filtering rendering jitter and light glows for headers and room bars */
+.lamma-neutral-glass .lamma-header {
+  background: rgba(14, 18, 24, 0.98) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-header {
+  background: rgba(9, 11, 15, 0.98) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.lamma-neutral-glass .lamma-room-header,
+.lamma-neutral-glass .lamma-topic-shell,
+.lamma-neutral-glass .lamma-feature-header,
+.lamma-neutral-glass .lamma-mobile-sidebar-header {
+  background: rgba(11, 14, 19, 0.98) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-room-header,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-topic-shell,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-feature-header,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-mobile-sidebar-header {
+  background: rgba(8, 10, 14, 0.98) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+
+/* 3. Neutralize gold color remnants in unselected room tabs */
+.lamma-neutral-glass .lamma-room-tab {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  box-shadow: none !important;
+}
+
+.lamma-neutral-glass .lamma-room-tab:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)) !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  box-shadow: none !important;
+}
+
+/* Authoritative overrides to remove all transparent/glass layers from the middle/active conversation area */
+.lamma-neutral-glass .lamma-chat-core-shell,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-chat-core-shell {
+  background: transparent !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Custom premium background for the skins tab (grid of 3 cards) using the user's uploaded black and white baroque/luxurious swirl design */
+#lamma-skins-store-grid {
+  background-image: url('/en.jpg') !important;
+  background-image: url('/enf.jpg') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+  padding: 18px !important;
+  border-radius: 20px !important;
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 12px 36px rgba(0, 0, 0, 0.45) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Add a beautiful glassy content overlay so text is readable but background is highly visible */
+#lamma-skins-store-grid::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(8, 12, 18, 0.15) !important;
+  backdrop-filter: blur(2px) !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Ensure child elements of the grid are placed above the overlay pseudo-element */
+#lamma-skins-store-grid > * {
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+/* Make the 3 cards inside the skins grid beautifully transparent and clearly show the image behind them */
+#lamma-skins-store-grid .lamma-admin-card {
+  background: rgba(8, 12, 18, 0.22) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.2) !important;
+  backdrop-filter: blur(12px) saturate(1.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 20px rgba(0, 0, 0, 0.25) !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+#lamma-skins-store-grid .lamma-admin-card:hover {
+  background: rgba(8, 12, 18, 0.35) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 28px rgba(0, 0, 0, 0.35) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Custom premium background image for the left sidebar column (split into 3 cards: VIP, Radio, Music) */
+.lamma-neutral-glass .lamma-side-column[class*="border-r"] {
+  background: url('/MMM.jpg') no-repeat center center / cover !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+/* Custom premium background image for the right sidebar column (Rooms & Members) */
+.lamma-neutral-glass .lamma-side-column[class*="border-l"] {
+  background: url('/MMM.jpg') no-repeat center center / cover !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+/* Ensure there are no gradients or overlays on these columns that would distort, blur, or tint the images */
+.lamma-neutral-glass .lamma-side-column[class*="border-r"]::before,
+.lamma-neutral-glass .lamma-side-column[class*="border-r"]::after,
+.lamma-neutral-glass .lamma-side-column[class*="border-l"]::before,
+.lamma-neutral-glass .lamma-side-column[class*="border-l"]::after {
+  content: none !important;
+  display: none !important;
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
+/* Custom rotating border animation */
+@keyframes lamma-border-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Make the cards inside both sidebars glassy, highly transparent, showing the background image through them beautifully */
+.lamma-neutral-glass .lamma-side-column[class*="border-r"] .lamma-glass,
+.lamma-neutral-glass .lamma-side-column[class*="border-l"] .lamma-glass {
+  background: transparent !important; /* Fully transparent container, we use ::after as the solid smoked backing */
+  -webkit-backdrop-filter: none !important; /* disabled blur to keep the background completely unblurred and sharp */
+  backdrop-filter: none !important;
+  border: none !important; /* Remove static border so our animated run-glow acts as the outline */
+  position: relative !important;
+  overflow: hidden !important;
+  isolation: isolate !important; /* Force a stacking context */
+  color: white !important; /* Force font color to be bright */
+  border-radius: 24px !important;
+  box-shadow: 
+    0 12px 36px rgba(0, 0, 0, 0.65), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* The rotating colorful light strip that runs around the boundaries only */
+.lamma-neutral-glass .lamma-side-column[class*="border-r"] .lamma-glass::before,
+.lamma-neutral-glass .lamma-side-column[class*="border-l"] .lamma-glass::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  top: -80px !important;
+  left: -80px !important;
+  right: -80px !important;
+  bottom: -80px !important;
+  background: conic-gradient(
+    from 0deg,
+    #ff2a5f 0deg,
+    #ffb515 72deg,
+    #00f0ff 144deg,
+    #10b981 216deg,
+    #d946ef 288deg,
+    #ff2a5f 360deg
+  ) !important;
+  animation: lamma-border-spin 6s linear infinite !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+  opacity: 1 !important;
+}
+
+/* The solid inner cover card background so the light only appears on the edge as an outer border, with absolutely no reflections inside */
+.lamma-neutral-glass .lamma-side-column[class*="border-r"] .lamma-glass::after,
+.lamma-neutral-glass .lamma-side-column[class*="border-l"] .lamma-glass::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  top: 1.5px !important;
+  left: 1.5px !important;
+  right: 1.5px !important;
+  bottom: 1.5px !important;
+  background: rgba(14, 11, 7, 0.92) !important; /* Smoked deep dark mocha backing mask */
+  border-radius: 22.5px !important; /* Slightly smaller than parent 24px radius to fit exactly inside 1.5px inset */
+  z-index: 1 !important;
+  pointer-events: none !important;
+  opacity: 1 !important;
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Glass hover effect */
+.lamma-neutral-glass .lamma-side-column[class*="border-r"] .lamma-glass:hover::after,
+.lamma-neutral-glass .lamma-side-column[class*="border-l"] .lamma-glass:hover::after {
+  background: rgba(22, 18, 12, 0.94) !important; /* luxurious hover smoked glass depth */
+}
+
+/* Push actual card content to the front */
+.lamma-neutral-glass .lamma-side-column[class*="border-r"] .lamma-glass > *,
+.lamma-neutral-glass .lamma-side-column[class*="border-l"] .lamma-glass > * {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* Custom premium styles for active state of room buttons and other list items inside our side bars */
+.lamma-neutral-glass .lamma-side-column[class*="border-r"] .bg-\[rgba\(16\,185\,129\,0\.10\)\][class*="border"],
+.lamma-neutral-glass .lamma-side-column[class*="border-l"] .bg-\[rgba\(16\,185\,129\,0\.10\)\][class*="border"],
+.lamma-neutral-glass .lamma-side-column[class*="border-r"] .bg-\[rgba\(16\,185\,129\,0\.12\)\][class*="border"],
+.lamma-neutral-glass .lamma-side-column[class*="border-l"] .bg-\[rgba\(16\,185\,129\,0\.12\)\][class*="border"] {
+  background: linear-gradient(135deg, rgba(218, 165, 32, 0.28) 0%, rgba(184, 134, 11, 0.16) 100%) !important;
+  border: 1.5px solid rgba(255, 215, 0, 0.65) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8) !important;
+  box-shadow: 0 0 18px rgba(218, 165, 32, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Active room/button list hover effect */
+.lamma-neutral-glass .lamma-side-column .lamma-room-list-card:hover,
+.lamma-neutral-glass .lamma-side-column .lamma-list-item:hover {
+  background: rgba(218, 165, 32, 0.12) !important;
+  border-color: rgba(255, 215, 0, 0.5) !important;
+  transform: scale(1.015) translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.45) !important;
+}
+
+/* Inactive room list card styling for dark background integration */
+.lamma-neutral-glass .lamma-side-column .lamma-room-list-card:not([class*="bg-[rgba"]) {
+  background: rgba(255, 255, 255, 0.035) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+}
+
+/* Styling for primary and secondary titles inside our side columns for crystal-clear readability */
+.lamma-neutral-glass .lamma-side-column[class*="border-r"] .text-\[12px\],
+.lamma-neutral-glass .lamma-side-column[class*="border-l"] .text-\[12px\],
+.lamma-neutral-glass .lamma-side-column .font-black {
+  color: #ffd700 !important; /* High-end Gold text for headers */
+  font-weight: 900 !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0,0,0,1) !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* Make body/secondary/descriptions texts extremely easy and warm on the eyes, using ivory / sand shades */
+.lamma-neutral-glass .lamma-side-column .font-bold,
+.lamma-neutral-glass .lamma-side-column .text-xs,
+.lamma-neutral-glass .lamma-side-column .text-sm,
+.lamma-neutral-glass .lamma-side-column .text-gray-200,
+.lamma-neutral-glass .lamma-side-column .text-gray-300,
+.lamma-neutral-glass .lamma-side-column .text-\[10px\],
+.lamma-neutral-glass .lamma-side-column .text-slate-300,
+.lamma-neutral-glass .lamma-side-column div[class*="text-"] {
+  color: #e6dfcf !important; /* Soft sand off-white for beautiful contrast */
+  text-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0,0,0,1) !important;
+  font-weight: 700 !important;
+}
+
+/* Prevent any white text color overrides from bleeding into specific elements or colors we want to keep */
+.lamma-neutral-glass .lamma-side-column .text-emerald-400,
+.lamma-neutral-glass .lamma-side-column .text-green-400 {
+  color: #34d399 !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8) !important;
+}
+
+.lamma-neutral-glass .lamma-side-column .text-amber-400,
+.lamma-neutral-glass .lamma-side-column .text-yellow-400 {
+  color: #f59e0b !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8) !important;
+}
+
+/* Customize the interactive divider elements */
+.lamma-neutral-glass .lamma-side-column .lamma-fire-divider {
+  background: linear-gradient(90deg, transparent, rgba(218, 165, 32, 0.28) 50%, transparent) !important;
+  height: 12px !important;
+  position: relative !important;
+  cursor: row-resize !important;
+}
+
+.lamma-neutral-glass .lamma-side-column .lamma-fire-divider::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 15% !important;
+  right: 15% !important;
+  top: 5px !important;
+  height: 2px !important;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.7) 50%, transparent) !important;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.4) !important;
+  transition: all 0.2s ease !important;
+}
+
+.lamma-neutral-glass .lamma-side-column .lamma-fire-divider:hover::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.95) 50%, transparent) !important;
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.8) !important;
+  height: 3px !important;
+  top: 4px !important;
+}
+
+/* Beautiful scrollbars styled with fine amber-gold thumb */
+.lamma-neutral-glass .lamma-side-column .lamma-fire-scroll::-webkit-scrollbar {
+  width: 4px !important;
+}
+.lamma-neutral-glass .lamma-side-column .lamma-fire-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.15) !important;
+  border-radius: 9px !important;
+}
+.lamma-neutral-glass .lamma-side-column .lamma-fire-scroll::-webkit-scrollbar-thumb {
+  background: rgba(218, 165, 32, 0.35) !important;
+  border-radius: 9px !important;
+}
+.lamma-neutral-glass .lamma-side-column .lamma-fire-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 215, 0, 0.65) !important;
+}
+
+/* Make the inner section cards flat and fully transparent */
+.lamma-neutral-glass .lamma-side-column[class*="border-r"] .lamma-section-card,
+.lamma-neutral-glass .lamma-side-column[class*="border-l"] .lamma-section-card {
+  background: rgba(218, 165, 32, 0.005) !important;
+  border: 1px solid rgba(218, 165, 32, 0.05) !important;
+  box-shadow: none !important;
+}
+
+/* ==========================================================================
+   Lamma Premium Golden smoked theme coordination (روح واحدة)
+   ========================================================================== */
+
+/* Main center active conversation panel styling - beautiful translucent smoked cocoa glass */
+.lamma-neutral-glass .lamma-chat-core-shell {
+  background: rgba(14, 11, 7, 0.72) !important; /* Smoked translucent cocoa-moccha */
+  border-left: 1px solid rgba(255, 215, 0, 0.2) !important;
+  border-right: 1px solid rgba(255, 215, 0, 0.2) !important;
+  box-shadow: 
+    0 12px 48px rgba(0, 0, 0, 0.7), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(16px) saturate(1.1) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.1) !important;
+}
+
+/* Make headers in both rooms and general views consistent */
+.lamma-neutral-glass .lamma-room-header,
+.lamma-neutral-glass .lamma-topic-shell,
+.lamma-neutral-glass .lamma-feature-header,
+.lamma-neutral-glass .lamma-mobile-sidebar-header {
+  position: relative !important;
+  background: linear-gradient(135deg, 
+    rgba(14, 11, 7, 0.95) 0%, 
+    rgba(22, 14, 10, 0.96) 40%, 
+    rgba(15, 11, 20, 0.96) 80%, 
+    rgba(14, 11, 7, 0.97) 100%
+  ) !important; /* Perfect smokey black backing for ultimate text readability with any wall image */
+  overflow: hidden !important;
+  border-bottom: none !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Beautiful color swirl overlay to evoke the fluid flame energy from the user's image */
+.lamma-neutral-glass .lamma-room-header::before,
+.lamma-neutral-glass .lamma-topic-shell::before,
+.lamma-neutral-glass .lamma-feature-header::before,
+.lamma-neutral-glass .lamma-mobile-sidebar-header::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: radial-gradient(circle at 12% 25%, rgba(255, 42, 95, 0.16), transparent 50%),
+              radial-gradient(circle at 50% 85%, rgba(255, 181, 21, 0.18), transparent 55%),
+              radial-gradient(circle at 88% 20%, rgba(217, 70, 239, 0.14), transparent 45%),
+              radial-gradient(circle at 100% 90%, rgba(0, 240, 255, 0.1), transparent 40%) !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+  opacity: 0.95 !important;
+}
+
+/* Perfect flowing fluid running light underline under each of the headers / active horizontal bars */
+.lamma-neutral-glass .lamma-room-header::after,
+.lamma-neutral-glass .lamma-topic-shell::after,
+.lamma-neutral-glass .lamma-feature-header::after,
+.lamma-neutral-glass .lamma-mobile-sidebar-header::after {
+  content: "" !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 2px !important;
+  background: linear-gradient(90deg, 
+    #ff2a5f 0%, 
+    #ffb515 25%, 
+    #00f0ff 50%, 
+    #10b981 75%, 
+    #d946ef 100%
+  ) !important;
+  background-size: 200% auto !important;
+  animation: lamma-header-flow 5s linear infinite !important;
+  z-index: 3 !important;
+  pointer-events: none !important;
+  box-shadow: 0 1.5px 12px rgba(255, 181, 21, 0.5) !important;
+}
+
+@keyframes lamma-header-flow {
+  0% { background-position: 0% center; }
+  100% { background-position: -200% center; }
+}
+
+/* Shift inner contents of the room headers to the front of the fluid overlay for 100% interactivity */
+.lamma-neutral-glass .lamma-room-header > *,
+.lamma-neutral-glass .lamma-topic-shell > *,
+.lamma-neutral-glass .lamma-feature-header > *,
+.lamma-neutral-glass .lamma-mobile-sidebar-header > * {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* Beautiful color styles for message text bubbles (روح واحدة) */
+.lamma-neutral-glass .lamma-message {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Inactive/General messages from other people: warm amber smoked glass */
+.lamma-neutral-glass .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system) {
+  background: rgba(22, 18, 14, 0.88) !important; /* Smoked warm mocha bubble */
+  border: 1.5px solid rgba(218, 165, 32, 0.22) !important; /* Soft gold border */
+  color: #f7f3eb !important; /* Clear ivory text */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  text-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.95), 0 0 1px rgba(0,0,0,1) !important;
+}
+
+.lamma-neutral-glass .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system):hover {
+  background: rgba(30, 24, 18, 0.92) !important;
+  border-color: rgba(255, 215, 0, 0.45) !important;
+  box-shadow: 0 6px 16px rgba(255, 215, 0, 0.1) !important;
+}
+
+/* Own messages (our bubble): premium glowing gold-bronze gradient */
+.lamma-neutral-glass .lamma-msg-bubble-own {
+  background: linear-gradient(135deg, rgba(218, 165, 32, 0.35) 0%, rgba(184, 134, 11, 0.2) 100%) !important;
+  border: 1.5px solid rgba(255, 215, 0, 0.72) !important; /* Highlight gold boundary */
+  color: #ffffff !important;
+  box-shadow: 
+    0 4px 15px rgba(218, 165, 32, 0.22), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  text-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.95), 0 0 1px rgba(0,0,0,1) !important;
+}
+
+.lamma-neutral-glass .lamma-msg-bubble-own:hover {
+  background: linear-gradient(135deg, rgba(218, 165, 32, 0.45) 0%, rgba(184, 134, 11, 0.26) 100%) !important;
+  border-color: rgba(255, 215, 0, 0.95) !important;
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15) !important;
+}
+
+/* System notifications: beautiful dashed gold edge and warm text */
+.lamma-neutral-glass .lamma-msg-bubble-system {
+  background: rgba(218, 165, 32, 0.08) !important;
+  border: 1.2px dashed rgba(255, 215, 0, 0.45) !important;
+  color: #ffd700 !important;
+}
+
+/* Input / composer area wrapper */
+.lamma-neutral-glass .lamma-chat-input-shell {
+  background: rgba(14, 11, 7, 0.96) !important; /* deep cocoa smoke solid background */
+  border: 1.5px solid rgba(218, 165, 32, 0.32) !important;
+  border-top: 1.5px solid rgba(255, 215, 0, 0.6) !important; /* glowing gold top boundary */
+  border-radius: 20px !important;
+  box-shadow: 
+    0 -8px 24px rgba(0, 0, 0, 0.6), 
+    0 12px 36px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Input Fields & Textareas inside composer / sidebar search */
+.lamma-neutral-glass .lamma-composer-field,
+.lamma-neutral-glass input[type="text"],
+.lamma-neutral-glass input[type="search"],
+.lamma-neutral-glass textarea {
+  background: rgba(0, 0, 0, 0.45) !important;
+  border: 1px solid rgba(218, 165, 32, 0.25) !important;
+  color: #ffd700 !important; /* Premium golden text when typing */
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+}
+
+.lamma-neutral-glass .lamma-composer-field::placeholder,
+.lamma-neutral-glass input::placeholder,
+.lamma-neutral-glass textarea::placeholder {
+  color: #a39b8c !important; /* Warm ivory sand */
+}
+
+/* Beautiful styling for any popovers, context menus & settings drop menus (أشرطة البوب واللوائح) */
+.lamma-neutral-glass .lamma-popover-shell,
+.lamma-neutral-glass .lamma-feature-shell,
+.lamma-neutral-glass .lamma-modal-shell,
+.lamma-neutral-glass .lamma-list-panel {
+  background: rgba(14, 11, 7, 0.96) !important;
+  border: 1.5px solid rgba(255, 215, 0, 0.4) !important;
+  box-shadow: 
+    0 15px 45px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Customize list items inside modal listings (e.g., users lists, music selection lists) */
+.lamma-neutral-glass .lamma-list-item {
+  background: rgba(22, 18, 14, 0.6) !important;
+  border: 1px solid rgba(218, 165, 32, 0.15) !important;
+  color: #e6dfcf !important;
+  font-weight: 600 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95) !important;
+}
+
+.lamma-neutral-glass .lamma-list-item:hover {
+  background: rgba(218, 165, 32, 0.12) !important;
+  border-color: rgba(255, 215, 0, 0.5) !important;
+  color: #ffffff !important;
+}
+
+/* Beautiful custom active tabs / buttons with nice luxury touch */
+.lamma-neutral-glass .lamma-feature-primary,
+.lamma-neutral-glass .lamma-accent-btn {
+  background: linear-gradient(135deg, rgba(218, 165, 32, 0.4) 0%, rgba(184, 134, 11, 0.25) 100%) !important;
+  border: 1.5px solid rgba(255, 215, 0, 0.8) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(218, 165, 32, 0.35) !important;
+  text-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.9) !important;
+}
+
+.lamma-neutral-glass .lamma-feature-primary:hover,
+.lamma-neutral-glass .lamma-accent-btn:hover {
+  background: linear-gradient(135deg, rgba(218, 165, 32, 0.55) 0%, rgba(184, 134, 11, 0.35) 100%) !important;
+  box-shadow: 0 0 22px rgba(255, 215, 0, 0.5) !important;
+}
+
+/* ==========================================================================
+   Lamma Chat Viewport Perfect Readability & Gold Scrollbar (راحة العين وانسجام خلفيات الشات)
+   ========================================================================== */
+
+/* The main message log viewport gets custom smoked overlay with blur */
+.lamma-neutral-glass .lamma-chat-core-shell div[ref="feedViewportRef"],
+.lamma-neutral-glass .lamma-fire-scroll {
+  background: rgba(10, 8, 5, 0.58) !important; /* Perfect smoke overlay over the background image to protect eyes */
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* Style the message list feed scrollbar to look like a premium narrow golden trail */
+.lamma-neutral-glass .lamma-chat-core-shell .lamma-fire-scroll::-webkit-scrollbar {
+  width: 5px !important;
+  height: 5px !important;
+}
+
+.lamma-neutral-glass .lamma-chat-core-shell .lamma-fire-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.35) !important;
+  border-radius: 999px !important;
+}
+
+.lamma-neutral-glass .lamma-chat-core-shell .lamma-fire-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(218, 165, 32, 0.4) 0%, rgba(255, 215, 0, 0.8) 100%) !important;
+  border-radius: 999px !important;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.4) !important;
+}
+
+.lamma-neutral-glass .lamma-chat-core-shell .lamma-fire-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 215, 0, 1) !important;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.7) !important;
+}
+
+/* Stylish card layout for each message container in the list */
+.lamma-neutral-glass .lamma-chat-core-shell .flex-col.gap-2\.5 > div[class*="hover:bg-white"] {
+  border-right: 3px solid transparent !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 12px !important;
+  padding: 6px 10px !important;
+  margin: 2px 0 !important;
+}
+
+/* Hovering on a message gives it an elegant glass blur with gold-bronze side highlight */
+.lamma-neutral-glass .lamma-chat-core-shell .flex-col.gap-2\.5 > div[class*="hover:bg-white"]:hover {
+  background: rgba(218, 165, 32, 0.05) !important;
+  border-right-color: rgba(255, 215, 0, 0.7) !important;
+  box-shadow: inset 5px 0 15px rgba(218, 165, 32, 0.03) !important;
+  transform: translateX(-2px) !important;
+}
+
+/* Compact status and times under text bubbles */
+.lamma-neutral-glass .lamma-msg-meta {
+  color: #dfd5c4 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+  font-weight: 600 !important;
+}
+
+/* Elevate general text shadow across chat messages to keep text 100% readable over any bright background patterns */
+.lamma-neutral-glass .lamma-message {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 1px rgba(0,0,0,1) !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.01em !important;
+}
+
+/* Custom premium scroll down buttons and triggers inside main chat area */
+.lamma-neutral-glass .lamma-scroll-btn {
+  background: rgba(22, 18, 14, 0.9) !important;
+  border: 1.5px solid rgba(255, 215, 0, 0.7) !important;
+  color: #ffd700 !important;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3) !important;
+}
+
+.lamma-neutral-glass .lamma-scroll-btn:hover {
+  background: #ffd700 !important;
+  color: #000000 !important;
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6) !important;
+}
+
+/* SENSATIONAL "SAHER" ROOM HEADER TAB OVERLAY STYLING (الملكي الساحر للألوان المتدفقة) */
+.lamma-neutral-glass .lamma-room-tab-active {
+  color: #ffffff !important;
+  background: linear-gradient(180deg, 
+    rgba(255, 215, 0, 0.38) 0%, 
+    rgba(184, 134, 11, 0.16) 45%, 
+    rgba(20, 15, 10, 0.98) 100%
+  ) !important;
+  border-top: 2px solid rgba(255, 215, 0, 0.85) !important;
+  border-left: 1.5px solid rgba(255, 195, 0, 0.38) !important;
+  border-right: 1.5px solid rgba(255, 195, 0, 0.38) !important;
+  box-shadow: 
+    0 -3px 18px rgba(255, 181, 21, 0.35),
+    inset 0 1px 3px rgba(255, 255, 255, 0.25) !important;
+  text-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.95), 
+    0 0 6px rgba(255, 215, 0, 0.85) !important;
+  transform: translateY(-1.5px);
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+/* Ensure the glowing gold backdrop transitions smoothly */
+.lamma-neutral-glass [layoutid="activeRoomBg"],
+.lamma-neutral-glass .lamma-room-tab-active::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: radial-gradient(circle at 50% 12%, rgba(255, 215, 0, 0.45) 0%, transparent 75%) !important;
+  opacity: 0.9 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  border-radius: inherit !important;
+}
+
+/* Add a beautiful top line aura highlighting the active room strip */
+.lamma-neutral-glass .lamma-room-header {
+  border-top: 1px solid rgba(255, 181, 21, 0.15) !important;
+}
+
+/* ==========================================================================
+   SENSATIONAL GEOMETRIC LUXURY TAGS / CHIPS REVAMP (التاج الملكي الساحر الجديد)
+   ========================================================================== */
+
+/* Core Override for all role-chips */
+.lamma-role-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.25rem !important;
+  padding: 0.15rem 0.45rem !important;
+  border-radius: 4px !important; /* Sleek futuristic metadata style */
+  font-weight: 900 !important;
+  letter-spacing: 0.08em !important;
+  font-family: var(--font-sans), system-ui, sans-serif !important;
+  line-height: 1 !important;
+  text-transform: uppercase !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%) !important;
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Individual Premium Role Overrides */
+
+/* 👑 SYSTEM OWNER */
+.lamma-role-owner {
+  color: #ffd700 !important;
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.3) 0%, rgba(251, 191, 36, 0.08) 100%) !important;
+  border: 1px solid rgba(251, 191, 36, 0.45) !important;
+  border-top: 1.5px solid rgba(255, 223, 0, 0.85) !important;
+  box-shadow: 
+    0 0 8px rgba(251, 191, 36, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  text-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.95), 
+    0 0 6px rgba(255, 215, 0, 0.8) !important;
+}
+
+/* 💎 VIP MEMBER / ROYAL VIP */
+.lamma-role-vip {
+  color: #34d399 !important;
+  background: linear-gradient(135deg, rgba(4, 120, 87, 0.3) 0%, rgba(16, 185, 129, 0.08) 100%) !important;
+  border: 1px solid rgba(52, 211, 153, 0.45) !important;
+  border-top: 1.5px solid rgba(52, 211, 153, 0.85) !important;
+  box-shadow: 
+    0 0 8px rgba(16, 185, 129, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  text-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.95), 
+    0 0 5px rgba(52, 211, 153, 0.8) !important;
+}
+
+/* 👑 PLATINUM VIP */
+.lamma-role-plat {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.35) 0%, rgba(6, 182, 212, 0.25) 50%, rgba(236, 72, 153, 0.35) 100%) !important;
+  border: 1px solid rgba(168, 85, 247, 0.45) !important;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 
+    0 0 10px rgba(168, 85, 247, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  text-shadow: 
+    0 1px 1px rgba(0, 0, 0, 0.8),
+    0 0 6px rgba(168, 85, 247, 0.85) !important;
+}
+
+/* 🛡️ SYSTEM ADMIN */
+.lamma-role-admin {
+  color: #60a5fa !important;
+  background: linear-gradient(135deg, rgba(29, 78, 216, 0.3) 0%, rgba(30, 64, 175, 0.08) 100%) !important;
+  border: 1px solid rgba(96, 165, 250, 0.45) !important;
+  border-top: 1.5px solid rgba(147, 197, 253, 0.85) !important;
+  box-shadow: 
+    0 0 8px rgba(59, 130, 246, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  text-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.95), 
+    0 0 5px rgba(96, 165, 250, 0.8) !important;
+}
+
+/* ✨ CHAT MODERATOR */
+.lamma-role-mod {
+  color: #d5a6ff !important;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.3) 0%, rgba(168, 85, 247, 0.08) 100%) !important;
+  border: 1px solid rgba(192, 132, 252, 0.45) !important;
+  border-top: 1.5px solid rgba(216, 180, 254, 0.85) !important;
+  box-shadow: 
+    0 0 8px rgba(168, 85, 247, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  text-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.95), 
+    0 0 5px rgba(168, 85, 247, 0.8) !important;
+}
+
+/* lamma-title-chip override */
+.lamma-title-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 0.12rem 0.35rem !important;
+  border-radius: 4px !important; /* Matches modern rectangular design */
+  font-weight: 900 !important;
+  font-family: var(--font-sans), system-ui, sans-serif !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(16, 185, 129, 0.04) 100%) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  border-top: 1px solid rgba(52, 211, 153, 0.55) !important;
+  box-shadow: 
+    0 1px 2.5px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* lamma-badge-chip override */
+.lamma-badge-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 0.12rem 0.35rem !important;
+  border-radius: 4px !important; /* Matches modern rectangular design */
+  font-weight: 900 !important;
+  font-family: var(--font-mono), monospace !important;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(245, 158, 11, 0.06) 100%) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  border-top: 1px solid rgba(251, 191, 36, 0.6) !important;
+  box-shadow: 
+    0 1px 2.5px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Interactive gold/silver sweep effect on hover or naturally over time */
+.lamma-role-chip::after,
+.lamma-badge-chip::after,
+.lamma-title-chip::after {
+  content: "" !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: -100% !important;
+  width: 40% !important;
+  height: 100% !important;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.32) 50%,
+    transparent 100%
+  ) !important;
+  transform: skewX(-20deg) !important;
+  pointer-events: none !important;
+}
+
+/* Keyframe for ambient hover sweeps */
+@keyframes lamma-shimmer-sweep {
+  0% { left: -120%; }
+  100% { left: 160%; }
+}
+
+.lamma-role-chip:hover::after,
+.lamma-badge-chip:hover::after,
+.lamma-title-chip:hover::after {
+  animation: lamma-shimmer-sweep 1s infinite linear !important;
+}
+
+/* Enhance active tab styles or premium details on glass modes */
+.lamma-neutral-glass .lamma-role-chip,
+.lamma-neutral-glass .lamma-title-chip,
+.lamma-neutral-glass .lamma-badge-chip {
+  backdrop-filter: blur(4px) !important;
+}
+
+/* ==========================================================================
+   SOLID LUXURY POPOVERS & DROPDOWNS REVAMP (تطوير القوائم المنسدلة المعتمة الفخمة)
+   ========================================================================== */
+
+/* Make all dropdowns, popover shells, feature trays, sheet shells, and modal panels fully opaque to block background content leaking */
+.lamma-neutral-glass .lamma-popover-shell,
+.lamma-neutral-glass .lamma-feature-shell,
+.lamma-neutral-glass .lamma-list-panel,
+.lamma-neutral-glass .lamma-modal-shell,
+.lamma-neutral-glass .lamma-sheet-shell,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-popover-shell,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-feature-shell,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-list-panel,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-modal-shell,
+.lamma-neutral-glass[data-clear-bg="true"] .lamma-sheet-shell,
+.dropdown-container .lamma-popover-shell,
+.dropdown-container .lamma-feature-shell,
+.dropdown-container .lamma-sheet-shell,
+.lamma-popover-shell,
+.lamma-feature-shell,
+.lamma-list-panel,
+.lamma-modal-shell,
+.lamma-sheet-shell {
+  background-color: #0c0f16 !important; /* Fully solid, non-transparent opaque background color to block any background leaks */
+  background-image: linear-gradient(180deg, #121824 0%, #06090f 100%) !important; /* Fully opaque solid gradient, no transparency for core background colors */
+  border: 1.5px solid rgba(218, 165, 32, 0.45) !important; /* Premium golden thin border */
+  border-top: 3.5px solid rgba(255, 215, 0, 0.95) !important; /* Golden premium crest highlight */
+  box-shadow: 
+    0 35px 80px rgba(0, 0, 0, 0.99),
+    0 0 40px rgba(218, 165, 32, 0.16) !important;
+  -webkit-backdrop-filter: none !important; /* Remove backdrop blur because background is fully opaque and non-permeable */
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+
+/* Internal menu section headers and sheet headers */
+.lamma-neutral-glass .lamma-popover-shell .lamma-feature-header,
+.lamma-neutral-glass .lamma-feature-shell .lamma-feature-header,
+.lamma-neutral-glass .lamma-modal-shell .lamma-modal-header,
+.lamma-neutral-glass .lamma-sheet-shell .lamma-sheet-header,
+.lamma-popover-shell .lamma-feature-header,
+.lamma-feature-shell .lamma-feature-header,
+.lamma-modal-shell .lamma-modal-header,
+.lamma-sheet-shell .lamma-sheet-header {
+  border-bottom: 1.5px solid rgba(218, 165, 32, 0.22) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Ensure inner list items have clear, distinctive styling and are easy to read */
+.lamma-neutral-glass .lamma-popover-shell .lamma-list-item,
+.lamma-neutral-glass .lamma-feature-shell .lamma-list-item,
+.lamma-neutral-glass .lamma-modal-shell .lamma-list-item,
+.lamma-neutral-glass .lamma-list-panel .lamma-list-item,
+.lamma-popover-shell .lamma-list-item,
+.lamma-feature-shell .lamma-list-item,
+.lamma-modal-shell .lamma-list-item,
+.lamma-list-panel .lamma-list-item {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: #e2e8f0 !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.lamma-neutral-glass .lamma-popover-shell .lamma-list-item:hover,
+.lamma-neutral-glass .lamma-feature-shell .lamma-list-item:hover,
+.lamma-neutral-glass .lamma-modal-shell .lamma-list-item:hover,
+.lamma-neutral-glass .lamma-list-panel .lamma-list-item:hover,
+.lamma-popover-shell .lamma-list-item:hover,
+.lamma-feature-shell .lamma-list-item:hover,
+.lamma-modal-shell .lamma-list-item:hover,
+.lamma-list-panel .lamma-list-item:hover {
+  background: rgba(218, 165, 32, 0.14) !important;
+  border-color: rgba(255, 215, 0, 0.45) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(218, 165, 32, 0.15) !important;
+}
+
+/* Preserve specifically targeted items with dynamic backgrounds or active selections */
+.lamma-neutral-glass .lamma-list-item[class*="bg-cyan"],
+.lamma-neutral-glass .lamma-list-item[class*="bg-green"],
+.lamma-neutral-glass .lamma-list-item[class*="bg-emerald"] {
+  background: rgba(16, 185, 129, 0.18) !important; /* High-visibility emerald selection */
+  border-color: rgba(16, 185, 129, 0.55) !important;
+  color: #10b981 !important;
+}
+
+.lamma-neutral-glass .lamma-list-item[class*="bg-cyan"] {
+  background: rgba(6, 182, 212, 0.18) !important; /* High-visibility music selection */
+  border-color: rgba(6, 182, 212, 0.55) !important;
+  color: #22d3ee !important;
+}
+
+/* Disable absolute position glass translucent overlays printed by ::before on containers */
+.lamma-neutral-glass .lamma-popover-shell::before,
+.lamma-neutral-glass .lamma-feature-shell::before,
+.lamma-neutral-glass .lamma-list-panel::before,
+.lamma-neutral-glass .lamma-modal-shell::before,
+.lamma-neutral-glass .lamma-sheet-shell::before,
+.lamma-popover-shell::before,
+.lamma-feature-shell::before,
+.lamma-modal-shell::before,
+.lamma-sheet-shell::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* Dropdown text shadow enhancements for readability */
+.lamma-popover-shell text,
+.lamma-popover-shell p,
+.lamma-popover-shell h3,
+.lamma-popover-shell span,
+.lamma-feature-shell text,
+.lamma-feature-shell p,
+.lamma-feature-shell h3,
+.lamma-feature-shell span {
+  text-shadow: 0 1.5px 2px rgba(0, 0, 0, 0.98) !important;
+}
+
+
