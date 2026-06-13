@@ -1777,6 +1777,20 @@ export default function ChatScreen({
       | "pmList"
       | "features",
   ) => {
+    const shouldOpen =
+      (dropdown === "features" && !showFeaturesTray) ||
+      (dropdown === "headerMenu" && !showHeaderMenu) ||
+      (dropdown === "pmList" && !showPmListDropdown) ||
+      (dropdown === "attachment" && !showAttachmentDropdown) ||
+      (dropdown === "games" && !showGamesDropdown) ||
+      (dropdown === "music" && !showMusicDropdown) ||
+      (dropdown === "radio" && !showRadioDropdown) ||
+      (dropdown === "emoji" && !showEmojiPicker) ||
+      (dropdown === "notifications" && !showNotificationsDropdown) ||
+      (dropdown === "commands" && !showCommandsDropdown) ||
+      (dropdown === "privacy" && !showPrivacyDropdown) ||
+      (dropdown === "settings" && !showSettingsDropdown);
+
     setActiveModal(null);
     setIsPmOpen(false);
     setShowSearchPop(false);
@@ -1785,26 +1799,59 @@ export default function ChatScreen({
     setShowProfileModal(false);
     setShowRoomsLists(false);
     setShowMembersList(false);
-    setShowFeaturesTray((prev) => (dropdown === "features" ? !prev : false));
-    setShowHeaderMenu((prev) => (dropdown === "headerMenu" ? !prev : false));
-    setShowPmListDropdown((prev) => (dropdown === "pmList" ? !prev : false));
-    setShowAttachmentDropdown((prev) =>
-      dropdown === "attachment" ? !prev : false,
-    );
-    setShowGamesDropdown((prev) => (dropdown === "games" ? !prev : false));
-    setShowMusicDropdown((prev) => (dropdown === "music" ? !prev : false));
-    setShowRadioDropdown((prev) => (dropdown === "radio" ? !prev : false));
-    setShowEmojiPicker((prev) => (dropdown === "emoji" ? !prev : false));
-    setShowNotificationsDropdown((prev) =>
-      dropdown === "notifications" ? !prev : false,
-    );
-    setShowCommandsDropdown((prev) =>
-      dropdown === "commands" ? !prev : false,
-    );
-    setShowPrivacyDropdown((prev) => (dropdown === "privacy" ? !prev : false));
-    setShowSettingsDropdown((prev) =>
-      dropdown === "settings" ? !prev : false,
-    );
+    setShowFeaturesTray(false);
+    setShowHeaderMenu(false);
+    setShowPmListDropdown(false);
+    setShowAttachmentDropdown(false);
+    setShowGamesDropdown(false);
+    setShowMusicDropdown(false);
+    setShowRadioDropdown(false);
+    setShowEmojiPicker(false);
+    setShowNotificationsDropdown(false);
+    setShowCommandsDropdown(false);
+    setShowPrivacyDropdown(false);
+    setShowSettingsDropdown(false);
+
+    if (!shouldOpen) return;
+
+    switch (dropdown) {
+      case "features":
+        setShowFeaturesTray(true);
+        break;
+      case "headerMenu":
+        setShowHeaderMenu(true);
+        break;
+      case "pmList":
+        setShowPmListDropdown(true);
+        break;
+      case "attachment":
+        setShowAttachmentDropdown(true);
+        break;
+      case "games":
+        setShowGamesDropdown(true);
+        break;
+      case "music":
+        setShowMusicDropdown(true);
+        break;
+      case "radio":
+        setShowRadioDropdown(true);
+        break;
+      case "emoji":
+        setShowEmojiPicker(true);
+        break;
+      case "notifications":
+        setShowNotificationsDropdown(true);
+        break;
+      case "commands":
+        setShowCommandsDropdown(true);
+        break;
+      case "privacy":
+        setShowPrivacyDropdown(true);
+        break;
+      case "settings":
+        setShowSettingsDropdown(true);
+        break;
+    }
   };
 
   const openModal = (
@@ -6781,20 +6828,6 @@ export default function ChatScreen({
 
                 {(isOwnerRole || isAdminRole) && (
                   <div className="flex items-center shrink-0 lamma-composer-cluster">
-                    {isOwnerRole && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLeadershipTab("quick");
-                          openModal("leadership");
-                        }}
-                        className="flex items-center justify-center text-yellow-400 transition-all cursor-pointer lamma-quiet-power-btn lamma-composer-tool"
-                        title="غرفة القيادة"
-                      >
-                        <Crown size={14} strokeWidth={2.1} />
-                      </button>
-                    )}
-
                     {isAdminRole && !isOwnerRole && (
                       <button
                         type="button"
