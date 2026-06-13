@@ -298,3 +298,48 @@ create policy "Admins insert owner activity logs" on public.owner_activity_logs
 alter publication supabase_realtime add table public.owner_settings;
 alter publication supabase_realtime add table public.owner_member_permissions;
 alter publication supabase_realtime add table public.owner_activity_logs;
+
+-- 8. طلبات تغيير الاسم بعد التسجيل (تُراجع من المالك فقط)
+create table if not exists public.nickname_change_requests (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  user_id text not null,
+  user_email text,
+  current_nickname text not null,
+  requested_nickname text not null,
+  status text not null default 'pending',
+  owner_note text,
+  processed_at timestamp with time zone,
+  processed_by text
+);
+
+alter table public.nickname_change_requests enable row level security;
+
+drop policy if exists "Users read own nickname requests" on public.nickname_change_requests;
+create policy "Users read own nickname requests" on public.nickname_change_requests
+  for select
+  using (
+    user_id = auth.uid()::text
+    or public.is_owner()
+  );
+
+drop policy if exists "Users create own nickname requests" on public.nickname_change_requests;
+create policy "Users create own nickname requests" on public.nickname_change_requests
+  for insert
+  with check (
+    user_id = auth.uid()::text
+    and status = 'pending'
+  );
+
+drop policy if exists "Only owner updates nickname requests" on public.nickname_change_requests;
+create policy "Only owner updates nickname requests" on public.nickname_change_requests
+  for update
+  using (public.is_owner())
+  with check (public.is_owner());
+
+drop policy if exists "Only owner deletes nickname requests" on public.nickname_change_requests;
+create policy "Only owner deletes nickname requests" on public.nickname_change_requests
+  for delete
+  using (public.is_owner());
+
+alter publication supabase_realtime add table public.nickname_change_requests;

@@ -74,23 +74,8 @@ export const getFrameFromAuthor = (
 };
 
 export function getShortenedNickname(nickname: string): string {
-  let cleanName = nickname
+  return nickname
     .replace(/\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g, "")
     .trim();
-  if (cleanName.startsWith("LC-Guest")) {
-    cleanName = cleanName.replace("LC-Guest", "LC-");
-  } else if (cleanName.startsWith("LC_Guest_")) {
-    cleanName = cleanName.replace("LC_Guest_", "LC-");
-  } else if (cleanName.startsWith("LammaGuest_")) {
-    cleanName = cleanName.replace("LammaGuest_", "LC-");
-  } else if (cleanName.startsWith("LammaGuest")) {
-    cleanName = cleanName.replace("LammaGuest", "LC-");
-  } else if (cleanName.includes("Guest")) {
-    // If nickname contains Guest, like Guest-3891 or Guest492
-    cleanName = cleanName.replace(/Guest[-_]*/gi, "LC-");
-  } else if (cleanName.includes("زائر")) {
-    cleanName = cleanName.replace(/زائر[-_]*/g, "LC-");
-  }
-  return cleanName;
 }
 

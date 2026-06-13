@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase.ts";
 import { Smartphone, X, Download, Info, Check, Apple, HelpCircle, User, Sparkles } from "lucide-react";
+import {
+  getResolvedSupabaseColor,
+  getResolvedSupabaseNickname,
+  hasPlaceholderSupabaseNickname,
+  normalizeAuthRole,
+} from "../lib/authProfile.ts";
 
 interface LoginScreenProps {
   onLogin: (
@@ -30,45 +36,11 @@ const NICKNAME_COLORS = [
   "#ef4444",
   "#f59e0b",
 ];
-
-function normalizeAuthRole(rawRole?: string): string {
-  const role = (rawRole || "").trim().toLowerCase();
-  if (role === "owner" || role === "malek" || role === "المالك") return "owner";
-  if (role === "admin" || role === "أدمن") return "admin";
-  if (
-    role === "guest" ||
-    role === "user" ||
-    role === "vip" ||
-    role === "platinum_vip" ||
-    role === "mod"
-  ) {
-    return role;
-  }
-  return "user";
-}
+const PROFILE_NICKNAME_MIN_LENGTH = 2;
+const PROFILE_NICKNAME_MAX_LENGTH = 24;
 
 function getSupabaseRole(user: any): string {
   return normalizeAuthRole(user?.user_metadata?.role);
-}
-
-function hasPlaceholderNickname(nickname: string | undefined, role: string) {
-  const normalizedNickname = (nickname || "").trim().toLowerCase();
-
-  if (!normalizedNickname) return true;
-
-  if (role === "owner") {
-    return (
-      normalizedNickname === "owner" ||
-      normalizedNickname === "malek" ||
-      normalizedNickname === "المالك"
-    );
-  }
-
-  if (role === "admin") {
-    return normalizedNickname === "admin" || normalizedNickname === "أدمن";
-  }
-
-  return false;
 }
 
 function resolveOwnerGhostMode(role: string) {
@@ -280,14 +252,21 @@ export default function LoginScreen(props: LoginScreenProps) {
       }
 
       const authRole = getSupabaseRole(data.user);
-      const metaNick = data.user.user_metadata?.nickname?.trim();
+      const metaNick = getResolvedSupabaseNickname(data.user);
+      const resolvedColor = getResolvedSupabaseColor(data.user);
 
-      if (hasPlaceholderNickname(metaNick, authRole)) {
+      if (hasPlaceholderSupabaseNickname(data.user)) {
         setPendingProfileUser(data.user);
-        setPendingProfileColor(assignedColor);
+        setPendingProfileColor(resolvedColor);
         setProfileNickname("");
         setShowProfileNicknameModal(true);
         return;
+      }
+
+      if (!data.user.user_metadata?.color) {
+        void supabase.auth.updateUser({
+          data: { color: resolvedColor },
+        });
       }
 
       resolveOwnerGhostMode(authRole);
@@ -295,7 +274,7 @@ export default function LoginScreen(props: LoginScreenProps) {
       onLogin(
         metaNick,
         authRole,
-        assignedColor,
+        resolvedColor,
         data.user.id,
         data.user.email ?? undefined,
         "supabase",
@@ -390,15 +369,45 @@ export default function LoginScreen(props: LoginScreenProps) {
       return;
     }
 
+    if (nickname.length < PROFILE_NICKNAME_MIN_LENGTH) {
+      showFeedback("اسم المستخدم يجب أن يكون حرفين على الأقل.", "error", true);
+      return;
+    }
+
+    if (nickname.length > PROFILE_NICKNAME_MAX_LENGTH) {
+      showFeedback("اسم المستخدم يجب ألا يزيد عن 24 حرفاً.", "error", true);
+      return;
+    }
+
     if (!supabase || !pendingProfileUser || !pendingProfileColor) {
       showFeedback("إعدادات Supabase غير مكتملة حالياً.", "error", true);
+      return;
+    }
+
+    const previewUser = {
+      ...pendingProfileUser,
+      user_metadata: {
+        ...(pendingProfileUser.user_metadata ?? {}),
+        nickname,
+      },
+    };
+
+    if (hasPlaceholderSupabaseNickname(previewUser)) {
+      showFeedback(
+        "اختر اسماً واضحاً بعيداً عن أسماء الرتب أو الأسماء التجريبية.",
+        "error",
+        true,
+      );
       return;
     }
 
     try {
       setAuthLoading(true);
       const { data, error } = await supabase.auth.updateUser({
-        data: { nickname },
+        data: {
+          nickname,
+          color: pendingProfileColor,
+        },
       });
 
       if (error) {
@@ -914,6 +923,7 @@ export default function LoginScreen(props: LoginScreenProps) {
                 type="text"
                 autoComplete="off"
                 placeholder="مثال: لمة_محمد"
+                maxLength={PROFILE_NICKNAME_MAX_LENGTH}
                 value={profileNickname}
                 onChange={(e) => setProfileNickname(e.target.value)}
               />

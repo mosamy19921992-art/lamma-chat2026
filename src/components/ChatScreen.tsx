@@ -63,6 +63,7 @@ import UserProfileBioPopup from "./modals/UserProfileBioPopup.tsx";
 import {
   getClientUid,
   supabase,
+  type NicknameChangeRequestRow,
   SupabaseMessage,
   type OwnerActivityLogRow,
   type OwnerMemberPermissionRow,
@@ -556,8 +557,11 @@ export default function ChatScreen({
   const roleLower = (currentUser.role || "").toLowerCase();
   const isOwnerRole = roleLower === "owner";
   const isAdminRole = roleLower === "admin";
+  const isManagementRole = isOwnerRole || isAdminRole;
   const isPostsRoom = activeRoomId === POSTS_ROOM_ID;
   const canPublishPosts = currentUser.authProvider === "supabase";
+  const isRegisteredAccount = currentUser.authProvider === "supabase";
+  const tempEntryTopicStorageKey = `lamma_temp_entry_topic_${currentUser.uid || currentUser.nickname}`;
   const availableRooms = [...ROOMS_DEF, ...customRooms];
   const visibleRoomCount = availableRooms.filter((room) => {
     if (room.id === "owner" && !isOwnerRole) return false;
@@ -568,6 +572,38 @@ export default function ChatScreen({
     roomBgMap[activeRoomId] || ownerBgImage || DEFAULT_AMBIENT_BG;
   const isDefaultAmbientBg = activeRoomBg === DEFAULT_AMBIENT_BG;
   const isChatColumnExpanded = isLeftColumnCollapsed || isRightColumnCollapsed;
+  const readStoredTempEntryTopic = () => {
+    if (typeof window === "undefined") {
+      return { text: "", enabled: false };
+    }
+
+    try {
+      const raw = localStorage.getItem(tempEntryTopicStorageKey);
+      if (!raw) return { text: "", enabled: false };
+      const parsed = JSON.parse(raw) as {
+        text?: string;
+        enabled?: boolean;
+      };
+      const text =
+        typeof parsed.text === "string" ? parsed.text.trim().slice(0, 60) : "";
+      return {
+        text,
+        enabled: parsed.enabled === true && Boolean(text),
+      };
+    } catch {
+      return { text: "", enabled: false };
+    }
+  };
+  const persistTempEntryTopic = (text: string, enabled: boolean) => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(
+      tempEntryTopicStorageKey,
+      JSON.stringify({
+        text: text.trim().slice(0, 60),
+        enabled: enabled && Boolean(text.trim()),
+      }),
+    );
+  };
 
   useEffect(() => {
     localStorage.setItem(customRoomsStorageKey, JSON.stringify(customRooms));
@@ -822,6 +858,14 @@ export default function ChatScreen({
   const [selectedProfileMember, setSelectedProfileMember] =
     useState<ChatMember | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [nicknameRequests, setNicknameRequests] = useState<
+    NicknameChangeRequestRow[]
+  >([]);
+  const [nicknameRequestInput, setNicknameRequestInput] = useState("");
+  const [nicknameRequestLoading, setNicknameRequestLoading] = useState(false);
+  const [nicknameRequestStatusText, setNicknameRequestStatusText] = useState<
+    string | null
+  >(null);
   const [adminTab, setAdminTab] = useState<
     "actions" | "logs" | "bans" | "store_mgmt"
   >("actions");
@@ -872,6 +916,18 @@ export default function ChatScreen({
   };
 
   const [showStatus, setShowStatus] = useState(false);
+  const [tempEntryTopicInput, setTempEntryTopicInput] = useState("");
+  const [tempEntryTopicEnabled, setTempEntryTopicEnabled] = useState(false);
+  const [tempEntryTopicStatusText, setTempEntryTopicStatusText] = useState<
+    string | null
+  >(null);
+  const [visibleTempEntryTopic, setVisibleTempEntryTopic] = useState<
+    string | null
+  >(null);
+  const tempEntryTopicTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const tempEntryTopicLastTriggerRef = useRef("");
   useEffect(() => {
     localStorage.setItem("lamma_user_bio", myCustomBio);
   }, [myCustomBio]);
@@ -881,6 +937,99 @@ export default function ChatScreen({
       return () => clearTimeout(timer);
     }
   }, [showStatus]);
+  useEffect(() => {
+    const stored = readStoredTempEntryTopic();
+    setTempEntryTopicInput(stored.text);
+    setTempEntryTopicEnabled(stored.enabled);
+    setTempEntryTopicStatusText(null);
+    tempEntryTopicLastTriggerRef.current = "";
+
+    if (!isRegisteredAccount || !supabase) {
+      setVisibleTempEntryTopic(null);
+      return;
+    }
+
+    let cancelled = false;
+    const syncTempEntryTopic = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.warn("Failed to load temp entry topic metadata:", error);
+        return;
+      }
+
+      if (cancelled) return;
+
+      const metadata = data.user?.user_metadata ?? {};
+      const metadataText =
+        typeof metadata.temp_entry_topic === "string"
+          ? metadata.temp_entry_topic.trim().slice(0, 60)
+          : "";
+      const metadataEnabled =
+        metadata.temp_entry_topic_enabled === true && Boolean(metadataText);
+
+      if (!metadataText && metadata.temp_entry_topic_enabled !== true) {
+        return;
+      }
+
+      setTempEntryTopicInput(metadataText);
+      setTempEntryTopicEnabled(metadataEnabled);
+      persistTempEntryTopic(metadataText, metadataEnabled);
+    };
+
+    void syncTempEntryTopic();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    currentUser.nickname,
+    currentUser.uid,
+    isRegisteredAccount,
+    tempEntryTopicStorageKey,
+  ]);
+  useEffect(() => {
+    if (tempEntryTopicTimerRef.current) {
+      clearTimeout(tempEntryTopicTimerRef.current);
+      tempEntryTopicTimerRef.current = null;
+    }
+
+    if (!isRegisteredAccount) {
+      setVisibleTempEntryTopic(null);
+      return;
+    }
+
+    const nextTopic = tempEntryTopicInput.trim();
+    if (!tempEntryTopicEnabled || !nextTopic) {
+      setVisibleTempEntryTopic(null);
+      return;
+    }
+
+    const triggerKey = `${currentUser.uid || currentUser.nickname}:${activeRoomId}`;
+    if (tempEntryTopicLastTriggerRef.current === triggerKey) {
+      return;
+    }
+
+    tempEntryTopicLastTriggerRef.current = triggerKey;
+    setVisibleTempEntryTopic(nextTopic);
+    tempEntryTopicTimerRef.current = setTimeout(() => {
+      setVisibleTempEntryTopic(null);
+      tempEntryTopicTimerRef.current = null;
+    }, 5000);
+
+    return () => {
+      if (tempEntryTopicTimerRef.current) {
+        clearTimeout(tempEntryTopicTimerRef.current);
+        tempEntryTopicTimerRef.current = null;
+      }
+    };
+  }, [
+    activeRoomId,
+    currentUser.nickname,
+    currentUser.uid,
+    isRegisteredAccount,
+    tempEntryTopicEnabled,
+    tempEntryTopicInput,
+  ]);
 
   const toggleSearchPop = () => {
     setActiveModal(null);
@@ -1081,7 +1230,7 @@ export default function ChatScreen({
 
         addLammaBotMessage(
           activeRoomId || "room1",
-          `🤖 البوت الذكي: انتهت فترة صلاحية باقة VIP המمنوحة للعضو [${currentUser.nickname}] بصورة آلية. تم سحب الامتيازات الشرفية بنجاح 🔔.`,
+          `🤖 إشعار الاشتراك: انتهت صلاحية باقة VIP الخاصة بالعضو [${currentUser.nickname}] وتم تحديث المزايا تلقائياً.`,
         );
         addSystemActivityLog(
           "demote",
@@ -1097,7 +1246,7 @@ export default function ChatScreen({
         );
         addLammaBotMessage(
           activeRoomId || "room1",
-          `🤖 البوت الذكي: تنبيه اشتراك! متبقي 24 ساعة وينتهي اشتراك VIP لـ [${currentUser.nickname}] ⚠️.`,
+          `🤖 إشعار الاشتراك: يتبقى 24 ساعة على انتهاء باقة VIP الخاصة بالعضو [${currentUser.nickname}].`,
         );
       } else if (remainingDays <= 3 && !savedReminders["3"]) {
         savedReminders["3"] = true;
@@ -1107,7 +1256,7 @@ export default function ChatScreen({
         );
         addLammaBotMessage(
           activeRoomId || "room1",
-          `🤖 البوت الذكي: يا [${currentUser.nickname}] بقي 3 أيام فقط على نهاية باقة VIP الخاصة بك! لا تنسى التجديد 🎁.`,
+          `🤖 إشعار الاشتراك: يتبقى 3 أيام على انتهاء باقة VIP الخاصة بالعضو [${currentUser.nickname}].`,
         );
       } else if (remainingDays <= 7 && !savedReminders["7"]) {
         savedReminders["7"] = true;
@@ -1117,7 +1266,7 @@ export default function ChatScreen({
         );
         addLammaBotMessage(
           activeRoomId || "room1",
-          `🤖 البوت الذكي: إشعار تلقائي! اشتراك الـ VIP لـ [${currentUser.nickname}] سينتهي خلال 7 أيام. استمتع بها وجدد مبكراً 🔔.`,
+          `🤖 إشعار الاشتراك: باقة VIP الخاصة بالعضو [${currentUser.nickname}] ستنتهي خلال 7 أيام.`,
         );
       }
     };
@@ -1180,22 +1329,29 @@ export default function ChatScreen({
     }
   };
 
+  const currentDisplayNickname = myActiveSession.nickname || currentUser.nickname;
+  const currentDisplayColor = myActiveSession.color || currentUser.color || "#10b981";
+  const currentDisplayAvatar = myActiveSession.avatar || currentUser.avatar || "👤";
+  const currentDisplayBadge = myActiveSession.badge || currentUser.badge;
+  const currentDisplayTitle = myActiveSession.title || currentUser.title;
+  const activeTempEntryTopic = visibleTempEntryTopic?.trim() || "";
+
   const buildCurrentChatMember = (): ChatMember => ({
-    id: currentUser.uid || `member-${currentUser.nickname}`,
-    nickname: currentUser.nickname,
+    id: currentUser.uid || `member-${currentDisplayNickname}`,
+    nickname: currentDisplayNickname,
     role: normalizeChatMemberRole(
       typeof currentUser.role === "string" ? currentUser.role : undefined,
     ),
-    color: currentUser.color || "#10b981",
-    avatar: currentUser.avatar || "👤",
+    color: currentDisplayColor,
+    avatar: currentDisplayAvatar,
     status: "online",
     email: currentUser.email || undefined,
-    badge: currentUser.badge,
-    title: currentUser.title,
+    badge: currentDisplayBadge,
+    title: currentDisplayTitle,
     fingerprint: myFingerprint,
     browserSignature: myBrowserSig,
     ip: myIp,
-    localStorageId: `local-${currentUser.uid || currentUser.nickname}`,
+    localStorageId: `local-${currentUser.uid || currentDisplayNickname}`,
   });
 
   const [rawChatMembers, setChatMembers] = useState<ChatMember[]>(() => [
@@ -1222,6 +1378,11 @@ export default function ChatScreen({
     currentUser.role,
     currentUser.title,
     currentUser.uid,
+    myActiveSession.avatar,
+    myActiveSession.badge,
+    myActiveSession.color,
+    myActiveSession.nickname,
+    myActiveSession.title,
     myBrowserSig,
     myFingerprint,
     myIp,
@@ -1229,7 +1390,7 @@ export default function ChatScreen({
 
   // Derived chatMembers: hide current user if Ghost Mode is active
   const chatMembers = isGhostMode
-    ? rawChatMembers.filter((m) => m.nickname !== currentUser.nickname)
+    ? rawChatMembers.filter((m) => m.nickname !== currentDisplayNickname)
     : rawChatMembers;
   const memberRoleSortPriority: Record<string, number> = {
     owner: 0,
@@ -1644,6 +1805,98 @@ export default function ChatScreen({
       cancelled = true;
     };
   }, [currentUser.authProvider, currentUser.role, currentUser.uid]);
+
+  const fetchNicknameRequests = async () => {
+    if (
+      !supabase ||
+      currentUser.authProvider !== "supabase" ||
+      !currentUser.uid
+    ) {
+      setNicknameRequests([]);
+      return;
+    }
+
+    let query = supabase
+      .from("nickname_change_requests")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(isOwnerRole ? 100 : 10);
+
+    if (!isOwnerRole) {
+      query = query.eq("user_id", currentUser.uid);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.warn("Failed to fetch nickname change requests:", error);
+      return;
+    }
+
+    setNicknameRequests((data as NicknameChangeRequestRow[]) || []);
+  };
+
+  useEffect(() => {
+    void fetchNicknameRequests();
+  }, [currentUser.authProvider, currentUser.uid, isOwnerRole]);
+
+  useEffect(() => {
+    if (
+      !supabase ||
+      currentUser.authProvider !== "supabase" ||
+      !currentUser.uid
+    ) {
+      return;
+    }
+
+    const approvedRequest = nicknameRequests.find(
+      (request) =>
+        request.user_id === currentUser.uid && request.status === "approved",
+    );
+
+    if (!approvedRequest?.id) return;
+
+    const appliedKey = `lamma_nickname_request_applied_${currentUser.uid}_${approvedRequest.id}`;
+    if (sessionStorage.getItem(appliedKey)) return;
+
+    const requestedNickname = approvedRequest.requested_nickname.trim();
+    if (!requestedNickname) return;
+
+    const applyApprovedNickname = async () => {
+      if (
+        requestedNickname.toLowerCase() ===
+        (myActiveSession.nickname || currentUser.nickname).toLowerCase()
+      ) {
+        sessionStorage.setItem(appliedKey, "1");
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        data: { nickname: requestedNickname },
+      });
+
+      if (error) {
+        console.warn("Failed to apply approved nickname request:", error);
+        return;
+      }
+
+      sessionStorage.setItem(appliedKey, "1");
+      setMyActiveSession((prev) => ({
+        ...prev,
+        nickname: requestedNickname,
+      }));
+      setNicknameRequestStatusText(
+        `تم اعتماد طلب تغيير الاسم إلى ${requestedNickname} بنجاح.`,
+      );
+    };
+
+    void applyApprovedNickname();
+  }, [
+    currentUser.authProvider,
+    currentUser.nickname,
+    currentUser.uid,
+    myActiveSession.nickname,
+    nicknameRequests,
+  ]);
 
   useEffect(() => {
     if (ownerBgImage?.trim()) {
@@ -2074,6 +2327,7 @@ export default function ChatScreen({
     closeFloatingUi();
 
     if (!shouldOpen) return;
+    if (dropdown === "commands" && !isManagementRole) return;
 
     switch (dropdown) {
       case "features":
@@ -2386,6 +2640,11 @@ export default function ChatScreen({
 
   // System Action Trigger Logout with audit logs
   const handleInitiateLogout = () => {
+    closeFloatingUi();
+    setActiveModal(null);
+    setIsSidebarOpen(false);
+    setShowMembersList(false);
+    setIsPmOpen(false);
     cleanupPublicChatSession(true);
     addSystemActivityLog(
       "logout",
@@ -2393,9 +2652,7 @@ export default function ChatScreen({
       `تسجيل خروج ناجح للعضو ${currentUser.nickname} من الخادم وتدمير الجلسة المؤقتة.`,
       currentUser.nickname,
     );
-    setTimeout(() => {
-      onLogout();
-    }, 250);
+    onLogout();
   };
 
   // Safe Room switching with block validation
@@ -2438,6 +2695,148 @@ export default function ChatScreen({
     if (myCustomBio) {
       // Bio displayed via UI
     }
+  };
+
+  const handleSubmitNicknameChangeRequest = async () => {
+    const requestedNickname = nicknameRequestInput.trim();
+
+    if (!requestedNickname) {
+      alert("اكتب الاسم الجديد المطلوب أولاً.");
+      return;
+    }
+
+    if (
+      requestedNickname.toLowerCase() ===
+      (myActiveSession.nickname || currentUser.nickname).toLowerCase()
+    ) {
+      alert("الاسم الجديد هو نفسه الاسم الحالي.");
+      return;
+    }
+
+    if (!supabase || currentUser.authProvider !== "supabase" || !currentUser.uid) {
+      alert("هذه الميزة متاحة للحسابات المسجلة فقط.");
+      return;
+    }
+
+    const hasPendingRequest = nicknameRequests.some(
+      (request) =>
+        request.user_id === currentUser.uid && request.status === "pending",
+    );
+
+    if (hasPendingRequest) {
+      alert("لديك طلب تغيير اسم قيد المراجعة بالفعل.");
+      return;
+    }
+
+    setNicknameRequestLoading(true);
+    setNicknameRequestStatusText(null);
+
+    const { error } = await supabase.from("nickname_change_requests").insert({
+      user_id: currentUser.uid,
+      user_email: currentUser.email ?? null,
+      current_nickname: myActiveSession.nickname || currentUser.nickname,
+      requested_nickname: requestedNickname,
+      status: "pending",
+    });
+
+    setNicknameRequestLoading(false);
+
+    if (error) {
+      alert("تعذر إرسال طلب تغيير الاسم حالياً.");
+      console.warn("Failed to submit nickname request:", error);
+      return;
+    }
+
+    setNicknameRequestInput("");
+    setNicknameRequestStatusText(
+      "تم إرسال طلب تغيير الاسم للمالك وسيظهر له للمراجعة.",
+    );
+    await fetchNicknameRequests();
+  };
+
+  const handleSaveTempEntryTopic = async () => {
+    const rawTopic = tempEntryTopicInput.trim();
+    if (rawTopic.length > 60) {
+      alert("اجعل التوبيك المؤقت 60 حرفاً أو أقل.");
+      return;
+    }
+
+    if (!supabase || !isRegisteredAccount || !currentUser.uid) {
+      alert("هذه الميزة متاحة للحسابات المسجلة فقط.");
+      return;
+    }
+
+    const sanitizedTopic = rawTopic.slice(0, 60);
+    const nextEnabled = tempEntryTopicEnabled && Boolean(sanitizedTopic);
+    setTempEntryTopicStatusText(null);
+
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        temp_entry_topic: sanitizedTopic,
+        temp_entry_topic_enabled: nextEnabled,
+      },
+    });
+
+    if (error) {
+      alert("تعذر حفظ التوبيك المؤقت حالياً.");
+      console.warn("Failed to save temp entry topic:", error);
+      return;
+    }
+
+    setTempEntryTopicInput(sanitizedTopic);
+    setTempEntryTopicEnabled(nextEnabled);
+    persistTempEntryTopic(sanitizedTopic, nextEnabled);
+    tempEntryTopicLastTriggerRef.current = "";
+
+    if (tempEntryTopicTimerRef.current) {
+      clearTimeout(tempEntryTopicTimerRef.current);
+      tempEntryTopicTimerRef.current = null;
+    }
+
+    if (nextEnabled && sanitizedTopic) {
+      setVisibleTempEntryTopic(sanitizedTopic);
+      tempEntryTopicTimerRef.current = setTimeout(() => {
+        setVisibleTempEntryTopic(null);
+        tempEntryTopicTimerRef.current = null;
+      }, 5000);
+    } else {
+      setVisibleTempEntryTopic(null);
+    }
+
+    setTempEntryTopicStatusText(
+      sanitizedTopic
+        ? nextEnabled
+          ? "تم حفظ التوبيك المؤقت وسيظهر جنب اسمك لحظات وقت الدخول."
+          : "تم حفظ النص، لكن ظهوره معطل حالياً حتى تفعله."
+        : "تم مسح التوبيك المؤقت من حسابك.",
+    );
+  };
+
+  const handleProcessNicknameRequest = async (
+    requestId: string,
+    status: "approved" | "rejected",
+  ) => {
+    if (!supabase || !isOwnerRole) return;
+
+    setNicknameRequestLoading(true);
+    const { error } = await supabase
+      .from("nickname_change_requests")
+      .update({
+        status,
+        processed_at: new Date().toISOString(),
+        processed_by: currentUser.nickname,
+      })
+      .eq("id", requestId);
+
+    setNicknameRequestLoading(false);
+
+    if (error) {
+      alert("تعذر تحديث حالة الطلب حالياً.");
+      console.warn("Failed to process nickname request:", error);
+      return;
+    }
+
+    await fetchNicknameRequests();
   };
 
   // States to keep interface simple and un-cluttered
@@ -3102,7 +3501,7 @@ export default function ChatScreen({
 
       addLammaBotMessage(
         activeRoomId || "room1",
-        `⏳ محاكاة الأتمتة: تم تقدم الزمن بمقدار ${days} أيام على نظام التتبع الخاص باشتراكك. سيقوم البوت الذكي برصد التغيير وتنفيذ الأوامر إن لزم الأمر...`,
+        `⏳ تم تقديم الوقت بمقدار ${days} أيام على نظام متابعة الاشتراك لأغراض المراجعة.`,
       );
     } catch (e) {
       console.error(e);
@@ -3142,7 +3541,7 @@ export default function ChatScreen({
         text.includes(".net"))
     ) {
       isBlocked = true;
-      warningMessage = `⚠️ تنبيه أمني: تم حجب رسالة العضو (${authorName}) لاحتوائها على روابط خارجية غير مصرح بها لحماية خصوصية الأعضاء الأفاضل.`;
+      warningMessage = `⚠️ تم حجب رسالة العضو (${authorName}) لأنها تحتوي على رابط خارجي غير مسموح به.`;
       logMsg = `محاولة نشر رابط خارجي مشبوه من [${authorName}] في غرفة [${systemRooms.find((r) => r.id === roomId)?.name || roomId}] تم حظرها تلقائياً.`;
       logSeverity = "danger";
       return {
@@ -3167,7 +3566,7 @@ export default function ChatScreen({
       lastUserMsg.type === "text"
     ) {
       isBlocked = true;
-      warningMessage = `⚠️ تنبيه مكرر: يرجى عدم تكرار نفس العبارات المتعاقبة سريعاً يا العضو (${authorName}) حفاظاً على جمال وهدوء الشات.`;
+      warningMessage = `⚠️ يرجى عدم تكرار نفس الرسالة بسرعة يا (${authorName}).`;
       logMsg = `رصد محاولة تكرار رسالة متطابقة (Spam) من [${authorName}] وتم حجبها لمنع الإزعاج.`;
       logSeverity = "warn";
       return {
@@ -3192,7 +3591,7 @@ export default function ChatScreen({
       });
       if (foundViolation) {
         isCensored = true;
-        warningMessage = `🛡️ تمت الفلترة: قام حارس الشات التلقائي بفلترة وتظليل بعض الألفاظ غير المناسبة في رسالة العضو (${authorName}). الرجاء الحفاظ على رقي الحديث وعفة اللسان 💚`;
+        warningMessage = `🛡️ تمت مراجعة رسالة العضو (${authorName}) وإخفاء بعض الألفاظ غير المناسبة تلقائياً.`;
         logMsg = `مخالفة فلترة الكلام: تم العثور على ألفاظ منافية لآداب الشات في رسالة [${authorName}] وعُدلت تلقائياً.`;
         logSeverity = "warn";
       }
@@ -4353,6 +4752,11 @@ export default function ChatScreen({
                   {myActiveSession.nickname}
                   {myVisualRole === "owner" && (
                     <BossSigil size={13} className="opacity-95" />
+                  )}
+                  {activeTempEntryTopic && (
+                    <span className="max-w-[120px] truncate rounded-full border border-cyan-400/25 bg-cyan-500/10 px-1.5 py-0.5 text-[7px] text-cyan-200">
+                      {activeTempEntryTopic}
+                    </span>
                   )}
                   {myActiveSession.badge && (
                     <span className="text-[7px] lamma-badge-chip">
@@ -5694,6 +6098,11 @@ export default function ChatScreen({
                               >
                                 {cleanName}
                               </span>
+                              {isCurrentUser && activeTempEntryTopic && (
+                                <span className="max-w-[110px] truncate rounded-full border border-cyan-400/20 bg-cyan-500/10 px-1.5 py-0.5 text-[7px] text-cyan-200">
+                                  {activeTempEntryTopic}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -6307,145 +6716,146 @@ export default function ChatScreen({
                 <Users size={14} />
               </button>
 
-              <div className="relative dropdown-container">
-                <button
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={() => toggleDropdown("commands")}
-                  className={`transition-all lamma-room-strip-action flex items-center justify-center ${
-                    showCommandsDropdown
-                      ? "text-green-300 lamma-quiet-power-btn-active"
-                      : "text-green-400 hover:text-green-300 lamma-toolbar-btn"
-                  }`}
-                  title="نظام الأوامر السريعة"
-                >
-                  <Terminal size={14} />
-                </button>
+              {isManagementRole && (
+                <div className="relative dropdown-container">
+                  <button
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={() => toggleDropdown("commands")}
+                    className={`transition-all lamma-room-strip-action flex items-center justify-center ${
+                      showCommandsDropdown
+                        ? "text-green-300 lamma-quiet-power-btn-active"
+                        : "text-green-400 hover:text-green-300 lamma-toolbar-btn"
+                    }`}
+                    title="نظام الأوامر السريعة"
+                  >
+                    <Terminal size={14} />
+                  </button>
 
-                <AnimatePresence>
-                  {showCommandsDropdown && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      transition={{ duration: 0.15 }}
-                      className="hidden md:flex absolute top-full left-0 mt-2 w-[240px] rounded-2xl z-50 flex flex-col pb-1.5 lamma-popover-shell"
-                    >
-                      <div className="flex items-center justify-between p-2.5 lamma-feature-header">
-                        <div className="flex items-center gap-1.5 pointer-events-none">
-                          <Terminal size={14} className="text-green-400" />
-                          <h3 className="font-sans font-black text-white text-xs">نظام الأوامر السريعة</h3>
+                  <AnimatePresence>
+                    {showCommandsDropdown && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="hidden md:flex absolute top-full left-0 mt-2 w-[240px] rounded-2xl z-50 flex flex-col pb-1.5 lamma-popover-shell"
+                      >
+                        <div className="flex items-center justify-between p-2.5 lamma-feature-header">
+                          <div className="flex items-center gap-1.5 pointer-events-none">
+                            <Terminal size={14} className="text-green-400" />
+                            <h3 className="font-sans font-black text-white text-xs">نظام الأوامر السريعة</h3>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowCommandsDropdown(false)}
+                            className="p-1 rounded-lg text-red-400 hover:text-white transition-all cursor-pointer lamma-feature-action"
+                          >
+                            <X size={12} />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setShowCommandsDropdown(false)}
-                          className="p-1 rounded-lg text-red-400 hover:text-white transition-all cursor-pointer lamma-feature-action"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                      <div className="flex flex-col p-2 gap-1.5 text-right font-sans">
-                        <p className="text-[9.5px] text-gray-400 font-bold mb-1 px-1 leading-relaxed">
-                          انقر على أي أمر لتطبيقه مباشرة على صندوق النص أو للتنفيذ التلقائي لخدمات الشات الملكي:
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setInputText("/ping");
-                            setShowCommandsDropdown(false);
-                          }}
-                          className="flex items-center justify-between p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
-                        >
-                          <span className="font-mono font-black text-green-400">/ping</span>
-                          <span className="text-[9.5px] text-gray-500">قياس سرعة استجابة السيرفر</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRoomMessages((prev) => ({
-                              ...prev,
-                              [activeRoomId]: [],
-                            }));
-                            setShowCommandsDropdown(false);
-                          }}
-                          className="flex items-center justify-between p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
-                        >
-                          <span className="font-mono font-black text-yellow-400">/clear</span>
-                          <span className="text-[9.5px] text-gray-500">مسح الشاشة تجميلياً</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsZenMode(true);
-                            setIsSidebarOpen(false);
-                            setShowCommandsDropdown(false);
-                          }}
-                          className="flex items-center justify-between p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
-                        >
-                          <span className="font-mono font-black text-violet-400">/zen</span>
-                          <span className="text-[9.5px] text-gray-500">تفعيل وضع التركيز التام (Zen)</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsCompactView(!isCompactView);
-                            setShowCommandsDropdown(false);
-                          }}
-                          className="flex items-center justify-between p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
-                        >
-                          <span className="font-mono font-black text-cyan-400">/compact</span>
-                          <span className="text-[9.5px] text-gray-500">تبديل وضع العرض المدمج</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setInputText("/help");
-                            setShowCommandsDropdown(false);
-                          }}
-                          className="flex items-center justify-between p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
-                        >
-                          <span className="font-mono font-black text-rose-400">/help</span>
-                          <span className="text-[9.5px] text-gray-500">عرض المساعدة والتعليمات</span>
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                        <div className="flex flex-col p-2 gap-1.5 text-right font-sans">
+                          <p className="text-[9.5px] text-gray-400 font-bold mb-1 px-1 leading-relaxed">
+                            انقر على أي أمر لتطبيقه مباشرة على صندوق النص أو للتنفيذ التلقائي لخدمات الشات الملكي:
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setInputText("/ping");
+                              setShowCommandsDropdown(false);
+                            }}
+                            className="flex items-center justify-between p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
+                          >
+                            <span className="font-mono font-black text-green-400">/ping</span>
+                            <span className="text-[9.5px] text-gray-500">قياس سرعة استجابة السيرفر</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRoomMessages((prev) => ({
+                                ...prev,
+                                [activeRoomId]: [],
+                              }));
+                              setShowCommandsDropdown(false);
+                            }}
+                            className="flex items-center justify-between p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
+                          >
+                            <span className="font-mono font-black text-yellow-400">/clear</span>
+                            <span className="text-[9.5px] text-gray-500">مسح الشاشة تجميلياً</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsZenMode(true);
+                              setIsSidebarOpen(false);
+                              setShowCommandsDropdown(false);
+                            }}
+                            className="flex items-center justify-between p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
+                          >
+                            <span className="font-mono font-black text-violet-400">/zen</span>
+                            <span className="text-[9.5px] text-gray-500">تفعيل وضع التركيز التام (Zen)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCompactView(!isCompactView);
+                              setShowCommandsDropdown(false);
+                            }}
+                            className="flex items-center justify-between p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
+                          >
+                            <span className="font-mono font-black text-cyan-400">/compact</span>
+                            <span className="text-[9.5px] text-gray-500">تبديل وضع العرض المدمج</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setInputText("/help");
+                              setShowCommandsDropdown(false);
+                            }}
+                            className="flex items-center justify-between p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
+                          >
+                            <span className="font-mono font-black text-rose-400">/help</span>
+                            <span className="text-[9.5px] text-gray-500">عرض المساعدة والتعليمات</span>
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                <MobileBottomSheet
-                  isOpen={showCommandsDropdown}
-                  onClose={() => setShowCommandsDropdown(false)}
-                  title="نظام الأوامر السريعة"
-                  icon={<Terminal size={16} className="text-green-400" />}
-                >
-                  <div className="flex flex-col p-1 gap-2.5 text-right font-sans">
-                    <p className="text-[11px] text-gray-400 font-bold mb-1.5 leading-relaxed">
-                      انقر على أي أمر لتطبيقه مباشرة على صندوق النص أو للتنفيذ التلقائي لخدمات الشات الملكي:
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setInputText("/ping");
-                        setShowCommandsDropdown(false);
-                      }}
-                      className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
-                    >
-                      <span className="font-mono font-black text-green-400 text-sm">/ping</span>
-                      <span className="text-[10px] text-gray-400">قياس سرعة استجابة السيرفر</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRoomMessages((prev) => ({
-                          ...prev,
-                          [activeRoomId]: [],
-                        }));
-                        setShowCommandsDropdown(false);
-                      }}
-                      className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
-                    >
-                      <span className="font-mono font-black text-yellow-400 text-sm">/clear</span>
-                      <span className="text-[10px] text-gray-400">مسح الشاشة تجميلياً</span>
-                    </button>
+                  <MobileBottomSheet
+                    isOpen={showCommandsDropdown}
+                    onClose={() => setShowCommandsDropdown(false)}
+                    title="نظام الأوامر السريعة"
+                    icon={<Terminal size={16} className="text-green-400" />}
+                  >
+                    <div className="flex flex-col p-1 gap-2.5 text-right font-sans">
+                      <p className="text-[11px] text-gray-400 font-bold mb-1.5 leading-relaxed">
+                        انقر على أي أمر لتطبيقه مباشرة على صندوق النص أو للتنفيذ التلقائي لخدمات الشات الملكي:
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInputText("/ping");
+                          setShowCommandsDropdown(false);
+                        }}
+                        className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
+                      >
+                        <span className="font-mono font-black text-green-400 text-sm">/ping</span>
+                        <span className="text-[10px] text-gray-400">قياس سرعة استجابة السيرفر</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRoomMessages((prev) => ({
+                            ...prev,
+                            [activeRoomId]: [],
+                          }));
+                          setShowCommandsDropdown(false);
+                        }}
+                        className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
+                      >
+                        <span className="font-mono font-black text-yellow-400 text-sm">/clear</span>
+                        <span className="text-[10px] text-gray-400">مسح الشاشة تجميلياً</span>
+                      </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -6482,7 +6892,8 @@ export default function ChatScreen({
                     </button>
                   </div>
                 </MobileBottomSheet>
-              </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -6678,6 +7089,12 @@ export default function ChatScreen({
                               >
                                 {cleanName}
                               </span>
+                              {msg.author === myActiveSession.nickname &&
+                                activeTempEntryTopic && (
+                                  <span className="max-w-[110px] truncate rounded-full border border-cyan-400/25 bg-cyan-500/10 px-1.5 py-0.5 text-[7px] text-cyan-200">
+                                    {activeTempEntryTopic}
+                                  </span>
+                                )}
                               {role === "owner" && (
                                 <BossSigil size={12} className="opacity-95" />
                               )}
@@ -7963,6 +8380,11 @@ export default function ChatScreen({
                                 >
                                   {cleanName}
                                 </span>
+                                {isCurrentUser && activeTempEntryTopic && (
+                                  <span className="max-w-[110px] truncate rounded-full border border-cyan-400/20 bg-cyan-500/10 px-1.5 py-0.5 text-[7px] text-cyan-200">
+                                    {activeTempEntryTopic}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -8412,6 +8834,102 @@ export default function ChatScreen({
               <div className="flex-1 min-h-0 overflow-y-auto p-5 text-right space-y-4">
                 {activeModal === "leadership" && (
                   <div className="space-y-4 select-none" dir="rtl">
+                    <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h5 className="text-xs font-black text-cyan-300">
+                            طلبات تغيير الاسم
+                          </h5>
+                          <p className="text-[10px] text-gray-400 mt-1">
+                            هنا تظهر طلبات الأعضاء لتغيير الاسم بعد التسجيل، وتحتاج
+                            موافقة المالك.
+                          </p>
+                        </div>
+                        <div className="text-[10px] font-black text-cyan-300 px-2.5 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+                          {
+                            nicknameRequests.filter(
+                              (request) => request.status === "pending",
+                            ).length
+                          }{" "}
+                          طلب
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        {nicknameRequests.length === 0 ? (
+                          <div className="text-[10px] text-gray-500 font-bold text-center py-3">
+                            لا توجد طلبات تغيير اسم حالياً.
+                          </div>
+                        ) : (
+                          nicknameRequests.slice(0, 6).map((request) => (
+                            <div
+                              key={request.id}
+                              className="p-3 rounded-2xl border border-white/5 bg-black/30 space-y-2"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="text-[11px] font-black text-white">
+                                  {request.current_nickname} →{" "}
+                                  <span className="text-cyan-300">
+                                    {request.requested_nickname}
+                                  </span>
+                                </div>
+                                <div
+                                  className={`text-[9px] font-black px-2 py-1 rounded-lg ${
+                                    request.status === "approved"
+                                      ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                                      : request.status === "rejected"
+                                        ? "bg-red-500/10 text-red-300 border border-red-500/20"
+                                        : "bg-yellow-500/10 text-yellow-300 border border-yellow-500/20"
+                                  }`}
+                                >
+                                  {request.status === "approved"
+                                    ? "تمت الموافقة"
+                                    : request.status === "rejected"
+                                      ? "مرفوض"
+                                      : "قيد المراجعة"}
+                                </div>
+                              </div>
+                              <div className="text-[10px] text-gray-400 font-mono break-all">
+                                {request.user_email || "بدون بريد ظاهر"}
+                              </div>
+                              {request.status === "pending" && (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={nicknameRequestLoading}
+                                    onClick={() =>
+                                      request.id &&
+                                      handleProcessNicknameRequest(
+                                        request.id,
+                                        "approved",
+                                      )
+                                    }
+                                    className="flex-1 py-2 rounded-xl text-[10px] font-black bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all cursor-pointer"
+                                  >
+                                    موافقة
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={nicknameRequestLoading}
+                                    onClick={() =>
+                                      request.id &&
+                                      handleProcessNicknameRequest(
+                                        request.id,
+                                        "rejected",
+                                      )
+                                    }
+                                    className="flex-1 py-2 rounded-xl text-[10px] font-black bg-red-500/10 text-red-300 border border-red-500/20 hover:bg-red-500/20 transition-all cursor-pointer"
+                                  >
+                                    رفض
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
                     <div className="p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 lamma-soft-warn">
                       <div className="space-y-1">
                         <div className="text-white text-sm font-black">
@@ -8910,11 +9428,11 @@ export default function ChatScreen({
                                   "demote",
                                   currentUser.nickname,
                                   `تغيير حالة وضع الصيانة العام لموقع شات لمة إلى: [${nextVal ? "مفعّل" : "ملغى"}]`,
-                                  "👑 OWNER MODERATOR",
+                                  "👑 إدارة المالك",
                                 );
                                 addLammaBotMessage(
                                   activeRoomId,
-                                  `🤖 إشعار إداري: تم ${nextVal ? "تفعيل وضع الصيانة المؤقت للشات لجميع الأعضاء لإجراء أعمال تحسينات فنية" : "إنهاء وضع الصيانة بنجاح واسترداد كافة قنوات الاتصال والسرعة"} بقرار من الإدارة ⚡.`,
+                                  `🤖 إشعار إداري: تم ${nextVal ? "تفعيل وضع الصيانة مؤقتاً" : "إنهاء وضع الصيانة وعودة الشات للعمل بشكل طبيعي"}.`,
                                 );
                               }}
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
@@ -8941,11 +9459,11 @@ export default function ChatScreen({
                                   "ban",
                                   currentUser.nickname,
                                   `تغيير كتم الروم العام للدردشة إلى: [${nextVal ? "كتم نشط" : "مفتوح"}]`,
-                                  "👑 OWNER MODERATOR",
+                                  "👑 إدارة المالك",
                                 );
                                 addLammaBotMessage(
                                   activeRoomId,
-                                  `🤖 إشعار الصيانة الذاتية: تم ${nextVal ? "كتم الدردشة في الروم العام لجميع الأعضاء مؤقتاً للمحافظة على آداب النقاش" : "إعادة فتح الدردشة العامة، أهلاً وسهلاً بالجميع للحديث الراقي"} بأمر المالك ⚠️.`,
+                                  `🤖 إشعار إداري: تم ${nextVal ? "كتم الدردشة العامة مؤقتاً" : "إعادة فتح الدردشة العامة"}.`,
                                 );
                               }}
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
@@ -8972,11 +9490,11 @@ export default function ChatScreen({
                                   "ban",
                                   currentUser.nickname,
                                   `تعديل إذن الميكروفونات والبث العام إلى: [${nextVal ? "مغلقة" : "مفتوحة"}]`,
-                                  "👑 OWNER MODERATOR",
+                                  "👑 إدارة المالك",
                                 );
                                 addLammaBotMessage(
                                   activeRoomId,
-                                  `🤖 قرار ضبط المايكات: تم ${nextVal ? "إغلاق وتأمين ميكروفونات الشات لعامة الأعضاء" : "فتح قنوات التحدث الصوتي الحر مجرياً للأعضاء"}، تفضلوا بكل ترحيب 🎙️.`,
+                                  `🤖 إشعار إداري: تم ${nextVal ? "إغلاق الميكروفونات العامة مؤقتاً" : "إعادة فتح الميكروفونات العامة"}.`,
                                 );
                               }}
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
@@ -9005,11 +9523,11 @@ export default function ChatScreen({
                                   "ban",
                                   currentUser.nickname,
                                   `تحويل تراخيص إرسال الوسائط في الروم إلى: [${nextVal ? "VIP فقط" : "مفتوح للجميع"}]`,
-                                  "👑 OWNER MODERATOR",
+                                  "👑 إدارة المالك",
                                 );
                                 addLammaBotMessage(
                                   activeRoomId,
-                                  `🤖 حصر الوسائط: تم ${nextVal ? "حصر وإتاحة إرسال الصور والمرفقات والفيديوهات للرتب والـ VIP فقط لتقليل الضغط" : "فتح إمكانيات مشاركة الوسائط والصور لجميع الأعضاء"} بالدردشة 🎉.`,
+                                  `🤖 إشعار إداري: تم ${nextVal ? "قصر إرسال الوسائط على رتب VIP والإدارة" : "إتاحة إرسال الوسائط لجميع الأعضاء"}.`,
                                 );
                               }}
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
@@ -9038,7 +9556,7 @@ export default function ChatScreen({
                                   "promote",
                                   currentUser.nickname,
                                   `ضبط صوت وتفاعل بوت المساعدة الآلي إلى: [${nextVal ? "صامت" : "متفاعل"}]`,
-                                  "👑 OWNER MODERATOR",
+                                  "👑 إدارة المالك",
                                 );
                               }}
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
@@ -9067,7 +9585,7 @@ export default function ChatScreen({
                                   "promote",
                                   currentUser.nickname,
                                   `ضبط ميزة ترحيب الدخول الفلاشي للشات إلى: [${nextVal ? "نشط" : "معطل"}]`,
-                                  "👑 OWNER MODERATOR",
+                                  "👑 إدارة المالك",
                                 );
                               }}
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
@@ -9096,7 +9614,7 @@ export default function ChatScreen({
                                   "promote",
                                   currentUser.nickname,
                                   `تغيير عرض شريط عروض المتجر السفلي إلى: [${nextVal ? "معروض" : "مخفي"}]`,
-                                  "👑 OWNER MODERATOR",
+                                  "👑 إدارة المالك",
                                 );
                               }}
                               className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
@@ -9132,7 +9650,7 @@ export default function ChatScreen({
                                     "demote",
                                     currentUser.nickname,
                                     `تطهير تام وإخلاء لجميع رسائل غرفة [${activeRoomId}] بأمر المالك التأسيسي فوسفورياً.`,
-                                    "👑 OWNER MODERATOR",
+                                    "👑 إدارة المالك",
                                   );
                                   addLammaBotMessage(
                                     activeRoomId,
@@ -9191,16 +9709,18 @@ export default function ChatScreen({
                                 <option value="">
                                   --- اختر العضو المطلوب للعملية السريعة ---
                                 </option>
-                                {chatMembers.map((m) => (
+                                {chatMembers
+                                  .filter((m) => m.role !== "owner")
+                                  .map((m) => (
                                   <option key={m.id} value={m.nickname}>
                                     {m.nickname} (الرتبة المعينة حالياً:{" "}
                                     {m.role === "owner"
-                                      ? "👑 owner"
+                                      ? "👑 المالك"
                                       : m.role === "admin"
-                                        ? "🛡️ admin"
+                                        ? "🛡️ أدمن"
                                         : m.role === "vip"
-                                          ? "💎 vip"
-                                          : "👤 member"}
+                                          ? "💎 VIP"
+                                          : "👤 عضو"}
                                     )
                                   </option>
                                 ))}
@@ -9246,26 +9766,23 @@ export default function ChatScreen({
                                 }
                                 className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
                               >
-                                <option value="owner">
-                                  👑 OWNER (System Founder)
-                                </option>
                                 <option value="admin">
-                                  🛡️ SYSTEM ADMIN (Full Control)
+                                  🛡️ ADMIN - تحكم كامل
                                 </option>
                                 <option value="mod">
-                                  ✨ CHAT MODERATOR (Room Host)
+                                  ✨ MODERATOR - إدارة الغرفة
                                 </option>
                                 <option value="platinum_vip">
-                                  👑 PLATINUM VIP (Glowing Premium Elite)
+                                  👑 PLATINUM VIP - مميز للغاية
                                 </option>
                                 <option value="vip">
-                                  💎 VIP MEMBER (Royal Class Card)
+                                  💎 VIP - عضو مميز
                                 </option>
                                 <option value="user">
-                                  👤 REGISTERED MEMBER (Joined User)
+                                  👤 MEMBER - عضو مسجل
                                 </option>
                                 <option value="guest">
-                                  👤 TEMPORARY GUEST (Casual Guest)
+                                  👤 GUEST - زائر
                                 </option>
                               </select>
                             </div>
@@ -9351,6 +9868,41 @@ export default function ChatScreen({
                                   return;
                                 }
 
+                                const targetMember = chatMembers.find(
+                                  (m) =>
+                                    m.nickname.toLowerCase() ===
+                                    nick.toLowerCase(),
+                                );
+                                const isTargetCurrentUser =
+                                  currentUser.nickname.toLowerCase() ===
+                                  nick.toLowerCase();
+                                const isTargetOwner =
+                                  targetMember?.role === "owner";
+
+                                if (promoTargetRole === "owner") {
+                                  alert(
+                                    "⚠️ رتبة المالك محجوزة حصرياً لواجهة المالك فقط، ولا يمكن منحها من لوحة الأدمن.",
+                                  );
+                                  return;
+                                }
+
+                                if (isTargetOwner) {
+                                  alert(
+                                    "⚠️ لا يمكن تعديل أو خفض أو ترقية حساب المالك من لوحة الأدمن.",
+                                  );
+                                  return;
+                                }
+
+                                if (
+                                  isTargetCurrentUser &&
+                                  promoTargetRole !== currentUser.role
+                                ) {
+                                  alert(
+                                    "⚠️ لا يمكن تغيير رتبتك الحالية من لوحة الأدمن حتى لا تبقى الجلسة بصلاحيات غير متزامنة. يمكنك تعديل اللون أو الشارة فقط مع إبقاء نفس الرتبة.",
+                                  );
+                                  return;
+                                }
+
                                 // Update in chatMembers list
                                 setChatMembers((prev) =>
                                   prev.map((m) => {
@@ -9389,9 +9941,7 @@ export default function ChatScreen({
                                 }
 
                                 const roleLabel =
-                                  promoTargetRole === "owner"
-                                    ? "👑 SYSTEM OWNER"
-                                    : promoTargetRole === "admin"
+                                  promoTargetRole === "admin"
                                       ? "🛡️ SYSTEM ADMIN"
                                       : promoTargetRole === "mod"
                                         ? "✨ CHAT MODERATOR"
@@ -10652,7 +11202,7 @@ export default function ChatScreen({
                                       );
                                       addLammaBotMessage(
                                         activeRoomId,
-                                        `🤖 تهانينا الوفيرة: تم التوصيل الآلي وقبول طلب الصداقة المقترح بنجاح بين [${currentUser.nickname}] والزميل العضو الفعال [${sug.name}] بفضل خوارزمية الذكاء الاصطناعي بنسبة توافق 98% 🎉!`,
+                                        `🤖 تم إرسال طلب الصداقة المقترح بين [${currentUser.nickname}] و[${sug.name}] بنجاح.`,
                                       );
                                     }, 2000);
                                   }}
@@ -11751,6 +12301,127 @@ export default function ChatScreen({
                     </div>
                   </div>
                 </div>
+
+                {selectedProfileMember.nickname === myActiveSession.nickname &&
+                  currentUser.authProvider === "supabase" && (
+                    <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                      <div className="flex items-center gap-2 text-[11px] font-black text-cyan-300">
+                        <LinkIcon size={13} className="text-cyan-300" />
+                        <span>التوبيك المؤقت وقت الدخول</span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 leading-relaxed">
+                        اكتب عبارة قصيرة تظهر جنب اسمك لحظات وقت دخولك للشات أو
+                        عند دخول غرفة.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={tempEntryTopicInput}
+                          maxLength={60}
+                          onChange={(e) => {
+                            setTempEntryTopicInput(e.target.value);
+                            setTempEntryTopicStatusText(null);
+                          }}
+                          placeholder="مثال: مساء الخير على الجميع"
+                          className="flex-1 rounded-xl p-2 text-xs text-white lamma-input-shell"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setTempEntryTopicEnabled((prev) => !prev)}
+                          className={`px-3 py-2 rounded-xl text-[10px] font-black transition-all cursor-pointer ${
+                            tempEntryTopicEnabled
+                              ? "text-emerald-200 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20"
+                              : "text-gray-300 bg-white/5 border border-white/10 hover:bg-white/10"
+                          }`}
+                        >
+                          {tempEntryTopicEnabled ? "مفعل" : "معطل"}
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-[10px] text-gray-500">
+                          {tempEntryTopicInput.trim().length}/60
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleSaveTempEntryTopic}
+                          className="px-3 py-2 rounded-xl text-[10px] font-black text-cyan-200 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all cursor-pointer"
+                        >
+                          حفظ التوبيك
+                        </button>
+                      </div>
+                      {tempEntryTopicStatusText && (
+                        <div className="text-[10px] text-emerald-300 font-bold">
+                          {tempEntryTopicStatusText}
+                        </div>
+                      )}
+                      {tempEntryTopicInput.trim() && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold">
+                          <span>المعاينة:</span>
+                          <span className="text-cyan-200">
+                            {myActiveSession.nickname}
+                          </span>
+                          <span className="max-w-[160px] truncate rounded-full border border-cyan-400/25 bg-cyan-500/10 px-1.5 py-0.5 text-[8px] text-cyan-200">
+                            {tempEntryTopicInput.trim()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                {selectedProfileMember.nickname === myActiveSession.nickname &&
+                  currentUser.authProvider === "supabase" &&
+                  !isOwnerRole && (
+                    <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                      <div className="text-[11px] font-black text-cyan-300">
+                        طلب تغيير الاسم (يعتمد من المالك)
+                      </div>
+                      <p className="text-[10px] text-gray-400 leading-relaxed">
+                        اكتب الاسم الجديد وسيصل طلبك للمالك للموافقة أو الرفض.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={nicknameRequestInput}
+                          onChange={(e) =>
+                            setNicknameRequestInput(e.target.value)
+                          }
+                          placeholder="اكتب الاسم الجديد المطلوب..."
+                          className="flex-1 rounded-xl p-2 text-xs text-white lamma-input-shell"
+                        />
+                        <button
+                          type="button"
+                          disabled={nicknameRequestLoading}
+                          onClick={handleSubmitNicknameChangeRequest}
+                          className="px-3 py-2 rounded-xl text-[10px] font-black text-cyan-200 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all cursor-pointer"
+                        >
+                          إرسال
+                        </button>
+                      </div>
+                      {nicknameRequestStatusText && (
+                        <div className="text-[10px] text-emerald-300 font-bold">
+                          {nicknameRequestStatusText}
+                        </div>
+                      )}
+                      {nicknameRequests
+                        .filter((request) => request.user_id === currentUser.uid)
+                        .slice(0, 1)
+                        .map((request) => (
+                          <div
+                            key={request.id}
+                            className="text-[10px] text-gray-400 font-bold"
+                          >
+                            آخر طلب: {request.current_nickname} →{" "}
+                            {request.requested_nickname} (
+                            {request.status === "pending"
+                              ? "قيد المراجعة"
+                              : request.status === "approved"
+                                ? "تمت الموافقة"
+                                : "مرفوض"}
+                            )
+                          </div>
+                        ))}
+                    </div>
+                  )}
 
                 {/* Fingerprint Metadata Section */}
                 <div className="space-y-1.5">

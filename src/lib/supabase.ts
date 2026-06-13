@@ -99,3 +99,16 @@ export interface OwnerActivityLogRow {
   details: string;
 }
 
+export interface NicknameChangeRequestRow {
+  id?: string;
+  created_at?: string;
+  user_id: string;
+  user_email?: string | null;
+  current_nickname: string;
+  requested_nickname: string;
+  status: "pending" | "approved" | "rejected";
+  owner_note?: string | null;
+  processed_at?: string | null;
+  processed_by?: string | null;
+}
+

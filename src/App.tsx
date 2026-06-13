@@ -7,6 +7,12 @@ import OnlineStatus from './components/pwa/OnlineStatus';
 import { useTheme } from './hooks/useTheme';
 import { supabase } from './lib/supabase';
 import type { UserSession } from './lib/chatTypes';
+import {
+  getResolvedSupabaseColor,
+  getResolvedSupabaseNickname,
+  hasPlaceholderSupabaseNickname,
+  normalizeAuthRole,
+} from './lib/authProfile';
 
 // Lazy-load ChatScreen so the LoginScreen (which is the entry surface
 // for guests and unauthenticated users) ships in a smaller initial bundle.
@@ -14,6 +20,7 @@ const ChatScreen = lazy(() => import('./components/ChatScreen'));
 
 type Theme = 'dark' | 'amoled';
 const GUEST_SESSION_KEY = 'lamma_guest_session';
+const DEV_SESSION_KEY = 'lamma_dev_session';
 
 function readGuestSession(): UserSession | null {
   try {
@@ -52,52 +59,68 @@ function clearGuestSession() {
   localStorage.removeItem(GUEST_SESSION_KEY);
 }
 
-// استخراج بيانات المستخدم من Supabase session
-// role: يُقرأ من user_metadata.role لو موجود (يُعيَّن من Admin SDK أو trigger)
-// fallback: 'user' للمستخدمين العاديين
+function readDevSession(): UserSession | null {
+  if (!import.meta.env.DEV || typeof window === 'undefined') return null;
+
+  const parseStoredSession = (raw: string | null): UserSession | null => {
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as UserSession;
+      if (!parsed?.nickname || !parsed?.role) return null;
+      return {
+        nickname: parsed.nickname,
+        role: normalizeAuthRole(parsed.role),
+        color: parsed.color || '#58a6ff',
+        uid: parsed.uid,
+        email: parsed.email ?? null,
+        authProvider: 'supabase',
+        badge: parsed.badge,
+        avatar: parsed.avatar,
+        frame: parsed.frame,
+        title: parsed.title,
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const params = new URLSearchParams(window.location.search);
+  const debugRole = normalizeAuthRole(params.get('dev_role') || '');
+  const debugName = (params.get('dev_name') || '').trim();
+
+  if (!debugName) {
+    return parseStoredSession(sessionStorage.getItem(DEV_SESSION_KEY));
+  }
+
+  const nextSession: UserSession = {
+    nickname: debugName,
+    role: debugRole,
+    color: (params.get('dev_color') || '#58a6ff').trim() || '#58a6ff',
+    uid: (params.get('dev_uid') || '').trim() || `dev-${debugRole}-${debugName}`,
+    email: (params.get('dev_email') || '').trim() || null,
+    authProvider: 'supabase',
+    badge: (params.get('dev_badge') || '').trim() || undefined,
+    avatar: (params.get('dev_avatar') || '').trim() || undefined,
+    title: (params.get('dev_title') || '').trim() || undefined,
+  };
+
+  sessionStorage.setItem(DEV_SESSION_KEY, JSON.stringify(nextSession));
+  return nextSession;
+}
+
+function clearDevSession() {
+  if (!import.meta.env.DEV || typeof window === 'undefined') return;
+  sessionStorage.removeItem(DEV_SESSION_KEY);
+}
+
 type SupabaseUser = NonNullable<import('@supabase/supabase-js').Session['user']>;
 
-function normalizeAuthRole(rawRole?: string): UserSession['role'] {
-  const role = (rawRole || '').trim().toLowerCase();
-  if (role === 'owner' || role === 'malek' || role === 'المالك') return 'owner';
-  if (role === 'admin' || role === 'أدمن') return 'admin';
-  if (
-    role === 'guest' ||
-    role === 'user' ||
-    role === 'vip' ||
-    role === 'platinum_vip' ||
-    role === 'mod'
-  ) {
-    return role;
-  }
-  return 'user';
-}
-
 function getStoredNickname(supaUser: SupabaseUser): string {
-  const meta = (supaUser.user_metadata ?? {}) as Record<string, string>;
-  return (meta.nickname || '').trim();
-}
-
-function hasPlaceholderNickname(supaUser: SupabaseUser): boolean {
-  const meta = (supaUser.user_metadata ?? {}) as Record<string, string>;
-  const nickname = (meta.nickname || '').trim().toLowerCase();
-  const role = normalizeAuthRole(meta.role);
-
-  if (!nickname) return true;
-
-  if (role === 'owner') {
-    return nickname === 'owner' || nickname === 'malek' || nickname === 'المالك';
-  }
-
-  if (role === 'admin') {
-    return nickname === 'admin' || nickname === 'أدمن';
-  }
-
-  return false;
+  return getResolvedSupabaseNickname(supaUser);
 }
 
 function needsProfileNickname(supaUser: SupabaseUser): boolean {
-  return hasPlaceholderNickname(supaUser);
+  return hasPlaceholderSupabaseNickname(supaUser);
 }
 
 function sessionToUserSession(supaUser: SupabaseUser): UserSession {
@@ -106,7 +129,7 @@ function sessionToUserSession(supaUser: SupabaseUser): UserSession {
   return {
     nickname: getStoredNickname(supaUser) || 'User',
     role,
-    color: meta.color || 'white',
+    color: getResolvedSupabaseColor(supaUser),
     uid: supaUser.id,
     email: supaUser.email ?? null,
     authProvider: 'supabase',
@@ -129,9 +152,11 @@ export default function App() {
 
   useEffect(() => {
     const guestSession = readGuestSession();
+    const devSession = readDevSession();
 
     if (!supabase) {
       if (guestSession) setUser(guestSession);
+      else if (devSession) setUser(devSession);
       return;
     }
 
@@ -152,6 +177,11 @@ export default function App() {
       setPendingSupabaseUser(null);
       if (guestSession) {
         setUser(guestSession);
+        return;
+      }
+
+      if (devSession) {
+        setUser(devSession);
       }
     });
 
@@ -172,7 +202,7 @@ export default function App() {
       }
 
       setPendingSupabaseUser(null);
-      setUser(readGuestSession());
+      setUser(readGuestSession() || readDevSession());
     });
 
     return () => subscription.unsubscribe();
@@ -208,6 +238,7 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     clearGuestSession();
+    clearDevSession();
     void supabase?.auth.signOut({ scope: 'local' });
   };
 
