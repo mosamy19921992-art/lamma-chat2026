@@ -78,8 +78,26 @@ function getStoredNickname(supaUser: SupabaseUser): string {
   return (meta.nickname || '').trim();
 }
 
+function hasPlaceholderNickname(supaUser: SupabaseUser): boolean {
+  const meta = (supaUser.user_metadata ?? {}) as Record<string, string>;
+  const nickname = (meta.nickname || '').trim().toLowerCase();
+  const role = normalizeAuthRole(meta.role);
+
+  if (!nickname) return true;
+
+  if (role === 'owner') {
+    return nickname === 'owner' || nickname === 'malek' || nickname === 'المالك';
+  }
+
+  if (role === 'admin') {
+    return nickname === 'admin' || nickname === 'أدمن';
+  }
+
+  return false;
+}
+
 function needsProfileNickname(supaUser: SupabaseUser): boolean {
-  return !getStoredNickname(supaUser);
+  return hasPlaceholderNickname(supaUser);
 }
 
 function sessionToUserSession(supaUser: SupabaseUser): UserSession {

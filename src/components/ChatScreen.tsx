@@ -119,9 +119,9 @@ function MobileBottomSheet({
             animate={{ y: 0 }}
             exit={{ y: 520 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute inset-x-0 bottom-0 rounded-t-3xl overflow-hidden max-h-[80vh] lamma-sheet-shell"
+            className="absolute inset-x-0 bottom-0 flex max-h-[80vh] min-h-0 flex-col overflow-hidden rounded-t-3xl lamma-sheet-shell"
           >
-            <div className="flex items-center justify-between px-4 py-3 lamma-sheet-header">
+            <div className="flex shrink-0 items-center justify-between px-4 py-3 lamma-sheet-header">
               <div className="flex items-center gap-2">
                 {icon}
                 <h3 className="font-black text-white text-sm">{title}</h3>
@@ -135,7 +135,9 @@ function MobileBottomSheet({
                 <X size={14} />
               </button>
             </div>
-            <div className="p-3 overflow-y-auto">{children}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-3 overscroll-contain">
+              {children}
+            </div>
           </motion.div>
         </motion.div>
       )}
@@ -1762,6 +1764,24 @@ export default function ChatScreen({
   };
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
+  const closeFloatingUi = () => {
+    setShowRoomsLists(false);
+    setShowMembersList(false);
+    setShowFeaturesTray(false);
+    setShowHeaderMenu(false);
+    setShowPmListDropdown(false);
+    setShowAttachmentDropdown(false);
+    setShowGamesDropdown(false);
+    setShowMusicDropdown(false);
+    setShowRadioDropdown(false);
+    setShowEmojiPicker(false);
+    setShowNotificationsDropdown(false);
+    setShowCommandsDropdown(false);
+    setShowPrivacyDropdown(false);
+    setShowSettingsDropdown(false);
+    setIsSidebarOpen(false);
+  };
+
   const toggleDropdown = (
     dropdown:
       | "attachment"
@@ -1797,20 +1817,7 @@ export default function ChatScreen({
     setShowUserContextPop(false);
     setShowUserProfileBioPop(false);
     setShowProfileModal(false);
-    setShowRoomsLists(false);
-    setShowMembersList(false);
-    setShowFeaturesTray(false);
-    setShowHeaderMenu(false);
-    setShowPmListDropdown(false);
-    setShowAttachmentDropdown(false);
-    setShowGamesDropdown(false);
-    setShowMusicDropdown(false);
-    setShowRadioDropdown(false);
-    setShowEmojiPicker(false);
-    setShowNotificationsDropdown(false);
-    setShowCommandsDropdown(false);
-    setShowPrivacyDropdown(false);
-    setShowSettingsDropdown(false);
+    closeFloatingUi();
 
     if (!shouldOpen) return;
 
@@ -1884,8 +1891,13 @@ export default function ChatScreen({
     setShowUserContextPop(false);
     setShowUserProfileBioPop(false);
     setShowProfileModal(false);
+    closeFloatingUi();
     setActiveModal(modal);
   };
+
+  useEffect(() => {
+    setShowMembersList(isSidebarOpen && activeSidebarTab === "members");
+  }, [activeSidebarTab, isSidebarOpen]);
 
   useEffect(() => {
     const handleGlobalClick = (e: MouseEvent) => {
@@ -1913,6 +1925,34 @@ export default function ChatScreen({
     };
     document.addEventListener("mousedown", handleGlobalClick);
     return () => document.removeEventListener("mousedown", handleGlobalClick);
+  }, []);
+
+  useEffect(() => {
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setActiveModal(null);
+      setIsPmOpen(false);
+      setShowSearchPop(false);
+      setShowUserContextPop(false);
+      setShowUserProfileBioPop(false);
+      setShowProfileModal(false);
+      setShowNotificationsDropdown(false);
+      setShowGamesDropdown(false);
+      setShowAttachmentDropdown(false);
+      setShowMusicDropdown(false);
+      setShowRadioDropdown(false);
+      setShowEmojiPicker(false);
+      setShowFeaturesTray(false);
+      setShowCommandsDropdown(false);
+      setShowPrivacyDropdown(false);
+      setShowSettingsDropdown(false);
+      setShowHeaderMenu(false);
+      setShowPmListDropdown(false);
+      closeFloatingUi();
+    };
+
+    document.addEventListener("keydown", handleEscapeKey);
+    return () => document.removeEventListener("keydown", handleEscapeKey);
   }, []);
 
   // Sync banned list to localStorage
@@ -5900,22 +5940,22 @@ export default function ChatScreen({
                               <div className="w-4 h-4 bg-green-300 rounded-full absolute top-0.5 right-0.5"></div>
                             </div>
                           </div>
-                          <div className="p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all lamma-admin-card">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (currentUser.role === "owner") {
+                                setIsGhostMode(!isGhostMode);
+                              } else {
+                                alert("هذه الميزة متاحة للمالك فقط 👑");
+                              }
+                            }}
+                            aria-pressed={isGhostMode}
+                            className="w-full p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all text-right lamma-admin-card"
+                          >
                             <div className="flex flex-col gap-1">
-                              <span className="text-white text-xs font-black">
-                                <span
-                                  className="cursor-pointer hover:underline flex items-center gap-1.5"
-                                  onClick={() => {
-                                    if (currentUser.role === "owner") {
-                                      setIsGhostMode(!isGhostMode);
-                                    } else {
-                                      alert(
-                                        "هذه الميزة متاحة للمالك فقط 👑",
-                                      );
-                                    }
-                                  }}
-                                >
-                                  إخفاء التواجد (وضع التخفي){" "}
+                              <span className="text-white text-xs font-black flex items-center gap-1.5">
+                                إخفاء التواجد (وضع التخفي)
+                                <span aria-hidden="true">
                                   {isGhostMode ? "🟢" : "⚫"}
                                 </span>
                               </span>
@@ -5923,10 +5963,20 @@ export default function ChatScreen({
                                 إخفاء حالتك "متصل الآن" (ميزة VIP)
                               </span>
                             </div>
-                            <div className="w-10 h-5 rounded-full relative lamma-tab-soft">
-                              <div className="w-4 h-4 bg-gray-400 rounded-full absolute top-0.5 left-0.5"></div>
+                            <div
+                              className={`w-10 h-5 rounded-full relative transition-all ${
+                                isGhostMode ? "lamma-toggle-on" : "lamma-tab-soft"
+                              }`}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-full absolute top-0.5 transition-all ${
+                                  isGhostMode
+                                    ? "bg-green-300 right-0.5"
+                                    : "bg-gray-400 left-0.5"
+                                }`}
+                              ></div>
                             </div>
-                          </div>
+                          </button>
                           <div className="p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all lamma-soft-danger">
                             <div className="flex flex-col gap-1">
                               <span className="text-red-400 text-xs font-black">
@@ -5948,13 +5998,16 @@ export default function ChatScreen({
               </div>
               <button
                 onClick={() => {
-                  // Mutual exclusion on mobile toggle
+                  const shouldCloseMembers =
+                    isSidebarOpen && activeSidebarTab === "members";
+
                   setShowRoomsLists(false);
                   setShowFeaturesTray(false);
                   setShowNotificationsDropdown(false);
                   setShowGamesDropdown(false);
                   setShowAttachmentDropdown(false);
                   setShowMusicDropdown(false);
+                  setShowRadioDropdown(false);
                   setShowEmojiPicker(false);
                   setShowCommandsDropdown(false);
                   setShowPrivacyDropdown(false);
@@ -5964,7 +6017,18 @@ export default function ChatScreen({
                   setShowUserProfileBioPop(false);
                   setShowProfileModal(false);
                   setIsPmOpen(false);
-                  setShowMembersList(!showMembersList);
+
+                  if (shouldCloseMembers) {
+                    setMobileTab("chat");
+                    setShowMembersList(false);
+                    setIsSidebarOpen(false);
+                    return;
+                  }
+
+                  setMobileTab("members");
+                  setActiveSidebarTab("members");
+                  setShowMembersList(true);
+                  setIsSidebarOpen(true);
                 }}
                 className={`p-1 px-1.5 rounded-md transition-all flex md:hidden ${showMembersList ? "lamma-quiet-power-btn-active text-green-300" : "text-gray-400 hover:text-white lamma-toolbar-btn"}`}
                 title="تثبيت قائمة الأعضاء"
@@ -8036,7 +8100,7 @@ export default function ChatScreen({
               maxHeight: "85vh",
             }}
           >
-            <div className="flex flex-col w-full h-full">
+            <div className="flex flex-col w-full h-full min-h-0">
               {/* Modal Header */}
               <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/[0.04] cursor-grab active:cursor-grabbing shrink-0 lamma-modal-header">
                 <div className="flex items-center gap-2 pointer-events-none">
@@ -8081,7 +8145,7 @@ export default function ChatScreen({
               </div>
 
               {/* Modal Body scrollable area */}
-              <div className="flex-1 overflow-y-auto p-5 text-right space-y-4">
+              <div className="flex-1 min-h-0 overflow-y-auto p-5 text-right space-y-4">
                 {activeModal === "leadership" && (
                   <div className="space-y-4 select-none" dir="rtl">
                     <div className="p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 lamma-soft-warn">
@@ -9811,8 +9875,8 @@ export default function ChatScreen({
                           className={`w-1.5 h-1.5 rounded-full ${isBotEnabled ? "bg-lime-400 animate-pulse" : "bg-red-400"}`}
                         ></span>
                         {isBotEnabled
-                          ? "تشغيل منظومة البوتات"
-                          : "إيقاف المنظومة"}
+                          ? "إيقاف المنظومة"
+                          : "تشغيل منظومة البوتات"}
                       </button>
                     </div>
 

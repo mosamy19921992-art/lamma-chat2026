@@ -51,6 +51,36 @@ function getSupabaseRole(user: any): string {
   return normalizeAuthRole(user?.user_metadata?.role);
 }
 
+function hasPlaceholderNickname(nickname: string | undefined, role: string) {
+  const normalizedNickname = (nickname || "").trim().toLowerCase();
+
+  if (!normalizedNickname) return true;
+
+  if (role === "owner") {
+    return (
+      normalizedNickname === "owner" ||
+      normalizedNickname === "malek" ||
+      normalizedNickname === "المالك"
+    );
+  }
+
+  if (role === "admin") {
+    return normalizedNickname === "admin" || normalizedNickname === "أدمن";
+  }
+
+  return false;
+}
+
+function resolveOwnerGhostMode(role: string) {
+  if (role !== "owner") return;
+
+  const shouldEnableGhostMode = window.confirm(
+    "هل تريد الدخول بالوضع الخفي كمالك؟\n\nاختر \"موافق\" للدخول مخفياً أو \"إلغاء\" للدخول بشكل عادي.",
+  );
+
+  localStorage.setItem("lamma_ghost_mode", String(shouldEnableGhostMode));
+}
+
 function randomGuestId() {
   return `LC-Guest${Math.floor(10000 + Math.random() * 90000)}`;
 }
@@ -249,9 +279,10 @@ export default function LoginScreen(props: LoginScreenProps) {
         return;
       }
 
+      const authRole = getSupabaseRole(data.user);
       const metaNick = data.user.user_metadata?.nickname?.trim();
 
-      if (!metaNick) {
+      if (hasPlaceholderNickname(metaNick, authRole)) {
         setPendingProfileUser(data.user);
         setPendingProfileColor(assignedColor);
         setProfileNickname("");
@@ -259,9 +290,11 @@ export default function LoginScreen(props: LoginScreenProps) {
         return;
       }
 
+      resolveOwnerGhostMode(authRole);
+
       onLogin(
         metaNick,
-        getSupabaseRole(data.user),
+        authRole,
         assignedColor,
         data.user.id,
         data.user.email ?? undefined,
@@ -378,9 +411,12 @@ export default function LoginScreen(props: LoginScreenProps) {
       setPendingProfileUser(null);
       setPendingProfileColor(null);
 
+      const authRole = getSupabaseRole(user);
+      resolveOwnerGhostMode(authRole);
+
       onLogin(
         nickname,
-        getSupabaseRole(user),
+        authRole,
         pendingProfileColor,
         user.id,
         user.email ?? undefined,
