@@ -890,7 +890,7 @@ export default function LoginScreen(props: LoginScreenProps) {
                   setShowProfileNicknameModal(false);
                   setPendingProfileUser(null);
                   setPendingProfileColor(null);
-                  await supabase?.auth.signOut();
+                  await supabase?.auth.signOut({ scope: "local" });
                   showFeedback("تم إلغاء الدخول.", "info", true);
                 }}
                 disabled={authLoading}

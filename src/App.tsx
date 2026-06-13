@@ -190,7 +190,7 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     clearGuestSession();
-    supabase?.auth.signOut();
+    void supabase?.auth.signOut({ scope: 'local' });
   };
 
   return (
