@@ -1781,6 +1781,21 @@ export default function ChatScreen({
     setShowSettingsDropdown(false);
     setIsSidebarOpen(false);
   };
+  const hasFloatingDropdownOpen =
+    showRoomsLists ||
+    showMembersList ||
+    showFeaturesTray ||
+    showHeaderMenu ||
+    showPmListDropdown ||
+    showAttachmentDropdown ||
+    showGamesDropdown ||
+    showMusicDropdown ||
+    showRadioDropdown ||
+    showEmojiPicker ||
+    showNotificationsDropdown ||
+    showCommandsDropdown ||
+    showPrivacyDropdown ||
+    showSettingsDropdown;
 
   const toggleDropdown = (
     dropdown:
@@ -4186,14 +4201,6 @@ export default function ChatScreen({
                     <AnimatePresence>
                       {showHeaderMenu && (
                         <motion.div
-                          drag
-                          dragConstraints={{
-                            left: -300,
-                            right: 300,
-                            top: -50,
-                            bottom: 500,
-                          }}
-                          dragMomentum={false}
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
@@ -4211,9 +4218,10 @@ export default function ChatScreen({
                               </h3>
                             </div>
                             <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setShowHeaderMenu(false);
+                                closeFloatingUi();
                               }}
                               className="p-1.5 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer relative z-50 lamma-feature-action"
                             >
@@ -4280,7 +4288,7 @@ export default function ChatScreen({
                   </div>
                   <MobileBottomSheet
                     isOpen={showHeaderMenu}
-                    onClose={() => setShowHeaderMenu(false)}
+                    onClose={closeFloatingUi}
                     title="القائمة الرئيسية"
                     icon={<SettingsIcon size={14} className="text-gray-400" />}
                   >
@@ -5896,13 +5904,13 @@ export default function ChatScreen({
                 <AnimatePresence>
                   {showPrivacyDropdown && (
                     <motion.div
-                      drag
-                      dragMomentum={false}
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
                       className="fixed top-24 left-1/2 -translate-x-1/2 sm:left-auto sm:right-32 w-[280px] rounded-2xl z-[100] overflow-hidden flex flex-col cursor-move lamma-modal-shell"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center justify-between p-3 lamma-modal-header">
                         <div className="flex items-center gap-2">
@@ -5912,7 +5920,11 @@ export default function ChatScreen({
                           </h3>
                         </div>
                         <button
-                          onClick={() => setShowPrivacyDropdown(false)}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            closeFloatingUi();
+                          }}
                           className="p-1.5 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer lamma-danger-btn"
                         >
                           <X size={14} />
@@ -7256,14 +7268,6 @@ export default function ChatScreen({
                 <AnimatePresence>
                   {showSettingsDropdown && (
                     <motion.div
-                      drag
-                      dragConstraints={{
-                        left: -300,
-                        right: 300,
-                        top: -400,
-                        bottom: 100,
-                      }}
-                      dragMomentum={false}
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
@@ -7275,9 +7279,10 @@ export default function ChatScreen({
                           إعدادات الدردشة
                         </div>
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setShowSettingsDropdown(false);
+                            closeFloatingUi();
                           }}
                           className="p-1 rounded text-gray-400 hover:text-white transition-all cursor-pointer relative z-50 float-left lamma-feature-action"
                         >
@@ -8083,7 +8088,7 @@ export default function ChatScreen({
 
       {/* ================= MODALS OVERLAYS ================= */}
       <AnimatePresence>
-        {activeModal && (
+        {activeModal && !hasFloatingDropdownOpen && (
           <motion.div
             drag
             dragConstraints={{ left: -400, right: 400, top: -200, bottom: 200 }}
