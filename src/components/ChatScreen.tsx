@@ -625,13 +625,13 @@ export default function ChatScreen({
       ? roleLower
       : subscriptionVisualRole || roleLower || "user";
 
-  const [myActiveSession, setMyActiveSession] = useState(() => {
+  const buildActiveSessionState = (user: UserSession) => {
     const savedSub = localStorage.getItem("lamma_user_subscription");
-    let initialColor = currentUser.color;
+    let initialColor = user.color;
     let initialFrame = "";
-    let initialTitle = "";
-    let initialBadge = "";
-    let initialAvatar = "👤";
+    let initialTitle = user.title || "";
+    let initialBadge = user.badge || "";
+    let initialAvatar = user.avatar || "👤";
 
     if (savedSub) {
       try {
@@ -649,15 +649,50 @@ export default function ChatScreen({
     }
 
     return {
-      nickname: currentUser.nickname,
-      role: currentUser.role,
+      nickname: user.nickname,
+      role: user.role,
       color: initialColor,
       frame: initialFrame,
       title: initialTitle,
       badge: initialBadge,
       avatar: initialAvatar,
     };
-  });
+  };
+
+  const [myActiveSession, setMyActiveSession] = useState(() =>
+    buildActiveSessionState(currentUser),
+  );
+
+  useEffect(() => {
+    setMyActiveSession((prev) => {
+      const next = buildActiveSessionState(currentUser);
+      const sameIdentity =
+        prev.nickname === currentUser.nickname && prev.role === currentUser.role;
+
+      if (!sameIdentity) {
+        return next;
+      }
+
+      return {
+        ...prev,
+        nickname: next.nickname,
+        role: next.role,
+        color: next.color || prev.color,
+        frame: next.frame || prev.frame,
+        title: next.title || prev.title,
+        badge: next.badge || prev.badge,
+        avatar: next.avatar || prev.avatar,
+      };
+    });
+  }, [
+    currentUser.avatar,
+    currentUser.badge,
+    currentUser.color,
+    currentUser.nickname,
+    currentUser.role,
+    currentUser.title,
+    currentUser.uid,
+  ]);
 
   const [simulatedDaysLapsed, setSimulatedDaysLapsed] = useState(0);
   const [remindersHistory, setRemindersHistory] = useState<{
@@ -3992,7 +4027,10 @@ export default function ChatScreen({
                 </div>
 
                 {/* Icons bar under the name and role */}
-                <div className="flex items-center gap-1 mt-1">
+                <div
+                  className="flex items-center gap-1 mt-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {/* Rooms selector button */}
                   <div className="relative dropdown-container flex items-center xl:hidden">
                     <button
