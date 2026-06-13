@@ -8,3 +8,4 @@ coverage/
 review-screenshots/
 .env*
 !.env.example
+.vercel
