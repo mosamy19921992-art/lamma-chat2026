@@ -60,6 +60,13 @@ import ShareModal from "./modals/ShareModal.tsx";
 import CreateRoomModal from "./modals/CreateRoomModal.tsx";
 import UserContextPopup from "./modals/UserContextPopup.tsx";
 import UserProfileBioPopup from "./modals/UserProfileBioPopup.tsx";
+import { OwnerPanelModal } from "./modals/OwnerPanelModal";
+import { AdminPanelModal } from "./modals/AdminPanelModal";
+import { GuardPanelModal } from "./modals/GuardPanelModal";
+import { StorePanelModal } from "./modals/StorePanelModal";
+import { DesignCenterModal } from "./modals/DesignCenterModal";
+import { StatsModal } from "./modals/StatsModal";
+import { UserProfileModal } from "./modals/UserProfileModal";
 import {
   getClientUid,
   supabase,
@@ -84,6 +91,17 @@ import {
   type PMThreadMessage,
   type MemberCustomPermissions,
   type UserSession,
+  type WallTheme,
+  type DesignAssistantPatch,
+  type DesignAssistantProposal,
+  type DesignAssistantFinding,
+  type DesignAssistantAudit,
+  type DesignAssistantSnapshot,
+  type DesignPreset,
+  type CustomRoomEntry,
+  type ChatTheme,
+  type PMTargetState,
+  type ProductType,
 } from "../lib/chatTypes.ts";
 import {
   hexToRgba,
@@ -93,6 +111,7 @@ import {
   getShortenedNickname,
 } from "../lib/chatHelpers.ts";
 import { renderTextMessageWithMedia } from "../lib/chatMessageRender.tsx";
+import { createPortal } from "react-dom";
 
 function MobileBottomSheet({
   isOpen,
@@ -107,7 +126,7 @@ function MobileBottomSheet({
   icon?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  return (
+  const content = (
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -115,11 +134,11 @@ function MobileBottomSheet({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="md:hidden fixed inset-0 z-[120]"
+          className="md:hidden fixed inset-0 z-[9999]"
         >
           <button
             type="button"
-            className="absolute inset-0 bg-black/70"
+            className="absolute inset-0 bg-black/70 w-full h-full cursor-default"
             onClick={onClose}
             aria-label="إغلاق"
           />
@@ -128,11 +147,11 @@ function MobileBottomSheet({
             animate={{ y: 0 }}
             exit={{ y: 520 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute inset-x-0 bottom-0 flex max-h-[80vh] min-h-0 flex-col overflow-hidden rounded-t-3xl lamma-sheet-shell"
+            className="absolute inset-x-0 bottom-0 flex max-h-[85vh] min-h-0 flex-col overflow-hidden rounded-t-3xl lamma-sheet-shell bg-[#0a0a0a]"
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <div className="flex shrink-0 items-center justify-between px-4 py-3 lamma-sheet-header">
+            <div className="flex shrink-0 items-center justify-between px-4 py-3 lamma-sheet-header border-b border-white/10 bg-black/40">
               <div className="flex items-center gap-2">
                 {icon}
                 <h3 className="font-black text-white text-sm">{title}</h3>
@@ -140,7 +159,7 @@ function MobileBottomSheet({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer lamma-danger-btn"
+                className="p-2 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer bg-white/5 hover:bg-red-500/20"
                 aria-label="إغلاق"
               >
                 <X size={14} />
@@ -154,6 +173,8 @@ function MobileBottomSheet({
       )}
     </AnimatePresence>
   );
+
+  return typeof document !== "undefined" ? createPortal(content, document.body) : content;
 }
 
 function HeaderIconButton({
@@ -583,64 +604,6 @@ export default function ChatScreen({
     return url.toString();
   };
 
-  type WallTheme = "fire" | "ice" | "violet";
-  type DesignAssistantPatch = {
-    wallTheme?: WallTheme;
-    brandLogoUrl?: string | null;
-    glowColor?: string;
-    ownerBgImage?: string | null;
-    roomBgCurrent?: string | null;
-    chatTheme?: ChatTheme;
-  };
-  type DesignAssistantProposal = {
-    id: "premium" | "calm" | "night" | "room-focus";
-    title: string;
-    summary: string;
-    changes: DesignAssistantPatch;
-    reasoning: string[];
-  };
-  type DesignAssistantFinding = {
-    tone: "good" | "warn";
-    text: string;
-  };
-  type DesignAssistantAudit = {
-    score: number;
-    verdict: string;
-    roomLabel: string;
-    highlights: string[];
-    findings: DesignAssistantFinding[];
-  };
-  type DesignAssistantSnapshot = {
-    wallTheme: WallTheme;
-    brandLogoUrl: string | null;
-    glowColor: string;
-    ownerBgImage: string | null;
-    roomBgCurrent: string | null;
-    chatTheme: ChatTheme;
-  };
-  type DesignPreset = {
-    id: string;
-    name: string;
-    createdAt: string;
-    snapshot: {
-      wallTheme: WallTheme;
-      brandLogoUrl: string | null;
-      glowColor: string;
-      ownerBgImage: string | null;
-      roomBgMap: Record<string, string>;
-      chatTheme: ChatTheme;
-    };
-  };
-  type CustomRoomEntry = {
-    id: string;
-    name: string;
-    icon: string;
-    count: number;
-    category: "private";
-    createdBy: string;
-    password?: string;
-  };
-
   const [ownerBgImage, setOwnerBgImage] = useState<string | null>(() =>
     localStorage.getItem("lamma_owner_bg_image"),
   );
@@ -706,12 +669,7 @@ export default function ChatScreen({
   });
   const [isCompactView, setIsCompactView] = useState(false);
   const READING_MODE_STORAGE_KEY = "lamma_reading_mode";
-  type ChatTheme =
-    | "classic"
-    | "night-paper"
-    | "charcoal-calm"
-    | "olive-ink"
-    | "violet-night";
+
   const CHAT_THEME_STORAGE_KEY = "lamma_chat_theme";
   const CHAT_THEME_CUSTOMIZED_STORAGE_KEY = "lamma_chat_theme_customized";
 
@@ -2010,9 +1968,7 @@ export default function ChatScreen({
   );
   const [newProdPrice, setNewProdPrice] = useState("");
   const [newProdDesc, setNewProdDesc] = useState("");
-  const [newProdType, setNewProdType] = useState<
-    "bronze" | "platinum" | "frame" | "title"
-  >("title");
+  const [newProdType, setNewProdType] = useState<ProductType>("title");
   const [newProdBadge, setNewProdBadge] = useState("");
   const [newProdColor, setNewProdColor] = useState("#10b981");
   const [newProdFrame, setNewProdFrame] = useState(
@@ -2161,11 +2117,37 @@ export default function ChatScreen({
   });
 
   // Lamma AI Guard Bot Settings & States
-  const [isBotEnabled, setIsBotEnabled] = useState(true);
-  const [botRuleAntiSpam, setBotRuleAntiSpam] = useState(true);
-  const [botRuleAntiLinks, setBotRuleAntiLinks] = useState(true);
-  const [botRuleSwearFilter, setBotRuleSwearFilter] = useState(true);
-  const [botRuleAutoMod, setBotRuleAutoMod] = useState(true);
+  const [isBotEnabled, setIsBotEnabled] = useState<boolean>(() => {
+    return localStorage.getItem("lamma_bot_enabled") !== "false";
+  });
+  const [botRuleAntiSpam, setBotRuleAntiSpam] = useState<boolean>(() => {
+    return localStorage.getItem("lamma_bot_rule_spam") !== "false";
+  });
+  const [botRuleAntiLinks, setBotRuleAntiLinks] = useState<boolean>(() => {
+    return localStorage.getItem("lamma_bot_rule_links") !== "false";
+  });
+  const [botRuleSwearFilter, setBotRuleSwearFilter] = useState<boolean>(() => {
+    return localStorage.getItem("lamma_bot_rule_swear") !== "false";
+  });
+  const [botRuleAutoMod, setBotRuleAutoMod] = useState<boolean>(() => {
+    return localStorage.getItem("lamma_bot_rule_automod") !== "false";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("lamma_bot_enabled", String(isBotEnabled));
+  }, [isBotEnabled]);
+  useEffect(() => {
+    localStorage.setItem("lamma_bot_rule_spam", String(botRuleAntiSpam));
+  }, [botRuleAntiSpam]);
+  useEffect(() => {
+    localStorage.setItem("lamma_bot_rule_links", String(botRuleAntiLinks));
+  }, [botRuleAntiLinks]);
+  useEffect(() => {
+    localStorage.setItem("lamma_bot_rule_swear", String(botRuleSwearFilter));
+  }, [botRuleSwearFilter]);
+  useEffect(() => {
+    localStorage.setItem("lamma_bot_rule_automod", String(botRuleAutoMod));
+  }, [botRuleAutoMod]);
 
   // Global Owner Control Center states
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(() => {
@@ -2420,11 +2402,83 @@ export default function ChatScreen({
   const ownerPermissionsSyncTimeoutRef =
     useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const canPersistOwnerSettings =
-    currentUser.role === "owner" && currentUser.authProvider === "supabase";
+  const canPersistOwnerSettings = currentUser.role === "owner";
 
   useEffect(() => {
     let cancelled = false;
+
+    useEffect(() => {
+      if (!supabase) return;
+      const subscription = supabase
+        .channel('owner_settings_sync')
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'owner_settings', filter: 'id=eq.global' },
+          (payload) => {
+            const settings = payload.new;
+            if (settings.ghost_mode !== undefined) setIsGhostMode(!!settings.ghost_mode);
+            if (settings.spy_mode !== undefined) setIsSpyMode(!!settings.spy_mode);
+            if (settings.maintenance_mode !== undefined) setIsMaintenanceMode(!!settings.maintenance_mode);
+            if (settings.global_mute !== undefined) setIsGlobalMute(!!settings.global_mute);
+            if (settings.global_mic_mute !== undefined) setIsGlobalMicMute(!!settings.global_mic_mute);
+            if (settings.vip_only_images !== undefined) setIsOnlyVIPCanSendImages(!!settings.vip_only_images);
+            if (settings.bot_silent !== undefined) setIsBotSilent(!!settings.bot_silent);
+            if (settings.ads_enabled !== undefined) setIsAdsEnabled(!!settings.ads_enabled);
+            if (settings.greetings_enabled !== undefined) setIsWelcomeToastEnabled(!!settings.greetings_enabled);
+            if (settings.banned_words) setBannedWords(settings.banned_words);
+            if (settings.owner_bg_image !== undefined) setOwnerBgImage(settings.owner_bg_image);
+            if (settings.custom_logo_url !== undefined) {
+              setBrandLogoUrl(settings.custom_logo_url);
+              setDesignLogoInput(settings.custom_logo_url || '');
+            }
+            if (settings.glow_color !== undefined) setGlowColor(settings.glow_color || '#e4e4e7');
+            if (settings.wall_theme !== undefined) setWallTheme(settings.wall_theme as any || 'fire');
+            if (settings.room_bg_map !== undefined) setRoomBgMap(settings.room_bg_map || {});
+            if (settings.chat_theme !== undefined) setChatTheme(settings.chat_theme as any || 'classic');
+          }
+        )
+        .subscribe();
+      return () => {
+        supabase.removeChannel(subscription);
+      };
+    }, []);
+
+    useEffect(() => {
+      if (!supabase) return;
+      const subscription = supabase
+        .channel('owner_permissions_sync')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'owner_member_permissions' },
+          (payload) => {
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const p = payload.new;
+              setMemberCustomPermissions(prev => ({
+                ...prev,
+                [p.nickname]: {
+                  recordingAllowed: !!p.recording_allowed,
+                  callsAllowed: !!p.calls_allowed,
+                  musicRadioAllowed: !!p.music_radio_allowed,
+                  roomCreationAllowed: !!p.room_creation_allowed,
+                }
+              }));
+            } else if (payload.eventType === 'DELETE') {
+              const p = payload.old;
+              if (p && p.nickname) {
+                setMemberCustomPermissions(prev => {
+                  const next = { ...prev };
+                  delete next[p.nickname];
+                  return next;
+                });
+              }
+            }
+          }
+        )
+        .subscribe();
+      return () => {
+        supabase.removeChannel(subscription);
+      };
+    }, []);
 
     const loadOwnerData = async () => {
       ownerSettingsSyncReadyRef.current = false;
@@ -2707,8 +2761,9 @@ export default function ChatScreen({
         owner_bg_image: ownerBgImage,
         custom_logo_url: brandLogoUrl,
         glow_color: glowColor,
-        wall_theme: wallTheme,
-        room_bg_map: roomBgMap,
+          wall_theme: wallTheme,
+          chat_theme: chatTheme,
+          room_bg_map: roomBgMap,
         design_presets: designPresets,
       };
 
@@ -2718,6 +2773,10 @@ export default function ChatScreen({
 
       if (error) {
         console.warn("Failed to sync owner settings", error);
+        // Alert the owner that settings failed to save due to RLS or auth issues
+        if (error.code === "42501") {
+          console.error("Supabase RLS Error: You do not have the owner role in your auth.users metadata.");
+        }
       }
     }, OWNER_SYNC_DEBOUNCE_MS);
 
@@ -2741,10 +2800,11 @@ export default function ChatScreen({
     isOnlyVIPCanSendImages,
     isSpyMode,
     isWelcomeToastEnabled,
-    ownerBgImage,
-    roomBgMap,
-    wallTheme,
-  ]);
+      ownerBgImage,
+      roomBgMap,
+      wallTheme,
+      chatTheme,
+    ]);
 
   useEffect(() => {
     if (
@@ -3708,11 +3768,7 @@ export default function ChatScreen({
     return "member";
   };
 
-  type PMTargetState = {
-    nickname: string;
-    role: string;
-    avatar: string;
-  };
+
 
   // Active open PM recipient/target state
   const [pmTarget, setPmTarget] = useState<PMTargetState | null>(null);
@@ -4937,23 +4993,6 @@ export default function ChatScreen({
     setShowEmojiPicker(false);
   };
 
-  const getDynamicReply = (nickname: string) => {
-    const lower = nickname.toLowerCase();
-    if (lower.includes("سارة") || lower.includes("sara")) {
-      return "يا هلا بيك في شاتي الخاص، تسعدني جداً معرفتكم 🌸!";
-    }
-    if (lower.includes("محمد") || lower.includes("mohamed")) {
-      return "أهلاً صديقي، يسعدني الحديث معك بالخاص! كيف يمكنني مشاركتك اليوم؟ 🎧";
-    }
-    if (lower.includes("أحمد") || lower.includes("ahmed")) {
-      return "مرحباً بك بالخاص، شات لمة صمم من أجلكم وأنا سعيد بتواصلكم معي 👑.";
-    }
-    if (lower.includes("علي") || lower.includes("ali")) {
-      return "أهلاً بك، معك المشرف علي بالخاص. كيف يمكنني مساعدتك؟ يرجى إبلاغي بأي شكاوى 🛡️.";
-    }
-    return `مرحباً بك! يسعدني جداً حديثنا هنا على الخاص مع تمنياتي لك بوقت ممتع في شات لمة 💚.`;
-  };
-
   const handleSendPM = async () => {
     if (!pmTarget || !pmInputText.trim()) return;
 
@@ -5016,35 +5055,6 @@ export default function ChatScreen({
         if (error) console.error("PM insert error:", error);
       }
     }
-
-    // Auto-reply bot simulator for offline/local fake targets (e.g., "سارة")
-    const isRealUserActive = rawChatMembers.some(
-      (m) => m.nickname === targetNickname && m.nickname !== "سارة",
-    );
-    if (
-      (targetNickname === "سارة" || !isRealUserActive) &&
-      isBotEnabled &&
-      !isBotSilent
-    ) {
-      setTimeout(() => {
-        const replyText = getDynamicReply(targetNickname);
-        setPmThreads((prev) => ({
-          ...prev,
-          [targetNickname]: [
-            ...(prev[targetNickname] || []),
-            {
-              text: replyText,
-              isOwn: false,
-              time: new Date().toLocaleTimeString("en-US", {
-                hour: "numeric",
-                minute: "numeric",
-                hour12: true,
-              }),
-            },
-          ].slice(-100),
-        }));
-      }, 900);
-    }
   };
 
   const handleSendPM_ignoredConsumingHook = () => {
@@ -5071,28 +5081,6 @@ export default function ChatScreen({
       [targetNickname]: updatedThread,
     }));
     setPmInputText("");
-
-    // Sarah/Target replies automatically only while bot automation is active.
-    if (isBotEnabled && !isBotSilent) {
-      setTimeout(() => {
-        const replyText = getDynamicReply(targetNickname);
-        setPmThreads((prev) => ({
-          ...prev,
-          [targetNickname]: [
-            ...(prev[targetNickname] || []),
-            {
-              text: replyText,
-              isOwn: false,
-              time: new Date().toLocaleTimeString("en-US", {
-                hour: "numeric",
-                minute: "numeric",
-                hour12: true,
-              }),
-            },
-          ],
-        }));
-      }, 900);
-    }
   };
 
   const triggerGiftFlying = (icon: string) => {
@@ -6592,66 +6580,7 @@ export default function ChatScreen({
                       </p>
 
                       <div className="grid gap-2">
-                        <div className="p-2.5 rounded-xl flex items-start gap-2.5 pointer-events-none cursor-default lamma-notification-card lamma-notification-card-unread">
-                          <div className="w-7 h-7 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center flex-shrink-0">
-                            <Heart size={12} />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="text-[11px] font-black text-white">
-                              إعجاب بملفك الشخصي
-                            </h4>
-                            <p className="text-[9px] text-gray-400 mt-0.5">
-                              قام <strong>عمر</strong> بتسجيل إعجابه بملفك
-                              الشخصي.
-                            </p>
-                            <span className="text-[8px] text-gray-500 font-mono mt-1 block">
-                              منذ 5 دقائق
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="p-2.5 rounded-xl flex items-start gap-2.5 opacity-80 lamma-notification-card">
-                          <div className="w-7 h-7 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0 pointer-events-none">
-                            <Users size={12} />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="text-[11px] font-black text-white pointer-events-none">
-                              طلب صداقة جديد
-                            </h4>
-                            <p className="text-[9px] text-gray-400 mt-0.5 pointer-events-none">
-                              أرسل لك <strong>سارة</strong> طلب صداقة.
-                            </p>
-                            <div className="flex gap-1.5 mt-1.5">
-                              <button className="px-2.5 py-1 font-bold text-[8px] rounded-md cursor-pointer lamma-feature-primary">
-                                قبول
-                              </button>
-                              <button className="px-2.5 py-1 text-white font-bold text-[8px] rounded-md cursor-pointer lamma-soft-action">
-                                رفض
-                              </button>
-                            </div>
-                            <span className="text-[8px] text-gray-500 font-mono mt-1 block pointer-events-none">
-                              منذ 3 ساعات
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="p-2.5 rounded-xl flex items-start gap-2.5 opacity-60 pointer-events-none lamma-notification-card">
-                          <div className="w-7 h-7 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center flex-shrink-0">
-                            <Crown size={12} />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="text-[11px] font-black text-white">
-                              ترقية الحساب
-                            </h4>
-                            <p className="text-[9px] text-gray-400 mt-0.5">
-                              انتهى اشتراك VIP الخاص بك. جدد الآن للحصول على
-                              الشارات.
-                            </p>
-                            <span className="text-[8px] text-gray-500 font-mono mt-1 block">
-                              الأمس
-                            </span>
-                          </div>
-                        </div>
+                        {/* Fake notifications removed to avoid confusion */}
                       </div>
                     </div>
                   </MobileBottomSheet>
@@ -10383,3492 +10312,189 @@ export default function ChatScreen({
                 {(activeModal === "owner" ||
                   (activeModal === "leadership" &&
                     leadershipTab === "quick")) && (
-                  <div className="space-y-6 select-none" dir="rtl">
-                    <div className="rounded-2xl p-4 text-center lamma-soft-warn">
-                      <h4 className="text-sm font-black text-yellow-500 mb-2">
-                        {activeModal === "leadership"
-                          ? "التحكم السريع"
-                          : "غرفة التحكم الخاصة بالمالك فقط"}
-                      </h4>
-                      <p className="text-[10px] text-gray-400">
-                        {activeModal === "leadership"
-                          ? "تفعيل فوري وتطبيق مباشر على كل الغرف."
-                          : "أي تغيير هنا يطبق فورا بالقوة الجبرية على كل الغرف والأعضاء."}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Spy Mode */}
-                      <div className="p-4 rounded-xl flex flex-col gap-2 lamma-admin-card border border-purple-500/20 bg-purple-500/5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-white">
-                            <span className="inline-flex items-center gap-1.5">
-                              <span className="text-[13px]">🕵️</span>
-                              وضع المراقبة السرية للخاص
-                            </span>
-                          </span>
-                          <button
-                            onClick={() => {
-                              setIsSpyMode(!isSpyMode);
-                            }}
-                            className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isSpyMode ? "bg-purple-500 text-white shadow-[0_0_12px_rgba(168,85,247,0.4)]" : "bg-white/5 text-gray-300 hover:bg-white/10"}`}
-                          >
-                            {isSpyMode ? "مفعل" : "معطل"}
-                          </button>
-                        </div>
-                        <p className="text-[10px] text-gray-500">
-                          يسمح للمالك بمراقبة كل الرسائل الخاصة للجميع بشكل خفي ودمجها في قائمة الخاص لديك برمز التخفي.
-                        </p>
-                      </div>
-
-                      {/* Maintenance */}
-                      <div className="p-4 rounded-xl flex flex-col gap-2 lamma-admin-card">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-white">
-                            <span className="inline-flex items-center gap-1.5">
-                              <SettingsIcon
-                                size={13}
-                                className="text-yellow-300"
-                              />
-                              وضع الصيانة الشامل
-                            </span>
-                          </span>
-                          <button
-                            onClick={() => {
-                              const newVal = !isMaintenanceMode;
-                              setIsMaintenanceMode(newVal);
-                              addSystemActivityLog(
-                                "promote",
-                                currentUser.nickname,
-                                `قام المالك ${newVal ? "بتفعيل" : "بإلغاء"} وضع الصيانة الشامل لكامل المنصة.`,
-                              );
-                            }}
-                            className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isMaintenanceMode ? "lamma-danger-btn" : "lamma-soft-action text-gray-300"}`}
-                          >
-                            {isMaintenanceMode ? "إيقاف الصيانة" : "تفعيل"}
-                          </button>
-                        </div>
-                        <p className="text-[10px] text-gray-500">
-                          يمنع الجميع من الدردشة باستثناء المالك والـ Admins.
-                        </p>
-                      </div>
-
-                      {/* Global Mute */}
-                      <div className="p-4 rounded-xl flex flex-col gap-2 lamma-admin-card">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-white">
-                            <span className="inline-flex items-center gap-1.5">
-                              <VolumeX size={13} className="text-red-300" />
-                              كتم الشات العام
-                            </span>
-                          </span>
-                          <button
-                            onClick={() => {
-                              const newVal = !isGlobalMute;
-                              setIsGlobalMute(newVal);
-                              addSystemActivityLog(
-                                "ban",
-                                currentUser.nickname,
-                                `قام المالك ${newVal ? "بكتم" : "بفتح"} الشات العام على الجميع.`,
-                              );
-                            }}
-                            className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isGlobalMute ? "lamma-danger-btn" : "lamma-soft-action text-gray-300"}`}
-                          >
-                            {isGlobalMute ? "إلغاء الكتم" : "كتم للكل"}
-                          </button>
-                        </div>
-                        <p className="text-[10px] text-gray-500">
-                          منع جميع الأعضاء من الكتابة (شات كتابي).
-                        </p>
-                      </div>
-
-                      {/* Global Mic Mute */}
-                      <div className="p-4 rounded-xl flex flex-col gap-2 lamma-admin-card">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-white">
-                            🎙️ حظر المايكروفون العام
-                          </span>
-                          <button
-                            onClick={() => {
-                              const newVal = !isGlobalMicMute;
-                              setIsGlobalMicMute(newVal);
-                              addSystemActivityLog(
-                                "ban",
-                                currentUser.nickname,
-                                `قام المالك ${newVal ? "بحظر" : "بإلغاء حظر"} المايكروفون العام والصوتيات.`,
-                              );
-                            }}
-                            className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isGlobalMicMute ? "lamma-danger-btn" : "lamma-soft-action text-gray-300"}`}
-                          >
-                            {isGlobalMicMute ? "السماح بالمايك" : "حظر المايك"}
-                          </button>
-                        </div>
-                        <p className="text-[10px] text-gray-500">
-                          إلغاء خاصية إرسال المقاطع الصوتية في كل الغرف.
-                        </p>
-                      </div>
-
-                      {/* VIP Images Only */}
-                      <div className="p-4 rounded-xl flex flex-col gap-2 lamma-admin-card">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-white">
-                            🖼️ الصور للـ VIP فقط
-                          </span>
-                          <button
-                            onClick={() => {
-                              const newVal = !isOnlyVIPCanSendImages;
-                              setIsOnlyVIPCanSendImages(newVal);
-                            }}
-                            className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isOnlyVIPCanSendImages ? "lamma-toggle-on" : "lamma-soft-action text-gray-300"}`}
-                          >
-                            {isOnlyVIPCanSendImages ? "مفعل (VIP)" : "الجميع"}
-                          </button>
-                        </div>
-                        <p className="text-[10px] text-gray-500">
-                          قصر ميزة إرسال الصور والفيديوهات على الداعمين والـ
-                          VIP.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Change Primary App logo / icon */}
-                    <div className="p-4 rounded-xl space-y-3 mt-4 lamma-section-card">
-                      <h5 className="text-xs font-bold text-emerald-400">
-                        🎨 تعديل أيقونة التطبيق واستبدال التصميم
-                      </h5>
-                      <p className="text-[10px] text-gray-400">
-                        تغيير الأيقونة السيادية ورابط خلفية الشات لجميع
-                        المستخدمين.
-                      </p>
-
-                      {/* Logo */}
-                      <div className="flex p-1.5 rounded-lg mt-2 lamma-admin-card">
-                        <input
-                          type="text"
-                          id="owner_logo_url_input"
-                          placeholder="رابط أيقونة اللوجو الجديد (URL)..."
-                          className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
-                        />
-                        <button
-                          onClick={() => {
-                            const inp = document.getElementById(
-                              "owner_logo_url_input",
-                            ) as HTMLInputElement;
-                            if (inp && inp.value.trim() !== "") {
-                              setBrandLogoUrl(inp.value.trim());
-                              alert(
-                                "تم تحديث أيقونة التطبيق بنجاح! سيتم تطبيقها لجميع المستخدمين.",
-                              );
-                              addSystemActivityLog(
-                                "promote",
-                                currentUser.nickname,
-                                "قام المالك بتحديث أيقونة التطبيق السيادية.",
-                              );
-                            } else {
-                              setBrandLogoUrl(null);
-                              alert("تم استعادة الأيقونة الافتراضية.");
-                            }
-                          }}
-                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-feature-primary"
-                        >
-                          تحديث اللوجو
-                        </button>
-                      </div>
-
-                      {/* Background */}
-                      <div className="flex p-1.5 rounded-lg mt-3 lamma-admin-card">
-                        <input
-                          type="text"
-                          id="owner_bg_url_input"
-                          placeholder="رابط صورة لتبديل تصميم الخلفية (URL)..."
-                          className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
-                        />
-                        <button
-                          onClick={() => {
-                            const inp = document.getElementById(
-                              "owner_bg_url_input",
-                            ) as HTMLInputElement;
-                            if (inp && inp.value.trim() !== "") {
-                              setOwnerBgImage(inp.value.trim());
-                              alert("تم تطبيق تصميم الخلفية السيادي بنجاح!");
-                              addSystemActivityLog(
-                                "promote",
-                                currentUser.nickname,
-                                "قام المالك بتغيير تصميم خلفية الشات.",
-                              );
-                            } else {
-                              setOwnerBgImage(null);
-                              alert("تم استعادة تصميم الخلفية الافتراضية.");
-                            }
-                          }}
-                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
-                        >
-                          تحديث التصميم
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Word Wall Firewall */}
-                    <div className="p-4 rounded-xl space-y-3 mt-4 lamma-soft-danger">
-                      <h5 className="text-xs font-bold text-red-500">
-                        🧱 جدار حماية الشات القوي (Word Wall)
-                      </h5>
-                      <p className="text-[10px] text-gray-400">
-                        إضافة كلمات ممنوعة إلى جدار حماية اللمة لمنع أي رسائل
-                        تحتوي عليها وطرد مرسلها فوراً.
-                      </p>
-                      <div className="flex p-1.5 rounded-lg lamma-admin-card">
-                        <input
-                          type="text"
-                          id="owner_word_wall_input"
-                          placeholder="أدخل الكلمة الممنوعة هنا..."
-                          className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
-                        />
-                        <button
-                          onClick={() => {
-                            const inp = document.getElementById(
-                              "owner_word_wall_input",
-                            ) as HTMLInputElement;
-                            const word = inp?.value.trim();
-                            if (word) {
-                              if (!bannedWords.includes(word)) {
-                                setBannedWords((prev) => [...prev, word]);
-                                alert(
-                                  `تم إضافة الكلمة "${word}" لجدار الحماية!`,
-                                );
-                                addSystemActivityLog(
-                                  "ban",
-                                  currentUser.nickname,
-                                  `قام المالك بإضافة كلمة جديدة لجدار المنع الشامل.`,
-                                );
-                              }
-                              inp.value = "";
-                            }
-                          }}
-                          className="px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all lamma-danger-btn"
-                        >
-                          إضافة للجدار
-                        </button>
-                      </div>
-                      {/* Show a few sample words */}
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {bannedWords.slice(0, 8).map((word) => (
-                          <span
-                            key={word}
-                            className="px-2 py-0.5 rounded-md text-red-300 text-[9px] lamma-soft-danger"
-                          >
-                            {word}
-                          </span>
-                        ))}
-                        {bannedWords.length > 8 && (
-                          <span className="text-[10px] text-gray-500">
-                            +{bannedWords.length - 8} كلمات أخرى
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <OwnerPanelModal
+                    isSpyMode={isSpyMode}
+                    setIsSpyMode={setIsSpyMode}
+                    isMaintenanceMode={isMaintenanceMode}
+                    setIsMaintenanceMode={setIsMaintenanceMode}
+                    isGlobalMute={isGlobalMute}
+                    setIsGlobalMute={setIsGlobalMute}
+                    isGlobalMicMute={isGlobalMicMute}
+                    setIsGlobalMicMute={setIsGlobalMicMute}
+                    isOnlyVIPCanSendImages={isOnlyVIPCanSendImages}
+                    setIsOnlyVIPCanSendImages={setIsOnlyVIPCanSendImages}
+                    bannedWords={bannedWords}
+                    setBannedWords={setBannedWords}
+                    addSystemActivityLog={addSystemActivityLog}
+                    currentUserNickname={currentUser.nickname}
+                    setBrandLogoUrl={setBrandLogoUrl}
+                    setOwnerBgImage={setOwnerBgImage}
+                  />
                 )}
 
                 {/* ADMIN MODAL CONTENT */}
                 {activeModal === "admin" && (
-                  <div className="space-y-5 select-none" dir="rtl">
-                    {/* Tabs triggers */}
-                    <div className="flex border-b border-green-500/10 pb-0.5 gap-2 select-none overflow-x-auto scroller-hidden">
-                      <button
-                        onClick={() => setAdminTab("actions")}
-                        className={`pb-2 px-3 text-xs font-black transition-all border-b-2 cursor-pointer shrink-0 ${
-                          adminTab === "actions"
-                            ? "border-[#a3e635] text-[#a3e635]"
-                            : "border-transparent text-gray-405 hover:text-white"
-                        }`}
-                      >
-                        ⚡ الإحصاءات والتحكم السريع
-                      </button>
-                      <button
-                        onClick={() => setAdminTab("logs")}
-                        className={`pb-2 px-3 text-xs font-black transition-all border-b-2 cursor-pointer shrink-0 ${
-                          adminTab === "logs"
-                            ? "border-[#a3e635] text-[#a3e635]"
-                            : "border-transparent text-gray-405 hover:text-white"
-                        }`}
-                      >
-                        📝 سجل العمليات والأنشطة ({activityLogs.length})
-                      </button>
-                      <button
-                        onClick={() => setAdminTab("bans")}
-                        className={`pb-2 px-3 text-xs font-black transition-all border-b-2 cursor-pointer shrink-0 ${
-                          adminTab === "bans"
-                            ? "border-[#a3e635] text-[#a3e635]"
-                            : "border-transparent text-gray-405 hover:text-white"
-                        }`}
-                      >
-                        🚫 المطرودين والـ Mega Ban ({bannedUsersList.length})
-                      </button>
-                      <button
-                        onClick={() => setAdminTab("store_mgmt")}
-                        className={`pb-2 px-3 text-xs font-black transition-all border-b-2 cursor-pointer shrink-0 ${
-                          adminTab === "store_mgmt"
-                            ? "border-[#a3e635] text-[#a3e635]"
-                            : "border-transparent text-gray-405 hover:text-white"
-                        }`}
-                      >
-                        🏪 عروض وإضافات المتجر ({storeProducts.length})
-                      </button>
-                    </div>
-
-                    {/* Sub-tab 1: actions */}
-                    {adminTab === "actions" && (
-                      <div
-                        className="space-y-4 max-h-[50vh] overflow-y-auto pr-1 text-right font-sans select-none"
-                        dir="rtl"
-                      >
-                        {/* Dynamic Live Counter Cards */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                          <div className="p-2.5 bg-black/40 rounded-xl border border-emerald-500/10 text-center">
-                            <div className="text-sm font-black text-emerald-400">
-                              {chatMembers.filter((m) => m.status === "online")
-                                .length + 85}
-                            </div>
-                            <div className="text-[8.5px] text-gray-400 font-extrabold">
-                              المتواجدين الآن
-                            </div>
-                          </div>
-                          <div className="p-2.5 bg-black/40 rounded-xl border border-yellow-500/10 text-center">
-                            <div className="text-sm font-black text-yellow-500">
-                              {chatMembers.filter(
-                                (m) =>
-                                  m.role === "vip" ||
-                                  m.role === "owner" ||
-                                  m.role === "admin" ||
-                                  m.role === "mod",
-                              ).length + 12}
-                            </div>
-                            <div className="text-[8.5px] text-gray-400 font-extrabold">
-                              الرتب والـ VIP النشط
-                            </div>
-                          </div>
-                          <div className="p-2.5 bg-black/40 rounded-xl border border-red-500/10 text-center">
-                            <div className="text-sm font-black text-red-500">
-                              {bannedUsersList.length}
-                            </div>
-                            <div className="text-[8.5px] text-gray-400 font-extrabold">
-                              العقوبات والبلاغات
-                            </div>
-                          </div>
-                          <div className="p-2.5 bg-black/40 rounded-xl border border-cyan-500/10 text-center">
-                            <div className="text-sm font-black text-cyan-300">
-                              ممتازة
-                            </div>
-                            <div className="text-[8.5px] text-gray-400 font-extrabold">
-                              استجابة السيرفر
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* SECTION A: GLOBAL ONE-CLICK SWITCHES */}
-                        <div className="p-3.5 bg-black/40 rounded-2xl border border-white/5 space-y-3">
-                          <h5 className="text-[10px] font-black text-emerald-400 border-b border-white/5 pb-1.5 flex items-center gap-1.5">
-                            🔒 مفاتيح السيطرة والتحكم السريع بضغطة واحدة (Global
-                            Safety Toggles)
-                          </h5>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {/* Toggle 1: Maintenance Mode */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const nextVal = !isMaintenanceMode;
-                                setIsMaintenanceMode(nextVal);
-                                addSystemActivityLog(
-                                  "demote",
-                                  currentUser.nickname,
-                                  `تغيير حالة وضع الصيانة العام لموقع شات لمة إلى: [${nextVal ? "مفعّل" : "ملغى"}]`,
-                                  "👑 إدارة المالك",
-                                );
-                                addLammaBotMessage(
-                                  activeRoomId,
-                                  `🤖 إشعار إداري: تم ${nextVal ? "تفعيل وضع الصيانة مؤقتاً" : "إنهاء وضع الصيانة وعودة الشات للعمل بشكل طبيعي"}.`,
-                                );
-                              }}
-                              className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
-                                isMaintenanceMode
-                                  ? "bg-yellow-500/10 border-yellow-500/35 text-yellow-400 shadow-md"
-                                  : "lamma-tab-soft text-gray-300 hover:text-white"
-                              }`}
-                            >
-                              <span>⚙️ وضع الصيانة الشامل</span>
-                              <span
-                                className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${isMaintenanceMode ? "bg-yellow-500/20 text-yellow-300" : "bg-white/5 text-gray-400"}`}
-                              >
-                                {isMaintenanceMode ? "نشط حالياً" : "صامت/مغلق"}
-                              </span>
-                            </button>
-
-                            {/* Toggle 2: Global Mute */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const nextVal = !isGlobalMute;
-                                setIsGlobalMute(nextVal);
-                                addSystemActivityLog(
-                                  "ban",
-                                  currentUser.nickname,
-                                  `تغيير كتم الروم العام للدردشة إلى: [${nextVal ? "كتم نشط" : "مفتوح"}]`,
-                                  "👑 إدارة المالك",
-                                );
-                                addLammaBotMessage(
-                                  activeRoomId,
-                                  `🤖 إشعار إداري: تم ${nextVal ? "كتم الدردشة العامة مؤقتاً" : "إعادة فتح الدردشة العامة"}.`,
-                                );
-                              }}
-                              className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
-                                isGlobalMute
-                                  ? "bg-red-500/10 border-red-500/35 text-red-400"
-                                  : "lamma-tab-soft text-gray-300 hover:text-white"
-                              }`}
-                            >
-                              <span>🔇 كتم الروم العام لكافة الأعضاء</span>
-                              <span
-                                className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${isGlobalMute ? "bg-red-500/20 text-red-300" : "bg-white/5 text-gray-400"}`}
-                              >
-                                {isGlobalMute ? "الكتم نشط" : "الكتابة مفتوحة"}
-                              </span>
-                            </button>
-
-                            {/* Toggle 3: Global Mic Mute */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const nextVal = !isGlobalMicMute;
-                                setIsGlobalMicMute(nextVal);
-                                addSystemActivityLog(
-                                  "ban",
-                                  currentUser.nickname,
-                                  `تعديل إذن الميكروفونات والبث العام إلى: [${nextVal ? "مغلقة" : "مفتوحة"}]`,
-                                  "👑 إدارة المالك",
-                                );
-                                addLammaBotMessage(
-                                  activeRoomId,
-                                  `🤖 إشعار إداري: تم ${nextVal ? "إغلاق الميكروفونات العامة مؤقتاً" : "إعادة فتح الميكروفونات العامة"}.`,
-                                );
-                              }}
-                              className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
-                                isGlobalMicMute
-                                  ? "bg-orange-500/10 border-orange-500/35 text-orange-400"
-                                  : "lamma-tab-soft text-gray-300 hover:text-white"
-                              }`}
-                            >
-                              <span>🎙️ إغلاق الميكروفونات العامة</span>
-                              <span
-                                className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${isGlobalMicMute ? "bg-orange-500/20 text-orange-300" : "bg-white/5 text-gray-400"}`}
-                              >
-                                {isGlobalMicMute
-                                  ? "معطلة حالياً"
-                                  : "صوت حر للجميع"}
-                              </span>
-                            </button>
-
-                            {/* Toggle 4: VIP Only Media */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const nextVal = !isOnlyVIPCanSendImages;
-                                setIsOnlyVIPCanSendImages(nextVal);
-                                addSystemActivityLog(
-                                  "ban",
-                                  currentUser.nickname,
-                                  `تحويل تراخيص إرسال الوسائط في الروم إلى: [${nextVal ? "VIP فقط" : "مفتوح للجميع"}]`,
-                                  "👑 إدارة المالك",
-                                );
-                                addLammaBotMessage(
-                                  activeRoomId,
-                                  `🤖 إشعار إداري: تم ${nextVal ? "قصر إرسال الوسائط على رتب VIP والإدارة" : "إتاحة إرسال الوسائط لجميع الأعضاء"}.`,
-                                );
-                              }}
-                              className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
-                                isOnlyVIPCanSendImages
-                                  ? "bg-cyan-500/10 border-cyan-500/35 text-cyan-400"
-                                  : "lamma-tab-soft text-gray-300 hover:text-white"
-                              }`}
-                            >
-                              <span>📸 وضع وسائط الشات للـ VIP</span>
-                              <span
-                                className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${isOnlyVIPCanSendImages ? "bg-cyan-500/20 text-cyan-300" : "bg-white/5 text-gray-400"}`}
-                              >
-                                {isOnlyVIPCanSendImages
-                                  ? "مفعّل للـ VIP فقط"
-                                  : "مفتوح لكافة الأعضاء"}
-                              </span>
-                            </button>
-
-                            {/* Toggle 5: Mute Assistant Bot */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const nextVal = !isBotSilent;
-                                setIsBotSilent(nextVal);
-                                addSystemActivityLog(
-                                  "promote",
-                                  currentUser.nickname,
-                                  `ضبط صوت وتفاعل بوت المساعدة الآلي إلى: [${nextVal ? "صامت" : "متفاعل"}]`,
-                                  "👑 إدارة المالك",
-                                );
-                              }}
-                              className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
-                                isBotSilent
-                                  ? "bg-purple-500/10 border-purple-500/35 text-purple-400"
-                                  : "lamma-tab-soft text-gray-300 hover:text-white"
-                              }`}
-                            >
-                              <span>🤖 إسكات بوت المساعدة التلقائي</span>
-                              <span
-                                className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${isBotSilent ? "bg-purple-500/20 text-purple-300" : "bg-white/5 text-gray-400"}`}
-                              >
-                                {isBotSilent
-                                  ? "وضع الصامت"
-                                  : "روبوت متفاعل ونشط"}
-                              </span>
-                            </button>
-
-                            {/* Toggle 6: Welcome Toast Greetings */}
-                            <button
-                              type="button"
-                              disabled
-                              title="هذه الميزة غير مفعلة بعد"
-                              className="p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-not-allowed opacity-60 border-white/8 text-gray-400"
-                            >
-                              <span>✨ ترحيب الدخول الفلاشي</span>
-                              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-white/5 text-gray-400">
-                                قريباً
-                              </span>
-                            </button>
-
-                            {/* Toggle 7: Footer Advertising deals */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const nextVal = !isAdsEnabled;
-                                setIsAdsEnabled(nextVal);
-                                addSystemActivityLog(
-                                  "promote",
-                                  currentUser.nickname,
-                                  `تغيير عرض شريط عروض المتجر السفلي إلى: [${nextVal ? "معروض" : "مخفي"}]`,
-                                  "👑 إدارة المالك",
-                                );
-                              }}
-                              className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
-                                isAdsEnabled
-                                  ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-400"
-                                  : "lamma-tab-soft text-gray-300 hover:text-white"
-                              }`}
-                            >
-                              <span>🔥 تفعيل شريط عروض المتجر بالسفل</span>
-                              <span
-                                className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${isAdsEnabled ? "bg-emerald-500/20 text-emerald-300" : "bg-white/5 text-gray-400"}`}
-                              >
-                                {isAdsEnabled
-                                  ? "يظهر للمستخدمين"
-                                  : "الشريط مخفي"}
-                              </span>
-                            </button>
-
-                            {/* Action 8: Purge Chat messages */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (
-                                  confirm(
-                                    "☠️ تحذير إخلاء وتطهير الروم العام: هل أنت متأكد تماماً من الرغبة في بتر ومسح كافة البيانات والمحادثات لجميع الأعضاء في الغرفة الحالية فوراً؟ لا يمكن استعادة البيانات!",
-                                  )
-                                ) {
-                                  setRoomMessages((prev) => ({
-                                    ...prev,
-                                    [activeRoomId]: [],
-                                  }));
-                                  addSystemActivityLog(
-                                    "demote",
-                                    currentUser.nickname,
-                                    `تطهير تام وإخلاء لجميع رسائل غرفة [${activeRoomId}] بأمر المالك التأسيسي فوسفورياً.`,
-                                    "👑 إدارة المالك",
-                                  );
-                                  addLammaBotMessage(
-                                    activeRoomId,
-                                    `🌟 تطهير إداري شامل: قام مالك الشات بتطهير ومسح كافة المحادثات الواردة في غرفة [${activeRoomId}] وتصفير سجلاتها بنجاح تام لسرعة مضاعفة ⚡!`,
-                                  );
-                                  alert(
-                                    "✅ تم تطهير وبتر وحذف جميع رسائل الغرفة بأمان تام وسرعة خارقة!",
-                                  );
-                                }
-                              }}
-                              className="p-2.5 rounded-xl bg-red-650/20 hover:bg-red-600/30 text-red-500 hover:text-white border border-red-500/25 transition-all flex items-center justify-between text-[10px] font-black cursor-pointer"
-                            >
-                              <span>🗑️ تطهير وغسل الروم العام الآن</span>
-                              <span className="text-[8.5px] font-bold px-1.5 py-0.5 bg-red-500/20 text-white rounded">
-                                تصفير فوري
-                              </span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* SECTION B: DYNAMIC INSTANT USER ROLE & VIP PROMOTION SUITE */}
-                        <div className="p-4 rounded-2xl space-y-3.5 lamma-section-card">
-                          <h5 className="text-[10px] font-black text-lime-400 border-b border-white/5 pb-1.5">
-                            👤 لوحة التحكم بالترقيات والعزل السريع للأعضاء
-                            (Instant Member Promotion Suite)
-                          </h5>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {/* Member Dropdown Picker */}
-                            <div className="space-y-1">
-                              <label
-                                htmlFor="promo-target-select"
-                                className="text-[9px] text-gray-400 font-extrabold"
-                              >
-                                اختر العضو (المتواجدين بالشات حالياً):
-                              </label>
-                              <select
-                                id="promo-target-select"
-                                name="promoTargetNickSelect"
-                                value={promoTargetNick}
-                                onChange={(e) => {
-                                  setPromoTargetNick(e.target.value);
-                                  const found = chatMembers.find(
-                                    (m) => m.nickname === e.target.value,
-                                  );
-                                  if (found) {
-                                    setPromoTargetColor(
-                                      found.color || "#10b981",
-                                    );
-                                    setPromoTargetBadge(found.badge || "");
-                                    setPromoTargetRole(found.role || "vip");
-                                  }
-                                }}
-                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
-                              >
-                                <option value="">
-                                  --- اختر العضو المطلوب للعملية السريعة ---
-                                </option>
-                                {chatMembers
-                                  .filter((m) => m.role !== "owner")
-                                  .map((m) => (
-                                  <option key={m.id} value={m.nickname}>
-                                    {m.nickname} (الرتبة المعينة حالياً:{" "}
-                                    {m.role === "owner"
-                                      ? "👑 المالك"
-                                      : m.role === "admin"
-                                        ? "🛡️ أدمن"
-                                        : m.role === "vip"
-                                          ? "💎 VIP"
-                                          : "👤 عضو"}
-                                    )
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            {/* Manual Nickname write-in (for offline users) */}
-                            <div className="space-y-1">
-                              <label
-                                htmlFor="promoTargetNick"
-                                className="text-[9px] text-gray-400 font-extrabold"
-                              >
-                                أو اكتب اللقب يدوياً بالدقة:
-                              </label>
-                              <input
-                                type="text"
-                                id="promoTargetNick"
-                                name="promoTargetNick"
-                                autoComplete="off"
-                                placeholder="مثلاً: بطل الأسبوع، أميرة القلوب"
-                                value={promoTargetNick}
-                                onChange={(e) =>
-                                  setPromoTargetNick(e.target.value)
-                                }
-                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
-                              />
-                            </div>
-
-                            {/* Role Select */}
-                            <div className="space-y-1">
-                              <label
-                                htmlFor="promo-target-role"
-                                className="text-[9px] text-gray-400 font-extrabold"
-                              >
-                                الرتبة الجديدة المراد منحها بضغطة واحدة:
-                              </label>
-                              <select
-                                id="promo-target-role"
-                                name="promoTargetRole"
-                                value={promoTargetRole}
-                                onChange={(e) =>
-                                  setPromoTargetRole(e.target.value as any)
-                                }
-                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
-                              >
-                                <option value="admin">
-                                  🛡️ ADMIN - تحكم كامل
-                                </option>
-                                <option value="mod">
-                                  ✨ MODERATOR - إدارة الغرفة
-                                </option>
-                                <option value="platinum_vip">
-                                  👑 PLATINUM VIP - مميز للغاية
-                                </option>
-                                <option value="vip">
-                                  💎 VIP - عضو مميز
-                                </option>
-                                <option value="user">
-                                  👤 MEMBER - عضو مسجل
-                                </option>
-                                <option value="guest">
-                                  👤 GUEST - زائر
-                                </option>
-                              </select>
-                            </div>
-
-                            {/* Display Custom Badge tag */}
-                            <div className="space-y-1">
-                              <label
-                                htmlFor="promoTargetBadge"
-                                className="text-[9px] text-gray-400 font-extrabold"
-                              >
-                                شارة اللقب الفخرية (Badge Tag) - اختيارية:
-                              </label>
-                              <input
-                                type="text"
-                                id="promoTargetBadge"
-                                name="promoTargetBadge"
-                                autoComplete="off"
-                                placeholder="مثلاً: 👑 الإمبراطور أو 🛡️ حامي الروم"
-                                value={promoTargetBadge}
-                                onChange={(e) =>
-                                  setPromoTargetBadge(e.target.value)
-                                }
-                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Color DOTS picker */}
-                          <div className="space-y-1.5 p-2 rounded-xl lamma-admin-card">
-                            <div className="text-[9px] text-gray-400 font-extrabold block">
-                              اختر لون الاسم المميز فوراً بضغطة زر:
-                            </div>
-                            <div className="flex gap-2 flex-wrap items-center">
-                              {[
-                                "#f59e0b",
-                                "#f43f5e",
-                                "#10b981",
-                                "#a3e635",
-                                "#ec4899",
-                                "#06b6d4",
-                                "#8b5cf6",
-                                "#ef4444",
-                                "#ffffff",
-                              ].map((c) => (
-                                <button
-                                  key={c}
-                                  type="button"
-                                  onClick={() => setPromoTargetColor(c)}
-                                  style={{ backgroundColor: c }}
-                                  className={`w-5 h-5 rounded-full border border-black/80 hover:scale-110 transition-transform cursor-pointer ${
-                                    promoTargetColor === c
-                                      ? "ring-2 ring-lime-400 scale-105"
-                                      : ""
-                                  }`}
-                                  title={c}
-                                />
-                              ))}
-                              <input
-                                type="text"
-                                id="promoTargetColor"
-                                name="promoTargetColor"
-                                autoComplete="off"
-                                placeholder="#ffffff"
-                                value={promoTargetColor}
-                                onChange={(e) =>
-                                  setPromoTargetColor(e.target.value)
-                                }
-                                className="w-20 rounded px-1.5 py-0.5 text-[10px] text-white text-center font-mono focus:outline-none lamma-input-shell"
-                              />
-                            </div>
-                          </div>
-
-                          {/* ACTION SUBMIT BUTTON */}
-                          <div className="pt-2 flex justify-end">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const nick = promoTargetNick.trim();
-                                if (!nick) {
-                                  alert(
-                                    "❌ يرجى اختيار اسم العضو المتواجد أو كتابة اللقب يدوياً أولاً لإصدار الصلاحيات والمزايا!",
-                                  );
-                                  return;
-                                }
-
-                                const targetMember = chatMembers.find(
-                                  (m) =>
-                                    m.nickname.toLowerCase() ===
-                                    nick.toLowerCase(),
-                                );
-                                const isTargetCurrentUser =
-                                  currentUser.nickname.toLowerCase() ===
-                                  nick.toLowerCase();
-                                const isTargetOwner =
-                                  targetMember?.role === "owner";
-
-                                if (promoTargetRole === "owner") {
-                                  alert(
-                                    "⚠️ رتبة المالك محجوزة حصرياً لواجهة المالك فقط، ولا يمكن منحها من لوحة الأدمن.",
-                                  );
-                                  return;
-                                }
-
-                                if (isTargetOwner) {
-                                  alert(
-                                    "⚠️ لا يمكن تعديل أو خفض أو ترقية حساب المالك من لوحة الأدمن.",
-                                  );
-                                  return;
-                                }
-
-                                if (
-                                  isTargetCurrentUser &&
-                                  promoTargetRole !== currentUser.role
-                                ) {
-                                  alert(
-                                    "⚠️ لا يمكن تغيير رتبتك الحالية من لوحة الأدمن حتى لا تبقى الجلسة بصلاحيات غير متزامنة. يمكنك تعديل اللون أو الشارة فقط مع إبقاء نفس الرتبة.",
-                                  );
-                                  return;
-                                }
-
-                                // Update in chatMembers list
-                                setChatMembers((prev) =>
-                                  prev.map((m) => {
-                                    if (
-                                      m.nickname.toLowerCase() ===
-                                      nick.toLowerCase()
-                                    ) {
-                                      return {
-                                        ...m,
-                                        role: (promoTargetRole ===
-                                        "platinum_vip"
-                                          ? "vip"
-                                          : promoTargetRole) as any,
-                                        color: promoTargetColor || m.color,
-                                        badge: promoTargetBadge || m.badge,
-                                      };
-                                    }
-                                    return m;
-                                  }),
-                                );
-
-                                // If target is currently active user session
-                                if (
-                                  currentUser.nickname.toLowerCase() ===
-                                  nick.toLowerCase()
-                                ) {
-                                  setMyActiveSession((prev) => ({
-                                    ...prev,
-                                    color: promoTargetColor || prev.color,
-                                    badge: promoTargetBadge || prev.badge,
-                                    frame:
-                                      promoTargetRole === "platinum_vip"
-                                        ? "from-yellow-400 via-amber-500 to-yellow-600"
-                                        : "",
-                                  }));
-                                }
-
-                                const roleLabel =
-                                  promoTargetRole === "admin"
-                                      ? "🛡️ SYSTEM ADMIN"
-                                      : promoTargetRole === "mod"
-                                        ? "✨ CHAT MODERATOR"
-                                        : promoTargetRole === "platinum_vip"
-                                          ? "👑 PLATINUM VIP"
-                                          : promoTargetRole === "vip"
-                                            ? "💎 ROYAL VIP"
-                                            : promoTargetRole === "user"
-                                              ? "👤 REGISTERED MEMBER"
-                                              : "👤 GUEST MEMBER";
-
-                                addSystemActivityLog(
-                                  "promote",
-                                  nick,
-                                  `ترقية العضو [${nick}] إلى مرتبة [${roleLabel}] وتخصيص اللون ليكون [${promoTargetColor}] والشارة لـ [${promoTargetBadge || "غير معينة"}] بنجاح مميز.`,
-                                  "👑 OWNER MODERATOR",
-                                );
-                                addLammaBotMessage(
-                                  activeRoomId,
-                                  `👑 قرار رئاسي: أصدر مالك شات الغالية مرسوماً رسمياً بترقية وتكليف العضو [${nick}] برتبة [<strong>${roleLabel}</strong>] وتعيين لون الشهرة [${promoTargetColor}] وشارة [${promoTargetBadge || "عضو نشط"}] ليكون ذو نفوذ فوري وصلاحية شاملة 🎉!`,
-                                );
-
-                                alert(
-                                  `✅ تم ترقية ومنح العضو [${nick}] رتبة [${roleLabel}] بنجاح فوسفوري وتفعيل صلاحيتهم فوراً!`,
-                                );
-
-                                // Reset target fields
-                                setPromoTargetNick("");
-                                setPromoTargetBadge("");
-                              }}
-                              className="px-6 py-2 text-white font-black text-[11px] rounded-xl transition-all cursor-pointer lamma-feature-primary"
-                            >
-                              🚀 تطبيق مرسوم ومنح الصلاحية الفورية
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Sub-tab 2: Auditing / logs */}
-                    {adminTab === "logs" && (
-                      <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
-                        <div className="text-[10px] text-gray-400 font-bold">
-                          جميع المعاملات والأنشطة الأمنية المسجلة لدى خادم شات
-                          لمة:
-                        </div>
-                        {activityLogs.map((log) => (
-                          <div
-                            key={log.id}
-                            className="p-3 rounded-xl space-y-1 text-right lamma-admin-card"
-                          >
-                            <div className="flex items-center justify-between text-[9px] text-gray-400 font-sans">
-                              <span>الساعة: {log.time}</span>
-                              <span
-                                className={`px-1 py-0.5 rounded text-[8px] font-black ${
-                                  log.type === "ban"
-                                    ? "bg-red-500/15 text-red-400 border border-red-500/10"
-                                    : log.type === "promote"
-                                      ? "bg-green-500/15 text-green-400 border border-green-500/10"
-                                      : log.type === "demote"
-                                        ? "bg-yellow-500/15 text-yellow-500 border border-yellow-500/10"
-                                        : "bg-blue-500/15 text-blue-450 border border-blue-500/10"
-                                }`}
-                              >
-                                {log.type === "ban"
-                                  ? "🛑 حظر وقمع"
-                                  : log.type === "promote"
-                                    ? "✨ ترقية ورتبة"
-                                    : log.type === "demote"
-                                      ? "⚠️ خفض/تنبيه"
-                                      : log.type === "login"
-                                        ? "📥 دخول"
-                                        : "📤 خروج"}
-                              </span>
-                            </div>
-                            <div className="text-xs font-semibold text-gray-250 leading-relaxed">
-                              {log.details}
-                            </div>
-                            <div className="text-[9px] text-gray-500 font-sans">
-                              المنفذ:{" "}
-                              <span className="text-green-500">
-                                {log.operatorNickname}
-                              </span>{" "}
-                              • الهدف:{" "}
-                              <span className="text-white">
-                                {log.userNickname}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                        {activityLogs.length === 0 && (
-                          <div className="p-6 text-center text-gray-500 text-xs font-bold">
-                            لا يوجد سجل أنشطة حالي.
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Sub-tab 3: Bans management */}
-                    {adminTab === "bans" && (
-                      <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
-                        <div className="text-[10px] text-gray-400 font-bold mb-1">
-                          التحكم في المعرفات المحظورة كلياً (Mega Ban) وحظر
-                          الغرف والكتم:
-                        </div>
-                        {bannedUsersList.map((item) => (
-                          <div
-                            key={item.id}
-                            className="p-3 rounded-xl flex flex-col md:flex-row md:items-center justify-between text-right gap-3 transition-all lamma-soft-danger"
-                          >
-                            <div className="space-y-1">
-                              <div className="text-xs font-black text-white flex items-center gap-1.5 flex-wrap">
-                                <span>لقب: {item.nickname}</span>
-                                <span
-                                  className={`text-[8px] px-1 rounded font-black ${item.type === "megaban" ? "bg-red-500/15 text-red-400 border border-red-500/10" : "bg-orange-500/15 text-orange-400 border border-orange-500/10"}`}
-                                >
-                                  {item.type === "megaban"
-                                    ? "🛑 حظر شامل (Mega Ban)"
-                                    : item.type === "mute"
-                                      ? "🔇 كتم حديث"
-                                      : item.type === "shadow"
-                                        ? "👻 حظر خفي (Shadow)"
-                                        : item.type === "room"
-                                          ? `🚫 حظر غرف (${item.roomId})`
-                                          : "🚫 حظر معايير"}
-                                </span>
-                              </div>
-                              <div className="text-[9.5px] text-gray-400 space-y-0.5">
-                                <div>
-                                  بصمة المعرف الفني:{" "}
-                                  <span className="font-mono text-gray-300 text-[8.5px]">
-                                    {item.fingerprint}
-                                  </span>
-                                </div>
-                                <div>
-                                  عنوان الـ IP:{" "}
-                                  <span className="font-mono text-gray-300 text-[8.5px]">
-                                    {item.ip}
-                                  </span>
-                                </div>
-                                <div>
-                                  السبب والمشرف:{" "}
-                                  <span className="text-gray-250">
-                                    {item.reason}
-                                  </span>{" "}
-                                  • بواسطة المشرف:{" "}
-                                  <span className="text-[#a3e635]">
-                                    {item.banner}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => {
-                                void removeBanEntries(
-                                  (ban) => ban.id === item.id,
-                                  { sync: true },
-                                );
-                                addSystemActivityLog(
-                                  "promote",
-                                  item.nickname,
-                                  `تم إلغاء حظر المعرف الفني واستعادة كافة رخص التفاعل للعضو ${item.nickname}.`,
-                                );
-                                alert(
-                                  `تم إلغاء العقوبة بنجاح وإرجاع تراخيص العضو ${item.nickname}!`,
-                                );
-                              }}
-                              className="p-1.5 px-3 rounded-lg text-[9.5px] font-black self-end md:self-center transition-all cursor-pointer shrink-0 lamma-feature-primary"
-                            >
-                              🕊️ إلغاء العقوبة وفك الحظر
-                            </button>
-                          </div>
-                        ))}
-                        {bannedUsersList.length === 0 && (
-                          <div className="p-8 text-center text-gray-500 text-xs font-bold rounded-2xl lamma-section-card">
-                            لا توجد محظورين أو بصمات أجهزة مقيدة حالياً. الشات
-                            نظيف ومستقر بنسبة 100%.
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Sub-tab 4: Store Management (🏪 عروض وإضافات المتجر) */}
-                    {adminTab === "store_mgmt" && (
-                      <div
-                        className="space-y-4 max-h-[50vh] overflow-y-auto pr-1 text-right font-sans"
-                        dir="rtl"
-                      >
-                        <div className="p-4 rounded-2xl lamma-soft-success">
-                          <h5 className="text-white text-xs font-black">
-                            🏪 لوحة التحكم في عروض وهدايا المتجر التلقائي
-                          </h5>
-                          <p className="text-[9.5px] text-gray-400 font-bold leading-normal mt-1">
-                            بصفتك مالك الشات (Owner)، يمكنك إضافة عرق رتبة VIP
-                            جديدة، أشكال إطارات ملوّنة تدور حول الملف، ألقاب
-                            فخرية تظهر للمحيط، أو مسح ميزات حية من المتجر فوراً.
-                          </p>
-                        </div>
-
-                        {/* ADD / EDIT PRODUCT FORM */}
-                        <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                          <h6 className="text-[11px] font-black text-emerald-400">
-                            {editingProduct
-                              ? "✍️ تعديل المنتج المختار"
-                              : "➕ إضافة منتج/ميزة جديدة للمتجر"}
-                          </h6>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <label
-                                htmlFor="prod-name"
-                                className="text-[9px] text-gray-400 font-bold"
-                              >
-                                اسم الميزة في الشات:
-                              </label>
-                              <input
-                                type="text"
-                                id="prod-name"
-                                name="prod-name"
-                                autoComplete="off"
-                                placeholder="مثلاً: 🔥 باقة التحدي أو إطار كواكب"
-                                value={newProdName}
-                                onChange={(e) => setNewProdName(e.target.value)}
-                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
-                              />
-                            </div>
-
-                            <div className="space-y-1">
-                              <label
-                                htmlFor="new-prod-tab"
-                                className="text-[9px] text-gray-400 font-bold"
-                              >
-                                قسم العرض (التصنيف):
-                              </label>
-                              <select
-                                id="new-prod-tab"
-                                name="newProdTab"
-                                value={newProdTab}
-                                onChange={(e) =>
-                                  setNewProdTab(e.target.value as any)
-                                }
-                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
-                              >
-                                <option value="vip">
-                                  💎 باقات وعرقيات VIP
-                                </option>
-                                <option value="skins">
-                                  🎨 المظهر والإطارات الملونة
-                                </option>
-                                <option value="badges">
-                                  🏷️ الألقاب والشارات الخاصة
-                                </option>
-                              </select>
-                            </div>
-
-                            <div className="space-y-1">
-                              <label
-                                htmlFor="prod-price"
-                                className="text-[9px] text-gray-400 font-bold"
-                              >
-                                السعر (بالجنيه المصري أو العملة البديلة):
-                              </label>
-                              <input
-                                type="text"
-                                id="prod-price"
-                                name="prod-price"
-                                autoComplete="off"
-                                placeholder="مثلاً: 75 EGP"
-                                value={newProdPrice}
-                                onChange={(e) =>
-                                  setNewProdPrice(e.target.value)
-                                }
-                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
-                              />
-                            </div>
-
-                            <div className="space-y-1">
-                              <label
-                                htmlFor="new-prod-type"
-                                className="text-[9px] text-gray-400 font-bold"
-                              >
-                                نوع الميزة التلقائية:
-                              </label>
-                              <select
-                                id="new-prod-type"
-                                name="newProdType"
-                                value={newProdType}
-                                onChange={(e) =>
-                                  setNewProdType(e.target.value as any)
-                                }
-                                className="w-full rounded-xl p-2 text-xs text-white lamma-input-shell"
-                              >
-                                <option value="bronze">
-                                  💎 باقة برونزية عادية (30 يوماً)
-                                </option>
-                                <option value="platinum">
-                                  👑 باقة بلاتينية عظمى (30 يوماً - إطارات
-                                  تدرجية)
-                                </option>
-                                <option value="frame">
-                                  🎨 إطار مظهر متحرك (Frame)
-                                </option>
-                                <option value="title">
-                                  🏷️ لقب وشارة دردشة مدمجة (Title & Badge)
-                                </option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <label
-                              htmlFor="new-prod-desc"
-                              className="text-[9px] text-gray-400 font-bold"
-                            >
-                              وصف العرض للمستخدم بالتفصيل:
-                            </label>
-                            <textarea
-                              id="new-prod-desc"
-                              name="newProdDesc"
-                              autoComplete="off"
-                              rows={2}
-                              placeholder="صيغة ممتازة تشرح الصلاحيات الممنوحة لترغيب الأعضاء..."
-                              value={newProdDesc}
-                              onChange={(e) => setNewProdDesc(e.target.value)}
-                              className="w-full rounded-xl p-2 text-xs text-white resize-none lamma-input-shell"
-                            />
-                          </div>
-
-                          {/* Dynamic Inputs Based on Type Selected */}
-                          {(newProdType === "bronze" ||
-                            newProdType === "platinum") && (
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 rounded-xl lamma-admin-card">
-                              <div className="space-y-1">
-                                <label
-                                  htmlFor="prod-badge"
-                                  className="text-[8px] text-gray-400 font-bold"
-                                >
-                                  نص شارة الإسم (Badge):
-                                </label>
-                                <input
-                                  type="text"
-                                  id="prod-badge"
-                                  name="prod-badge"
-                                  autoComplete="off"
-                                  placeholder="مثل: S-VIP"
-                                  value={newProdBadge}
-                                  onChange={(e) =>
-                                    setNewProdBadge(e.target.value)
-                                  }
-                                  className="w-full rounded-lg p-1.5 text-xs text-white lamma-input-shell"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <label
-                                  htmlFor="prod-color"
-                                  className="text-[8px] text-gray-400 font-bold"
-                                >
-                                  لون الاسم (أو gradient):
-                                </label>
-                                <input
-                                  type="text"
-                                  id="prod-color"
-                                  name="prod-color"
-                                  autoComplete="off"
-                                  placeholder="مثل: #ef4444"
-                                  value={newProdColor}
-                                  onChange={(e) =>
-                                    setNewProdColor(e.target.value)
-                                  }
-                                  className="w-full rounded-lg p-1.5 text-xs text-white lamma-input-shell"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <label
-                                  htmlFor="prod-ext"
-                                  className="text-[8px] text-gray-400 font-bold"
-                                >
-                                  الدور الإضافي (role):
-                                </label>
-                                <input
-                                  type="text"
-                                  id="prod-ext"
-                                  name="prod-ext"
-                                  autoComplete="off"
-                                  placeholder="مثل: platinum_vip"
-                                  value={newProdExt}
-                                  onChange={(e) =>
-                                    setNewProdExt(e.target.value)
-                                  }
-                                  className="w-full rounded-lg p-1.5 text-xs text-white lamma-input-shell"
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          {newProdType === "frame" && (
-                            <div className="p-2 rounded-xl space-y-1 lamma-admin-card">
-                              <label
-                                htmlFor="prod-frame"
-                                className="text-[8px] text-gray-400 font-bold"
-                              >
-                                ألوان كلاس التدرج للإطار (Tailwind gradients):
-                              </label>
-                              <input
-                                type="text"
-                                id="prod-frame"
-                                name="prod-frame"
-                                autoComplete="off"
-                                placeholder="مثل: from-red-500 via-orange-500 to-yellow-500"
-                                value={newProdFrame}
-                                onChange={(e) =>
-                                  setNewProdFrame(e.target.value)
-                                }
-                                className="w-full rounded-lg p-1.5 text-xs text-white lamma-input-shell"
-                              />
-                            </div>
-                          )}
-
-                          {newProdType === "title" && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 rounded-xl lamma-admin-card">
-                              <div className="space-y-1">
-                                <label
-                                  htmlFor="prod-title"
-                                  className="text-[8px] text-gray-400 font-bold"
-                                >
-                                  اللقب المعين للشات:
-                                </label>
-                                <input
-                                  type="text"
-                                  id="prod-title"
-                                  name="prod-title"
-                                  autoComplete="off"
-                                  placeholder="مثل: إمبراطور السلام"
-                                  value={newProdTitle}
-                                  onChange={(e) =>
-                                    setNewProdTitle(e.target.value)
-                                  }
-                                  className="w-full rounded-lg p-1.5 text-xs text-white lamma-input-shell"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <label
-                                  htmlFor="prod-badge-2"
-                                  className="text-[8px] text-gray-400 font-bold"
-                                >
-                                  شارة اللقب الفخرية (Badge):
-                                </label>
-                                <input
-                                  type="text"
-                                  id="prod-badge-2"
-                                  name="prod-badge-2"
-                                  autoComplete="off"
-                                  placeholder="مثل: 👑 القيصر"
-                                  value={newProdBadge}
-                                  onChange={(e) =>
-                                    setNewProdBadge(e.target.value)
-                                  }
-                                  className="w-full rounded-lg p-1.5 text-xs text-white lamma-input-shell"
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="flex gap-2 justify-end pt-1">
-                            {editingProduct && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingProduct(null);
-                                  setNewProdName("");
-                                  setNewProdDesc("");
-                                  setNewProdPrice("");
-                                  setNewProdBadge("");
-                                  setNewProdTitle("");
-                                  setNewProdExt("");
-                                }}
-                                className="px-3 py-1.5 text-gray-300 font-bold text-[10px] rounded-lg transition-all lamma-soft-action"
-                              >
-                                إلغاء التعديل
-                              </button>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (
-                                  !newProdName.trim() ||
-                                  !newProdPrice.trim() ||
-                                  !newProdDesc.trim()
-                                ) {
-                                  alert(
-                                    "❌ يرجى ملء حقول الاسم، السعر، والوصف بنجاح لإتمام عملية النشر بالمتجر!",
-                                  );
-                                  return;
-                                }
-
-                                if (editingProduct) {
-                                  // Edit item
-                                  setStoreProducts((prev) =>
-                                    prev.map((p) => {
-                                      if (p.id === editingProduct.id) {
-                                        return {
-                                          ...p,
-                                          name: newProdName,
-                                          tab: newProdTab,
-                                          price: newProdPrice,
-                                          description: newProdDesc,
-                                          type: newProdType,
-                                          badge: newProdBadge || undefined,
-                                          color: newProdColor || undefined,
-                                          frame:
-                                            newProdType === "frame"
-                                              ? newProdFrame
-                                              : newProdType === "platinum"
-                                                ? "from-yellow-400 via-amber-500 to-yellow-600"
-                                                : undefined,
-                                          title: newProdTitle || undefined,
-                                          ext: newProdExt || undefined,
-                                        };
-                                      }
-                                      return p;
-                                    }),
-                                  );
-
-                                  addSystemActivityLog(
-                                    "promote",
-                                    currentUser.nickname,
-                                    `تعديل وإعادة نشر المنتج [${newProdName}] بالمتجر التلقائي.`,
-                                    "👑 OWNER MODERATOR",
-                                  );
-                                  alert(
-                                    "✅ تم تعديل المنتج وحفظ التغييرات بنجاح في نظام المتجر وذاكرة السيرفر!",
-                                  );
-                                  setEditingProduct(null);
-                                } else {
-                                  // Create item
-                                  const item = {
-                                    id: `prod-${Date.now()}`,
-                                    tab: newProdTab,
-                                    name: newProdName,
-                                    price: newProdPrice,
-                                    description: newProdDesc,
-                                    type: newProdType,
-                                    badge: newProdBadge || undefined,
-                                    color: newProdColor || undefined,
-                                    frame:
-                                      newProdType === "frame"
-                                        ? newProdFrame
-                                        : newProdType === "platinum"
-                                          ? "from-yellow-400 via-amber-500 to-yellow-600"
-                                          : undefined,
-                                    title: newProdTitle || undefined,
-                                    ext: newProdExt || undefined,
-                                  };
-
-                                  setStoreProducts((prev) => [...prev, item]);
-                                  addSystemActivityLog(
-                                    "promote",
-                                    currentUser.nickname,
-                                    `إضافة وعرض ميزة متجر جديدة للمستخدمين: [${newProdName}] بقيمة ${newProdPrice}.`,
-                                    "👑 OWNER MODERATOR",
-                                  );
-                                  alert(
-                                    "✅ تم حقن ونشر الميزة الجديدة وتفعيل العرض فوسفورياً في المتجر بكفاءة!",
-                                  );
-                                }
-
-                                // Reset form
-                                setNewProdName("");
-                                setNewProdDesc("");
-                                setNewProdPrice("");
-                                setNewProdBadge("");
-                                setNewProdTitle("");
-                                setNewProdExt("");
-                              }}
-                              className="px-4 py-1.5 text-white font-black text-[10px] rounded-lg transition-all cursor-pointer lamma-feature-primary"
-                            >
-                              {editingProduct
-                                ? "💾 حفظ وتعديل الميزة"
-                                : "🚀 نشر فوري للميزة بالمتجر"}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* LISTING EXISTING STOCKED PRODUCTS */}
-                        <div className="space-y-2">
-                          <h6 className="text-[10px] text-gray-400 font-extrabold pr-1">
-                            📋 العروض المتاحة حالياً بالمتجر وتحت سيطرتك:
-                          </h6>
-                          {storeProducts.map((p) => (
-                            <div
-                              key={p.id}
-                              className="p-3 rounded-xl flex items-center justify-between gap-3 text-right transition-all lamma-admin-card"
-                            >
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => {
-                                    setEditingProduct(p);
-                                    setNewProdName(p.name);
-                                    setNewProdTab(p.tab);
-                                    setNewProdPrice(p.price);
-                                    setNewProdDesc(p.description);
-                                    setNewProdType(p.type);
-                                    setNewProdBadge(p.badge || "");
-                                    setNewProdColor(p.color || "#10b981");
-                                    setNewProdFrame(
-                                      p.frame || "from-purple-600 to-pink-600",
-                                    );
-                                    setNewProdTitle(p.title || "");
-                                    setNewProdExt(p.ext || "");
-                                  }}
-                                  className="p-1 px-2.5 rounded-lg text-[9px] font-bold transition-all cursor-pointer lamma-accent-btn"
-                                  title="تعديل هذا المنتج"
-                                >
-                                  ✏️ تعديل
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    if (
-                                      confirm(
-                                        `هل أنت متأكد تماماً من إزالة وحذف ميزة [${p.name}] من عروض المتجر؟ لن يراها الأعضاء مجدداً.`,
-                                      )
-                                    ) {
-                                      setStoreProducts((prev) =>
-                                        prev.filter((item) => item.id !== p.id),
-                                      );
-                                      addSystemActivityLog(
-                                        "demote",
-                                        currentUser.nickname,
-                                        `سحب وحذف الميزة المتجرية [${p.name}] من نوافذ العرض والبيع.`,
-                                        "👑 OWNER MODERATOR",
-                                      );
-                                    }
-                                  }}
-                                  className="p-1 px-2.5 rounded-lg text-[9px] font-bold transition-all cursor-pointer lamma-danger-btn"
-                                  title="حذف هذا المنتج"
-                                >
-                                  🗑️ حذف من المتجر
-                                </button>
-                              </div>
-
-                              <div className="space-y-0.5">
-                                <div className="text-xs font-black text-white flex items-center gap-1.5 justify-end">
-                                  <span
-                                    className={`text-[8.5px] px-1.5 py-0.5 rounded font-black ${
-                                      p.tab === "vip"
-                                        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/10"
-                                        : p.tab === "skins"
-                                          ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/10"
-                                          : "bg-yellow-500/15 text-yellow-400 border border-yellow-500/10"
-                                    }`}
-                                  >
-                                    {p.tab === "vip"
-                                      ? "💎 باقة VIP"
-                                      : p.tab === "skins"
-                                        ? "🎨 مظاهر"
-                                        : "🏷️ ألقاب وشارات"}
-                                  </span>
-                                  <span>{p.name}</span>
-                                </div>
-                                <p className="text-[9px] text-gray-400 font-medium leading-relaxed max-w-[280px]">
-                                  {p.description}
-                                </p>
-                                <div className="text-[9px] text-emerald-500 font-mono flex items-center gap-2 justify-end">
-                                  <span>
-                                    السعر:{" "}
-                                    <strong className="text-white text-[10px]">
-                                      {p.price}
-                                    </strong>
-                                  </span>
-                                  {p.type && (
-                                    <span>
-                                      • النوع التقني:{" "}
-                                      <strong className="text-gray-300">
-                                        {p.type}
-                                      </strong>
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                          {storeProducts.length === 0 && (
-                            <div className="p-8 text-center text-gray-500 text-xs font-bold rounded-2xl lamma-section-card">
-                              المتجر فارغ! استخدم النموذج أعلاه لإنشاء عرقيات
-                              وعروض جديدة للربح والتأثير.
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <AdminPanelModal
+                    adminTab={adminTab}
+                    setAdminTab={setAdminTab}
+                    activityLogs={activityLogs}
+                    bannedUsersList={bannedUsersList}
+                    storeProducts={storeProducts}
+                    chatMembers={chatMembers}
+                    isMaintenanceMode={isMaintenanceMode}
+                    setIsMaintenanceMode={setIsMaintenanceMode}
+                    isGlobalMute={isGlobalMute}
+                    setIsGlobalMute={setIsGlobalMute}
+                    isGlobalMicMute={isGlobalMicMute}
+                    setIsGlobalMicMute={setIsGlobalMicMute}
+                    isAdsEnabled={isAdsEnabled}
+                    setIsAdsEnabled={setIsAdsEnabled}
+                    addSystemActivityLog={addSystemActivityLog}
+                    addLammaBotMessage={addLammaBotMessage}
+                    currentUser={currentUser}
+                    setRoomMessages={setRoomMessages}
+                    activeRoomId={activeRoomId}
+                    myFingerprint={myFingerprint}
+                    myBrowserSig={myBrowserSig}
+                    myIp={myIp}
+                    setBannedUsersList={setBannedUsersList}
+                    newProdName={newProdName}
+                    setNewProdName={setNewProdName}
+                    newProdTab={newProdTab}
+                    setNewProdTab={setNewProdTab}
+                    newProdPrice={newProdPrice}
+                    setNewProdPrice={setNewProdPrice}
+                    newProdDesc={newProdDesc}
+                    setNewProdDesc={setNewProdDesc}
+                    newProdType={newProdType}
+                    setNewProdType={setNewProdType}
+                    newProdBadge={newProdBadge}
+                    setNewProdBadge={setNewProdBadge}
+                    newProdColor={newProdColor}
+                    setNewProdColor={setNewProdColor}
+                    newProdFrame={newProdFrame}
+                    setNewProdFrame={setNewProdFrame}
+                    newProdTitle={newProdTitle}
+                    setNewProdTitle={setNewProdTitle}
+                    newProdExt={newProdExt}
+                    setNewProdExt={setNewProdExt}
+                    setStoreProducts={setStoreProducts}
+                    editingProduct={editingProduct}
+                    setEditingProduct={setEditingProduct}
+                  />
                 )}
 
                 {(activeModal === "guard" ||
                   (activeModal === "leadership" &&
                     leadershipTab === "guard")) && (
-                  <div className="space-y-6 select-none" dir="rtl">
-                    <div className="flex flex-col md:flex-row items-center justify-between p-4 rounded-2xl gap-3 lamma-soft-success">
-                      <div className="flex items-start gap-2.5">
-                        <span className="text-2xl mt-0.5">🤖</span>
-                        <div>
-                          <h4 className="text-white text-xs font-black font-sans text-right">
-                            مركز البوتات الذكية الشامل (Bot Control Center)
-                          </h4>
-                          <p className="text-[10px] text-gray-400 mt-0.5 leading-relaxed text-right font-sans">
-                            يمتلك الشات منظومة 4 بوتات آلية تعمل في الخلفية
-                            للحماية، الصيانة، كتابة التقارير الشاملة، ومراقبة
-                            تكنولوجيا الاتصال.
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setIsBotEnabled(!isBotEnabled)}
-                        className={`px-4 py-2 rounded-xl text-[11px] font-black transition-all flex items-center gap-1.5 shrink-0 select-none ${
-                          isBotEnabled ? "lamma-toggle-on" : "lamma-toggle-off"
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${isBotEnabled ? "bg-lime-400 animate-pulse" : "bg-red-400"}`}
-                        ></span>
-                        {isBotEnabled
-                          ? "إيقاف المنظومة"
-                          : "تشغيل منظومة البوتات"}
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {/* Bot 1: Protection Guard */}
-                      <div className="p-3 rounded-xl flex flex-col gap-2 lamma-admin-card">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-green-400 text-lg">🛡️</span>
-                          <span className="text-xs font-bold text-white">
-                            بوت الحماية المركزي (Lamma Guard)
-                          </span>
-                        </div>
-                        <p className="text-[9px] text-gray-400 h-10 leading-relaxed text-right font-sans">
-                          يقوم بفلترة الشتائم، منع الروابط الخارجية، وإيقاف
-                          الرسائل المكررة (Spam) تلقائياً حمايةً للمجتمع.
-                        </p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          <button
-                            onClick={() =>
-                              setBotRuleSwearFilter(!botRuleSwearFilter)
-                            }
-                            className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleSwearFilter ? "lamma-toggle-on" : "lamma-toggle-off"}`}
-                          >
-                            تصفية الشتائم {botRuleSwearFilter ? "🟢" : "🔴"}
-                          </button>
-                          <button
-                            onClick={() => setBotRuleAntiSpam(!botRuleAntiSpam)}
-                            className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleAntiSpam ? "lamma-toggle-on" : "lamma-toggle-off"}`}
-                          >
-                            منع السبام {botRuleAntiSpam ? "🟢" : "🔴"}
-                          </button>
-                          <button
-                            onClick={() =>
-                              setBotRuleAntiLinks(!botRuleAntiLinks)
-                            }
-                            className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleAntiLinks ? "lamma-toggle-on" : "lamma-toggle-off"}`}
-                          >
-                            منع الروابط {botRuleAntiLinks ? "🟢" : "🔴"}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Bot 2: Maintenance & Reports */}
-                      <div className="p-3 rounded-xl flex flex-col gap-2 lamma-admin-card">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-blue-400 text-lg">📋</span>
-                          <span className="text-xs font-bold text-white">
-                            بوت الصيانة وإعداد التقارير
-                          </span>
-                        </div>
-                        <p className="text-[9px] text-gray-400 h-10 leading-relaxed text-right font-sans">
-                          يولد تقارير حالة الشات عبر الأمر /guard أو /status،
-                          ويقوم برصد الخلل وتنبيه الإدارة في حالة الأعطال
-                          الحرجة.
-                        </p>
-                        <div className="flex flex-col gap-1 mt-1">
-                          <div className="px-2 py-1.5 rounded-lg text-[9px] font-bold text-center lamma-section-card text-blue-300">
-                            أوامر التقارير: /guard | /status تعمل بكفاءة ✅
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Bot 3: Tech Tracker */}
-                      <div className="p-3 rounded-xl flex flex-col gap-2 lamma-admin-card">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-purple-400 text-lg">🛰️</span>
-                          <span className="text-xs font-bold text-white">
-                            بوت متابعة التكنولوجيا والشبكات
-                          </span>
-                        </div>
-                        <p className="text-[9px] text-gray-400 h-10 leading-relaxed text-right font-sans">
-                          يراقب خوادم الـ WebRTC والاتصالات، ويقوم بالتحويل
-                          التلقائي (Auto-Fallback) للمسارات البديلة أثناء
-                          المكالمات الصوتية والمرئية لتفادي التقطيع.
-                        </p>
-                        <div className="flex flex-col gap-1 mt-1">
-                          <div className="px-2 py-1.5 rounded-lg text-[9px] font-bold text-center lamma-section-card text-purple-300">
-                            خوادم جوجل وكلاودفلير متصلة وتعمل تلقائياً ⚡
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Bot 4: Word Wall Auto-Mod */}
-                      <div className="p-3 rounded-xl flex flex-col gap-2 lamma-admin-card">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-red-400 text-lg">🧱</span>
-                          <span className="text-xs font-bold text-white">
-                            بوت الإشراف التلقائي (Word Firewall)
-                          </span>
-                        </div>
-                        <p className="text-[9px] text-gray-400 h-10 leading-relaxed text-right font-sans">
-                          مرتبط بغرفة تحكم المالك، يقوم بحجب وطرد أي عضو
-                          تلقائياً إذا حاول إرسال كلمة موجودة في جدار الحماية
-                          السيادي.
-                        </p>
-                        <div className="flex items-center justify-between mt-1 px-2 py-1.5 rounded-lg lamma-soft-danger">
-                          <span className="text-[9px] text-red-400 font-bold">
-                            حجم القاموس السيادي النشط:
-                          </span>
-                          <span className="text-[10px] text-white font-black bg-red-500/90 px-2 py-0.5 rounded-md">
-                            {bannedWords.length} كلمة
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                      <div className="flex items-center justify-between border-b border-green-500/10 pb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="lamma-icon-dot"></span>
-                          <h4 className="text-white text-xs font-black font-sans">
-                            سجل الفحص الأمني (Real-time Live Logs)
-                          </h4>
-                        </div>
-                        <button
-                          onClick={() => setBotLogs([])}
-                          className="text-[9px] text-red-400 hover:text-red-300 hover:underline font-bold"
-                        >
-                          مسح السجل
-                        </button>
-                      </div>
-
-                      <div className="space-y-1.5 max-h-[150px] overflow-y-auto font-mono text-[9px] leading-relaxed">
-                        {botLogs.map((log) => (
-                          <div
-                            key={log.id}
-                            className={`p-2 rounded-xl border flex items-start gap-2 text-right ${
-                              log.severity === "danger"
-                                ? "lamma-soft-danger text-red-300"
-                                : log.severity === "warn"
-                                  ? "lamma-soft-warn text-yellow-300"
-                                  : "lamma-section-card text-gray-300"
-                            }`}
-                          >
-                            <span className="text-gray-500 shrink-0 font-sans">
-                              [{log.time}]
-                            </span>
-                            <span className="flex-grow font-sans">
-                              {log.text}
-                            </span>
-                            <span className="shrink-0 font-black font-sans">
-                              {log.severity === "danger"
-                                ? "🛑 حجب"
-                                : log.severity === "warn"
-                                  ? "⚠️ إنذار"
-                                  : "ℹ️ نظام"}
-                            </span>
-                          </div>
-                        ))}
-                        {botLogs.length === 0 && (
-                          <div className="p-4 text-center text-gray-500 font-bold select-none w-full">
-                            لا توجد محاولات تسلل أو اختراقات مسجلة حالياً. حارس
-                            الحماية ساهر لمراقبة الشات.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* QUICK ACTION CONTROLS */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => {
-                          const timeStr = new Date().toLocaleTimeString(
-                            "en-US",
-                            {
-                              hour: "numeric",
-                              minute: "numeric",
-                              hour12: true,
-                            },
-                          );
-                          addBotSystemWarning(
-                            activeRoomId,
-                            "🚨 نداء بخصوص الحفاظ على هدوء الغرفة من حارس الشات الذكي Lamma Guard: نرجو من الجميع الاهتمام بآداب النقاش، وعدم نشر أي نصوص أو محتويات منافية حفاظا على استقرار الغرفة ومنعا للإقصاء التلقائي 🛡️.",
-                          );
-                          setBotLogs((prev) => [
-                            {
-                              id: `${Date.now()}`,
-                              time: timeStr,
-                              text: "بث الأدمن نداء عام بخصوص أمان واستقرار الشات لجميع الأعضاء.",
-                              severity: "info",
-                            },
-                            ...prev,
-                          ]);
-                          setActiveModal(null);
-                        }}
-                        className="py-2.5 rounded-xl text-yellow-300 font-black text-[10px] transition-all flex items-center justify-center gap-1.5 select-none lamma-soft-warn"
-                      >
-                        🚨 إنذار عام للغرفة
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          const timeStr = new Date().toLocaleTimeString(
-                            "en-US",
-                            {
-                              hour: "numeric",
-                              minute: "numeric",
-                              hour12: true,
-                            },
-                          );
-                          setBotLogs((prev) => [
-                            {
-                              id: `${Date.now()}`,
-                              time: timeStr,
-                              text: "اختبار فحص الغرفة التلقائي: تم التحقق بنجاح من جدار الكلمات وسرعة نقل الحزم اللافكرية للغرف بنسب سلامة 100%.",
-                              severity: "info",
-                            },
-                            ...prev,
-                          ]);
-                        }}
-                        className="py-2.5 rounded-xl text-lime-300 font-black text-[10px] transition-all flex items-center justify-center gap-1.5 cursor-pointer lamma-soft-success"
-                      >
-                        ⚡ محاكاة فحص الغرفة
-                      </button>
-                    </div>
-                  </div>
+                  <GuardPanelModal
+                    isBotEnabled={isBotEnabled}
+                    setIsBotEnabled={setIsBotEnabled}
+                    botRuleSwearFilter={botRuleSwearFilter}
+                    setBotRuleSwearFilter={setBotRuleSwearFilter}
+                    botRuleAntiSpam={botRuleAntiSpam}
+                    setBotRuleAntiSpam={setBotRuleAntiSpam}
+                    botRuleAntiLinks={botRuleAntiLinks}
+                    setBotRuleAntiLinks={setBotRuleAntiLinks}
+                    bannedWords={bannedWords}
+                    botLogs={botLogs}
+                    setBotLogs={setBotLogs}
+                    activeRoomId={activeRoomId}
+                    addBotSystemWarning={addBotSystemWarning}
+                    setActiveModal={setActiveModal}
+                  />
                 )}
 
                 {/* LAMMA AUTO-STORE AND AUTOMATION MODAL */}
                 {(activeModal === "store" ||
                   (activeModal === "leadership" &&
                     leadershipTab === "store")) && (
-                  <div className="space-y-4 text-right selection:bg-emerald-500/20 font-sans">
-                    {/* Header Banner */}
-                    <div className="p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none lamma-soft-success">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-1.5 justify-end sm:justify-start">
-                          <span className="text-sm">💎</span>
-                          <h4 className="text-white text-xs font-black">
-                            المركز الذكي للأتمتة والمتجر التلقائي
-                          </h4>
-                        </div>
-                        <p className="text-[9.5px] text-gray-400 font-bold leading-relaxed font-sans mt-0.5">
-                          تفعيل فوري لرتب VIP، الأشكال، الألقاب، الأصدقاء
-                          الأذكياء، وفحص سلامة وأمان المنصة آلياً بالكامل.
-                        </p>
-                      </div>
-                      <div className="shrink-0 text-left">
-                        <span className="text-[8.5px] font-black lamma-role-chip lamma-role-vip px-2.5 py-1 whitespace-nowrap">
-                          ● معالج التحقق التلقائي نشط
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* App Tabs Selection Bar */}
-                    <div className="flex items-center gap-1 border-b border-white/5 pb-2 overflow-x-auto scroller-hidden select-none">
-                      <button
-                        onClick={() => {
-                          setShopTab("vip");
-                          setSelectedProduct(null);
-                          setPayStatus("idle");
-                        }}
-                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
-                          shopTab === "vip"
-                            ? "lamma-toggle-on"
-                            : "lamma-tab-soft text-gray-400 hover:text-white"
-                        }`}
-                      >
-                        💎 باقات VIP الشاملة
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShopTab("skins");
-                          setSelectedProduct(null);
-                          setPayStatus("idle");
-                        }}
-                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
-                          shopTab === "skins"
-                            ? "lamma-toggle-on"
-                            : "lamma-tab-soft text-gray-400 hover:text-white"
-                        }`}
-                      >
-                        🎨 المظهر والإطارات
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShopTab("badges");
-                          setSelectedProduct(null);
-                          setPayStatus("idle");
-                        }}
-                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
-                          shopTab === "badges"
-                            ? "lamma-toggle-on"
-                            : "lamma-tab-soft text-gray-400 hover:text-white"
-                        }`}
-                      >
-                        🏷️ الألقاب والشارات
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShopTab("suggests");
-                          setPayStatus("idle");
-                        }}
-                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
-                          shopTab === "suggests"
-                            ? "lamma-toggle-on"
-                            : "lamma-tab-soft text-gray-400 hover:text-white"
-                        }`}
-                      >
-                        🤝 لقاء الرفاق آلياً
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShopTab("stats");
-                          setPayStatus("idle");
-                        }}
-                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
-                          shopTab === "stats"
-                            ? "lamma-toggle-on"
-                            : "lamma-tab-soft text-gray-400 hover:text-white"
-                        }`}
-                      >
-                        📊 إحصائيات الغرف تلقائياً
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShopTab("maintenance");
-                          setPayStatus("idle");
-                        }}
-                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
-                          shopTab === "maintenance"
-                            ? "lamma-toggle-off"
-                            : "lamma-tab-soft text-gray-400 hover:text-white"
-                        }`}
-                      >
-                        🔧 الصيانة والتعافي الذاتي
-                      </button>
-                    </div>
-
-                    {/* TAB CONTENTS - 1. VIP BUNDLES */}
-                    {shopTab === "vip" &&
-                      payStatus !== "loading" &&
-                      payStatus !== "success" && (
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {storeProducts
-                              .filter((p) => p.tab === "vip")
-                              .map((p) => (
-                                <div
-                                  key={p.id}
-                                  className="p-4 rounded-2xl flex flex-col justify-between transition-all select-none lamma-admin-card"
-                                >
-                                  <div className="space-y-1.5 text-right">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs lamma-role-chip lamma-role-vip font-extrabold px-1.5 py-0.5 rounded-lg">
-                                        30 يوماً
-                                      </span>
-                                      <h5 className="font-sans font-black text-white text-xs">
-                                        {p.name}
-                                      </h5>
-                                    </div>
-                                    <p className="text-[9px] text-gray-400 font-bold leading-relaxed font-sans mt-0.5">
-                                      {p.description}
-                                    </p>
-                                    <div className="pt-2 text-emerald-400 text-[10.5px] font-mono leading-none">
-                                      السعر:{" "}
-                                      <span className="text-white text-xs font-black">
-                                        {p.price}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedProduct(p);
-                                      setPayGateway("vodafone");
-                                      setPaymentAccountInput("");
-                                      setPayStatus("idle");
-                                    }}
-                                    className="w-full mt-4 py-2 text-white font-extrabold text-[10px] rounded-xl transition-all cursor-pointer lamma-feature-primary"
-                                  >
-                                    شراء فوري وتفعيل تلقائي
-                                  </button>
-                                </div>
-                              ))}
-                            {storeProducts.filter((p) => p.tab === "vip")
-                              .length === 0 && (
-                              <p className="col-span-2 text-center text-gray-500 text-[10px] font-bold py-6">
-                                ⚠️ لا يوجد باقات VIP في المتجر حالياً.
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                    {/* TAB CONTENTS - 2. SKINS & COSMETICS */}
-                    {shopTab === "skins" &&
-                      payStatus !== "loading" &&
-                      payStatus !== "success" && (
-                        <div
-                          id="lamma-skins-store-grid"
-                          className="grid grid-cols-1 md:grid-cols-3 gap-3"
-                        >
-                          {storeProducts
-                            .filter((p) => p.tab === "skins")
-                            .map((p) => (
-                              <div
-                                key={p.id}
-                                className="p-3 rounded-xl flex flex-col justify-between transition-all text-right select-none lamma-admin-card"
-                              >
-                                <h5 className="font-sans font-black text-white text-[11px] flex items-center gap-1.5 justify-end">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                  {p.name}
-                                </h5>
-                                <p className="text-[8.5px] text-gray-400 font-bold leading-relaxed mt-1">
-                                  {p.description}
-                                </p>
-                                <div className="mt-3 text-[10px] text-emerald-400 font-mono">
-                                  السعر: {p.price}
-                                </div>
-                                <button
-                                  onClick={() => {
-                                    setSelectedProduct(p);
-                                    setPayGateway("instapay");
-                                    setPaymentAccountInput("");
-                                    setPayStatus("idle");
-                                  }}
-                                  className="mt-2 py-1.5 rounded-lg text-[9px] font-black transition-all cursor-pointer lamma-toggle-on"
-                                >
-                                  احصل علي الإطار فوراً
-                                </button>
-                              </div>
-                            ))}
-                          {storeProducts.filter((p) => p.tab === "skins")
-                            .length === 0 && (
-                            <p className="col-span-3 text-center text-gray-500 text-[10px] font-bold py-6">
-                              ⚠️ لا توجد مظاهر أو إطارات ملوّنة حالياً.
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                    {/* TAB CONTENTS - 3. BADGES & TITLES */}
-                    {shopTab === "badges" &&
-                      payStatus !== "loading" &&
-                      payStatus !== "success" && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {storeProducts
-                            .filter((p) => p.tab === "badges")
-                            .map((p) => (
-                              <div
-                                key={p.id}
-                                className="p-4 rounded-2xl transition-all select-none lamma-admin-card"
-                              >
-                                <h5 className="font-sans font-black text-white text-xs">
-                                  {p.name}
-                                </h5>
-                                <p className="text-[9px] text-gray-400 font-bold mt-1 leading-relaxed">
-                                  {p.description}
-                                </p>
-                                <div className="mt-3 text-[10px] text-green-400 font-mono">
-                                  السعر: {p.price}
-                                </div>
-                                <button
-                                  onClick={() => {
-                                    setSelectedProduct(p);
-                                    setPayGateway("instapay");
-                                    setPaymentAccountInput("");
-                                    setPayStatus("idle");
-                                  }}
-                                  className="w-full mt-3 py-1.5 rounded-xl text-[9px] font-black transition-all cursor-pointer lamma-toggle-on"
-                                >
-                                  تثبيت اللقب فوراً آلياً
-                                </button>
-                              </div>
-                            ))}
-                          {storeProducts.filter((p) => p.tab === "badges")
-                            .length === 0 && (
-                            <p className="col-span-2 text-center text-gray-500 text-[10px] font-bold py-6">
-                              ⚠️ لا توجد ألقاب أو شارات متاحة حالياً.
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                    {/* TAB CONTENTS - 4. AUTOMATED FRIEND SUGGESTIONS */}
-                    {shopTab === "suggests" && (
-                      <div className="space-y-3">
-                        <div className="p-3 rounded-2xl lamma-section-card">
-                          <p className="text-[9.5px] text-gray-300 font-bold leading-relaxed">
-                            🤖 بوت الأرجحة الآلي يقترح عليك هؤلاء الأعضاء
-                            المتواجدين حالياً الحاملين لنفس اهتمامات الحوار
-                            والثقافة لتلقيح روابط الصداقة تلقائياً:
-                          </p>
-                        </div>
-
-                        <div className="space-y-2">
-                          {friendSuggestions.map((sug) => (
-                            <div
-                              key={sug.id}
-                              className="p-3 rounded-xl flex items-center justify-between gap-3 text-right lamma-admin-card"
-                            >
-                              {sug.status === "pending" ? (
-                                <span className="text-[9px] bg-yellow-500/15 text-yellow-500 border border-yellow-500/25 py-1 px-2.5 rounded-lg font-bold animate-pulse font-sans">
-                                  ⏳ جاري التفاوض الآلي...
-                                </span>
-                              ) : sug.status === "accepted" ? (
-                                <span className="text-[9px] bg-green-500/10 text-green-400 border border-green-500/20 py-1 px-2.5 rounded-lg font-bold font-sans">
-                                  🤝 تم القبول والصداقة مفعّلة!
-                                </span>
-                              ) : (
-                                <button
-                                  onClick={() => {
-                                    // Set pending status
-                                    setFriendSuggestions((prev) =>
-                                      prev.map((item) =>
-                                        item.id === sug.id
-                                          ? { ...item, status: "pending" }
-                                          : item,
-                                      ),
-                                    );
-
-                                    // Send bot notification
-                                    const timeStr =
-                                      new Date().toLocaleTimeString("ar-EG", {
-                                        hour: "numeric",
-                                        minute: "numeric",
-                                        hour12: true,
-                                      });
-                                    setBotLogs((prev) => [
-                                      {
-                                        id: `${Date.now()}`,
-                                        time: timeStr,
-                                        text: `ماتش أوفر للتلقين: جاري مطابقة بيانات الاهتمام والصداقة مع ${sug.name} آلياً.`,
-                                        severity: "info",
-                                      },
-                                      ...prev,
-                                    ]);
-
-                                    setTimeout(() => {
-                                      setFriendSuggestions((prev) =>
-                                        prev.map((item) =>
-                                          item.id === sug.id
-                                            ? { ...item, status: "accepted" }
-                                            : item,
-                                        ),
-                                      );
-                                      addLammaBotMessage(
-                                        activeRoomId,
-                                        `🤖 تم إرسال طلب الصداقة المقترح بين [${currentUser.nickname}] و[${sug.name}] بنجاح.`,
-                                      );
-                                    }, 2000);
-                                  }}
-                                  className="py-1 px-3 font-bold text-[9.5px] rounded-lg transition-all cursor-pointer lamma-feature-primary"
-                                >
-                                  📨 إرسال طلب صداقة آلي
-                                </button>
-                              )}
-
-                              <div className="flex items-center gap-2">
-                                <div className="space-y-0.5">
-                                  <h6 className="text-[11px] font-black text-white">
-                                    {sug.name}
-                                  </h6>
-                                  <p className="text-[8.5px] text-gray-500 font-extrabold">
-                                    {sug.interest}
-                                  </p>
-                                </div>
-                                <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-base shrink-0 select-none">
-                                  {sug.icon}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* TAB CONTENTS - 5. AUTOMATED CHARTS & STATISTICS */}
-                    {shopTab === "stats" && (
-                      <div className="space-y-3 font-sans">
-                        <p className="text-[9.5px] text-gray-400 font-bold leading-normal pb-1">
-                          📊 إحصائيات الغرف اليومية التلقائية المستخرجة آلياً
-                          لتقديم إشارات الأمان والنشاط للإدارة على مدار الساعة:
-                        </p>
-
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          <div className="p-3 rounded-xl text-center lamma-stat-card">
-                            <span className="text-gray-500 text-[8.5px] font-black">
-                              إجمالي الرسائل
-                            </span>
-                            <h5 className="text-[13px] font-black text-green-400 mt-1 font-mono">
-                              5,820
-                            </h5>
-                          </div>
-                          <div className="p-3 rounded-xl text-center lamma-stat-card">
-                            <span className="text-gray-500 text-[8.5px] font-black">
-                              الأعضاء المتفاعلين
-                            </span>
-                            <h5 className="text-[13px] font-black text-cyan-400 mt-1 font-mono">
-                              409
-                            </h5>
-                          </div>
-                          <div className="p-3 rounded-xl text-center lamma-stat-card">
-                            <span className="text-gray-500 text-[8.5px] font-black">
-                              الزوار الجدد
-                            </span>
-                            <h5 className="text-[13px] font-black text-yellow-400 mt-1 font-mono">
-                              +185
-                            </h5>
-                          </div>
-                          <div className="p-3 rounded-xl text-center lamma-stat-card">
-                            <span className="text-gray-500 text-[8.5px] font-black">
-                              جودة الاستقرار
-                            </span>
-                            <h5 className="text-[13px] font-black text-purple-400 mt-1 font-mono">
-                              100%
-                            </h5>
-                          </div>
-                        </div>
-
-                        {/* Chart Representation */}
-                        <div className="p-3 rounded-2xl lamma-section-card">
-                          <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
-                            <span className="text-[8.5px] text-gray-500 font-black">
-                              مؤشر نشاط الغرف بالساعات السابقة (النسبة النأوية)
-                            </span>
-                            <span className="text-[9px] text-emerald-400 font-black">
-                              سيرفر الإحصائيات الآلي مكلل
-                            </span>
-                          </div>
-                          <div className="space-y-2 pt-1 font-sans">
-                            <div>
-                              <div className="flex justify-between text-[8px] font-black text-gray-400 mb-0.5">
-                                <span>58% نشاط تفاعلي</span>
-                                <span>🇪🇬 غرفة مصر للحديث</span>
-                              </div>
-                              <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                                <div
-                                  className="bg-emerald-500 h-full rounded-full"
-                                  style={{ width: "58%" }}
-                                ></div>
-                              </div>
-                            </div>
-                            <div>
-                              <div className="flex justify-between text-[8px] font-black text-gray-400 mb-0.5">
-                                <span>32% نشاط تفاعلي</span>
-                                <span>👫 لمة شباب وبنات العرب</span>
-                              </div>
-                              <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                                <div
-                                  className="bg-cyan-500 h-full rounded-full"
-                                  style={{ width: "32%" }}
-                                ></div>
-                              </div>
-                            </div>
-                            <div>
-                              <div className="flex justify-between text-[8px] font-black text-gray-400 mb-0.5">
-                                <span>10% نشاط تفاعلي</span>
-                                <span>💖 شات الرومانسية</span>
-                              </div>
-                              <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                                <div
-                                  className="bg-purple-500 h-full rounded-full"
-                                  style={{ width: "10%" }}
-                                ></div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => {
-                            addLammaBotMessage(
-                              activeRoomId,
-                              `📊 التقرير الإحصائي العام التلقائي (Lamma Analytics Report):
-- إجمالي رسائل اليوم بغرف الشات: 5,820 رسالة متبادلة رسائل حرة 💬.
-- عدد المسجلين النشطين على المنصة: 409 عضو فائق الفعالية 🚀.
-- أفضل الغرف حرقاً ونشاطاً بالساعة: [غرفة مصر الوازنة EG] بمستويات نشاط 58% ✨.
-- العضو الأكثر فاعلية وحضوراً لليوم: أحمد صاحب النخوة 👑.`,
-                            );
-                            alert(
-                              "📊 تم بنجاح بث تقرير الإحصائيات الشامل التلقائي كرسالة رسمية مرئية للجميع بغرفة الدردشة!",
-                            );
-                          }}
-                          className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[10px] border border-emerald-500/20 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                          📢 بث تقرير الإحصائيات الشامل في الغرفة
-                        </button>
-                      </div>
-                    )}
-
-                    {/* TAB CONTENTS - 6. AUTOMATED MAINTENANCE & HEALING */}
-                    {shopTab === "maintenance" && (
-                      <div className="space-y-3 font-sans">
-                        <div className="p-3 rounded-xl flex items-center justify-between gap-3 text-right lamma-soft-danger">
-                          <div className="space-y-0.5">
-                            <h5 className="text-[11.5px] font-black text-white">
-                              نظام الصيانة والتعافي الذاتي الشامل (Auto
-                              Maintenance Engine)
-                            </h5>
-                            <p className="text-[8.5px] text-gray-400 font-bold leading-relaxed font-sans">
-                              عند انقطاع الاتصال بقواعد البيانات Supabase أو
-                              تعطل Realtime Client، يتدخل البوت دورياً لإعادة
-                              التوجيه وإرسال التنبيهات اللازمة للمشرف الفني
-                              آلياً.
-                            </p>
-                          </div>
-                          <div
-                            className={`w-3 h-3 rounded-full shrink-0 ${isDbConnectionLost ? "bg-red-500 animate-ping" : "bg-green-500 animate-pulse"}`}
-                          ></div>
-                        </div>
-
-                        {/* Live simulation control */}
-                        <div className="p-3 rounded-xl space-y-2 lamma-section-card">
-                          <div className="flex items-center justify-between text-right border-b border-white/5 pb-1.5">
-                            <span className="text-[8.5px] text-gray-500 font-extrabold">
-                              الوضع الحالي لقنوات الإتصال
-                            </span>
-                            <span
-                              className={`text-[9.1px] font-black ${isDbConnectionLost ? "text-red-400 animate-pulse" : "text-green-400"}`}
-                            >
-                              {isDbConnectionLost
-                                ? "🔴 الخدمة معطلة (Supabase Lost)"
-                                : "🟢 الخدمة مستقرة بالكامل"}
-                            </span>
-                          </div>
-
-                          <div className="space-y-1 max-h-[105px] overflow-y-auto font-mono text-[8.5px] leading-relaxed">
-                            {dbStatusLogs.map((log, i) => (
-                              <div
-                                key={i}
-                                className="text-gray-400 p-1 border-b border-white/[0.02] last:border-0"
-                              >
-                                {log}
-                              </div>
-                            ))}
-                            {dbStatusLogs.length === 0 && (
-                              <div className="text-gray-500 text-center py-4 font-sans text-[9px] font-bold">
-                                انقر على الخيار أدناه لتجربة المحاكاة ورصد
-                                التعافي الفوري.
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {!isDbConnectionLost ? (
-                          <button
-                            onClick={() => {
-                              setIsDbConnectionLost(true);
-                              setIsReconnectingDb(true);
-                              const now = new Date().toLocaleTimeString(
-                                "ar-EG",
-                                {
-                                  hour: "numeric",
-                                  minute: "numeric",
-                                  second: "numeric",
-                                },
-                              );
-                              setDbStatusLogs([
-                                `[${now}] 🚨 طوارئ: تم رصد انقطاعات حادة بالمزود الرئيسي لقاعدة البيانات Supabase!`,
-                                `[${now}] 🚨 طوارئ: انقطاع قنوات المزامنة المتزامنة الفورية (Realtime Engine Offline).`,
-                                `[${now}] 🛡️ الأتمتة: تشغيل خطة الطوارئ فئة A والبدء بالمحاولات الدورية للتواصل البديل...`,
-                              ]);
-
-                              // Trigger progressive auto healing
-                              setTimeout(() => {
-                                const now2 = new Date().toLocaleTimeString(
-                                  "ar-EG",
-                                  {
-                                    hour: "numeric",
-                                    minute: "numeric",
-                                    second: "numeric",
-                                  },
-                                );
-                                setDbStatusLogs((prev) => [
-                                  `[${now2}] ⚙️ المحرك: تم توجيه ترافيك الغرفة والنشاط للذاكرة العشوائية المستقرة البديلة (RAM-Mirror).`,
-                                  `[${now2}] 🔔 التنبيه الآلي: تم إرسال رسالة بريدية عاجلة للمشرف الفني لفرض الرصد التكتيكي لقاعدة البيانات.`,
-                                  ...prev,
-                                ]);
-                              }, 1800);
-
-                              setTimeout(() => {
-                                const now3 = new Date().toLocaleTimeString(
-                                  "ar-EG",
-                                  {
-                                    hour: "numeric",
-                                    minute: "numeric",
-                                    second: "numeric",
-                                  },
-                                );
-                                setDbStatusLogs((prev) => [
-                                  `[${now3}] ✅ الأتمتة بنجاح: تم التغلب والتعافي التام وإعادة تصفية الاتصال بخادم النسخ الاحتياطية الاستراتيجي بنسبة استقرار 100%!`,
-                                  `[${now3}] 📡 الاتصال: عودة حالة الحاقنات للون الأخضر والعمل مستقر بالكامل.`,
-                                  ...prev,
-                                ]);
-                                setIsDbConnectionLost(false);
-                                setIsReconnectingDb(false);
-                                addLammaBotMessage(
-                                  activeRoomId,
-                                  "🤖 نظام التعافي الذاتي Lamma Maintenance: تم رصد انقطاع عابر في قنوات الاتصال بريل تايم Supabase وقامت الأتمتة الذاتية بإجراء تحويل المسار والربط بالخادم الرديف بنجاح تام في غضون ثوانٍ دون ضياع للرسائل 🚀🛡️!",
-                                );
-                              }, 4500);
-                            }}
-                            className="w-full py-2 font-extrabold text-[10px] rounded-xl transition-all cursor-pointer text-center lamma-danger-btn"
-                          >
-                            🔌 محاكاة قطع الاتصال ورصد التعافي الفوري للبوت
-                          </button>
-                        ) : (
-                          <div className="py-2.5 rounded-xl text-center text-yellow-300 text-[10px] font-black font-sans lamma-soft-warn">
-                            ⏳ جاري تنفيذ معالجات التعافي الذاتي من خلال البوت
-                            الذكي... انتظر ثانية واحدة!
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* GATEWAY PAYMENT PANEL (IF PRODUCT CHOSEN) */}
-                    {selectedProduct &&
-                      payStatus !== "loading" &&
-                      payStatus !== "success" && (
-                        <div className="p-4 rounded-2xl text-right space-y-3 font-sans animate-fadeIn lamma-section-card">
-                          <div className="flex items-center justify-between border-b border-green-500/15 pb-2">
-                            <button
-                              onClick={() => setSelectedProduct(null)}
-                              className="text-[9.5px] text-gray-500 hover:text-white font-black hover:underline"
-                            >
-                              رجوع للتسوق
-                            </button>
-                            <h6 className="font-sans font-black text-white text-xs">
-                              عملية دفع آمنة مؤتمتة • Lamma AutoPay
-                            </h6>
-                          </div>
-
-                          <div className="p-3 rounded-xl space-y-1.5 text-right lamma-admin-card">
-                            <div className="text-[10px] text-gray-400 font-bold leading-normal">
-                              المنتج المحدد للتفعيل التلقائي:
-                            </div>
-                            <div className="text-white text-[12px] font-black">
-                              {selectedProduct.name}
-                            </div>
-                            <div className="text-emerald-400 text-[10.5px] font-mono">
-                              طريقة الدفع وقيمتها: {selectedProduct.price}
-                            </div>
-                          </div>
-
-                          {/* Choosing Gateway selectors */}
-                          <div className="space-y-1.5">
-                            <span className="text-[9px] text-gray-400 font-extrabold pr-1">
-                              اختر مزود الدفع الفوري:
-                            </span>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                              <button
-                                onClick={() => {
-                                  setPayGateway("vodafone");
-                                  setPaymentAccountInput("");
-                                }}
-                                className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
-                                  payGateway === "vodafone"
-                                    ? "lamma-toggle-off"
-                                    : "lamma-tab-soft text-gray-400 hover:text-white"
-                                }`}
-                              >
-                                🍎 فودافون كاش
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setPayGateway("instapay");
-                                  setPaymentAccountInput("");
-                                }}
-                                className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
-                                  payGateway === "instapay"
-                                    ? "lamma-accent-btn"
-                                    : "lamma-tab-soft text-gray-400 hover:text-white"
-                                }`}
-                              >
-                                ⚡ إنستاباي IPA
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setPayGateway("paymob");
-                                  setPaymentAccountInput("");
-                                }}
-                                className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
-                                  payGateway === "paymob"
-                                    ? "lamma-accent-btn"
-                                    : "lamma-tab-soft text-gray-400 hover:text-white"
-                                }`}
-                              >
-                                💳 بطاقة فيزا/ميزة
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setPayGateway("stripe");
-                                  setPaymentAccountInput("");
-                                }}
-                                className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
-                                  payGateway === "stripe"
-                                    ? "lamma-accent-btn"
-                                    : "lamma-tab-soft text-gray-400 hover:text-white"
-                                }`}
-                              >
-                                💳 Stripe الآلي
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setPayGateway("paypal");
-                                  setPaymentAccountInput("");
-                                }}
-                                className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
-                                  payGateway === "paypal"
-                                    ? "lamma-soft-warn"
-                                    : "lamma-tab-soft text-gray-400 hover:text-white"
-                                }`}
-                              >
-                                🅿️ PayPal
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Dynamic Input Based on Gateway */}
-                          {payGateway === "vodafone" && (
-                            <div className="space-y-1 text-right">
-                              <label
-                                htmlFor="vodafone-wallet-input"
-                                className="text-[9px] text-gray-400 font-extrabold pr-1"
-                              >
-                                قم بتحويل المبلغ فودافون كاش للرقم{" "}
-                                <span className="text-white text-xs font-mono">
-                                  01029384756
-                                </span>{" "}
-                                ثم اكتب رقم محفظتك للتأكيد التلقائي:
-                              </label>
-                              <input
-                                type="text"
-                                id="vodafone-wallet-input"
-                                name="vodafoneWallet"
-                                autoComplete="tel"
-                                maxLength={11}
-                                placeholder="01xxxxxxxxx (رقم المحفظة المحول منها)"
-                                value={paymentAccountInput}
-                                onChange={(e) =>
-                                  setPaymentAccountInput(
-                                    e.target.value.replace(/\D/g, ""),
-                                  )
-                                }
-                                className="w-full rounded-xl p-2.5 text-xs text-white text-right focus:outline-none text-right lamma-input-shell"
-                              />
-                            </div>
-                          )}
-
-                          {payGateway === "instapay" && (
-                            <div className="space-y-1 text-right">
-                              <label
-                                htmlFor="instapay-address-input"
-                                className="text-[9px] text-gray-400 font-extrabold pr-1"
-                              >
-                                قم بالتحويل الآمن لعنوان إنستاباي{" "}
-                                <span className="text-white text-xs font-mono">
-                                  lamma@instapay
-                                </span>{" "}
-                                ثم اكتب الـ Adresse الخاص بك:
-                              </label>
-                              <input
-                                type="text"
-                                id="instapay-address-input"
-                                name="instapayAddress"
-                                autoComplete="off"
-                                placeholder="username@instapay (عنوان إرسالك للتسوية)"
-                                value={paymentAccountInput}
-                                onChange={(e) =>
-                                  setPaymentAccountInput(e.target.value)
-                                }
-                                className="w-full rounded-xl p-2.5 text-xs text-white text-right focus:outline-none text-right lamma-input-shell"
-                              />
-                            </div>
-                          )}
-
-                          {payGateway === "paymob" && (
-                            <div className="space-y-2 text-right">
-                              <div className="text-[9px] text-gray-400 font-extrabold pr-1">
-                                أدخل بيانات بطاقتك الائتمانية للتسوية الآمنة:
-                              </div>
-                              <div className="grid grid-cols-3 gap-2">
-                                <input
-                                  type="text"
-                                  id="paymob-cvv"
-                                  name="paymob-cvv"
-                                  autoComplete="cc-csc"
-                                  maxLength={3}
-                                  placeholder="CVV"
-                                  className="rounded-xl p-2 text-xs text-center text-white lamma-input-shell"
-                                />
-                                <input
-                                  type="text"
-                                  id="paymob-expiry"
-                                  name="paymob-expiry"
-                                  autoComplete="cc-exp"
-                                  maxLength={5}
-                                  placeholder="MM/YY"
-                                  className="rounded-xl p-2 text-xs text-center text-white lamma-input-shell"
-                                />
-                                <input
-                                  type="text"
-                                  id="paymob-card-number"
-                                  name="paymob-card-number"
-                                  autoComplete="cc-number"
-                                  maxLength={16}
-                                  placeholder="رقم البطاقة المكون من 16 رقم"
-                                  className="rounded-xl p-2 text-xs text-right text-white col-span-2 lamma-input-shell"
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          {payGateway === "paypal" && (
-                            <div className="space-y-1 text-right">
-                              <label
-                                htmlFor="paypal-email-input"
-                                className="text-[9px] text-gray-400 font-extrabold pr-1"
-                              >
-                                قم بإدخال بريدك الإلكتروني المسجل في PayPal
-                                للتسوية التلقائية:
-                              </label>
-                              <input
-                                type="email"
-                                id="paypal-email-input"
-                                name="paypal-email"
-                                autoComplete="email"
-                                placeholder="name@example.com (حسابك لتسجيل المعاملة)"
-                                value={paymentAccountInput}
-                                onChange={(e) =>
-                                  setPaymentAccountInput(e.target.value)
-                                }
-                                className="w-full rounded-xl p-2.5 text-xs text-white text-right focus:outline-none text-right lamma-input-shell"
-                              />
-                            </div>
-                          )}
-
-                          <button
-                            onClick={() => {
-                              if (
-                                (payGateway === "vodafone" ||
-                                  payGateway === "instapay") &&
-                                !paymentAccountInput.trim()
-                              ) {
-                                alert(
-                                  "❌ يرجى إدخال محفظة التحويل أو عنوان إنستاباي بنجاح للمطابقة الآلية!",
-                                );
-                                return;
-                              }
-
-                              setPayStatus("loading");
-                              setPaymentLogs([
-                                "⏳ جاري إنشاء حلقة تسوية المعاملة عبر Lamma AutoPay Server...",
-                                "🔍 جاري التحري والتدقيق المالي من صحة تسليم إشعار فودافون كاش / إنستاباي اللاسلكي...",
-                              ]);
-
-                              // Simulation sequence
-                              setTimeout(() => {
-                                setPaymentLogs((prev) => [
-                                  ...prev,
-                                  "📂 عثرنا على إثبات الإشعار المعنون آلياً بمستويات سداد مقابلة.",
-                                  "⚡ جاري المطابقة والتصديق الفوري في قواعد كبار الشخصيات والشارات المقترحة...",
-                                ]);
-                              }, 1000);
-
-                              setTimeout(() => {
-                                setPaymentLogs((prev) => [
-                                  ...prev,
-                                  "💎 تم تأكيد الدفع بنسبة سلامة 100%! جاري التفعيل، ترقية الصلاحيات، وحقن الجوان مظهر الشات...",
-                                ]);
-                              }, 2200);
-
-                              setTimeout(() => {
-                                setPayStatus("success");
-
-                                if (
-                                  selectedProduct.type === "bronze" ||
-                                  selectedProduct.type === "platinum" ||
-                                  selectedProduct.type === "vip"
-                                ) {
-                                  // Activate VIP
-                                  const isPlat =
-                                    selectedProduct.type === "platinum";
-                                  const expiresAtMs =
-                                    Date.now() + 30 * 24 * 60 * 60 * 1000;
-                                  const subInfo = {
-                                    isActive: true,
-                                    type: isPlat ? "platinum" : "vip",
-                                    color: isPlat
-                                      ? "gradient"
-                                      : selectedProduct.color || "#10b981",
-                                    badge:
-                                      selectedProduct.badge ||
-                                      (isPlat ? "PLATINUM" : "VIP"),
-                                    frame: isPlat
-                                      ? "from-yellow-500 via-amber-500 to-yellow-600"
-                                      : selectedProduct.frame || "",
-                                    avatar: selectedProduct.avatar || "👤",
-                                    expiresAt: expiresAtMs,
-                                  };
-                                  localStorage.setItem(
-                                    subscriptionStorageKey,
-                                    JSON.stringify(subInfo),
-                                  );
-                                  setSubscription(subInfo);
-
-                                  // Apply update to current user session
-                                  setMyActiveSession((prev) => ({
-                                    ...prev,
-                                    color:
-                                      subInfo.color === "gradient"
-                                        ? undefined
-                                        : subInfo.color,
-                                    badge: subInfo.badge,
-                                    avatar: subInfo.avatar,
-                                    frame: subInfo.frame,
-                                  }));
-
-                                  addLammaBotMessage(
-                                    activeRoomId,
-                                    `🤖 تم تفعيل ميزة [${selectedProduct.name}] للعضو المميز [${currentUser.nickname}] غرفوياً بوقار متناهٍ لمدة 30 يوماً! تم تفعيل الشارات والاتصال الفوري تلقائياً بالتحقق عبر ${payGateway === "vodafone" ? "فودافون كاش 🍎" : payGateway === "instapay" ? "إنستاباي ⚡" : payGateway === "paypal" ? "PayPal 🅿️" : "البطاقة البنكية 💳"} 🎉!`,
-                                  );
-                                  addSystemActivityLog(
-                                    "promote",
-                                    currentUser.nickname,
-                                    `شراء واشتراك تلقائي في باقة كبار الشخصيات VIP وتفعيلها فوراً آلياً بالدفع الرقمي.`,
-                                    "🤖 LAMMA AUTO-VERIFIER",
-                                  );
-                                } else if (selectedProduct.type === "frame") {
-                                  // Apply customized avatar frames!
-                                  setMyActiveSession((prev) => ({
-                                    ...prev,
-                                    frame: selectedProduct.frame,
-                                  }));
-                                  addLammaBotMessage(
-                                    activeRoomId,
-                                    `🤖 مظهر جديد متجانس: قام العضو [${currentUser.nickname}] بشراء مظهر الإطار الراقي [${selectedProduct.name}] وتولت الأتمتة المظهرية من تفعليه فوراً حول ملفه الشخصي بنجاح 🎨!`,
-                                  );
-                                  addSystemActivityLog(
-                                    "promote",
-                                    currentUser.nickname,
-                                    `شراء وتفعيل إطار المظهر المتوهج [${selectedProduct.name}] وتوليه فوراً.`,
-                                    "🤖 LAMMA AUTO-VERIFIER",
-                                  );
-                                } else if (selectedProduct.type === "title") {
-                                  // Apply customized title and text badges!
-                                  setMyActiveSession((prev) => ({
-                                    ...prev,
-                                    title: selectedProduct.title,
-                                    badge: selectedProduct.badge,
-                                  }));
-                                  addLammaBotMessage(
-                                    activeRoomId,
-                                    `🤖 صلاحية فخرية: قام العضو [${currentUser.nickname}] بشراء وتفعيل لقب التفاضل الخاص [${selectedProduct.title}] وتم إرساءه تلقائياً بجواز رتبته في الغرفة 🏷️!`,
-                                  );
-                                  addSystemActivityLog(
-                                    "promote",
-                                    currentUser.nickname,
-                                    `تثبيت لقب العضو الفخري المميز [${selectedProduct.title}] بنجاح آلياً.`,
-                                    "🤖 LAMMA AUTO-VERIFIER",
-                                  );
-                                }
-                              }, 3200);
-                            }}
-                            className="w-full py-2.5 text-white text-[10.5px] font-black rounded-xl transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 lamma-feature-primary"
-                          >
-                            💸 تأكيد الدفع التلقائي الآمن وإصدار الترقية فوراً
-                          </button>
-                        </div>
-                      )}
-
-                    {/* GATEWAY PAYMENT LOADER SIMULATION */}
-                    {payStatus === "loading" && (
-                      <div className="p-5 rounded-2xl text-center space-y-4 font-sans animate-fadeIn lamma-section-card">
-                        <div className="w-12 h-12 rounded-full border-t-2 border-emerald-500 animate-spin mx-auto"></div>
-                        <div className="space-y-1.5 pt-2">
-                          <h6 className="font-sans font-black text-white text-xs">
-                            جاري فحص المعاملات آلياً دون تدخل بشري...
-                          </h6>
-                          <p className="text-[10px] text-gray-400 font-bold leading-normal font-mono animate-pulse">
-                            Lamma Auto-Verification Server Connection Node-9
-                          </p>
-                        </div>
-                        <div className="p-3 rounded-xl space-y-1 max-h-[140px] overflow-y-auto lamma-admin-card">
-                          {paymentLogs.map((log, i) => (
-                            <div
-                              key={i}
-                              className="text-right text-emerald-400 text-[9px] font-bold font-mono"
-                            >
-                              ▸ {log}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* GATEWAY PAYMENT SUCCESS PANEL */}
-                    {payStatus === "success" && (
-                      <div className="p-6 rounded-3xl text-center space-y-4 font-sans animate-bounceIn lamma-soft-success">
-                        <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl mx-auto shadow-[0_0_15px_rgba(16,185,129,0.3)] shrink-0 select-none">
-                          ✓
-                        </div>
-                        <div className="space-y-1 pt-1 text-center">
-                          <h6 className="font-sans font-black text-white text-sm">
-                            تم الدفع والتفعيل التلقائي بنجاح!
-                          </h6>
-                          <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
-                            تم تفعيل الطلب واحتساب رتبك ودمج المزايا بالدردشة
-                            تلقائياً. تم تسجيل الحدث وإشعار جميع الغرف في أمان
-                            وسلام.
-                          </p>
-                        </div>
-                        <div className="p-3 rounded-2xl flex items-center justify-between text-right font-sans lamma-admin-card">
-                          <div className="flex flex-col items-start leading-tight">
-                            <span className="text-white text-xs font-black">
-                              {myActiveSession.nickname}
-                            </span>
-                            <span className="text-emerald-400 font-mono text-[8.5px] mt-0.5">
-                              {myVisualRole || "user"}
-                            </span>
-                          </div>
-                          <span className="text-[9.5px] font-black bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">
-                            نشط ومرخص آلياً
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setSelectedProduct(null);
-                            setPayStatus("idle");
-                          }}
-                          className="w-full py-2 text-white font-extrabold text-[10px] rounded-xl transition-all lamma-feature-primary"
-                        >
-                          عودة لمركز المتجر والأتمتة
-                        </button>
-                      </div>
-                    )}
-
-                    {/* --- SIMULATED CHRONOLOGICAL TESTING PANEL (FOR COMPREHENSIVE DEBUGGING) --- */}
-                    {subscription && subscription.isActive && (
-                      <div className="p-4 bg-yellow-500/[0.03] border border-yellow-500/15 rounded-2xl text-right mt-4 space-y-2 select-none font-sans">
-                        <div className="flex items-center gap-1.5 justify-end">
-                          <span className="text-yellow-400">⏳</span>
-                          <h6 className="font-sans font-black text-yellow-500 text-[10px]">
-                            ⚙️ لوحة اختبار المحاكاة الزمنية (خاصة بالمطورين
-                            ومراجعي النظام)
-                          </h6>
-                        </div>
-                        <p className="text-[8.5px] text-gray-400 font-bold leading-relaxed font-sans mt-0.5">
-                          تتيح لك اللوحة التقدم المرجعي لمشاهدة دورة حياة اشتراك
-                          VIP الممنوح بالكامل كأنه حقيقي وتفعيل البوت للتذكير
-                          الآلي وسحب الامتيازات فوراً!
-                        </p>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-1">
-                          <button
-                            onClick={() => handleAccelerateDays(7)}
-                            className="py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 font-black text-[9px] rounded-lg border border-yellow-500/20 transition-all"
-                          >
-                            🕒 تسريع 7 أيام
-                          </button>
-                          <button
-                            onClick={() => handleAccelerateDays(23)}
-                            className="py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 font-black text-[9px] rounded-lg border border-yellow-500/20 transition-all"
-                          >
-                            🕒 تسريع 23 يوماً (أسبوع متبقي)
-                          </button>
-                          <button
-                            onClick={() => handleAccelerateDays(27)}
-                            className="py-1.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 font-black text-[9px] rounded-lg border border-yellow-500/20 transition-all"
-                          >
-                            🕒 تسريع 27 يوماً (3 أيام متبقية)
-                          </button>
-                          <button
-                            onClick={() => handleAccelerateDays(30)}
-                            className="py-1.5 text-red-400 font-black text-[9px] rounded-lg transition-all col-span-2 md:col-span-1 lamma-danger-btn"
-                          >
-                            ⚠️ إنهاء كامل (30 يوماً)
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <StorePanelModal
+                    shopTab={shopTab}
+                    setShopTab={setShopTab}
+                    payStatus={payStatus}
+                    setPayStatus={setPayStatus}
+                    selectedProduct={selectedProduct}
+                    setSelectedProduct={setSelectedProduct}
+                    storeProducts={storeProducts}
+                    payGateway={payGateway}
+                    setPayGateway={setPayGateway}
+                    paymentAccountInput={paymentAccountInput}
+                    setPaymentAccountInput={setPaymentAccountInput}
+                    paymentLogs={paymentLogs}
+                    setPaymentLogs={setPaymentLogs}
+                    subscription={subscription}
+                    setSubscription={setSubscription}
+                    setMyActiveSession={setMyActiveSession}
+                    currentUser={currentUser}
+                    activeRoomId={activeRoomId}
+                    addLammaBotMessage={addLammaBotMessage}
+                    addSystemActivityLog={addSystemActivityLog}
+                    myVisualRole={myVisualRole}
+                    friendSuggestions={friendSuggestions}
+                    setFriendSuggestions={setFriendSuggestions}
+                    setBotLogs={setBotLogs}
+                    isDbConnectionLost={isDbConnectionLost}
+                    setIsDbConnectionLost={setIsDbConnectionLost}
+                    setIsReconnectingDb={setIsReconnectingDb}
+                    dbStatusLogs={dbStatusLogs}
+                    setDbStatusLogs={setDbStatusLogs}
+                    handleAccelerateDays={handleAccelerateDays}
+                  />
                 )}
-                {activeModal === "leadership" && leadershipTab === "design" && (
-                  <div className="space-y-4 select-none" dir="rtl">
-                    <div className="p-4 rounded-2xl lamma-section-card">
-                      <div className="text-white text-xs font-black">
-                        🎨 مركز التصميم
-                      </div>
-                      <div className="text-[10px] text-gray-400 font-bold mt-1">
-                        تحكم في الهوية البصرية: اللوجو، الخلفيات، وبعض عناصر
-                        الواجهة.
-                      </div>
-                    </div>
-
-                    {isOwnerRole && (
-                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <div className="text-[11px] text-emerald-300 font-black">
-                              🤖 المساعد الذكي الآمن
-                            </div>
-                            <div className="text-[10px] text-gray-400 font-bold mt-1">
-                              يفحص ويقترح فقط. لا يغيّر أي شيء إلا بعد موافقتك.
-                            </div>
-                          </div>
-                          <span className="px-2 py-1 rounded-full text-[9px] font-black bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                            Safe Mode
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                          <button
-                            type="button"
-                            onClick={runAssistantAudit}
-                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
-                          >
-                            فحص الشات
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => queueAssistantProposal("premium")}
-                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
-                          >
-                            اقتراح فاخر
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => queueAssistantProposal("calm")}
-                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
-                          >
-                            اقتراح هادئ
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => queueAssistantProposal("night")}
-                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
-                          >
-                            اقتراح ليلي
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => queueAssistantProposal("room-focus")}
-                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
-                          >
-                            اقتراح للغرفة
-                          </button>
-                        </div>
-
-                        {assistantAudit && (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                            <div className="rounded-2xl p-3 lamma-admin-card">
-                              <div className="text-[10px] text-gray-400 font-black">
-                                تقييم المظهر
-                              </div>
-                              <div className="text-2xl font-black text-emerald-300 mt-1">
-                                {assistantAudit.score}/100
-                              </div>
-                              <div className="text-[10px] text-gray-300 font-bold mt-1">
-                                {assistantAudit.verdict}
-                              </div>
-                            </div>
-                            <div className="rounded-2xl p-3 lamma-admin-card">
-                              <div className="text-[10px] text-gray-400 font-black">
-                                الغرفة المستهدفة
-                              </div>
-                              <div className="text-[14px] font-black text-cyan-300 mt-2">
-                                {assistantAudit.roomLabel}
-                              </div>
-                              <div className="text-[10px] text-gray-300 font-bold mt-1">
-                                المساعد يراجع الغرفة المفتوحة الآن ويحسب اقتراحه عليها.
-                              </div>
-                            </div>
-                            <div className="rounded-2xl p-3 lamma-admin-card">
-                              <div className="text-[10px] text-gray-400 font-black">
-                                خلاصة سريعة
-                              </div>
-                              <div className="space-y-1.5 mt-2">
-                                {assistantAudit.highlights.map((item, index) => (
-                                  <div
-                                    key={`${item}-${index}`}
-                                    className="text-[10px] text-gray-300 font-bold"
-                                  >
-                                    • {item}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {assistantFindings.length > 0 && (
-                          <div className="rounded-2xl p-3 space-y-2 lamma-admin-card">
-                            <div className="text-[10px] text-cyan-300 font-black">
-                              نتيجة الفحص
-                            </div>
-                            <div className="space-y-1.5">
-                              {assistantFindings.map((finding, index) => (
-                                <div
-                                  key={`${finding.text}-${index}`}
-                                  className={`text-[10px] font-bold rounded-xl px-2.5 py-2 border ${
-                                    finding.tone === "warn"
-                                      ? "text-yellow-200 border-yellow-500/20 bg-yellow-500/5"
-                                      : "text-emerald-200 border-emerald-500/20 bg-emerald-500/5"
-                                  }`}
-                                >
-                                  {finding.tone === "warn" ? "⚠️" : "✅"} {finding.text}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {assistantProposal && (
-                          <div className="rounded-2xl p-3 space-y-3 border border-fuchsia-500/20 bg-fuchsia-500/[0.04]">
-                            <div className="flex items-center justify-between gap-2">
-                              <div>
-                                <div className="text-[11px] text-fuchsia-300 font-black">
-                                  {assistantProposal.title}
-                                </div>
-                                <div className="text-[10px] text-gray-300 font-bold mt-1">
-                                  {assistantProposal.summary}
-                                </div>
-                              </div>
-                              <span className="px-2 py-1 rounded-full text-[9px] font-black bg-fuchsia-500/10 text-fuchsia-200 border border-fuchsia-500/20">
-                                بانتظار إذنك
-                              </span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                              {assistantProposal.changes.chatTheme && (
-                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
-                                  ثيم الشات: {assistantProposal.changes.chatTheme}
-                                </div>
-                              )}
-                              {assistantProposal.changes.wallTheme && (
-                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
-                                  ألوان الجدران: {assistantProposal.changes.wallTheme}
-                                </div>
-                              )}
-                              {assistantProposal.changes.glowColor && (
-                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card flex items-center justify-between gap-2">
-                                  <span>الإضاءة: {assistantProposal.changes.glowColor}</span>
-                                  <span
-                                    className="w-4 h-4 rounded-full border border-white/15"
-                                    style={{
-                                      backgroundColor: assistantProposal.changes.glowColor,
-                                    }}
-                                  />
-                                </div>
-                              )}
-                              {typeof assistantProposal.changes.brandLogoUrl !== "undefined" && (
-                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
-                                  الشعار: {assistantProposal.changes.brandLogoUrl ? "سيتم توحيد الشعار الحالي" : "الرجوع للافتراضي"}
-                                </div>
-                              )}
-                              {typeof assistantProposal.changes.roomBgCurrent !== "undefined" && (
-                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
-                                  خلفية الغرفة الحالية: {assistantProposal.changes.roomBgCurrent ? "تحديث" : "إزالة التخصيص"}
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="space-y-1.5">
-                              {assistantProposal.reasoning.map((reason, index) => (
-                                <div
-                                  key={`${assistantProposal.id}-${index}`}
-                                  className="text-[10px] text-gray-300 font-bold"
-                                >
-                                  • {reason}
-                                </div>
-                              ))}
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                              <button
-                                type="button"
-                                onClick={handleApplyAssistantProposal}
-                                className="py-2 rounded-xl text-[10px] font-black text-white transition-all lamma-accent-btn"
-                              >
-                                تطبيق المقترح
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setAssistantProposal(null)}
-                                className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
-                              >
-                                تجاهل المقترح
-                              </button>
-                              <button
-                                type="button"
-                                disabled={!lastAppliedDesignSnapshot}
-                                onClick={handleRestoreLastDesignSnapshot}
-                                className={`py-2 rounded-xl text-[10px] font-black transition-all ${
-                                  lastAppliedDesignSnapshot
-                                    ? "lamma-danger-btn"
-                                    : "opacity-50 cursor-not-allowed lamma-tab-soft"
-                                }`}
-                              >
-                                استعادة آخر شكل
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {isOwnerRole && (
-                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                        <div className="text-[11px] text-cyan-300 font-black">
-                          ألوان الجدران
-                        </div>
-                        <div className="text-[10px] text-gray-400 font-bold">
-                          تبديل لون الفواصل والفريم والماسورة داخل الشات
-                          بالكامل.
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setWallTheme("fire");
-                            }}
-                            className={`p-3 rounded-xl border transition-all ${
-                              wallTheme === "fire"
-                                ? "lamma-accent-btn"
-                                : "lamma-tab-soft"
-                            }`}
-                          >
-                            <div className="h-3 rounded-full bg-gradient-to-r from-yellow-500/30 via-orange-500/40 to-yellow-500/30 border border-yellow-500/25" />
-                            <div className="text-[10px] font-black text-yellow-400 mt-2">
-                              ناري
-                            </div>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setWallTheme("ice");
-                            }}
-                            className={`p-3 rounded-xl border transition-all ${
-                              wallTheme === "ice"
-                                ? "lamma-accent-btn"
-                                : "lamma-tab-soft"
-                            }`}
-                          >
-                            <div className="h-3 rounded-full bg-gradient-to-r from-sky-400/25 via-cyan-400/35 to-sky-400/25 border border-sky-400/25" />
-                            <div className="text-[10px] font-black text-sky-300 mt-2">
-                              ثلجي
-                            </div>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setWallTheme("violet");
-                            }}
-                            className={`p-3 rounded-xl border transition-all ${
-                              wallTheme === "violet"
-                                ? "lamma-accent-btn"
-                                : "lamma-tab-soft"
-                            }`}
-                          >
-                            <div className="h-3 rounded-full bg-gradient-to-r from-fuchsia-500/20 via-violet-500/35 to-fuchsia-500/20 border border-violet-500/25" />
-                            <div className="text-[10px] font-black text-violet-300 mt-2">
-                              بنفسجي
-                            </div>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {isOwnerRole && (
-                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                        <div className="text-[11px] text-cyan-300 font-black">
-                          ستايلات محفوظة
-                        </div>
-                        <div className="text-[10px] text-gray-400 font-bold">
-                          احفظ شكل كامل وبدّل بينهم بضغطة.
-                        </div>
-                        <div className="flex gap-2 p-2 rounded-xl lamma-admin-card">
-                          <input
-                            type="text"
-                            value={designPresetName}
-                            onChange={(e) => setDesignPresetName(e.target.value)}
-                            placeholder="اسم الستايل..."
-                            className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleSaveDesignPreset}
-                            className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
-                          >
-                            حفظ
-                          </button>
-                        </div>
-                        {designPresets.length > 0 && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {designPresets.map((preset) => (
-                              <div
-                                key={preset.id}
-                                className="p-3 rounded-2xl space-y-2 lamma-admin-card"
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="text-[11px] text-white font-black">
-                                    {preset.name}
-                                  </div>
-                                  <div className="text-[9px] text-gray-400 font-bold font-mono">
-                                    {new Date(preset.createdAt).toLocaleDateString("ar-EG")}
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const ok = window.confirm(
-                                        `تطبيق ستايل: ${preset.name} ؟`,
-                                      );
-                                      if (!ok) return;
-                                      applyDesignPreset(preset);
-                                    }}
-                                    className="py-2 rounded-xl text-[10px] font-black text-white transition-all lamma-accent-btn"
-                                  >
-                                    تطبيق
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const ok = window.confirm(
-                                        `حذف ستايل: ${preset.name} ؟`,
-                                      );
-                                      if (!ok) return;
-                                      handleDeleteDesignPreset(preset.id);
-                                    }}
-                                    className="py-2 rounded-xl text-[10px] font-black transition-all lamma-danger-btn"
-                                  >
-                                    حذف
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                      <div className="text-[11px] text-cyan-300 font-black">
-                        الشعار
-                      </div>
-                      <div className="flex items-center justify-center rounded-xl p-3 lamma-admin-card">
-                        <img
-                          src={brandLogoUrl || "/images/lamma-wordmark.svg"}
-                          alt="LAMMA CHAT"
-                          className="h-10 sm:h-12 w-auto"
-                          draggable={false}
-                        />
-                      </div>
-                      <div className="flex gap-2 p-1.5 rounded-lg lamma-admin-card">
-                        <input
-                          ref={designLogoUploadRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleDesignLogoUpload}
-                          className="hidden"
-                        />
-                        <input
-                          type="text"
-                          id="leadership_logo_url_input"
-                          value={designLogoInput}
-                          onChange={(e) => setDesignLogoInput(e.target.value)}
-                          placeholder="رابط الشعار (URL)..."
-                          className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => designLogoUploadRef.current?.click()}
-                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-tab-soft hover:text-white"
-                        >
-                          رفع
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (designLogoInput.trim() !== "") {
-                              setBrandLogoUrl(designLogoInput.trim());
-                            } else {
-                              setBrandLogoUrl(null);
-                            }
-                          }}
-                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
-                        >
-                          تطبيق
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                      <div className="text-[11px] text-cyan-300 font-black">
-                        ألوان الإضاءة
-                      </div>
-                      <div className="flex items-center gap-3 rounded-xl p-3 lamma-admin-card">
-                        <input
-                          type="color"
-                          value={glowColor}
-                          onChange={(e) => {
-                            const next = e.target.value;
-                            setGlowColor(next);
-                          }}
-                          className="w-10 h-10 rounded-lg bg-transparent lamma-input-shell"
-                        />
-                        <input
-                          type="text"
-                          value={glowColor}
-                          onChange={(e) => {
-                            const next = e.target.value;
-                            setGlowColor(next);
-                          }}
-                          className="flex-1 rounded-lg text-[11px] text-white px-2 py-2 focus:outline-none lamma-input-shell"
-                          dir="ltr"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                      <div className="text-[11px] text-cyan-300 font-black">
-                        خلفية الغرفة الحالية
-                      </div>
-                      <div className="text-[10px] text-gray-400 font-bold">
-                        {openRooms.find((r) => r.id === activeRoomId)?.name ||
-                          activeRoomId}
-                      </div>
-                      <div className="flex gap-2 p-1.5 rounded-lg lamma-admin-card">
-                        <input
-                          ref={designRoomBgUploadRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleDesignRoomBgUpload}
-                          className="hidden"
-                        />
-                        <input
-                          type="text"
-                          id="leadership_room_bg_url_input"
-                          value={designRoomBgInput}
-                          onChange={(e) => setDesignRoomBgInput(e.target.value)}
-                          placeholder="رابط صورة خلفية لهذه الغرفة (URL)..."
-                          className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => designRoomBgUploadRef.current?.click()}
-                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-tab-soft hover:text-white"
-                        >
-                          رفع
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = designRoomBgInput.trim();
-                            const updated = { ...roomBgMap };
-                            if (next) updated[activeRoomId] = next;
-                            else delete updated[activeRoomId];
-                            setRoomBgMap(updated);
-                          }}
-                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
-                        >
-                          تطبيق
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = { ...roomBgMap };
-                          delete updated[activeRoomId];
-                          setRoomBgMap(updated);
-                            setDesignRoomBgInput("");
-                        }}
-                        className="w-full py-2.5 rounded-xl font-black text-[10px] transition-all lamma-danger-btn"
-                      >
-                        حذف خلفية الغرفة
-                      </button>
-                    </div>
-
-                    <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                      <div className="text-[11px] text-cyan-300 font-black">
-                        الخلفية الافتراضية
-                      </div>
-                      <div className="flex gap-2 p-1.5 rounded-lg lamma-admin-card">
-                        <input
-                          ref={designOwnerBgUploadRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleDesignOwnerBgUpload}
-                          className="hidden"
-                        />
-                        <input
-                          type="text"
-                          id="leadership_bg_url_input"
-                          value={designOwnerBgInput}
-                          onChange={(e) => setDesignOwnerBgInput(e.target.value)}
-                          placeholder="رابط صورة الخلفية (URL)..."
-                          className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => designOwnerBgUploadRef.current?.click()}
-                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-tab-soft hover:text-white"
-                        >
-                          رفع
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (designOwnerBgInput.trim() !== "") {
-                              setOwnerBgImage(designOwnerBgInput.trim());
-                            } else {
-                              setOwnerBgImage(null);
-                            }
-                          }}
-                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
-                        >
-                          تطبيق
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                {activeModal === 'leadership' && leadershipTab === 'design' && (
+                  <DesignCenterModal
+                    isOwnerRole={isOwnerRole}
+                    runAssistantAudit={runAssistantAudit}
+                    queueAssistantProposal={queueAssistantProposal}
+                    assistantAudit={assistantAudit}
+                    assistantFindings={assistantFindings}
+                    assistantProposal={assistantProposal}
+                    handleApplyAssistantProposal={handleApplyAssistantProposal}
+                    setAssistantProposal={setAssistantProposal}
+                    lastAppliedDesignSnapshot={lastAppliedDesignSnapshot}
+                    handleRestoreLastDesignSnapshot={handleRestoreLastDesignSnapshot}
+                    setWallTheme={setWallTheme}
+                    wallTheme={wallTheme}
+                    designPresetName={designPresetName}
+                    setDesignPresetName={setDesignPresetName}
+                    handleSaveDesignPreset={handleSaveDesignPreset}
+                    designPresets={designPresets}
+                    applyDesignPreset={applyDesignPreset}
+                    handleDeleteDesignPreset={handleDeleteDesignPreset}
+                    brandLogoUrl={brandLogoUrl}
+                    designLogoUploadRef={designLogoUploadRef}
+                    handleDesignLogoUpload={handleDesignLogoUpload}
+                    designLogoInput={designLogoInput}
+                    setDesignLogoInput={setDesignLogoInput}
+                    setBrandLogoUrl={setBrandLogoUrl}
+                    chatTheme={chatTheme}
+                    setChatTheme={setChatTheme}
+                    glowColor={glowColor}
+                    setGlowColor={setGlowColor}
+                    activeRoomId={activeRoomId}
+                    openRooms={openRooms}
+                    designRoomBgUploadRef={designRoomBgUploadRef}
+                    handleDesignRoomBgUpload={handleDesignRoomBgUpload}
+                    designRoomBgInput={designRoomBgInput}
+                    setDesignRoomBgInput={setDesignRoomBgInput}
+                    roomBgMap={roomBgMap}
+                    setRoomBgMap={setRoomBgMap}
+                    designOwnerBgUploadRef={designOwnerBgUploadRef}
+                    handleDesignOwnerBgUpload={handleDesignOwnerBgUpload}
+                    designOwnerBgInput={designOwnerBgInput}
+                    setDesignOwnerBgInput={setDesignOwnerBgInput}
+                    setOwnerBgImage={setOwnerBgImage}
+                  />
                 )}
-
-                {activeModal === "leadership" && leadershipTab === "stats" && (
-                  <div className="space-y-4 select-none" dir="rtl">
-                    <div className="p-4 rounded-2xl lamma-section-card">
-                      <div className="text-white text-xs font-black">
-                        📊 الإحصائيات
-                      </div>
-                      <div className="text-[10px] text-gray-400 font-bold mt-1">
-                        نظرة سريعة على النشاط العام داخل الشات.
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                      <div className="p-3 rounded-xl text-center lamma-stat-card">
-                        <div className="text-sm font-black text-blue-300">
-                          {
-                            chatMembers.filter((m) => m.status === "online")
-                              .length
-                          }
-                        </div>
-                        <div className="text-[8.5px] text-gray-400 font-extrabold">
-                          المتصلين الآن
-                        </div>
-                      </div>
-                      <div className="p-3 rounded-xl text-center lamma-stat-card">
-                        <div className="text-sm font-black text-emerald-400">
-                          {(roomMessages?.[activeRoomId] || []).length}
-                        </div>
-                        <div className="text-[8.5px] text-gray-400 font-extrabold">
-                          رسائل الغرفة الحالية
-                        </div>
-                      </div>
-                      <div className="p-3 rounded-xl text-center lamma-stat-card">
-                        <div className="text-sm font-black text-yellow-500">
-                          {openRooms.length}
-                        </div>
-                        <div className="text-[8.5px] text-gray-400 font-extrabold">
-                          الغرف المفتوحة
-                        </div>
-                      </div>
-                      <div className="p-3 rounded-xl text-center lamma-stat-card">
-                        <div className="text-sm font-black text-red-400">
-                          {bannedUsersList.length}
-                        </div>
-                        <div className="text-[8.5px] text-gray-400 font-extrabold">
-                          العقوبات/الحظر
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                {activeModal === 'leadership' && leadershipTab === 'stats' && (
+                  <StatsModal
+                    chatMembers={chatMembers}
+                    roomMessages={roomMessages}
+                    activeRoomId={activeRoomId}
+                    openRooms={openRooms}
+                    bannedUsersList={bannedUsersList}
+                  />
                 )}
               </div>
             </div>
@@ -13877,948 +10503,38 @@ export default function ChatScreen({
       </AnimatePresence>
 
       <AnimatePresence>
-        {showProfileModal && selectedProfileMember && (
-          <motion.div
-            drag
-            dragMomentum={false}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed top-20 left-4 md:left-auto md:right-32 w-[340px] rounded-3xl overflow-hidden flex flex-col z-[100] cursor-move lamma-modal-shell"
-            style={{
-              resize: "both",
-              overflow: "hidden",
-              minWidth: "300px",
-              minHeight: "450px",
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-            }}
-            dir="rtl"
-          >
-            <div
-              className="flex-1 flex flex-col overflow-y-auto"
-              onPointerDownCapture={(e) => e.stopPropagation()}
-            >
-              {/* Profile Header */}
-              <div className="flex items-center justify-between p-4 lamma-modal-header">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">👤</span>
-                  <h3 className="font-sans font-black text-white text-xs">
-                    الملف التعريفي والرقابة الأمنية •{" "}
-                    {selectedProfileMember.nickname}
-                  </h3>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowProfileModal(false);
-                    setSelectedProfileMember(null);
-                  }}
-                  className="p-1.5 rounded-xl text-red-400 transition-all cursor-pointer lamma-danger-btn"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              {/* Profile Body */}
-              <div className="p-5 overflow-y-auto space-y-4 text-right">
-                {/* Visual Avatar Card */}
-                <div className="p-4 rounded-2xl flex items-center gap-3 lamma-section-card">
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl font-bold shrink-0 lamma-quiet-power-btn">
-                    {selectedProfileMember.avatar || "👤"}
-                  </div>
-                  <div className="flex-grow space-y-1">
-                    <div className="text-sm font-black text-white flex items-center gap-2">
-                      <span>{selectedProfileMember.nickname}</span>
-                      <span
-                        className={`text-[8px] px-1.5 py-0.5 rounded font-black tracking-wider lamma-role-chip ${
-                          selectedProfileMember.role === "platinum_vip"
-                            ? "lamma-role-plat"
-                            : selectedProfileMember.role === "owner"
-                              ? "lamma-role-owner"
-                              : selectedProfileMember.role === "admin"
-                                ? "lamma-role-admin"
-                                : selectedProfileMember.role === "mod"
-                                  ? "lamma-role-mod"
-                                  : selectedProfileMember.role === "vip"
-                                    ? "lamma-role-vip"
-                                    : ""
-                        }`}
-                      >
-                        {selectedProfileMember.role === "platinum_vip"
-                          ? "PLATINUM VIP"
-                          : selectedProfileMember.role === "owner"
-                            ? "OWNER"
-                            : selectedProfileMember.role === "admin"
-                              ? "ADMIN"
-                              : selectedProfileMember.role === "mod"
-                                ? "MODERATOR"
-                                : selectedProfileMember.role === "vip"
-                                  ? "VIP"
-                                  : selectedProfileMember.role === "user"
-                                    ? "MEMBER"
-                                    : "GUEST"}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-gray-500 font-bold font-mono">
-                      {selectedProfileMember.email ||
-                        "حساب ضيف بدون بريد إلكتروني"}
-                    </div>
-                  </div>
-                </div>
-
-                {selectedProfileMember.nickname === myActiveSession.nickname &&
-                  currentUser.authProvider === "supabase" && (
-                    <div className="p-4 rounded-2xl lamma-section-card space-y-3">
-                      <div className="flex items-center gap-2 text-[11px] font-black text-cyan-300">
-                        <LinkIcon size={13} className="text-cyan-300" />
-                        <span>التوبيك المؤقت وقت الدخول</span>
-                      </div>
-                      <p className="text-[10px] text-gray-400 leading-relaxed">
-                        اكتب عبارة قصيرة تظهر جنب اسمك لحظات وقت دخولك للشات أو
-                        عند دخول غرفة.
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={tempEntryTopicInput}
-                          maxLength={60}
-                          onChange={(e) => {
-                            setTempEntryTopicInput(e.target.value);
-                            setTempEntryTopicStatusText(null);
-                          }}
-                          placeholder="مثال: مساء الخير على الجميع"
-                          className="flex-1 rounded-xl p-2 text-xs text-white lamma-input-shell"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setTempEntryTopicEnabled((prev) => !prev)}
-                          className={`px-3 py-2 rounded-xl text-[10px] font-black transition-all cursor-pointer ${
-                            tempEntryTopicEnabled
-                              ? "text-emerald-200 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20"
-                              : "text-gray-300 bg-white/5 border border-white/10 hover:bg-white/10"
-                          }`}
-                        >
-                          {tempEntryTopicEnabled ? "مفعل" : "معطل"}
-                        </button>
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-[10px] text-gray-500">
-                          {tempEntryTopicInput.trim().length}/60
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleSaveTempEntryTopic}
-                          className="px-3 py-2 rounded-xl text-[10px] font-black text-cyan-200 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all cursor-pointer"
-                        >
-                          حفظ التوبيك
-                        </button>
-                      </div>
-                      {tempEntryTopicStatusText && (
-                        <div className="text-[10px] text-emerald-300 font-bold">
-                          {tempEntryTopicStatusText}
-                        </div>
-                      )}
-                      {tempEntryTopicInput.trim() && (
-                        <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold">
-                          <span>المعاينة:</span>
-                          <span className="text-cyan-200">
-                            {myActiveSession.nickname}
-                          </span>
-                          <span className="max-w-[160px] truncate rounded-full border border-cyan-400/25 bg-cyan-500/10 px-1.5 py-0.5 text-[8px] text-cyan-200">
-                            {tempEntryTopicInput.trim()}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                {selectedProfileMember.nickname === myActiveSession.nickname &&
-                  currentUser.authProvider === "supabase" &&
-                  !isOwnerRole && (
-                    <div className="p-4 rounded-2xl lamma-section-card space-y-3">
-                      <div className="text-[11px] font-black text-cyan-300">
-                        طلب تغيير الاسم (يعتمد من المالك)
-                      </div>
-                      <p className="text-[10px] text-gray-400 leading-relaxed">
-                        اكتب الاسم الجديد وسيصل طلبك للمالك للموافقة أو الرفض.
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={nicknameRequestInput}
-                          onChange={(e) =>
-                            setNicknameRequestInput(e.target.value)
-                          }
-                          placeholder="اكتب الاسم الجديد المطلوب..."
-                          className="flex-1 rounded-xl p-2 text-xs text-white lamma-input-shell"
-                        />
-                        <button
-                          type="button"
-                          disabled={nicknameRequestLoading}
-                          onClick={handleSubmitNicknameChangeRequest}
-                          className="px-3 py-2 rounded-xl text-[10px] font-black text-cyan-200 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all cursor-pointer"
-                        >
-                          إرسال
-                        </button>
-                      </div>
-                      {nicknameRequestStatusText && (
-                        <div className="text-[10px] text-emerald-300 font-bold">
-                          {nicknameRequestStatusText}
-                        </div>
-                      )}
-                      {nicknameRequests
-                        .filter((request) => request.user_id === currentUser.uid)
-                        .slice(0, 1)
-                        .map((request) => (
-                          <div
-                            key={request.id}
-                            className="text-[10px] text-gray-400 font-bold"
-                          >
-                            آخر طلب: {request.current_nickname} →{" "}
-                            {request.requested_nickname} (
-                            {request.status === "pending"
-                              ? "قيد المراجعة"
-                              : request.status === "approved"
-                                ? "تمت الموافقة"
-                                : "مرفوض"}
-                            )
-                          </div>
-                        ))}
-                    </div>
-                  )}
-
-                {/* Fingerprint Metadata Section */}
-                <div className="space-y-1.5">
-                  <div className="text-[9px] font-black text-[#a3e635] tracking-wide uppercase">
-                    بصمة المعرف الرقمي ومواصفات الاتصال الفني (Device Signature)
-                  </div>
-                  <div className="p-3 rounded-2xl space-y-2 text-[10px] font-mono text-gray-300 lamma-section-card">
-                    <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                      <span className="text-gray-500 select-none">
-                        ID المعرف:
-                      </span>{" "}
-                      <span>{selectedProfileMember.id}</span>
-                    </div>
-                    <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                      <span className="text-gray-500 select-none">
-                        بصمة الجهاز الفنية:
-                      </span>{" "}
-                      <span className="text-[#a3e635]">
-                        {selectedProfileMember.fingerprint}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                      <span className="text-gray-500 select-none">
-                        عنوان الـ IP الحالي:
-                      </span>{" "}
-                      <span className="text-red-400 font-bold">
-                        {selectedProfileMember.ip}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center border-b border-white/5 pb-1">
-                      <span className="text-gray-500 select-none">
-                        نوع المتصفح والاتصال:
-                      </span>{" "}
-                      <span
-                        className="truncate max-w-[180px] text-gray-400"
-                        title={selectedProfileMember.browserSignature}
-                      >
-                        {selectedProfileMember.browserSignature}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-500 select-none">
-                        مفتاح الحفظ المحلي:
-                      </span>{" "}
-                      <span className="text-gray-400 text-[8.5px] truncate max-w-[180px]">
-                        {selectedProfileMember.localStorageId}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Administration controls strictly based on current user role */}
-                <div className="space-y-2 select-none">
-                  <div className="text-[9px] font-black text-red-500 tracking-wide uppercase">
-                    إجراءات الرقابة والإدارة السريعة (Administrative Control
-                    Block)
-                  </div>
-
-                  {/* Permissions check block */}
-                  {currentUser.role === "owner" ||
-                  currentUser.role === "admin" ||
-                  currentUser.role === "mod" ? (
-                    <div className="space-y-3.5">
-                      {/* Grid 1: Basic controls */}
-                      <div className="grid grid-cols-2 gap-2">
-                        {/* 1. Warn */}
-                        <button
-                          onClick={() => {
-                            const textMsg = `🚨 [تنبيه أمني رسمي] من حارس الشات Lamma Guard لـ [${selectedProfileMember.nickname}]: يرجى التقيد بالآداب والأخلاق العامة للشات وعدم الخروج عن إطار الحديث المتزن وإلا سيتم الطرد التلقائي 🛡️.`;
-                            setRoomMessages((prev) => ({
-                              ...prev,
-                              [activeRoomId]: [
-                                ...(prev[activeRoomId] || []),
-                                {
-                                  id: `sys-warn-${Date.now()}`,
-                                  author: "حارس الشات 🛡️",
-                                  text: textMsg,
-                                  color: "#f59e0b",
-                                  isOwn: false,
-                                  time: new Date().toLocaleTimeString("ar-EG", {
-                                    hour: "numeric",
-                                    minute: "numeric",
-                                    hour12: true,
-                                  }),
-                                  type: "system",
-                                },
-                              ],
-                            }));
-                            addSystemActivityLog(
-                              "demote",
-                              selectedProfileMember.nickname,
-                              `تم إصدار إنذار وتحذير أمني علني للعضو في غرفة [${activeRoomId}]`,
-                            );
-                            alert(
-                              `تم إرسال التحذير بنجاح كرسالة نظام في الغرفة.`,
-                            );
-                            setShowProfileModal(false);
-                          }}
-                          className="py-2 px-3 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 font-bold text-[10px] rounded-xl border border-yellow-500/20 text-center transition-all cursor-pointer flex items-center justify-center gap-1"
-                        >
-                          ⚠️ إنذار وتحذير
-                        </button>
-
-                        {/* 2. Mute toggle */}
-                        <button
-                          onClick={() => {
-                            const isCurrentlyMuted = bannedUsersList.some(
-                              (b) =>
-                                b.nickname.toLowerCase() ===
-                                  selectedProfileMember.nickname.toLowerCase() &&
-                                b.type === "mute",
-                            );
-                            if (isCurrentlyMuted) {
-                              void removeBanEntries(
-                                (ban) =>
-                                  ban.nickname.toLowerCase() ===
-                                    selectedProfileMember.nickname.toLowerCase() &&
-                                  ban.type === "mute",
-                                { sync: true },
-                              );
-                              addSystemActivityLog(
-                                "promote",
-                                selectedProfileMember.nickname,
-                                `تم إلغاء كتم الصوت عن العضو ${selectedProfileMember.nickname} من قبل المشرف.`,
-                              );
-                              alert(`تم إلغاء الكتم بنجاح!`);
-                            } else {
-                              const muteBan: BanInfo = {
-                                id: `mute-${Date.now()}`,
-                                nickname: selectedProfileMember.nickname,
-                                email: selectedProfileMember.email,
-                                fingerprint: selectedProfileMember.fingerprint,
-                                browserSignature:
-                                  selectedProfileMember.browserSignature,
-                                ip: selectedProfileMember.ip,
-                                localStorageId:
-                                  selectedProfileMember.localStorageId,
-                                type: "mute",
-                                banner: currentUser.nickname,
-                                reason: "مخالفة معايير النقاش الهادئ",
-                                time: new Date().toLocaleTimeString("ar-EG", {
-                                  hour: "numeric",
-                                  minute: "numeric",
-                                }),
-                              };
-                              void addBanEntry(muteBan, { sync: true });
-                              addSystemActivityLog(
-                                "ban",
-                                selectedProfileMember.nickname,
-                                `تم كتم صوت العضو ${selectedProfileMember.nickname} وإيقاف رخصة حديثه.`,
-                              );
-                              alert(
-                                `تم كتم العضو [${selectedProfileMember.nickname}] من التحدث بنجاح!`,
-                              );
-                            }
-                            setShowProfileModal(false);
-                          }}
-                          className="py-2 px-3 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 font-bold text-[10px] rounded-xl border border-purple-500/20 text-center transition-all cursor-pointer flex items-center justify-center gap-1"
-                        >
-                          {bannedUsersList.some(
-                            (b) =>
-                              b.nickname.toLowerCase() ===
-                                selectedProfileMember.nickname.toLowerCase() &&
-                              b.type === "mute",
-                          )
-                            ? "🔊 إلغاء كتم الصوت"
-                            : "🔇 كتم حديث العضو"}
-                        </button>
-
-                        {/* 3. Kick */}
-                        <button
-                          onClick={() => {
-                            const sysText = `🚪 [طرد أمني عاجل] من المشرف لـ [${selectedProfileMember.nickname}]: تم الطرد فوراً لتنظيم الغرفة! 👋`;
-                            setRoomMessages((prev) => ({
-                              ...prev,
-                              [activeRoomId]: [
-                                ...(prev[activeRoomId] || []),
-                                {
-                                  id: `sys-kick-${Date.now()}`,
-                                  author: "بوابة الطرد 🚪",
-                                  text: sysText,
-                                  color: "#ef4444",
-                                  isOwn: false,
-                                  time: new Date().toLocaleTimeString("ar-EG", {
-                                    hour: "numeric",
-                                    minute: "numeric",
-                                    hour12: true,
-                                  }),
-                                  type: "system",
-                                },
-                              ],
-                            }));
-                            setChatMembers((prev) =>
-                              prev.filter(
-                                (m) =>
-                                  m.nickname.toLowerCase() !==
-                                  selectedProfileMember.nickname.toLowerCase(),
-                              ),
-                            );
-                            addSystemActivityLog(
-                              "ban",
-                              selectedProfileMember.nickname,
-                              `طرد فوري (Kick) للعضو الفوضوي من غرفة الدردشة.`,
-                            );
-                            alert(
-                              `تم إخضاع العضو للطرد الفوري خارج الغرفة بالتأكيد!`,
-                            );
-                            setShowProfileModal(false);
-                          }}
-                          className="py-2 px-3 text-orange-300 font-bold text-[10px] rounded-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1 lamma-soft-warn"
-                        >
-                          🚪 طرد فوري (Kick)
-                        </button>
-
-                        {/* 4. Delete messages */}
-                        <button
-                          onClick={() => {
-                            setRoomMessages((prev) => {
-                              const activeMsgs = prev[activeRoomId] || [];
-                              const filtered = activeMsgs.filter(
-                                (m) =>
-                                  m.author
-                                    .replace(
-                                      /\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g,
-                                      "",
-                                    )
-                                    .trim()
-                                    .toLowerCase() !==
-                                  selectedProfileMember.nickname.toLowerCase(),
-                              );
-                              return {
-                                ...prev,
-                                [activeRoomId]: filtered,
-                              };
-                            });
-                            addSystemActivityLog(
-                              "demote",
-                              selectedProfileMember.nickname,
-                              `تم مسح وسحب جميع رسائل العضو في غرفة [${activeRoomId}]`,
-                            );
-                            alert(
-                              `تم تصفية ومسح جميع رسائل العضو [${selectedProfileMember.nickname}] من شات الغرفة بنجاح!`,
-                            );
-                            setShowProfileModal(false);
-                          }}
-                          className="py-2 px-3 text-red-400 font-bold text-[10px] rounded-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1 lamma-danger-btn"
-                        >
-                          🗑️ حذف رسائله
-                        </button>
-                      </div>
-
-                      {/* Extended Admin / Owner features */}
-                      {(currentUser.role === "owner" ||
-                        currentUser.role === "admin") && (
-                        <div className="space-y-3 pt-2 border-t border-white/5 font-sans">
-                          {/* Room specific bans and Rank promotions */}
-                          <div className="grid grid-cols-2 gap-2">
-                            {/* Room ban button */}
-                            <button
-                              onClick={() => {
-                                const rb: BanInfo = {
-                                  id: `roomban-${Date.now()}`,
-                                  nickname: selectedProfileMember.nickname,
-                                  email: selectedProfileMember.email,
-                                  fingerprint:
-                                    selectedProfileMember.fingerprint,
-                                  browserSignature:
-                                    selectedProfileMember.browserSignature,
-                                  ip: selectedProfileMember.ip,
-                                  localStorageId:
-                                    selectedProfileMember.localStorageId,
-                                  type: "room",
-                                  roomId: activeRoomId,
-                                  banner: currentUser.nickname,
-                                  reason:
-                                    "مخالفة آداب النقاش في الغرفة المحددة",
-                                  time: new Date().toLocaleTimeString("ar-EG", {
-                                    hour: "numeric",
-                                    minute: "numeric",
-                                  }),
-                                };
-                                void addBanEntry(rb, { sync: true });
-                                addSystemActivityLog(
-                                  "ban",
-                                  selectedProfileMember.nickname,
-                                  `تم فرض حظر دخول الغرفة لـ ${selectedProfileMember.nickname} من غرفة [${activeRoomId}]`,
-                                );
-                                alert(
-                                  `تم حظر العضو بنجاح من دخول الغرفة الحالية [${activeRoomId}].`,
-                                );
-                                setShowProfileModal(false);
-                              }}
-                              className="py-2 px-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 font-bold text-[9.5px] rounded-xl border border-pink-500/20 text-center transition-all cursor-pointer"
-                            >
-                              🚫 حظر غرف (Room Ban)
-                            </button>
-
-                            {/* Dropdown for role changes */}
-                            <div className="flex flex-col gap-1 text-right">
-                              <span className="text-[8.5px] text-gray-500 font-extrabold pr-1">
-                                ترقية ومنح الصلاحيات:
-                              </span>
-                              <select
-                                id="profile-role-select"
-                                name="profileRoleSelect"
-                                value={selectedProfileMember.role}
-                                onChange={(e) => {
-                                  const targetRole = e.target.value as any;
-                                  setChatMembers((prev) =>
-                                    prev.map((m) => {
-                                      if (
-                                        m.nickname.toLowerCase() ===
-                                        selectedProfileMember.nickname.toLowerCase()
-                                      ) {
-                                        return { ...m, role: targetRole };
-                                      }
-                                      return m;
-                                    }),
-                                  );
-                                  addSystemActivityLog(
-                                    "promote",
-                                    selectedProfileMember.nickname,
-                                    `تغيير وتعيين رتبة لعضو الشات إلى [${targetRole}]`,
-                                  );
-                                  alert(
-                                    `تم تغيير وتحديث صلاحيات العضو إلى [${targetRole}] بنجاح!`,
-                                  );
-                                  setSelectedProfileMember((prev) =>
-                                    prev ? { ...prev, role: targetRole } : null,
-                                  );
-                                }}
-                                className="bg-black/60 border border-green-500/25 p-1 rounded-xl text-[9px] text-[#a3e635] font-black focus:ring-0 focus:outline-none focus:border-green-500"
-                              >
-                                <option value="guest">👤 GUEST</option>
-                                <option value="user">👨 MEMBER</option>
-                                <option value="vip">💎 VIP MEMBER</option>
-                                <option value="mod">🛡️ CHAT MODERATOR</option>
-                                <option value="admin">
-                                  🛡️ SYSTEM ADMIN
-                                </option>
-                                <option value="owner">👑 SYSTEM OWNER</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          {/* Owner absolute Superbans */}
-                          {currentUser.role === "owner" && (
-                            <div className="pt-2.5 border-t border-white/5 space-y-3">
-                              {/* Custom Permissions Controls exclusively handled by owner */}
-                              <div className="p-3 bg-black/60 border border-green-500/25 rounded-2xl space-y-2.5">
-                                <div className="text-[10px] font-black text-[#a3e635] flex items-center gap-1.5 border-b border-green-500/10 pb-1.5">
-                                  <span className="inline-flex items-center gap-1.5">
-                                    <Shield
-                                      size={13}
-                                      className="text-lime-300"
-                                    />
-                                    صلاحيات المالك الحصرية للعضو:
-                                  </span>
-                                </div>
-                                <div className="space-y-2 text-right">
-                                  {/* 1. Audio Recording */}
-                                  <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
-                                    <div className="flex items-center gap-1.5">
-                                      <Mic
-                                        size={14}
-                                        className="text-emerald-300"
-                                      />
-                                      <span>تسجيل وبث الصوت ميكروفون:</span>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const currentVal =
-                                          memberCustomPermissions[
-                                            selectedProfileMember.nickname
-                                          ]?.recordingAllowed || false;
-                                        setMemberCustomPermissions((prev) => ({
-                                          ...prev,
-                                          [selectedProfileMember.nickname]: {
-                                            ...(prev[
-                                              selectedProfileMember.nickname
-                                            ] || {
-                                              callsAllowed: false,
-                                              musicRadioAllowed: false,
-                                              roomCreationAllowed: false,
-                                            }),
-                                            recordingAllowed: !currentVal,
-                                          },
-                                        }));
-                                        addSystemActivityLog(
-                                          "promote",
-                                          selectedProfileMember.nickname,
-                                          `${!currentVal ? "تنشيط" : "إلغاء"} صلاحية التسجيل لـ ${selectedProfileMember.nickname}`,
-                                        );
-                                      }}
-                                      className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all border ${
-                                        memberCustomPermissions[
-                                          selectedProfileMember.nickname
-                                        ]?.recordingAllowed
-                                          ? "bg-green-500/15 border-green-500/30 text-green-400"
-                                          : "bg-red-500/15 border-red-500/30 text-red-400"
-                                      }`}
-                                    >
-                                      {memberCustomPermissions[
-                                        selectedProfileMember.nickname
-                                      ]?.recordingAllowed
-                                        ? "مفعلة بنجاح ✅"
-                                        : "معطلة ❌"}
-                                    </button>
-                                  </div>
-
-                                  {/* 2. Live Calls */}
-                                  <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
-                                    <div className="flex items-center gap-1.5">
-                                      <Phone
-                                        size={14}
-                                        className="text-sky-300"
-                                      />
-                                      <span>
-                                        إجراء المكالمات الهاتفية والمرئية:
-                                      </span>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const currentVal =
-                                          memberCustomPermissions[
-                                            selectedProfileMember.nickname
-                                          ]?.callsAllowed || false;
-                                        setMemberCustomPermissions((prev) => ({
-                                          ...prev,
-                                          [selectedProfileMember.nickname]: {
-                                            ...(prev[
-                                              selectedProfileMember.nickname
-                                            ] || {
-                                              recordingAllowed: false,
-                                              musicRadioAllowed: false,
-                                              roomCreationAllowed: false,
-                                            }),
-                                            callsAllowed: !currentVal,
-                                          },
-                                        }));
-                                        addSystemActivityLog(
-                                          "promote",
-                                          selectedProfileMember.nickname,
-                                          `${!currentVal ? "تنشيط" : "إلغاء"} صلاحية المكالمات لـ ${selectedProfileMember.nickname}`,
-                                        );
-                                      }}
-                                      className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all border ${
-                                        memberCustomPermissions[
-                                          selectedProfileMember.nickname
-                                        ]?.callsAllowed
-                                          ? "bg-green-500/15 border-green-500/30 text-green-400"
-                                          : "bg-red-500/15 border-red-500/30 text-red-400"
-                                      }`}
-                                    >
-                                      {memberCustomPermissions[
-                                        selectedProfileMember.nickname
-                                      ]?.callsAllowed
-                                        ? "مفعلة بنجاح ✅"
-                                        : "معطلة ❌"}
-                                    </button>
-                                  </div>
-
-                                  {/* 3. Music/Radio access */}
-                                  <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
-                                    <div className="flex items-center gap-1.5">
-                                      <Radio
-                                        size={14}
-                                        className="text-cyan-300"
-                                      />
-                                      <span>
-                                        تشغيل الراديو ومكتبة الموسيقى:
-                                      </span>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const currentVal =
-                                          memberCustomPermissions[
-                                            selectedProfileMember.nickname
-                                          ]?.musicRadioAllowed || false;
-                                        setMemberCustomPermissions((prev) => ({
-                                          ...prev,
-                                          [selectedProfileMember.nickname]: {
-                                            ...(prev[
-                                              selectedProfileMember.nickname
-                                            ] || {
-                                              recordingAllowed: false,
-                                              callsAllowed: false,
-                                              roomCreationAllowed: false,
-                                            }),
-                                            musicRadioAllowed: !currentVal,
-                                          },
-                                        }));
-                                        addSystemActivityLog(
-                                          "promote",
-                                          selectedProfileMember.nickname,
-                                          `${!currentVal ? "تنشيط" : "إلغاء"} صلاحية الموسيقى والراديو لـ ${selectedProfileMember.nickname}`,
-                                        );
-                                      }}
-                                      className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all border ${
-                                        memberCustomPermissions[
-                                          selectedProfileMember.nickname
-                                        ]?.musicRadioAllowed
-                                          ? "bg-green-500/15 border-green-500/30 text-green-400"
-                                          : "bg-red-500/15 border-red-500/30 text-red-400"
-                                      }`}
-                                    >
-                                      {memberCustomPermissions[
-                                        selectedProfileMember.nickname
-                                      ]?.musicRadioAllowed
-                                        ? "مفعلة بنجاح ✅"
-                                        : "معطلة ❌"}
-                                    </button>
-                                  </div>
-
-                                  {/* 4. Room Creation */}
-                                  <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
-                                    <div className="flex items-center gap-1.5">
-                                      <Compass
-                                        size={14}
-                                        className="text-yellow-300"
-                                      />
-                                      <span>إتاحة إنشاء غرف خاصة:</span>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const currentVal =
-                                          memberCustomPermissions[
-                                            selectedProfileMember.nickname
-                                          ]?.roomCreationAllowed || false;
-                                        setMemberCustomPermissions((prev) => ({
-                                          ...prev,
-                                          [selectedProfileMember.nickname]: {
-                                            ...(prev[
-                                              selectedProfileMember.nickname
-                                            ] || {
-                                              recordingAllowed: false,
-                                              callsAllowed: false,
-                                              musicRadioAllowed: false,
-                                              roomCreationAllowed: false,
-                                            }),
-                                            roomCreationAllowed: !currentVal,
-                                          },
-                                        }));
-                                        addSystemActivityLog(
-                                          "promote",
-                                          selectedProfileMember.nickname,
-                                          `${!currentVal ? "تنشيط" : "إلغاء"} صلاحية إنشاء الغرف لـ ${selectedProfileMember.nickname}`,
-                                        );
-                                      }}
-                                      className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all border ${
-                                        memberCustomPermissions[
-                                          selectedProfileMember.nickname
-                                        ]?.roomCreationAllowed
-                                          ? "bg-green-500/15 border-green-500/30 text-green-400"
-                                          : "bg-red-500/15 border-red-500/30 text-red-400"
-                                      }`}
-                                    >
-                                      {memberCustomPermissions[
-                                        selectedProfileMember.nickname
-                                      ]?.roomCreationAllowed
-                                        ? "مفعلة بنجاح ✅"
-                                        : "معطلة ❌"}
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="text-[8.5px] font-black text-red-500 select-none pr-1">
-                                💥 حظر المالك الأعلى المطلق:
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                {/* Mega Ban */}
-                                <button
-                                  onClick={() => {
-                                    const mb: BanInfo = {
-                                      id: `megaban-${Date.now()}`,
-                                      nickname: selectedProfileMember.nickname,
-                                      email: selectedProfileMember.email,
-                                      fingerprint:
-                                        selectedProfileMember.fingerprint,
-                                      browserSignature:
-                                        selectedProfileMember.browserSignature,
-                                      ip: selectedProfileMember.ip,
-                                      localStorageId:
-                                        selectedProfileMember.localStorageId,
-                                      type: "megaban",
-                                      banner: currentUser.nickname,
-                                      reason:
-                                        "تطبيق الحظر الكلي والكامل والأبدي (Mega Ban Lockdown)",
-                                      time: new Date().toLocaleTimeString(
-                                        "ar-EG",
-                                        { hour: "numeric", minute: "numeric" },
-                                      ),
-                                    };
-                                    void addBanEntry(mb, { sync: true });
-                                    addSystemActivityLog(
-                                      "ban",
-                                      selectedProfileMember.nickname,
-                                      `حظر كامل شامل ومطلق (Mega Ban) طمس وتجميد بصمته رقم: [${selectedProfileMember.fingerprint}]`,
-                                    );
-
-                                    const mbText = `🚨 [Mega Ban Lockdown]: أصدر المالك قراراً بالبتر الفني التام والمؤبد للعضو [${selectedProfileMember.nickname}] وتجميد بصمة جهازه والـ IP والحظر التلقائي لكافة الكوكيز والبيانات المحلية لديه! 🛑`;
-                                    setRoomMessages((prev) => ({
-                                      ...prev,
-                                      [activeRoomId]: [
-                                        ...(prev[activeRoomId] || []),
-                                        {
-                                          id: `sys-megaban-${Date.now()}`,
-                                          author: "المجلس الأعلى 👑",
-                                          text: mbText,
-                                          color: "#dc2626",
-                                          isOwn: false,
-                                          time: new Date().toLocaleTimeString(
-                                            "ar-EG",
-                                            {
-                                              hour: "numeric",
-                                              minute: "numeric",
-                                              hour12: true,
-                                            },
-                                          ),
-                                          type: "system",
-                                        },
-                                      ],
-                                    }));
-                                    setChatMembers((prev) =>
-                                      prev.filter(
-                                        (m) =>
-                                          m.nickname.toLowerCase() !==
-                                          selectedProfileMember.nickname.toLowerCase(),
-                                      ),
-                                    );
-                                    alert(
-                                      `تم إخضاع العضو المشاغب فوراً للحظر المطلق Mega Ban وتجميد كافة بيانات اتصاله!`,
-                                    );
-                                    setShowProfileModal(false);
-                                  }}
-                                  className="py-2.5 bg-red-600/25 hover:bg-red-600/35 text-red-400 font-extrabold text-[9.5px] rounded-xl border border-red-500/30 text-center transition-all cursor-pointer"
-                                >
-                                  🚨 حظر شامل (Mega Ban)
-                                </button>
-
-                                {/* Shadow Ban */}
-                                <button
-                                  onClick={() => {
-                                    const isShadow = bannedUsersList.some(
-                                      (b) =>
-                                        b.nickname.toLowerCase() ===
-                                          selectedProfileMember.nickname.toLowerCase() &&
-                                        b.type === "shadow",
-                                    );
-                                    if (isShadow) {
-                                      void removeBanEntries(
-                                        (ban) =>
-                                          ban.nickname.toLowerCase() ===
-                                            selectedProfileMember.nickname.toLowerCase() &&
-                                          ban.type === "shadow",
-                                        { sync: true },
-                                      );
-                                      addSystemActivityLog(
-                                        "promote",
-                                        selectedProfileMember.nickname,
-                                        `تم إلغاء الحظر الخفي (Shadow Ban) عن العضو ${selectedProfileMember.nickname}.`,
-                                      );
-                                      alert(`تم إلغاء الحظر الخفي.`);
-                                    } else {
-                                      const sb: BanInfo = {
-                                        id: `shadow-${Date.now()}`,
-                                        nickname:
-                                          selectedProfileMember.nickname,
-                                        email: selectedProfileMember.email,
-                                        fingerprint:
-                                          selectedProfileMember.fingerprint,
-                                        browserSignature:
-                                          selectedProfileMember.browserSignature,
-                                        ip: selectedProfileMember.ip,
-                                        localStorageId:
-                                          selectedProfileMember.localStorageId,
-                                        type: "shadow",
-                                        banner: currentUser.nickname,
-                                        reason: "تطبيق حظر خفي شبكي من المالك",
-                                        time: new Date().toLocaleTimeString(
-                                          "ar-EG",
-                                          {
-                                            hour: "numeric",
-                                            minute: "numeric",
-                                          },
-                                        ),
-                                      };
-                                      void addBanEntry(sb, { sync: true });
-                                      addSystemActivityLog(
-                                        "ban",
-                                        selectedProfileMember.nickname,
-                                        `تطبيق الحظر الخفي الشبح (Shadow Ban) للعضو.`,
-                                      );
-                                      alert(
-                                        `تم تفعيل الحظر الشبح (Shadow Ban) بنجاح.`,
-                                      );
-                                    }
-                                    setShowProfileModal(false);
-                                  }}
-                                  className="py-2.5 bg-gray-500/10 hover:bg-gray-500/20 text-gray-400 font-extrabold text-[9.5px] rounded-xl border border-gray-500/20 text-center transition-all cursor-pointer"
-                                >
-                                  {bannedUsersList.some(
-                                    (b) =>
-                                      b.nickname.toLowerCase() ===
-                                        selectedProfileMember.nickname.toLowerCase() &&
-                                      b.type === "shadow",
-                                  )
-                                    ? "👻 إلغاء حظر شبحي"
-                                    : "👻 حظر خفي (Shadow)"}
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-red-950/20 border border-red-500/30 rounded-2xl text-[9.5px] text-red-400 leading-relaxed font-sans font-semibold">
-                      🔒 هذه المنطقة الرقابية محمية ومقيدة للأدمنية والمشرفين
-                      وملاك الشات وتأسيسيه فقط. رتبتك غير مصرحة لتطبيق العقوبات
-                      أو التعديلات.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
+      <UserProfileModal
+        showProfileModal={showProfileModal}
+        selectedProfileMember={selectedProfileMember}
+        setShowProfileModal={setShowProfileModal}
+        setSelectedProfileMember={setSelectedProfileMember}
+        myActiveSession={myActiveSession}
+        currentUser={currentUser}
+        isOwnerRole={isOwnerRole}
+        tempEntryTopicInput={tempEntryTopicInput}
+        setTempEntryTopicInput={setTempEntryTopicInput}
+        setTempEntryTopicStatusText={setTempEntryTopicStatusText}
+        tempEntryTopicEnabled={tempEntryTopicEnabled}
+        setTempEntryTopicEnabled={setTempEntryTopicEnabled}
+        handleSaveTempEntryTopic={handleSaveTempEntryTopic}
+        tempEntryTopicStatusText={tempEntryTopicStatusText}
+        nicknameRequestInput={nicknameRequestInput}
+        setNicknameRequestInput={setNicknameRequestInput}
+        nicknameRequestLoading={nicknameRequestLoading}
+        handleSubmitNicknameChangeRequest={handleSubmitNicknameChangeRequest}
+        nicknameRequestStatusText={nicknameRequestStatusText}
+        nicknameRequests={nicknameRequests}
+        setRoomMessages={setRoomMessages}
+        activeRoomId={activeRoomId}
+        addSystemActivityLog={addSystemActivityLog}
+        bannedUsersList={bannedUsersList}
+        removeBanEntries={removeBanEntries}
+        addBanEntry={addBanEntry}
+        chatMembers={chatMembers}
+        setChatMembers={setChatMembers}
+        memberCustomPermissions={memberCustomPermissions}
+        setMemberCustomPermissions={setMemberCustomPermissions}
+        />
       </AnimatePresence>
 
       {/* Modal for Creating Room */}
@@ -15049,22 +10765,6 @@ export default function ChatScreen({
               role: normalizePmRole(target.role),
               avatar: target.avatar || "👤",
             });
-            if (!pmThreads[target.nickname]) {
-              setPmThreads((prev) => ({
-                ...prev,
-                [target.nickname]: [
-                  {
-                    text: `مرحباً بك! أنا ${target.nickname} 😇`,
-                    isOwn: false,
-                    time: new Date().toLocaleTimeString("en-US", {
-                      hour: "numeric",
-                      minute: "numeric",
-                      hour12: true,
-                    }),
-                  },
-                ],
-              }));
-            }
             if (window.innerWidth < 1280) {
               setMobileTab("private");
             } else {

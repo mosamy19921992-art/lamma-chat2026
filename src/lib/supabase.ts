@@ -78,6 +78,7 @@ export interface OwnerSettingsRow {
   wall_theme?: string | null;
   room_bg_map?: Record<string, string> | null;
   design_presets?: unknown[] | null;
+  chat_theme?: string | null;
 }
 
 export interface OwnerMemberPermissionRow {

@@ -1,0 +1,547 @@
+import React from 'react';
+
+export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, setWallTheme, wallTheme, designPresetName, setDesignPresetName, handleSaveDesignPreset, designPresets, applyDesignPreset, handleDeleteDesignPreset, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, chatTheme, setChatTheme, glowColor, setGlowColor, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage }: any) => {
+  return (
+    <>
+                  <div className="space-y-4 select-none" dir="rtl">
+                    <div className="p-4 rounded-2xl lamma-section-card">
+                      <div className="text-white text-xs font-black">
+                        🎨 مركز التصميم
+                      </div>
+                      <div className="text-[10px] text-gray-400 font-bold mt-1">
+                        تحكم في الهوية البصرية: اللوجو، الخلفيات، وبعض عناصر
+                        الواجهة.
+                      </div>
+                    </div>
+
+                    {isOwnerRole && (
+                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="text-[11px] text-emerald-300 font-black">
+                              🤖 المساعد الذكي الآمن
+                            </div>
+                            <div className="text-[10px] text-gray-400 font-bold mt-1">
+                              يفحص ويقترح فقط. لا يغيّر أي شيء إلا بعد موافقتك.
+                            </div>
+                          </div>
+                          <span className="px-2 py-1 rounded-full text-[9px] font-black bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                            Safe Mode
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                          <button
+                            type="button"
+                            onClick={runAssistantAudit}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            فحص الشات
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAssistantProposal("premium")}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            اقتراح فاخر
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAssistantProposal("calm")}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            اقتراح هادئ
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAssistantProposal("night")}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            اقتراح ليلي
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAssistantProposal("room-focus")}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            اقتراح للغرفة
+                          </button>
+                        </div>
+
+                        {assistantAudit && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div className="rounded-2xl p-3 lamma-admin-card">
+                              <div className="text-[10px] text-gray-400 font-black">
+                                تقييم المظهر
+                              </div>
+                              <div className="text-2xl font-black text-emerald-300 mt-1">
+                                {assistantAudit.score}/100
+                              </div>
+                              <div className="text-[10px] text-gray-300 font-bold mt-1">
+                                {assistantAudit.verdict}
+                              </div>
+                            </div>
+                            <div className="rounded-2xl p-3 lamma-admin-card">
+                              <div className="text-[10px] text-gray-400 font-black">
+                                الغرفة المستهدفة
+                              </div>
+                              <div className="text-[14px] font-black text-cyan-300 mt-2">
+                                {assistantAudit.roomLabel}
+                              </div>
+                              <div className="text-[10px] text-gray-300 font-bold mt-1">
+                                المساعد يراجع الغرفة المفتوحة الآن ويحسب اقتراحه عليها.
+                              </div>
+                            </div>
+                            <div className="rounded-2xl p-3 lamma-admin-card">
+                              <div className="text-[10px] text-gray-400 font-black">
+                                خلاصة سريعة
+                              </div>
+                              <div className="space-y-1.5 mt-2">
+                                {assistantAudit.highlights.map((item, index) => (
+                                  <div
+                                    key={`${item}-${index}`}
+                                    className="text-[10px] text-gray-300 font-bold"
+                                  >
+                                    • {item}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {assistantFindings.length > 0 && (
+                          <div className="rounded-2xl p-3 space-y-2 lamma-admin-card">
+                            <div className="text-[10px] text-cyan-300 font-black">
+                              نتيجة الفحص
+                            </div>
+                            <div className="space-y-1.5">
+                              {assistantFindings.map((finding, index) => (
+                                <div
+                                  key={`${finding.text}-${index}`}
+                                  className={`text-[10px] font-bold rounded-xl px-2.5 py-2 border ${
+                                    finding.tone === "warn"
+                                      ? "text-yellow-200 border-yellow-500/20 bg-yellow-500/5"
+                                      : "text-emerald-200 border-emerald-500/20 bg-emerald-500/5"
+                                  }`}
+                                >
+                                  {finding.tone === "warn" ? "⚠️" : "✅"} {finding.text}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {assistantProposal && (
+                          <div className="rounded-2xl p-3 space-y-3 border border-fuchsia-500/20 bg-fuchsia-500/[0.04]">
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <div className="text-[11px] text-fuchsia-300 font-black">
+                                  {assistantProposal.title}
+                                </div>
+                                <div className="text-[10px] text-gray-300 font-bold mt-1">
+                                  {assistantProposal.summary}
+                                </div>
+                              </div>
+                              <span className="px-2 py-1 rounded-full text-[9px] font-black bg-fuchsia-500/10 text-fuchsia-200 border border-fuchsia-500/20">
+                                بانتظار إذنك
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              {assistantProposal.changes.chatTheme && (
+                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                  ثيم الشات: {assistantProposal.changes.chatTheme}
+                                </div>
+                              )}
+                              {assistantProposal.changes.wallTheme && (
+                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                  ألوان الجدران: {assistantProposal.changes.wallTheme}
+                                </div>
+                              )}
+                              {assistantProposal.changes.glowColor && (
+                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card flex items-center justify-between gap-2">
+                                  <span>الإضاءة: {assistantProposal.changes.glowColor}</span>
+                                  <span
+                                    className="w-4 h-4 rounded-full border border-white/15"
+                                    style={{
+                                      backgroundColor: assistantProposal.changes.glowColor,
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              {typeof assistantProposal.changes.brandLogoUrl !== "undefined" && (
+                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                  الشعار: {assistantProposal.changes.brandLogoUrl ? "سيتم توحيد الشعار الحالي" : "الرجوع للافتراضي"}
+                                </div>
+                              )}
+                              {typeof assistantProposal.changes.roomBgCurrent !== "undefined" && (
+                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                  خلفية الغرفة الحالية: {assistantProposal.changes.roomBgCurrent ? "تحديث" : "إزالة التخصيص"}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="space-y-1.5">
+                              {assistantProposal.reasoning.map((reason, index) => (
+                                <div
+                                  key={`${assistantProposal.id}-${index}`}
+                                  className="text-[10px] text-gray-300 font-bold"
+                                >
+                                  • {reason}
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                              <button
+                                type="button"
+                                onClick={handleApplyAssistantProposal}
+                                className="py-2 rounded-xl text-[10px] font-black text-white transition-all lamma-accent-btn"
+                              >
+                                تطبيق المقترح
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setAssistantProposal(null)}
+                                className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                              >
+                                تجاهل المقترح
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!lastAppliedDesignSnapshot}
+                                onClick={handleRestoreLastDesignSnapshot}
+                                className={`py-2 rounded-xl text-[10px] font-black transition-all ${
+                                  lastAppliedDesignSnapshot
+                                    ? "lamma-danger-btn"
+                                    : "opacity-50 cursor-not-allowed lamma-tab-soft"
+                                }`}
+                              >
+                                استعادة آخر شكل
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {isOwnerRole && (
+                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
+                        <div className="text-[11px] text-cyan-300 font-black">
+                          ألوان الجدران
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-bold">
+                          تبديل لون الفواصل والفريم والماسورة داخل الشات
+                          بالكامل.
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setWallTheme("fire");
+                            }}
+                            className={`p-3 rounded-xl border transition-all ${
+                              wallTheme === "fire"
+                                ? "lamma-accent-btn"
+                                : "lamma-tab-soft"
+                            }`}
+                          >
+                            <div className="h-3 rounded-full bg-gradient-to-r from-yellow-500/30 via-orange-500/40 to-yellow-500/30 border border-yellow-500/25" />
+                            <div className="text-[10px] font-black text-yellow-400 mt-2">
+                              ناري
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setWallTheme("ice");
+                            }}
+                            className={`p-3 rounded-xl border transition-all ${
+                              wallTheme === "ice"
+                                ? "lamma-accent-btn"
+                                : "lamma-tab-soft"
+                            }`}
+                          >
+                            <div className="h-3 rounded-full bg-gradient-to-r from-sky-400/25 via-cyan-400/35 to-sky-400/25 border border-sky-400/25" />
+                            <div className="text-[10px] font-black text-sky-300 mt-2">
+                              ثلجي
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setWallTheme("violet");
+                            }}
+                            className={`p-3 rounded-xl border transition-all ${
+                              wallTheme === "violet"
+                                ? "lamma-accent-btn"
+                                : "lamma-tab-soft"
+                            }`}
+                          >
+                            <div className="h-3 rounded-full bg-gradient-to-r from-fuchsia-500/20 via-violet-500/35 to-fuchsia-500/20 border border-violet-500/25" />
+                            <div className="text-[10px] font-black text-violet-300 mt-2">
+                              بنفسجي
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {isOwnerRole && (
+                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
+                        <div className="text-[11px] text-cyan-300 font-black">
+                          ستايلات محفوظة
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-bold">
+                          احفظ شكل كامل وبدّل بينهم بضغطة.
+                        </div>
+                        <div className="flex gap-2 p-2 rounded-xl lamma-admin-card">
+                          <input
+                            type="text"
+                            value={designPresetName}
+                            onChange={(e) => setDesignPresetName(e.target.value)}
+                            placeholder="اسم الستايل..."
+                            className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSaveDesignPreset}
+                            className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
+                          >
+                            حفظ
+                          </button>
+                        </div>
+                        {designPresets.length > 0 && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {designPresets.map((preset) => (
+                              <div
+                                key={preset.id}
+                                className="p-3 rounded-2xl space-y-2 lamma-admin-card"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="text-[11px] text-white font-black">
+                                    {preset.name}
+                                  </div>
+                                  <div className="text-[9px] text-gray-400 font-bold font-mono">
+                                    {new Date(preset.createdAt).toLocaleDateString("ar-EG")}
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const ok = window.confirm(
+                                        `تطبيق ستايل: ${preset.name} ؟`,
+                                      );
+                                      if (!ok) return;
+                                      applyDesignPreset(preset);
+                                    }}
+                                    className="py-2 rounded-xl text-[10px] font-black text-white transition-all lamma-accent-btn"
+                                  >
+                                    تطبيق
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const ok = window.confirm(
+                                        `حذف ستايل: ${preset.name} ؟`,
+                                      );
+                                      if (!ok) return;
+                                      handleDeleteDesignPreset(preset.id);
+                                    }}
+                                    className="py-2 rounded-xl text-[10px] font-black transition-all lamma-danger-btn"
+                                  >
+                                    حذف
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
+                      <div className="text-[11px] text-cyan-300 font-black">
+                        الشعار
+                      </div>
+                      <div className="flex items-center justify-center rounded-xl p-3 lamma-admin-card">
+                        <img
+                          src={brandLogoUrl || "/images/lamma-wordmark.svg"}
+                          alt="LAMMA CHAT"
+                          className="h-10 sm:h-12 w-auto"
+                          draggable={false}
+                        />
+                      </div>
+                      <div className="flex gap-2 p-1.5 rounded-lg lamma-admin-card">
+                        <input
+                          ref={designLogoUploadRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleDesignLogoUpload}
+                          className="hidden"
+                        />
+                        <input
+                          type="text"
+                          id="leadership_logo_url_input"
+                          value={designLogoInput}
+                          onChange={(e) => setDesignLogoInput(e.target.value)}
+                          placeholder="رابط الشعار (URL)..."
+                          className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => designLogoUploadRef.current?.click()}
+                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-tab-soft hover:text-white"
+                        >
+                          رفع
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (designLogoInput.trim() !== "") {
+                              setBrandLogoUrl(designLogoInput.trim());
+                            } else {
+                              setBrandLogoUrl(null);
+                            }
+                          }}
+                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
+                        >
+                          تطبيق
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
+                      <div className="text-[11px] text-cyan-300 font-black">
+                        ألوان الإضاءة
+                      </div>
+                      <div className="flex items-center gap-3 rounded-xl p-3 lamma-admin-card">
+                        <input
+                          type="color"
+                          value={glowColor}
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            setGlowColor(next);
+                          }}
+                          className="w-10 h-10 rounded-lg bg-transparent lamma-input-shell"
+                        />
+                        <input
+                          type="text"
+                          value={glowColor}
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            setGlowColor(next);
+                          }}
+                          className="flex-1 rounded-lg text-[11px] text-white px-2 py-2 focus:outline-none lamma-input-shell"
+                          dir="ltr"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
+                      <div className="text-[11px] text-cyan-300 font-black">
+                        خلفية الغرفة الحالية
+                      </div>
+                      <div className="text-[10px] text-gray-400 font-bold">
+                        {openRooms.find((r) => r.id === activeRoomId)?.name ||
+                          activeRoomId}
+                      </div>
+                      <div className="flex gap-2 p-1.5 rounded-lg lamma-admin-card">
+                        <input
+                          ref={designRoomBgUploadRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleDesignRoomBgUpload}
+                          className="hidden"
+                        />
+                        <input
+                          type="text"
+                          id="leadership_room_bg_url_input"
+                          value={designRoomBgInput}
+                          onChange={(e) => setDesignRoomBgInput(e.target.value)}
+                          placeholder="رابط صورة خلفية لهذه الغرفة (URL)..."
+                          className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => designRoomBgUploadRef.current?.click()}
+                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-tab-soft hover:text-white"
+                        >
+                          رفع
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = designRoomBgInput.trim();
+                            const updated = { ...roomBgMap };
+                            if (next) updated[activeRoomId] = next;
+                            else delete updated[activeRoomId];
+                            setRoomBgMap(updated);
+                          }}
+                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
+                        >
+                          تطبيق
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = { ...roomBgMap };
+                          delete updated[activeRoomId];
+                          setRoomBgMap(updated);
+                            setDesignRoomBgInput("");
+                        }}
+                        className="w-full py-2.5 rounded-xl font-black text-[10px] transition-all lamma-danger-btn"
+                      >
+                        حذف خلفية الغرفة
+                      </button>
+                    </div>
+
+                    <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
+                      <div className="text-[11px] text-cyan-300 font-black">
+                        الخلفية الافتراضية
+                      </div>
+                      <div className="flex gap-2 p-1.5 rounded-lg lamma-admin-card">
+                        <input
+                          ref={designOwnerBgUploadRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleDesignOwnerBgUpload}
+                          className="hidden"
+                        />
+                        <input
+                          type="text"
+                          id="leadership_bg_url_input"
+                          value={designOwnerBgInput}
+                          onChange={(e) => setDesignOwnerBgInput(e.target.value)}
+                          placeholder="رابط صورة الخلفية (URL)..."
+                          className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => designOwnerBgUploadRef.current?.click()}
+                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-tab-soft hover:text-white"
+                        >
+                          رفع
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (designOwnerBgInput.trim() !== "") {
+                              setOwnerBgImage(designOwnerBgInput.trim());
+                            } else {
+                              setOwnerBgImage(null);
+                            }
+                          }}
+                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
+                        >
+                          تطبيق
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+    </>
+  );
+};

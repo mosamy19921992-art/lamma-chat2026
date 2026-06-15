@@ -123,3 +123,80 @@ export interface ActivityLog {
   operatorNickname: string;
   details: string;
 }
+
+export type WallTheme = "fire" | "ice" | "violet";
+export type ChatTheme =
+  | "classic"
+  | "night-paper"
+  | "charcoal-calm"
+  | "olive-ink"
+  | "violet-night";
+
+export type DesignAssistantPatch = {
+  wallTheme?: WallTheme;
+  brandLogoUrl?: string | null;
+  glowColor?: string;
+  ownerBgImage?: string | null;
+  roomBgCurrent?: string | null;
+  chatTheme?: ChatTheme;
+};
+
+export type DesignAssistantProposal = {
+  id: "premium" | "calm" | "night" | "room-focus";
+  title: string;
+  summary: string;
+  changes: DesignAssistantPatch;
+  reasoning: string[];
+};
+
+export type DesignAssistantFinding = {
+  tone: "good" | "warn";
+  text: string;
+};
+
+export type DesignAssistantAudit = {
+  score: number;
+  verdict: string;
+  roomLabel: string;
+  highlights: string[];
+  findings: DesignAssistantFinding[];
+};
+
+export type DesignAssistantSnapshot = {
+  wallTheme: WallTheme;
+  brandLogoUrl: string | null;
+  glowColor: string;
+  ownerBgImage: string | null;
+  roomBgCurrent: string | null;
+  chatTheme: ChatTheme;
+};
+
+export type DesignPreset = {
+  id: string;
+  name: string;
+  createdAt: string;
+  snapshot: {
+    wallTheme: WallTheme;
+    brandLogoUrl: string | null;
+    glowColor: string;
+    ownerBgImage: string | null;
+    roomBgMap: Record<string, string>;
+    chatTheme: ChatTheme;
+  };
+};
+
+export type CustomRoomEntry = {
+  id: string;
+  name: string;
+  icon: string;
+  count: number;
+  category: "private";
+  createdBy: string;
+  password?: string;
+};
+
+export type PMTargetState = {
+  nickname: string;
+  role: string;
+  avatar: string;
+};
