@@ -111,8 +111,6 @@ import {
   getShortenedNickname,
 } from "../lib/chatHelpers.ts";
 import { renderTextMessageWithMedia } from "../lib/chatMessageRender.tsx";
-import { createPortal } from "react-dom";
-
 function MobileBottomSheet({
   isOpen,
   onClose,
@@ -126,7 +124,7 @@ function MobileBottomSheet({
   icon?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const content = (
+  return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -173,8 +171,6 @@ function MobileBottomSheet({
       )}
     </AnimatePresence>
   );
-
-  return typeof document !== "undefined" ? createPortal(content, document.body) : content;
 }
 
 function HeaderIconButton({
@@ -6064,65 +6060,7 @@ export default function ChatScreen({
                       )}
                     </AnimatePresence>
                   </div>
-                  <MobileBottomSheet
-                    isOpen={showHeaderMenu}
-                    onClose={closeFloatingUi}
-                    title="القائمة الرئيسية"
-                    icon={<SettingsIcon size={14} className="text-gray-400" />}
-                  >
-                    <div className="flex-col flex pt-1 w-full">
-                      <button
-                        onClick={() => {
-                          setIsCompactView(!isCompactView);
-                          setShowHeaderMenu(false);
-                        }}
-                        className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
-                      >
-                        <Grid
-                          size={16}
-                          className={isCompactView ? "text-green-400" : ""}
-                        />
-                        <span>
-                          {isCompactView
-                            ? "إلغاء العرض المدمج"
-                            : "العرض المدمج للرسائل"}
-                        </span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsZenMode(true);
-                          setIsSidebarOpen(false);
-                          setIsPmOpen(false);
-                          setShowHeaderMenu(false);
-                        }}
-                        className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
-                      >
-                        <Sparkles size={16} className="text-violet-300" />
-                        <span>وضع التركيز (Zen)</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          handleCopyLink();
-                          setShowHeaderMenu(false);
-                        }}
-                        className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
-                      >
-                        <Share2 size={16} />
-                        <span>دعوة الأصدقاء</span>
-                      </button>
-                      <div className="h-[1px] bg-white/5 my-1" />
-                      <button
-                        onClick={() => {
-                          handleInitiateLogout();
-                          setShowHeaderMenu(false);
-                        }}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-all text-sm w-full text-right font-bold cursor-pointer rounded-xl"
-                      >
-                        <LogOut size={16} />
-                        <span>تسجيل الخروج</span>
-                      </button>
-                    </div>
-                  </MobileBottomSheet>
+                  
 
                   {/* Inline PM Dropdown Container */}
                   <div className="relative dropdown-container flex items-center">
@@ -6277,101 +6215,7 @@ export default function ChatScreen({
                       )}
                     </AnimatePresence>
                   </div>
-                  <MobileBottomSheet
-                    isOpen={showPmListDropdown}
-                    onClose={() => setShowPmListDropdown(false)}
-                    title="المحادثات الخاصة"
-                    icon={
-                      <MessageCircle
-                        size={16}
-                        className="text-[rgb(148,163,184)]"
-                      />
-                    }
-                  >
-                    <div className="bg-transparent text-right space-y-2">
-                      {Object.keys(pmThreads).length === 0 ? (
-                        <p className="text-[11px] text-gray-400 font-bold text-center py-4">
-                          لا توجد محادثات الخاصة بعد.
-                        </p>
-                      ) : (
-                        Object.keys(pmThreads).map((nickname) => {
-                          const lastMsg =
-                            pmThreads[nickname]?.[
-                              pmThreads[nickname].length - 1
-                            ];
-                          const targetUser = chatMembers.find(
-                            (m) => m.nickname === nickname,
-                          ) || { nickname, color: "#a3e635" };
-                          return (
-                            <div
-                              key={nickname}
-                              onClick={() => {
-                                setPmTarget({
-                                  nickname: targetUser.nickname,
-                                  role: normalizePmRole(
-                                    (targetUser as any).role,
-                                  ),
-                                  avatar: (targetUser as any).avatar || "👤",
-                                });
-                                if (window.innerWidth < 1280)
-                                  setMobileTab("private");
-                                else setIsPmOpen(true);
-                                setShowPmListDropdown(false);
-                              }}
-                              className="p-2.5 rounded-xl transition-all flex items-center gap-2.5 cursor-pointer lamma-list-item"
-                            >
-                              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 text-xl overflow-hidden shadow-inner relative pointer-events-none">
-                                <User size={16} className="text-gray-400" />
-                              </div>
-                              <div className="flex-1 min-w-0 pointer-events-none">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <h4
-                                      className="text-[12px] font-black"
-                                      style={{
-                                        color: targetUser.color || "#fff",
-                                      }}
-                                    >
-                                      {nickname}
-                                    </h4>
-                                    {(targetUser as any).role ===
-                                      "platinum_vip" && (
-                                      <span className="text-[6px] lamma-role-chip lamma-role-plat">
-                                        PLATINUM VIP
-                                      </span>
-                                    )}
-                                    {(targetUser as any).role === "vip" && (
-                                      <span className="text-[6px] lamma-role-chip lamma-role-vip">
-                                        VIP
-                                      </span>
-                                    )}
-                                    {(targetUser as any).role === "admin" && (
-                                      <span className="text-[6px] lamma-role-chip lamma-role-admin">
-                                        ADMIN
-                                      </span>
-                                    )}
-                                    {(targetUser as any).role === "owner" && (
-                                      <span className="text-[6px] lamma-role-chip lamma-role-owner">
-                                        OWNER
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[9px] text-gray-500">
-                                    {lastMsg?.time || ""}
-                                  </span>
-                                </div>
-                                <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                                  {lastMsg?.isOwn
-                                    ? `أنت: ${lastMsg.text}`
-                                    : lastMsg?.text}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </MobileBottomSheet>
+                  
 
                   {/* Inline Notifications Dropdown Container */}
                   <div className="relative dropdown-container flex items-center">
@@ -6566,24 +6410,7 @@ export default function ChatScreen({
                       )}
                     </AnimatePresence>
                   </div>
-                  <MobileBottomSheet
-                    isOpen={showNotificationsDropdown}
-                    onClose={() => setShowNotificationsDropdown(false)}
-                    title="مركز الإشعارات"
-                    icon={
-                      <Bell size={16} className="text-[rgb(148,163,184)]" />
-                    }
-                  >
-                    <div className="bg-transparent text-right space-y-2">
-                      <p className="text-[11px] text-gray-400 font-bold border-b border-white/5 pb-2">
-                        أحدث التنبيهات والأحداث الخاصة بك في البرنامج.
-                      </p>
-
-                      <div className="grid gap-2">
-                        {/* Fake notifications removed to avoid confusion */}
-                      </div>
-                    </div>
-                  </MobileBottomSheet>
+                  
                 </div>
               </div>
             </div>
@@ -7493,125 +7320,7 @@ export default function ChatScreen({
                   )}
                 </AnimatePresence>
 
-                <MobileBottomSheet
-                  isOpen={showFeaturesTray}
-                  onClose={() => setShowFeaturesTray(false)}
-                  title="الميزات الإضافية"
-                  icon={<Plus size={16} className="text-green-400" />}
-                >
-                  <div className="flex flex-col gap-3 p-1 select-none text-right">
-                    {/* Block 1: Gift panel */}
-                    <div className="p-3 rounded-xl text-right lamma-list-item bg-black/20">
-                      <div className="text-[11px] font-black text-green-300 mb-2.5">
-                        إرسال الهدايا السريعة
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2.5 justify-end">
-                        {GIFT_TYPES.map((gift) => (
-                          <button
-                            key={gift.name}
-                            type="button"
-                            onClick={() => {
-                              triggerGiftFlying(gift.icon);
-                              setShowFeaturesTray(false);
-                            }}
-                            className="p-2 px-3 rounded-lg text-lg hover:scale-110 active:scale-95 transition-all text-center flex items-center justify-center bg-white/5 border border-white/5 hover:bg-white/10"
-                            title={gift.name}
-                          >
-                            {gift.icon}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Block 2: Achievements and statistics summary */}
-                    <div className="p-3 rounded-xl flex items-center justify-between text-right lamma-list-item bg-black/20">
-                      <div className="flex items-center gap-2 flex-row-reverse">
-                        <span className="text-yellow-400 text-lg">🏆</span>
-                        <div className="text-right flex-1 leading-tight mr-1">
-                          <div className="text-[11px] text-gray-200 font-bold">
-                            بطل الأسبوع المتفاعل
-                          </div>
-                          <span className="text-[9px] text-gray-500">
-                            تم كسب الوسام بفضل 2,8k دردشة
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1 items-center">
-                        <span className="text-xs">⭐</span>
-                        <span className="text-xs">⚔️</span>
-                      </div>
-                    </div>
-
-                    {/* Block 3: Live calling indicator/player */}
-                    <div className="p-3 rounded-xl flex flex-col justify-between relative overflow-hidden text-right lamma-admin-card bg-black/25">
-                      <div className="flex justify-between items-center text-[11px] font-bold text-gray-300 mb-1">
-                        <span>المكالمات الصوتية</span>
-                        <span className="text-green-400 font-mono text-[10px] font-black tracking-wider flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
-                          <span>{formatSecs(callingSeconds)}</span>
-                        </span>
-                      </div>
-
-                      {/* Dynamic waveform simulation vectors */}
-                      <div className="flex items-end justify-center gap-1 h-8 my-2">
-                        {waveHeights.map((h, i) => (
-                          <span
-                            key={i}
-                            className="w-[3.5px] bg-[#a3e635] rounded-full transition-all duration-300"
-                            style={{ height: `${h}%` }}
-                          />
-                        ))}
-                      </div>
-
-                      {/* MIC mute / Red decline keys */}
-                      <div className="flex items-center justify-center gap-3 mt-1">
-                        <button
-                          type="button"
-                          onClick={() => setIsMuted(!isMuted)}
-                          className={`p-2 rounded-full border transition-all ${
-                            isMuted
-                              ? "bg-red-500/20 border-red-500/40 text-red-400"
-                              : "bg-green-500/20 border-green-500/40 text-green-400"
-                          }`}
-                          title="كتم الصوت"
-                        >
-                          <Mic size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const isOwner = currentUser.role === "owner";
-                            const perm =
-                              memberCustomPermissions[currentUser.nickname]
-                                ?.callsAllowed;
-                            if (!isOwner && !perm) {
-                              alert(
-                                "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
-                              );
-                              return;
-                            }
-                            const normalizedRole =
-                              currentUser.role.toLowerCase();
-                            if (
-                              normalizedRole === "guest" ||
-                              normalizedRole === "زائر"
-                            ) {
-                              alert(
-                                "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإجراء المكالمات الصوتية والمرئية! يرجى غلق الجلسة والتسجيل كعضو للاستفادة بكافة الخدمات الفائقة 📞.",
-                              );
-                              return;
-                            }
-                            setIsCalling(!isCalling);
-                          }}
-                          className="p-2 rounded-full bg-red-600 hover:bg-red-500 text-white transition-all border border-red-500/30"
-                          title="إنهاء المكالمة"
-                        >
-                          <Phone size={14} className="rotate-[135deg]" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </MobileBottomSheet>
+                
               </div>
 
               <div
@@ -7879,77 +7588,7 @@ export default function ChatScreen({
                     )}
                   </AnimatePresence>
 
-                  <MobileBottomSheet
-                    isOpen={showCommandsDropdown}
-                    onClose={() => setShowCommandsDropdown(false)}
-                    title="نظام الأوامر السريعة"
-                    icon={<Terminal size={16} className="text-green-400" />}
-                  >
-                    <div className="flex flex-col p-1 gap-2.5 text-right font-sans">
-                      <p className="text-[11px] text-gray-400 font-bold mb-1.5 leading-relaxed">
-                        انقر على أي أمر لتطبيقه مباشرة على صندوق النص أو للتنفيذ التلقائي لخدمات الشات الملكي:
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setInputText("/ping");
-                          setShowCommandsDropdown(false);
-                        }}
-                        className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
-                      >
-                        <span className="font-mono font-black text-green-400 text-sm">/ping</span>
-                        <span className="text-[10px] text-gray-400">قياس سرعة استجابة السيرفر</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRoomMessages((prev) => ({
-                            ...prev,
-                            [activeRoomId]: [],
-                          }));
-                          setShowCommandsDropdown(false);
-                        }}
-                        className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
-                      >
-                        <span className="font-mono font-black text-yellow-400 text-sm">/clear</span>
-                        <span className="text-[10px] text-gray-400">مسح الشاشة تجميلياً</span>
-                      </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsZenMode(true);
-                        setIsSidebarOpen(false);
-                        setShowCommandsDropdown(false);
-                      }}
-                      className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
-                    >
-                      <span className="font-mono font-black text-violet-400 text-sm">/zen</span>
-                      <span className="text-[10px] text-gray-400">تفعيل وضع التركيز التام (Zen)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsCompactView(!isCompactView);
-                        setShowCommandsDropdown(false);
-                      }}
-                      className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
-                    >
-                      <span className="font-mono font-black text-cyan-400 text-sm">/compact</span>
-                      <span className="text-[10px] text-gray-400">تبديل وضع العرض المدمج</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setInputText("/help");
-                        setShowCommandsDropdown(false);
-                      }}
-                      className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
-                    >
-                      <span className="font-mono font-black text-rose-400 text-sm">/help</span>
-                      <span className="text-[10px] text-gray-400">عرض المساعدة والتعليمات</span>
-                    </button>
-                  </div>
-                </MobileBottomSheet>
+                  
                 </div>
               )}
             </div>
@@ -11054,6 +10693,373 @@ export default function ChatScreen({
           onClose={() => setShowThemeSettingsModal(false)}
         />
       )}
+
+      <MobileBottomSheet
+                    isOpen={showHeaderMenu}
+                    onClose={closeFloatingUi}
+                    title="القائمة الرئيسية"
+                    icon={<SettingsIcon size={14} className="text-gray-400" />}
+                  >
+                    <div className="flex-col flex pt-1 w-full">
+                      <button
+                        onClick={() => {
+                          setIsCompactView(!isCompactView);
+                          setShowHeaderMenu(false);
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
+                      >
+                        <Grid
+                          size={16}
+                          className={isCompactView ? "text-green-400" : ""}
+                        />
+                        <span>
+                          {isCompactView
+                            ? "إلغاء العرض المدمج"
+                            : "العرض المدمج للرسائل"}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsZenMode(true);
+                          setIsSidebarOpen(false);
+                          setIsPmOpen(false);
+                          setShowHeaderMenu(false);
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
+                      >
+                        <Sparkles size={16} className="text-violet-300" />
+                        <span>وضع التركيز (Zen)</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleCopyLink();
+                          setShowHeaderMenu(false);
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
+                      >
+                        <Share2 size={16} />
+                        <span>دعوة الأصدقاء</span>
+                      </button>
+                      <div className="h-[1px] bg-white/5 my-1" />
+                      <button
+                        onClick={() => {
+                          handleInitiateLogout();
+                          setShowHeaderMenu(false);
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-all text-sm w-full text-right font-bold cursor-pointer rounded-xl"
+                      >
+                        <LogOut size={16} />
+                        <span>تسجيل الخروج</span>
+                      </button>
+                    </div>
+                  </MobileBottomSheet>
+
+<MobileBottomSheet
+                    isOpen={showPmListDropdown}
+                    onClose={() => setShowPmListDropdown(false)}
+                    title="المحادثات الخاصة"
+                    icon={
+                      <MessageCircle
+                        size={16}
+                        className="text-[rgb(148,163,184)]"
+                      />
+                    }
+                  >
+                    <div className="bg-transparent text-right space-y-2">
+                      {Object.keys(pmThreads).length === 0 ? (
+                        <p className="text-[11px] text-gray-400 font-bold text-center py-4">
+                          لا توجد محادثات الخاصة بعد.
+                        </p>
+                      ) : (
+                        Object.keys(pmThreads).map((nickname) => {
+                          const lastMsg =
+                            pmThreads[nickname]?.[
+                              pmThreads[nickname].length - 1
+                            ];
+                          const targetUser = chatMembers.find(
+                            (m) => m.nickname === nickname,
+                          ) || { nickname, color: "#a3e635" };
+                          return (
+                            <div
+                              key={nickname}
+                              onClick={() => {
+                                setPmTarget({
+                                  nickname: targetUser.nickname,
+                                  role: normalizePmRole(
+                                    (targetUser as any).role,
+                                  ),
+                                  avatar: (targetUser as any).avatar || "👤",
+                                });
+                                if (window.innerWidth < 1280)
+                                  setMobileTab("private");
+                                else setIsPmOpen(true);
+                                setShowPmListDropdown(false);
+                              }}
+                              className="p-2.5 rounded-xl transition-all flex items-center gap-2.5 cursor-pointer lamma-list-item"
+                            >
+                              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 text-xl overflow-hidden shadow-inner relative pointer-events-none">
+                                <User size={16} className="text-gray-400" />
+                              </div>
+                              <div className="flex-1 min-w-0 pointer-events-none">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <h4
+                                      className="text-[12px] font-black"
+                                      style={{
+                                        color: targetUser.color || "#fff",
+                                      }}
+                                    >
+                                      {nickname}
+                                    </h4>
+                                    {(targetUser as any).role ===
+                                      "platinum_vip" && (
+                                      <span className="text-[6px] lamma-role-chip lamma-role-plat">
+                                        PLATINUM VIP
+                                      </span>
+                                    )}
+                                    {(targetUser as any).role === "vip" && (
+                                      <span className="text-[6px] lamma-role-chip lamma-role-vip">
+                                        VIP
+                                      </span>
+                                    )}
+                                    {(targetUser as any).role === "admin" && (
+                                      <span className="text-[6px] lamma-role-chip lamma-role-admin">
+                                        ADMIN
+                                      </span>
+                                    )}
+                                    {(targetUser as any).role === "owner" && (
+                                      <span className="text-[6px] lamma-role-chip lamma-role-owner">
+                                        OWNER
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[9px] text-gray-500">
+                                    {lastMsg?.time || ""}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-gray-400 mt-0.5 truncate">
+                                  {lastMsg?.isOwn
+                                    ? `أنت: ${lastMsg.text}`
+                                    : lastMsg?.text}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </MobileBottomSheet>
+
+<MobileBottomSheet
+                    isOpen={showNotificationsDropdown}
+                    onClose={() => setShowNotificationsDropdown(false)}
+                    title="مركز الإشعارات"
+                    icon={
+                      <Bell size={16} className="text-[rgb(148,163,184)]" />
+                    }
+                  >
+                    <div className="bg-transparent text-right space-y-2">
+                      <p className="text-[11px] text-gray-400 font-bold border-b border-white/5 pb-2">
+                        أحدث التنبيهات والأحداث الخاصة بك في البرنامج.
+                      </p>
+
+                      <div className="grid gap-2">
+                        {/* Fake notifications removed to avoid confusion */}
+                      </div>
+                    </div>
+                  </MobileBottomSheet>
+
+<MobileBottomSheet
+                  isOpen={showFeaturesTray}
+                  onClose={() => setShowFeaturesTray(false)}
+                  title="الميزات الإضافية"
+                  icon={<Plus size={16} className="text-green-400" />}
+                >
+                  <div className="flex flex-col gap-3 p-1 select-none text-right">
+                    {/* Block 1: Gift panel */}
+                    <div className="p-3 rounded-xl text-right lamma-list-item bg-black/20">
+                      <div className="text-[11px] font-black text-green-300 mb-2.5">
+                        إرسال الهدايا السريعة
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2.5 justify-end">
+                        {GIFT_TYPES.map((gift) => (
+                          <button
+                            key={gift.name}
+                            type="button"
+                            onClick={() => {
+                              triggerGiftFlying(gift.icon);
+                              setShowFeaturesTray(false);
+                            }}
+                            className="p-2 px-3 rounded-lg text-lg hover:scale-110 active:scale-95 transition-all text-center flex items-center justify-center bg-white/5 border border-white/5 hover:bg-white/10"
+                            title={gift.name}
+                          >
+                            {gift.icon}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Block 2: Achievements and statistics summary */}
+                    <div className="p-3 rounded-xl flex items-center justify-between text-right lamma-list-item bg-black/20">
+                      <div className="flex items-center gap-2 flex-row-reverse">
+                        <span className="text-yellow-400 text-lg">🏆</span>
+                        <div className="text-right flex-1 leading-tight mr-1">
+                          <div className="text-[11px] text-gray-200 font-bold">
+                            بطل الأسبوع المتفاعل
+                          </div>
+                          <span className="text-[9px] text-gray-500">
+                            تم كسب الوسام بفضل 2,8k دردشة
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1 items-center">
+                        <span className="text-xs">⭐</span>
+                        <span className="text-xs">⚔️</span>
+                      </div>
+                    </div>
+
+                    {/* Block 3: Live calling indicator/player */}
+                    <div className="p-3 rounded-xl flex flex-col justify-between relative overflow-hidden text-right lamma-admin-card bg-black/25">
+                      <div className="flex justify-between items-center text-[11px] font-bold text-gray-300 mb-1">
+                        <span>المكالمات الصوتية</span>
+                        <span className="text-green-400 font-mono text-[10px] font-black tracking-wider flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
+                          <span>{formatSecs(callingSeconds)}</span>
+                        </span>
+                      </div>
+
+                      {/* Dynamic waveform simulation vectors */}
+                      <div className="flex items-end justify-center gap-1 h-8 my-2">
+                        {waveHeights.map((h, i) => (
+                          <span
+                            key={i}
+                            className="w-[3.5px] bg-[#a3e635] rounded-full transition-all duration-300"
+                            style={{ height: `${h}%` }}
+                          />
+                        ))}
+                      </div>
+
+                      {/* MIC mute / Red decline keys */}
+                      <div className="flex items-center justify-center gap-3 mt-1">
+                        <button
+                          type="button"
+                          onClick={() => setIsMuted(!isMuted)}
+                          className={`p-2 rounded-full border transition-all ${
+                            isMuted
+                              ? "bg-red-500/20 border-red-500/40 text-red-400"
+                              : "bg-green-500/20 border-green-500/40 text-green-400"
+                          }`}
+                          title="كتم الصوت"
+                        >
+                          <Mic size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const isOwner = currentUser.role === "owner";
+                            const perm =
+                              memberCustomPermissions[currentUser.nickname]
+                                ?.callsAllowed;
+                            if (!isOwner && !perm) {
+                              alert(
+                                "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
+                              );
+                              return;
+                            }
+                            const normalizedRole =
+                              currentUser.role.toLowerCase();
+                            if (
+                              normalizedRole === "guest" ||
+                              normalizedRole === "زائر"
+                            ) {
+                              alert(
+                                "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإجراء المكالمات الصوتية والمرئية! يرجى غلق الجلسة والتسجيل كعضو للاستفادة بكافة الخدمات الفائقة 📞.",
+                              );
+                              return;
+                            }
+                            setIsCalling(!isCalling);
+                          }}
+                          className="p-2 rounded-full bg-red-600 hover:bg-red-500 text-white transition-all border border-red-500/30"
+                          title="إنهاء المكالمة"
+                        >
+                          <Phone size={14} className="rotate-[135deg]" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </MobileBottomSheet>
+
+<MobileBottomSheet
+                    isOpen={showCommandsDropdown}
+                    onClose={() => setShowCommandsDropdown(false)}
+                    title="نظام الأوامر السريعة"
+                    icon={<Terminal size={16} className="text-green-400" />}
+                  >
+                    <div className="flex flex-col p-1 gap-2.5 text-right font-sans">
+                      <p className="text-[11px] text-gray-400 font-bold mb-1.5 leading-relaxed">
+                        انقر على أي أمر لتطبيقه مباشرة على صندوق النص أو للتنفيذ التلقائي لخدمات الشات الملكي:
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInputText("/ping");
+                          setShowCommandsDropdown(false);
+                        }}
+                        className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
+                      >
+                        <span className="font-mono font-black text-green-400 text-sm">/ping</span>
+                        <span className="text-[10px] text-gray-400">قياس سرعة استجابة السيرفر</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRoomMessages((prev) => ({
+                            ...prev,
+                            [activeRoomId]: [],
+                          }));
+                          setShowCommandsDropdown(false);
+                        }}
+                        className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
+                      >
+                        <span className="font-mono font-black text-yellow-400 text-sm">/clear</span>
+                        <span className="text-[10px] text-gray-400">مسح الشاشة تجميلياً</span>
+                      </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsZenMode(true);
+                        setIsSidebarOpen(false);
+                        setShowCommandsDropdown(false);
+                      }}
+                      className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
+                    >
+                      <span className="font-mono font-black text-violet-400 text-sm">/zen</span>
+                      <span className="text-[10px] text-gray-400">تفعيل وضع التركيز التام (Zen)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCompactView(!isCompactView);
+                        setShowCommandsDropdown(false);
+                      }}
+                      className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
+                    >
+                      <span className="font-mono font-black text-cyan-400 text-sm">/compact</span>
+                      <span className="text-[10px] text-gray-400">تبديل وضع العرض المدمج</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInputText("/help");
+                        setShowCommandsDropdown(false);
+                      }}
+                      className="flex items-center justify-between p-3 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer bg-white/5 hover:bg-white/10"
+                    >
+                      <span className="font-mono font-black text-rose-400 text-sm">/help</span>
+                      <span className="text-[10px] text-gray-400">عرض المساعدة والتعليمات</span>
+                    </button>
+                  </div>
+                </MobileBottomSheet>
 
       {/* Real audio elements for Radio and Music streaming/playback */}
       <audio ref={radioAudioRef} src={currentRadioStation.url} preload="none" />
