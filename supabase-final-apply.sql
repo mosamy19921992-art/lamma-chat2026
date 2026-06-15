@@ -213,7 +213,8 @@ create table if not exists public.owner_settings (
   glow_color text default '#e4e4e7',
   wall_theme text default 'fire',
   room_bg_map jsonb not null default '{}'::jsonb,
-  design_presets jsonb not null default '[]'::jsonb
+  design_presets jsonb not null default '[]'::jsonb,
+  chat_theme text default 'classic'
 );
 
 alter table public.owner_settings enable row level security;
