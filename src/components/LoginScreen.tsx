@@ -43,14 +43,23 @@ function getSupabaseRole(user: any): string {
   return normalizeAuthRole(user?.user_metadata?.role);
 }
 
-function resolveOwnerGhostMode(role: string) {
+function resolveOwnerGhostMode(role: string, user?: { id?: string; email?: string | null; nickname?: string }) {
   if (role !== "owner") return;
 
   const shouldEnableGhostMode = window.confirm(
     "هل تريد الدخول بالوضع الخفي كمالك؟\n\nاختر \"موافق\" للدخول مخفياً أو \"إلغاء\" للدخول بشكل عادي.",
   );
 
-  localStorage.setItem("lamma_ghost_mode", String(shouldEnableGhostMode));
+  const storageIdentity = String(
+    user?.id || user?.email || user?.nickname || "owner",
+  )
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w.-]+/g, "_");
+  localStorage.setItem(
+    `lamma_ghost_mode_supabase_${storageIdentity}`,
+    String(shouldEnableGhostMode),
+  );
 }
 
 function randomGuestId() {
@@ -269,7 +278,11 @@ export default function LoginScreen(props: LoginScreenProps) {
         });
       }
 
-      resolveOwnerGhostMode(authRole);
+      resolveOwnerGhostMode(authRole, {
+        id: data.user.id,
+        email: data.user.email,
+        nickname: metaNick,
+      });
 
       onLogin(
         metaNick,
@@ -421,7 +434,11 @@ export default function LoginScreen(props: LoginScreenProps) {
       setPendingProfileColor(null);
 
       const authRole = getSupabaseRole(user);
-      resolveOwnerGhostMode(authRole);
+      resolveOwnerGhostMode(authRole, {
+        id: user.id,
+        email: user.email,
+        nickname,
+      });
 
       onLogin(
         nickname,

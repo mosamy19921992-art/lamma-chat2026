@@ -1,9 +1,5 @@
--- Supabase Schema for Lamma Chat
--- Tightened: requires authentication for inserts, with role-based admin checks.
-
 create extension if not exists pgcrypto;
 
--- Helper functions used by multiple RLS policies.
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -15,9 +11,16 @@ as $$
     select 1
     from auth.users
     where id = auth.uid()
-    and (
-      raw_user_meta_data->>'role' in ('owner', 'admin', 'Owner', 'Admin', 'المالك', 'أدمن')
-    )
+      and (
+        raw_user_meta_data->>'role' in (
+          'owner',
+          'admin',
+          'Owner',
+          'Admin',
+          'المالك',
+          'أدمن'
+        )
+      )
   );
 $$;
 
@@ -35,16 +38,20 @@ as $$
     select 1
     from auth.users
     where id = auth.uid()
-    and (
-      raw_user_meta_data->>'role' in ('owner', 'Owner', 'malek', 'المالك')
-    )
+      and (
+        raw_user_meta_data->>'role' in (
+          'owner',
+          'Owner',
+          'malek',
+          'المالك'
+        )
+      )
   );
 $$;
 
 revoke all on function public.is_owner() from public;
 grant execute on function public.is_owner() to authenticated, anon;
 
--- 1. Create a table for Messages
 create table if not exists public.messages (
   id uuid default gen_random_uuid() primary key,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -61,20 +68,16 @@ create table if not exists public.messages (
   reactions jsonb default '{}'::jsonb
 );
 
--- Turn on Row Level Security
 alter table public.messages enable row level security;
 
--- Anyone (anon + authenticated) can read messages
 drop policy if exists "Allow anonymous read access" on public.messages;
+drop policy if exists "Allow read access to all" on public.messages;
 create policy "Allow read access to all" on public.messages
   for select
-  using ( true );
+  using (true);
 
--- Inserts require either:
---   (a) an authenticated user, OR
---   (b) a guest that provides a non-empty sender_uid matching the request
--- This keeps the public guest login working but stops completely open inserts.
 drop policy if exists "Allow anonymous insert access" on public.messages;
+drop policy if exists "Allow insert for authenticated or with sender_uid" on public.messages;
 create policy "Allow insert for authenticated or with sender_uid" on public.messages
   for insert
   with check (
@@ -82,16 +85,12 @@ create policy "Allow insert for authenticated or with sender_uid" on public.mess
     or (sender_uid is not null and length(sender_uid) > 0)
   );
 
--- No public updates/deletes; users modify their own via service role
 drop policy if exists "Allow update to own messages" on public.messages;
 create policy "Allow update to own messages" on public.messages
   for update
   using (auth.uid()::text = sender_uid)
   with check (auth.uid()::text = sender_uid);
 
--- Allow deletion only to admins/owners or the authenticated sender himself.
--- Guest messages remain readable, but deleting them requires an admin because
--- anonymous sessions do not provide a trustworthy per-user auth identity.
 drop policy if exists "Allow delete access" on public.messages;
 create policy "Allow delete access" on public.messages
   for delete
@@ -100,7 +99,6 @@ create policy "Allow delete access" on public.messages
     or auth.uid()::text = sender_uid
   );
 
--- 2. Create a table for Banned Users
 create table if not exists public.banned_users (
   id uuid default gen_random_uuid() primary key,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -112,31 +110,24 @@ create table if not exists public.banned_users (
 
 alter table public.banned_users enable row level security;
 
--- Anyone can read the banned list
 drop policy if exists "Allow anonymous read access on banned_users" on public.banned_users;
+drop policy if exists "Allow read access to banned list" on public.banned_users;
 create policy "Allow read access to banned list" on public.banned_users
   for select
-  using ( true );
+  using (true);
 
--- Only admins (owner / admin role in user metadata) can ban.
--- Uses a SECURITY DEFINER function to read role from auth.users metadata.
 drop policy if exists "Allow anonymous insert access on banned_users" on public.banned_users;
+drop policy if exists "Only admins can ban users" on public.banned_users;
 create policy "Only admins can ban users" on public.banned_users
   for insert
   with check (public.is_admin());
 
 drop policy if exists "Only admins can unban" on public.banned_users;
+drop policy if exists "Only admins can unban users" on public.banned_users;
 create policy "Only admins can unban users" on public.banned_users
   for delete
   using (public.is_admin());
 
--- Realtime setup
-alter publication supabase_realtime add table public.messages;
-alter publication supabase_realtime add table public.banned_users;
-
--- 3. جدول VIP Subscriptions
--- يُستخدم لتخزين اشتراكات VIP الفعّالة لكل مستخدم
--- الـ role الفعلي يُقرأ من هنا ويُكتب في user_metadata عبر Admin SDK أو Supabase trigger
 create table if not exists public.vip_subscriptions (
   id uuid default gen_random_uuid() primary key,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -151,24 +142,17 @@ create table if not exists public.vip_subscriptions (
 
 alter table public.vip_subscriptions enable row level security;
 
--- المستخدم يقرأ اشتراكاته فقط
 drop policy if exists "Users read own subscriptions" on public.vip_subscriptions;
 create policy "Users read own subscriptions" on public.vip_subscriptions
   for select
   using (user_id = auth.uid()::text or public.is_admin());
 
--- فقط الأدمن يضيف أو يعدل أو يحذف اشتراكات
 drop policy if exists "Admins manage subscriptions" on public.vip_subscriptions;
 create policy "Admins manage subscriptions" on public.vip_subscriptions
   for all
   using (public.is_admin())
   with check (public.is_admin());
 
-alter publication supabase_realtime add table public.vip_subscriptions;
-
--- 4. جدول PM Messages (الرسائل الخاصة)
--- يحفظ المحادثات الخاصة بشكل دائم بدل localStorage فقط
--- sender_uid و receiver_uid هما uid المستخدمين المتحدثَين
 create table if not exists public.pm_messages (
   id uuid default gen_random_uuid() primary key,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -184,7 +168,6 @@ create table if not exists public.pm_messages (
 
 alter table public.pm_messages enable row level security;
 
--- كل طرف يرى رسائله فقط (مُرسِل أو مُستقبِل)
 drop policy if exists "Users read own pm messages" on public.pm_messages;
 create policy "Users read own pm messages" on public.pm_messages
   for select
@@ -193,13 +176,11 @@ create policy "Users read own pm messages" on public.pm_messages
     or receiver_uid = auth.uid()::text
   );
 
--- المرسِل فقط يُرسِل
 drop policy if exists "Users insert own pm messages" on public.pm_messages;
 create policy "Users insert own pm messages" on public.pm_messages
   for insert
   with check (sender_uid = auth.uid()::text);
 
--- المرسِل أو المستقبِل يمكنه حذف الرسالة
 drop policy if exists "Users delete own pm messages" on public.pm_messages;
 create policy "Users delete own pm messages" on public.pm_messages
   for delete
@@ -208,15 +189,11 @@ create policy "Users delete own pm messages" on public.pm_messages
     or receiver_uid = auth.uid()::text
   );
 
--- الأدمن يرى كل الرسائل الخاصة (للإشراف)
 drop policy if exists "Admins read all pm messages" on public.pm_messages;
 create policy "Admins read all pm messages" on public.pm_messages
   for select
   using (public.is_admin());
 
-alter publication supabase_realtime add table public.pm_messages;
-
--- 5. إعدادات المالك العامة (مصدر مركزي بدلاً من localStorage فقط)
 create table if not exists public.owner_settings (
   id text primary key default 'global',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -256,7 +233,6 @@ insert into public.owner_settings (id)
 values ('global')
 on conflict (id) do nothing;
 
--- 6. صلاحيات الأعضاء الخاصة التي يحددها المالك
 create table if not exists public.owner_member_permissions (
   nickname text primary key,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -281,7 +257,6 @@ create policy "Only owner manages member permissions" on public.owner_member_per
   using (public.is_owner())
   with check (public.is_owner());
 
--- 7. سجل نشاطات المالك والإدارة
 create table if not exists public.owner_activity_logs (
   id uuid default gen_random_uuid() primary key,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -304,11 +279,6 @@ create policy "Admins insert owner activity logs" on public.owner_activity_logs
   for insert
   with check (public.is_admin());
 
-alter publication supabase_realtime add table public.owner_settings;
-alter publication supabase_realtime add table public.owner_member_permissions;
-alter publication supabase_realtime add table public.owner_activity_logs;
-
--- 8. طلبات تغيير الاسم بعد التسجيل (تُراجع من المالك فقط)
 create table if not exists public.nickname_change_requests (
   id uuid default gen_random_uuid() primary key,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -351,4 +321,102 @@ create policy "Only owner deletes nickname requests" on public.nickname_change_r
   for delete
   using (public.is_owner());
 
-alter publication supabase_realtime add table public.nickname_change_requests;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'messages'
+  ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'banned_users'
+  ) then
+    alter publication supabase_realtime add table public.banned_users;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'vip_subscriptions'
+  ) then
+    alter publication supabase_realtime add table public.vip_subscriptions;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'pm_messages'
+  ) then
+    alter publication supabase_realtime add table public.pm_messages;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'owner_settings'
+  ) then
+    alter publication supabase_realtime add table public.owner_settings;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'owner_member_permissions'
+  ) then
+    alter publication supabase_realtime add table public.owner_member_permissions;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'owner_activity_logs'
+  ) then
+    alter publication supabase_realtime add table public.owner_activity_logs;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'nickname_change_requests'
+  ) then
+    alter publication supabase_realtime add table public.nickname_change_requests;
+  end if;
+end $$;
+
+insert into storage.buckets (id, name, public)
+values ('chat-media', 'chat-media', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Public read chat-media" on storage.objects;
+create policy "Public read chat-media"
+on storage.objects
+for select
+using (bucket_id = 'chat-media');
+
+drop policy if exists "Auth upload chat-media" on storage.objects;
+create policy "Auth upload chat-media"
+on storage.objects
+for insert
+to authenticated
+with check (bucket_id = 'chat-media');

@@ -127,7 +127,7 @@ export function UserContextPopup({
               className="w-full flex items-center gap-2 p-2 rounded-xl text-right text-[10px] font-black transition-all cursor-pointer lamma-list-item"
             >
               {friendsList.includes(target.nickname)
-                ? "🌟 صديق بالفعل"
+                ? "💔 إزالة من الأصدقاء"
                 : "💚 إضافه كصديق مقرب"}
             </button>
 
@@ -148,7 +148,7 @@ export function UserContextPopup({
             >
               {blockedUsers.includes(target.nickname)
                 ? "🔓 إلغاء الحظر والمنع"
-                : "🚫 حظر العضو ومنعه نهائياً"}
+                : "🚫 إخفاء العضو وحظر رسائله لديك"}
             </button>
 
             {(currentUser.role === "owner" ||

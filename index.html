@@ -6,38 +6,44 @@
     <meta name="theme-color" content="#070b12" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#070b12" media="(prefers-color-scheme: light)" />
     <meta name="color-scheme" content="dark light" />
-    <meta name="description" content="Lamma Chat | شات لمة - دردشة غرف عربية خاصة وعامة، راديو، موسيقى، إشعارات فورية." />
+    <meta name="description" content="شات لمة منصة دردشة عربية أنيقة وآمنة تجمع الغرف العامة والخاصة مع راديو وموسيقى وتسجيل سريع وتجربة مريحة على الموبايل والكمبيوتر." />
     <meta name="keywords" content="شات عربي, لمة, دردشة, غرف, راديو, موسيقى, VIP" />
     <meta name="author" content="Lamma Chat" />
     <meta name="robots" content="index, follow" />
 
     <!-- Open Graph -->
-    <meta property="og:title" content="Lamma Chat | شات لمة" />
-    <meta property="og:description" content="شات عربي متكامل وآمن - غرف دردشة فورية، راديو، موسيقى، إشعارات VIP." />
+    <meta property="og:title" content="شات لمة | Lamma Chat - دردشة عربية أنيقة وآمنة" />
+    <meta property="og:description" content="منصة دردشة عربية أنيقة وآمنة تضم غرف عامة وخاصة، راديو وموسيقى، مع تجربة سريعة ومريحة على كل الأجهزة." />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Lamma Chat" />
     <meta property="og:url" content="https://lamma-arabic-chat-room.vercel.app/" />
-    <meta property="og:image" content="/images/lamma-logo.png" />
+    <meta property="og:image" content="https://lamma-arabic-chat-room.vercel.app/images/lamma-logo-nice.png" />
+    <meta property="og:image:alt" content="شعار شات لمة الرسمي" />
     <meta property="og:locale" content="ar_AR" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Lamma Chat | شات لمة" />
-    <meta name="twitter:description" content="شات عربي متكامل - غرف، راديو، موسيقى، إشعارات فورية" />
-    <meta name="twitter:image" content="/images/lamma-logo.png" />
+    <meta name="twitter:title" content="شات لمة | Lamma Chat - دردشة عربية أنيقة وآمنة" />
+    <meta name="twitter:description" content="منصة دردشة عربية أنيقة وآمنة تضم غرف عامة وخاصة، راديو وموسيقى، مع تجربة سريعة ومريحة على كل الأجهزة." />
+    <meta name="twitter:image" content="https://lamma-arabic-chat-room.vercel.app/images/lamma-logo-nice.png" />
+    <meta name="twitter:image:alt" content="شعار شات لمة الرسمي" />
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/svg+xml" href="/images/lamma-favicon.svg" />
-    <link rel="apple-touch-icon" href="/images/lamma-logo.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/images/lamma-logo.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/images/lamma-logo.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/images/lamma-logo.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/images/lamma-logo.png" />
+    <link rel="icon" type="image/svg+xml" href="/images/lamma-search-icon.svg" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/images/lamma-logo-nice.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/images/lamma-logo-nice.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/lamma-logo-nice.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/lamma-logo-nice.png" />
+    <link rel="shortcut icon" href="/images/lamma-search-icon.svg" />
+    <link rel="apple-touch-icon" href="/images/lamma-logo-nice.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/images/lamma-logo-nice.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/lamma-logo-nice.png" />
 
     <!-- iOS PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="شات لمة" />
+    <meta name="apple-mobile-web-app-title" content="Lamma Chat" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="application-name" content="Lamma Chat" />
+    <meta name="application-name" content="Lamma Chat | شات لمة" />
     <meta name="format-detection" content="telephone=no" />
     <style>
       html, body, #root {
@@ -60,11 +66,11 @@
 
     <!-- Microsoft PWA -->
     <meta name="msapplication-TileColor" content="#070b12" />
-    <meta name="msapplication-TileImage" content="/images/lamma-logo.png" />
+    <meta name="msapplication-TileImage" content="/images/lamma-logo-nice.png" />
     <meta name="msapplication-config" content="/manifest.json" />
 
     <!-- Splash screens for iOS -->
-    <link rel="apple-touch-startup-image" href="/images/lamma-logo.png" />
+    <link rel="apple-touch-startup-image" href="/images/lamma-logo-nice.png" />
 
     <!-- Canonical URL -->
     <link rel="canonical" href="https://lamma-arabic-chat-room.vercel.app/" />
@@ -73,32 +79,53 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "Lamma Chat | شات لمة",
-      "description": "شات عربي متكامل وآمن - غرف دردشة فورية، راديو، موسيقى، إشعارات VIP.",
-      "url": "https://lamma-arabic-chat-room.vercel.app",
-      "applicationCategory": "SocialNetworkingApplication",
-      "operatingSystem": "Any",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.8",
-        "reviewCount": "150"
-      },
-      "author": {
-        "@type": "Organization",
-        "name": "Lamma Chat"
-      },
-      "inLanguage": "ar",
-      "availableLanguage": ["ar", "en"]
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://lamma-arabic-chat-room.vercel.app/#organization",
+          "name": "Lamma Chat | شات لمة",
+          "url": "https://lamma-arabic-chat-room.vercel.app/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://lamma-arabic-chat-room.vercel.app/images/lamma-logo-nice.png"
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://lamma-arabic-chat-room.vercel.app/#website",
+          "url": "https://lamma-arabic-chat-room.vercel.app/",
+          "name": "Lamma Chat | شات لمة",
+          "alternateName": "Lamma Chat",
+          "description": "منصة دردشة عربية أنيقة وآمنة تجمع الغرف العامة والخاصة مع راديو وموسيقى وتسجيل سريع وتجربة مريحة على الموبايل والكمبيوتر.",
+          "publisher": {
+            "@id": "https://lamma-arabic-chat-room.vercel.app/#organization"
+          },
+          "inLanguage": "ar"
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://lamma-arabic-chat-room.vercel.app/#webapp",
+          "name": "Lamma Chat | شات لمة",
+          "url": "https://lamma-arabic-chat-room.vercel.app/",
+          "description": "منصة دردشة عربية أنيقة وآمنة تضم غرف عامة وخاصة، راديو وموسيقى، مع تجربة سريعة ومريحة على كل الأجهزة.",
+          "applicationCategory": "SocialNetworkingApplication",
+          "operatingSystem": "Any",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "publisher": {
+            "@id": "https://lamma-arabic-chat-room.vercel.app/#organization"
+          },
+          "inLanguage": "ar",
+          "availableLanguage": ["ar", "en"]
+        }
+      ]
     }
     </script>
 
-    <title>Lamma Chat | شات لمة</title>
+    <title>شات لمة | Lamma Chat - دردشة عربية أنيقة وآمنة</title>
   </head>
   <body>
     <div id="root"></div>

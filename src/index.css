@@ -33,6 +33,18 @@
    These root defaults therefore match the shipped shell, not the
    older green marketing palette. */
 :root {
+  --app-theme-primary: #d1d5db;
+  --app-theme-accent: #f3f4f6;
+  --app-theme-bg-1: #0b0d10;
+  --app-theme-bg-2: #101317;
+  --app-theme-bg-3: #161a1f;
+  --app-theme-text: #ffffff;
+  --app-theme-text-muted: #9ca3af;
+  --app-theme-primary-rgb: 209, 213, 219;
+  --app-theme-accent-rgb: 243, 244, 246;
+  --app-theme-primary-r: 209;
+  --app-theme-primary-g: 213;
+  --app-theme-primary-b: 219;
   --theme-primary: #d1d5db;
   --theme-accent: #f3f4f6;
   --theme-bg-1: #0b0d10;
@@ -1325,17 +1337,19 @@ body {
    neutral/golden design without changing the broader app structure.
    If you want to restyle chat globally, update this block first. */
 .lamma-neutral-glass {
-  --theme-primary: #d1d5db !important;
-  --theme-accent: #f3f4f6 !important;
-  --theme-bg-1: #070b11 !important;
-  --theme-bg-2: #0b0f15 !important;
-  --theme-bg-3: #10151a !important;
-  --theme-primary-rgb: 209, 213, 219 !important;
-  --theme-accent-rgb: 243, 244, 246 !important;
+  --theme-primary: var(--app-theme-primary) !important;
+  --theme-accent: var(--app-theme-accent) !important;
+  --theme-bg-1: var(--app-theme-bg-1) !important;
+  --theme-bg-2: var(--app-theme-bg-2) !important;
+  --theme-bg-3: var(--app-theme-bg-3) !important;
+  --theme-text: var(--app-theme-text) !important;
+  --theme-text-muted: var(--app-theme-text-muted) !important;
+  --theme-primary-rgb: var(--app-theme-primary-rgb) !important;
+  --theme-accent-rgb: var(--app-theme-accent-rgb) !important;
   --glow-color: rgba(255, 255, 255, 0.06) !important;
-  --lamma-wall-r: 214 !important;
-  --lamma-wall-g: 219 !important;
-  --lamma-wall-b: 225 !important;
+  --lamma-wall-r: var(--app-theme-primary-r) !important;
+  --lamma-wall-g: var(--app-theme-primary-g) !important;
+  --lamma-wall-b: var(--app-theme-primary-b) !important;
   --lamma-ios-card-top: rgba(255, 255, 255, 0.04) !important;
   --lamma-ios-card-mid: rgba(255, 255, 255, 0.02) !important;
   --lamma-ios-card-bottom: rgba(6, 9, 13, 0.32) !important;
@@ -1347,6 +1361,62 @@ body {
   --lamma-ios-gold-veil: rgba(255, 255, 255, 0.01) !important;
   --lamma-ios-gold-veil-strong: rgba(255, 255, 255, 0.01) !important;
   --lamma-ios-surface-mask: rgba(14, 18, 24, 0.85) !important;
+}
+
+.lamma-neutral-glass[data-chat-theme="night-paper"] {
+  --theme-primary: #d6b35b !important;
+  --theme-accent: #f7e7b4 !important;
+  --theme-bg-1: #110f0b !important;
+  --theme-bg-2: #17130d !important;
+  --theme-bg-3: #211a11 !important;
+  --theme-primary-rgb: 214, 179, 91 !important;
+  --theme-accent-rgb: 247, 231, 180 !important;
+  --glow-color: rgba(214, 179, 91, 0.16) !important;
+  --lamma-wall-r: 214 !important;
+  --lamma-wall-g: 179 !important;
+  --lamma-wall-b: 91 !important;
+}
+
+.lamma-neutral-glass[data-chat-theme="charcoal-calm"] {
+  --theme-primary: #94a3b8 !important;
+  --theme-accent: #e2e8f0 !important;
+  --theme-bg-1: #081019 !important;
+  --theme-bg-2: #0d1620 !important;
+  --theme-bg-3: #14202d !important;
+  --theme-primary-rgb: 148, 163, 184 !important;
+  --theme-accent-rgb: 226, 232, 240 !important;
+  --glow-color: rgba(148, 163, 184, 0.15) !important;
+  --lamma-wall-r: 148 !important;
+  --lamma-wall-g: 163 !important;
+  --lamma-wall-b: 184 !important;
+}
+
+.lamma-neutral-glass[data-chat-theme="olive-ink"] {
+  --theme-primary: #84cc16 !important;
+  --theme-accent: #d9f99d !important;
+  --theme-bg-1: #08100a !important;
+  --theme-bg-2: #0d1710 !important;
+  --theme-bg-3: #142117 !important;
+  --theme-primary-rgb: 132, 204, 22 !important;
+  --theme-accent-rgb: 217, 249, 157 !important;
+  --glow-color: rgba(132, 204, 22, 0.15) !important;
+  --lamma-wall-r: 132 !important;
+  --lamma-wall-g: 204 !important;
+  --lamma-wall-b: 22 !important;
+}
+
+.lamma-neutral-glass[data-chat-theme="violet-night"] {
+  --theme-primary: #a78bfa !important;
+  --theme-accent: #ddd6fe !important;
+  --theme-bg-1: #0b0813 !important;
+  --theme-bg-2: #130f1d !important;
+  --theme-bg-3: #1c1628 !important;
+  --theme-primary-rgb: 167, 139, 250 !important;
+  --theme-accent-rgb: 221, 214, 254 !important;
+  --glow-color: rgba(167, 139, 250, 0.18) !important;
+  --lamma-wall-r: 167 !important;
+  --lamma-wall-g: 139 !important;
+  --lamma-wall-b: 250 !important;
 }
 
 .lamma-neutral-glass .lamma-glass,
@@ -3438,5 +3508,3 @@ body {
 .lamma-feature-shell span {
   text-shadow: 0 1.5px 2px rgba(0, 0, 0, 0.98) !important;
 }
-
-

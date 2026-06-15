@@ -50,7 +50,7 @@ export function useServiceWorker(): ServiceWorkerState {
       if (!mounted) return;
 
       if (registration.waiting) {
-        registration.waiting.postMessage("SKIP_WAITING");
+        setNeedRefresh(true);
       }
 
       if (registration.active) {
@@ -65,7 +65,7 @@ export function useServiceWorker(): ServiceWorkerState {
           if (!mounted || nextWorker.state !== "installed") return;
 
           if (navigator.serviceWorker.controller) {
-            nextWorker.postMessage("SKIP_WAITING");
+            setNeedRefresh(true);
             return;
           }
 
@@ -130,6 +130,7 @@ export function useServiceWorker(): ServiceWorkerState {
     if (!("serviceWorker" in navigator)) return;
     const registration = await navigator.serviceWorker.getRegistration();
     if (registration?.waiting) {
+      setNeedRefresh(false);
       registration.waiting.postMessage("SKIP_WAITING");
     }
   }, []);

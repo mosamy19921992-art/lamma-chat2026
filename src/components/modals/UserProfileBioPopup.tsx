@@ -171,8 +171,9 @@ export function UserProfileBioPopup({
                     className="w-full h-20 p-2 rounded-xl text-[10px] text-white focus:outline-none resize-none text-right placeholder-gray-600 font-bold lamma-input-shell"
                   />
                   <div className="text-[8px] text-gray-500 font-bold select-none">
-                    * هذه سيرتك الذاتية المعتمدة، يمكنك تعديلها مباشرةً وتظهر
-                    للأعضاء الآخرين فوراً 💾!
+                    * هذه سيرتك الذاتية المحلية على جهازك الحالي، ويمكنك
+                    تعديلها هنا مباشرةً. مزامنتها لكل الأعضاء ستتوفر لاحقاً 💾
+                    .
                   </div>
                 </div>
               ) : (

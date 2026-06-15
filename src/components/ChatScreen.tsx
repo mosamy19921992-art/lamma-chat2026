@@ -63,6 +63,7 @@ import UserProfileBioPopup from "./modals/UserProfileBioPopup.tsx";
 import {
   getClientUid,
   supabase,
+  type BannedUserRow,
   type NicknameChangeRequestRow,
   SupabaseMessage,
   type OwnerActivityLogRow,
@@ -128,6 +129,8 @@ function MobileBottomSheet({
             exit={{ y: 520 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="absolute inset-x-0 bottom-0 flex max-h-[80vh] min-h-0 flex-col overflow-hidden rounded-t-3xl lamma-sheet-shell"
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between px-4 py-3 lamma-sheet-header">
               <div className="flex items-center gap-2">
@@ -153,8 +156,161 @@ function MobileBottomSheet({
   );
 }
 
+function HeaderIconButton({
+  title,
+  onClick,
+  className,
+  children,
+}: {
+  title: string;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const [isTipOpen, setIsTipOpen] = useState(false);
+  const pressTimerRef = useRef<number | null>(null);
+
+  const clearPressTimer = () => {
+    if (pressTimerRef.current) {
+      window.clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        aria-label={title}
+        title={title}
+        onClick={onClick}
+        onMouseEnter={() => setIsTipOpen(true)}
+        onMouseLeave={() => setIsTipOpen(false)}
+        onFocus={() => setIsTipOpen(true)}
+        onBlur={() => setIsTipOpen(false)}
+        onPointerDown={() => {
+          clearPressTimer();
+          pressTimerRef.current = window.setTimeout(() => {
+            setIsTipOpen(true);
+          }, 420);
+        }}
+        onPointerUp={() => {
+          clearPressTimer();
+          window.setTimeout(() => setIsTipOpen(false), 250);
+        }}
+        onPointerCancel={() => {
+          clearPressTimer();
+          setIsTipOpen(false);
+        }}
+        className={className}
+      >
+        {children}
+      </button>
+      {isTipOpen && (
+        <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[200] rounded-xl border border-white/10 bg-black/80 px-2.5 py-1 text-[10px] font-black text-white whitespace-nowrap">
+          {title}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const OWNER_SETTINGS_ROW_ID = "global";
 const OWNER_SYNC_DEBOUNCE_MS = 350;
+const BANNED_USER_REASON_PREFIX = "lamma-ban-json:";
+const UUID_LIKE_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuidLike(value?: string | null): value is string {
+  return Boolean(value && UUID_LIKE_PATTERN.test(value));
+}
+
+function createBanSignature(ban: Partial<BanInfo>): string {
+  return [
+    (ban.type || "ban").toLowerCase(),
+    (ban.roomId || "").toLowerCase(),
+    (ban.nickname || "").trim().toLowerCase(),
+    (ban.fingerprint || "").trim().toLowerCase(),
+    (ban.ip || "").trim().toLowerCase(),
+  ].join("|");
+}
+
+function mergeBanLists(existing: BanInfo[], incoming: BanInfo[]): BanInfo[] {
+  const merged = new Map<string, BanInfo>();
+  [...existing, ...incoming].forEach((ban) => {
+    merged.set(createBanSignature(ban), ban);
+  });
+  return Array.from(merged.values());
+}
+
+function serializeBanRowReason(ban: BanInfo): string {
+  return `${BANNED_USER_REASON_PREFIX}${JSON.stringify({
+    nickname: ban.nickname,
+    email: ban.email || "",
+    fingerprint: ban.fingerprint || "",
+    browserSignature: ban.browserSignature || "",
+    ip: ban.ip || "",
+    localStorageId: ban.localStorageId || "",
+    type: ban.type,
+    roomId: ban.roomId || "",
+    banner: ban.banner,
+    reason: ban.reason,
+    time: ban.time,
+  })}`;
+}
+
+function parseBannedUserRow(row: BannedUserRow): BanInfo {
+  const fallbackTime = row.created_at
+    ? new Date(row.created_at).toLocaleTimeString("ar-EG", {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+      })
+    : new Date().toLocaleTimeString("ar-EG", {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+      });
+
+  if (row.reason.startsWith(BANNED_USER_REASON_PREFIX)) {
+    try {
+      const parsed = JSON.parse(
+        row.reason.slice(BANNED_USER_REASON_PREFIX.length),
+      ) as Partial<BanInfo>;
+      return {
+        id: row.id || `ban-${Date.now()}`,
+        nickname: parsed.nickname || row.author,
+        email: parsed.email || undefined,
+        fingerprint: parsed.fingerprint || row.uid,
+        browserSignature: parsed.browserSignature || "",
+        ip: parsed.ip || "",
+        localStorageId: parsed.localStorageId || "",
+        type: (parsed.type as BanInfo["type"]) || "ban",
+        roomId: parsed.roomId || undefined,
+        banner: parsed.banner || row.banner,
+        reason: parsed.reason || row.reason,
+        time: parsed.time || fallbackTime,
+      };
+    } catch {
+      // Fall back to the legacy/simple row shape if JSON parsing fails.
+    }
+  }
+
+  return {
+    id: row.id || `ban-${Date.now()}`,
+    nickname: row.author,
+    email: undefined,
+    fingerprint: row.uid,
+    browserSignature: "",
+    ip: "",
+    localStorageId: "",
+    type: "ban",
+    roomId: undefined,
+    banner: row.banner,
+    reason: row.reason,
+    time: fallbackTime,
+  };
+}
 
 function sanitizeRoomBgMap(value: unknown): Record<string, string> {
   if (!value || typeof value !== "object") return {};
@@ -384,8 +540,97 @@ export default function ChatScreen({
   const DEFAULT_AMBIENT_BG: string = "/MAN.png";
   const POSTS_ROOM_ID = "posts-feed";
   const customRoomsStorageKey = `lamma_custom_rooms_${currentUser.uid || currentUser.nickname}`;
+  const currentUserRoleLower = String(currentUser.role || "").toLowerCase();
+  const isCurrentUserOwner = currentUserRoleLower === "owner";
+  const currentUserStorageIdentity = String(
+    currentUser.uid || currentUser.email || currentUser.nickname || "anon",
+  )
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w.-]+/g, "_");
+  const userScopedStorageKey = (base: string) =>
+    `${base}_${currentUser.authProvider || "user"}_${currentUserStorageIdentity}`;
+  const subscriptionStorageKey = userScopedStorageKey("lamma_user_subscription");
+  const friendsListStorageKey = userScopedStorageKey("lamma_friends_list");
+  const ignoredUsersStorageKey = userScopedStorageKey("lamma_ignored_users");
+  const blockedUsersStorageKey = userScopedStorageKey("lamma_blocked_users");
+  const userBioStorageKey = userScopedStorageKey("lamma_user_bio");
+  const ghostModeStorageKey = isCurrentUserOwner
+    ? userScopedStorageKey("lamma_ghost_mode")
+    : null;
+  const spyModeStorageKey = isCurrentUserOwner
+    ? userScopedStorageKey("lamma_spy_mode")
+    : null;
+
+  const readRequestedRoomId = () => {
+    if (typeof window === "undefined") return "egypt";
+    const requestedRoom = new URLSearchParams(window.location.search)
+      .get("room")
+      ?.trim()
+      .toLowerCase();
+    return requestedRoom || "egypt";
+  };
+
+  const buildRoomLink = (roomId: string) => {
+    const base =
+      (import.meta.env.VITE_APP_URL || "").trim() ||
+      (typeof window !== "undefined" ? window.location.origin : "/");
+    const url = new URL(
+      base,
+      typeof window !== "undefined" ? window.location.origin : "https://lamma-arabic-chat-room.vercel.app",
+    );
+    url.searchParams.set("room", roomId || "egypt");
+    return url.toString();
+  };
 
   type WallTheme = "fire" | "ice" | "violet";
+  type DesignAssistantPatch = {
+    wallTheme?: WallTheme;
+    brandLogoUrl?: string | null;
+    glowColor?: string;
+    ownerBgImage?: string | null;
+    roomBgCurrent?: string | null;
+    chatTheme?: ChatTheme;
+  };
+  type DesignAssistantProposal = {
+    id: "premium" | "calm" | "night" | "room-focus";
+    title: string;
+    summary: string;
+    changes: DesignAssistantPatch;
+    reasoning: string[];
+  };
+  type DesignAssistantFinding = {
+    tone: "good" | "warn";
+    text: string;
+  };
+  type DesignAssistantAudit = {
+    score: number;
+    verdict: string;
+    roomLabel: string;
+    highlights: string[];
+    findings: DesignAssistantFinding[];
+  };
+  type DesignAssistantSnapshot = {
+    wallTheme: WallTheme;
+    brandLogoUrl: string | null;
+    glowColor: string;
+    ownerBgImage: string | null;
+    roomBgCurrent: string | null;
+    chatTheme: ChatTheme;
+  };
+  type DesignPreset = {
+    id: string;
+    name: string;
+    createdAt: string;
+    snapshot: {
+      wallTheme: WallTheme;
+      brandLogoUrl: string | null;
+      glowColor: string;
+      ownerBgImage: string | null;
+      roomBgMap: Record<string, string>;
+      chatTheme: ChatTheme;
+    };
+  };
   type CustomRoomEntry = {
     id: string;
     name: string;
@@ -401,6 +646,9 @@ export default function ChatScreen({
   );
   const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(() =>
     localStorage.getItem("lamma_custom_logo_url"),
+  );
+  const [designLogoInput, setDesignLogoInput] = useState<string>(() =>
+    localStorage.getItem("lamma_custom_logo_url") || "",
   );
   const [glowColor, setGlowColor] = useState<string>(() => {
     return localStorage.getItem("lamma_glow_color") || "#e4e4e7";
@@ -421,7 +669,11 @@ export default function ChatScreen({
       return {};
     }
   });
+  const [designOwnerBgInput, setDesignOwnerBgInput] = useState<string>(() =>
+    localStorage.getItem("lamma_owner_bg_image") || "",
+  );
   const [inputText, setInputText] = useState("");
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showSearchPop, setShowSearchPop] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -497,6 +749,68 @@ export default function ChatScreen({
   const [chatTheme, setChatTheme] = useState<ChatTheme>(() =>
     readStoredChatTheme(),
   );
+  const designPresetsStorageKey = userScopedStorageKey("lamma_design_presets");
+  const [designPresets, setDesignPresets] = useState<DesignPreset[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem(designPresetsStorageKey);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as DesignPreset[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [designPresetName, setDesignPresetName] = useState("");
+  const [assistantFindings, setAssistantFindings] = useState<
+    DesignAssistantFinding[]
+  >([]);
+  const [assistantAudit, setAssistantAudit] =
+    useState<DesignAssistantAudit | null>(null);
+  const [assistantProposal, setAssistantProposal] =
+    useState<DesignAssistantProposal | null>(null);
+  const [lastAppliedDesignSnapshot, setLastAppliedDesignSnapshot] =
+    useState<DesignAssistantSnapshot | null>(null);
+  const applyDesignPreset = (preset: DesignPreset) => {
+    const snapshot = preset.snapshot;
+    setWallTheme(snapshot.wallTheme);
+    setBrandLogoUrl(snapshot.brandLogoUrl);
+    setDesignLogoInput(snapshot.brandLogoUrl || "");
+    setGlowColor(snapshot.glowColor);
+    setOwnerBgImage(snapshot.ownerBgImage);
+    setDesignOwnerBgInput(snapshot.ownerBgImage || "");
+    setRoomBgMap(snapshot.roomBgMap || {});
+    setChatTheme(snapshot.chatTheme);
+    setHasUserChosenChatTheme(true);
+  };
+  const buildDesignPreset = (name: string): DesignPreset => {
+    return {
+      id: crypto.randomUUID(),
+      name: name.trim().slice(0, 40),
+      createdAt: new Date().toISOString(),
+      snapshot: {
+        wallTheme,
+        brandLogoUrl,
+        glowColor,
+        ownerBgImage,
+        roomBgMap: { ...roomBgMap },
+        chatTheme,
+      },
+    };
+  };
+  const handleSaveDesignPreset = () => {
+    const name = designPresetName.trim();
+    if (!name) {
+      alert("اكتب اسم للستايل الأول.");
+      return;
+    }
+    const preset = buildDesignPreset(name);
+    setDesignPresets((prev) => [preset, ...prev].slice(0, 30));
+    setDesignPresetName("");
+  };
+  const handleDeleteDesignPreset = (id: string) => {
+    setDesignPresets((prev) => prev.filter((p) => p.id !== id));
+  };
   const chatThemeAmbientStyles: Partial<
     Record<ChatTheme, { imageFilter: string; overlay: string }>
   > = {
@@ -536,8 +850,8 @@ export default function ChatScreen({
       return [];
     }
   });
-  const [activeRoomId, setActiveRoomId] = useState("egypt");
-  const appLink = import.meta.env.VITE_APP_URL || window.location.origin;
+  const [activeRoomId, setActiveRoomId] = useState(() => readRequestedRoomId());
+  const appLink = buildRoomLink(activeRoomId);
   const geminiSearchEndpoint =
     import.meta.env.VITE_GEMINI_SEARCH_ENDPOINT || "";
   const senderUid = currentUser.uid || getClientUid();
@@ -559,10 +873,28 @@ export default function ChatScreen({
   const isAdminRole = roleLower === "admin";
   const isManagementRole = isOwnerRole || isAdminRole;
   const isPostsRoom = activeRoomId === POSTS_ROOM_ID;
+  const isOwnerRoom = activeRoomId === "owner";
+  const isAdminRoom = activeRoomId === "admin";
   const canPublishPosts = currentUser.authProvider === "supabase";
   const isRegisteredAccount = currentUser.authProvider === "supabase";
   const tempEntryTopicStorageKey = `lamma_temp_entry_topic_${currentUser.uid || currentUser.nickname}`;
   const availableRooms = [...ROOMS_DEF, ...customRooms];
+  useEffect(() => {
+    const requestedRoomExists = availableRooms.some((room) => room.id === activeRoomId);
+    const isProtectedOwnerRoom = activeRoomId === "owner" && !isOwnerRole;
+    const isProtectedAdminRoom = activeRoomId === "admin" && !isAdminRole && !isOwnerRole;
+
+    if (!requestedRoomExists || isProtectedOwnerRoom || isProtectedAdminRoom) {
+      setActiveRoomId("egypt");
+    }
+  }, [activeRoomId, availableRooms, isAdminRole, isOwnerRole]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("room", activeRoomId || "egypt");
+    window.history.replaceState({}, "", url.toString());
+  }, [activeRoomId]);
   const visibleRoomCount = availableRooms.filter((room) => {
     if (room.id === "owner" && !isOwnerRole) return false;
     if (room.id === "admin" && !isAdminRole && !isOwnerRole) return false;
@@ -570,6 +902,9 @@ export default function ChatScreen({
   }).length;
   const activeRoomBg =
     roomBgMap[activeRoomId] || ownerBgImage || DEFAULT_AMBIENT_BG;
+  const [designRoomBgInput, setDesignRoomBgInput] = useState<string>(
+    roomBgMap[activeRoomId] || "",
+  );
   const isDefaultAmbientBg = activeRoomBg === DEFAULT_AMBIENT_BG;
   const isChatColumnExpanded = isLeftColumnCollapsed || isRightColumnCollapsed;
   const readStoredTempEntryTopic = () => {
@@ -610,6 +945,18 @@ export default function ChatScreen({
   }, [customRooms, customRoomsStorageKey]);
 
   useEffect(() => {
+    setDesignLogoInput(brandLogoUrl || "");
+  }, [brandLogoUrl]);
+
+  useEffect(() => {
+    setDesignOwnerBgInput(ownerBgImage || "");
+  }, [ownerBgImage]);
+
+  useEffect(() => {
+    setDesignRoomBgInput(roomBgMap[activeRoomId] || "");
+  }, [activeRoomId, roomBgMap]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     localStorage.setItem(
       READING_MODE_STORAGE_KEY,
@@ -627,6 +974,304 @@ export default function ChatScreen({
     localStorage.setItem(CHAT_THEME_STORAGE_KEY, chatTheme);
     localStorage.setItem(CHAT_THEME_CUSTOMIZED_STORAGE_KEY, "true");
   }, [chatTheme, hasUserChosenChatTheme]);
+
+  const buildAssistantFindings = (): DesignAssistantFinding[] => {
+    const findings: DesignAssistantFinding[] = [];
+
+    if (!brandLogoUrl?.trim()) {
+      findings.push({
+        tone: "warn",
+        text: "الشعار داخل الشات يعتمد على الافتراضي. توحيد الشعار يرفع فخامة الهوية.",
+      });
+    } else {
+      findings.push({
+        tone: "good",
+        text: "الشعار المخصص مفعّل داخل الشات، وده يحسن ثبات الهوية البصرية.",
+      });
+    }
+
+    if (chatTheme === "classic") {
+      findings.push({
+        tone: "warn",
+        text: "ثيم الشات ما زال كلاسيكي؛ يوجد مجال واضح لمظهر أهدى أو أفخم.",
+      });
+    } else {
+      findings.push({
+        tone: "good",
+        text: `ثيم الشات الحالي (${chatTheme}) مفعل ويعطي هوية أوضح من الوضع الكلاسيكي.`,
+      });
+    }
+
+    if (!roomBgMap[activeRoomId]) {
+      findings.push({
+        tone: "warn",
+        text: "الغرفة الحالية لا تملك خلفية مستقلة، لذلك شكلها يعتمد على الخلفية العامة فقط.",
+      });
+    } else {
+      findings.push({
+        tone: "good",
+        text: "الغرفة الحالية لها خلفية مخصصة، وده يمنحها شخصية مستقلة.",
+      });
+    }
+
+    if (!ownerBgImage?.trim()) {
+      findings.push({
+        tone: "warn",
+        text: "الخلفية العامة غير مخصصة حاليًا، وسيتم الرجوع للصورة الافتراضية فقط.",
+      });
+    }
+
+    if (!/^#[0-9a-f]{6}$/i.test(glowColor)) {
+      findings.push({
+        tone: "warn",
+        text: "لون الإضاءة الحالي غير مثالي أو غير مكتوب بصيغة HEX واضحة.",
+      });
+    } else {
+      findings.push({
+        tone: "good",
+        text: `لون الإضاءة الحالي (${glowColor}) صالح ويمكن البناء عليه في أي اقتراح جديد.`,
+      });
+    }
+
+    return findings;
+  };
+
+  const buildAssistantAudit = (): DesignAssistantAudit => {
+    const findings = buildAssistantFindings();
+    const roomLabel =
+      openRooms.find((r) => r.id === activeRoomId)?.name || activeRoomId;
+    let score = 100;
+
+    if (!brandLogoUrl?.trim()) score -= 16;
+    if (chatTheme === "classic") score -= 18;
+    if (!roomBgMap[activeRoomId]) score -= 10;
+    if (!ownerBgImage?.trim()) score -= 12;
+    if (!/^#[0-9a-f]{6}$/i.test(glowColor)) score -= 10;
+    if (wallTheme === "fire" && chatTheme === "classic") score -= 6;
+
+    score = Math.max(52, Math.min(100, score));
+
+    const highlights: string[] = [];
+    if (chatTheme === "classic") {
+      highlights.push("الغرفة الحالية ما زالت على الشكل الكلاسيكي، وده يقلل إحساس التجديد.");
+    }
+    if (!roomBgMap[activeRoomId]) {
+      highlights.push(`الغرفة الحالية (${roomLabel}) لا تملك بصمة بصرية مستقلة حتى الآن.`);
+    }
+    if (!brandLogoUrl?.trim()) {
+      highlights.push("الشعار الموحد داخل الشات لم يُفعّل بعد.");
+    }
+    if (highlights.length === 0) {
+      highlights.push("المظهر العام متماسك، والمطلوب الآن تحسينات ذوقية فقط.");
+    }
+
+    const verdict =
+      score >= 90
+        ? "الشكل الحالي قوي ومتماسك"
+        : score >= 75
+          ? "الشكل جيد لكن ما زال قابلًا للتحسين"
+          : "الشكل يحتاج ضبط بصري أوضح";
+
+    return {
+      score,
+      verdict,
+      roomLabel,
+      highlights,
+      findings,
+    };
+  };
+
+  const buildAssistantProposal = (
+    preset: DesignAssistantProposal["id"],
+  ): DesignAssistantProposal => {
+    const sharedLogo = brandLogoUrl?.trim() || "/images/lamma-logo-nice.png";
+    const roomLabel =
+      openRooms.find((r) => r.id === activeRoomId)?.name || activeRoomId;
+
+    if (preset === "premium") {
+      return {
+        id: "premium",
+        title: "الستايل الفاخر",
+        summary: "يقرب الشات من طابع ذهبي هادئ مع حضور أفخم للشعار داخل الواجهة.",
+        changes: {
+          wallTheme: "fire",
+          glowColor: "#d4a63a",
+          brandLogoUrl: sharedLogo,
+          chatTheme: "night-paper",
+        },
+        reasoning: [
+          "يوحد الشعار مع مظهر الشات الأساسي.",
+          "يستخدم إضاءة ذهبية أقل حدة وأكثر فخامة.",
+          "ينقل الشات من الوضع الكلاسيكي إلى Night Paper.",
+        ],
+      };
+    }
+
+    if (preset === "calm") {
+      return {
+        id: "calm",
+        title: "الستايل الهادئ",
+        summary: "يخفف الزحام اللوني ويجعل القراءة أسهل خاصة في الجلسات الطويلة.",
+        changes: {
+          wallTheme: "ice",
+          glowColor: "#93c5fd",
+          chatTheme: "charcoal-calm",
+          roomBgCurrent: null,
+        },
+        reasoning: [
+          "يقلل حدة التباين البصري على الغرفة الحالية.",
+          "يعطي الأعضاء مظهرًا أكثر هدوءًا وراحة في القراءة.",
+          "يحافظ على الهوية بدون قفزات لونية مزعجة.",
+        ],
+      };
+    }
+
+    if (preset === "room-focus") {
+      const nextTheme: ChatTheme =
+        wallTheme === "violet"
+          ? "violet-night"
+          : wallTheme === "ice"
+            ? "charcoal-calm"
+            : "night-paper";
+      const nextGlow =
+        wallTheme === "violet"
+          ? "#8b5cf6"
+          : wallTheme === "ice"
+            ? "#93c5fd"
+            : "#d4a63a";
+
+      return {
+        id: "room-focus",
+        title: `اقتراح مخصص لغرفة ${roomLabel}`,
+        summary: "يضبط الشكل الحالي بما يناسب الغرفة المفتوحة الآن بدل تطبيق ستايل عام على كل المشهد.",
+        changes: {
+          chatTheme: nextTheme,
+          glowColor: nextGlow,
+          brandLogoUrl: sharedLogo,
+        },
+        reasoning: [
+          `يركز على الغرفة الحالية (${roomLabel}) بدل تعديل عام غير موجه.`,
+          "يحافظ على الشعار ظاهرًا داخل الهيدر لضمان ثبات الهوية.",
+          "يضبط الثيم والإضاءة حسب لون الجدران الحالي لتقليل التضارب.",
+        ],
+      };
+    }
+
+    return {
+      id: "night",
+      title: "الستايل الليلي",
+      summary: "يمنح الشات شخصية ليلية أوضح وإضاءة بنفسجية مناسبة للغرف الليلية.",
+      changes: {
+        wallTheme: "violet",
+        glowColor: "#8b5cf6",
+        chatTheme: "violet-night",
+        brandLogoUrl: sharedLogo,
+      },
+      reasoning: [
+        "يوائم بين لون الجدران وثيم الشات الليلي.",
+        "يحافظ على الشعار ظاهرًا داخل الهيدر.",
+        "يعطي طابعًا حديثًا ومختلفًا عن الشكل التقليدي.",
+      ],
+    };
+  };
+
+  const runAssistantAudit = () => {
+    const audit = buildAssistantAudit();
+    setAssistantAudit(audit);
+    setAssistantFindings(audit.findings);
+    setAssistantProposal(null);
+  };
+
+  const queueAssistantProposal = (preset: DesignAssistantProposal["id"]) => {
+    const audit = buildAssistantAudit();
+    setAssistantAudit(audit);
+    setAssistantFindings(audit.findings);
+    setAssistantProposal(buildAssistantProposal(preset));
+  };
+
+  const applyAssistantPatch = (patch: DesignAssistantPatch) => {
+    setLastAppliedDesignSnapshot({
+      wallTheme,
+      brandLogoUrl,
+      glowColor,
+      ownerBgImage,
+      roomBgCurrent: roomBgMap[activeRoomId] || null,
+      chatTheme,
+    });
+
+    if (patch.wallTheme) setWallTheme(patch.wallTheme);
+    if (typeof patch.brandLogoUrl !== "undefined") {
+      setBrandLogoUrl(patch.brandLogoUrl);
+      setDesignLogoInput(patch.brandLogoUrl || "");
+    }
+    if (patch.glowColor) setGlowColor(patch.glowColor);
+    if (typeof patch.ownerBgImage !== "undefined") {
+      setOwnerBgImage(patch.ownerBgImage);
+      setDesignOwnerBgInput(patch.ownerBgImage || "");
+    }
+    if (typeof patch.roomBgCurrent !== "undefined") {
+      setRoomBgMap((prev) => {
+        const updated = { ...prev };
+        if (patch.roomBgCurrent?.trim()) updated[activeRoomId] = patch.roomBgCurrent.trim();
+        else delete updated[activeRoomId];
+        return updated;
+      });
+      setDesignRoomBgInput(patch.roomBgCurrent || "");
+    }
+    if (patch.chatTheme) {
+      setChatTheme(patch.chatTheme);
+      setHasUserChosenChatTheme(true);
+    }
+  };
+
+  const handleApplyAssistantProposal = () => {
+    if (!assistantProposal) return;
+    const allowed = window.confirm(
+      `سيتم تطبيق المقترح التالي الآن: ${assistantProposal.title}\n\nلن يتم تنفيذ أي تغيير آخر غير المعروض داخل الخطة الحالية.\n\nهل تريد المتابعة؟`,
+    );
+    if (!allowed) return;
+
+    applyAssistantPatch(assistantProposal.changes);
+    addSystemActivityLog(
+      "promote",
+      currentUser.nickname,
+      `المساعد الذكي طبق اقتراح التصميم [${assistantProposal.title}] بعد موافقة المالك.`,
+      "🤖 مهندس لمة",
+    );
+    setAssistantProposal(null);
+  };
+
+  const handleRestoreLastDesignSnapshot = () => {
+    if (!lastAppliedDesignSnapshot) return;
+    const allowed = window.confirm(
+      "سيتم استعادة آخر شكل محفوظ قبل تطبيق اقتراح المساعد. هل تريد المتابعة؟",
+    );
+    if (!allowed) return;
+
+    applyAssistantPatch(lastAppliedDesignSnapshot);
+    addSystemActivityLog(
+      "demote",
+      currentUser.nickname,
+      "تمت استعادة آخر شكل محفوظ قبل تعديل المساعد الذكي.",
+      "🤖 مهندس لمة",
+    );
+    setAssistantProposal(null);
+  };
+
+  useEffect(() => {
+    if (assistantFindings.length === 0 && !assistantAudit) return;
+    const nextAudit = buildAssistantAudit();
+    setAssistantAudit(nextAudit);
+    setAssistantFindings(nextAudit.findings);
+  }, [
+    activeRoomId,
+    assistantFindings.length,
+    brandLogoUrl,
+    chatTheme,
+    glowColor,
+    ownerBgImage,
+    roomBgMap,
+  ]);
 
   const performSearch = async () => {
     if (!searchQuery) return;
@@ -667,7 +1312,7 @@ export default function ChatScreen({
 
   // --- AUTOMATION AND STORE SYSTEM STATES ---
   const [subscription, setSubscription] = useState<any>(() => {
-    const saved = localStorage.getItem("lamma_user_subscription");
+    const saved = localStorage.getItem(subscriptionStorageKey);
     try {
       return saved ? JSON.parse(saved) : null;
     } catch {
@@ -687,7 +1332,7 @@ export default function ChatScreen({
       : subscriptionVisualRole || roleLower || "user";
 
   const buildActiveSessionState = (user: UserSession) => {
-    const savedSub = localStorage.getItem("lamma_user_subscription");
+    const savedSub = localStorage.getItem(subscriptionStorageKey);
     let initialColor = user.color;
     let initialFrame = "";
     let initialTitle = user.title || "";
@@ -853,6 +1498,83 @@ export default function ChatScreen({
   // Current ban tracking state for the active logged-in user
   const [isCurrentlyBanned, setIsCurrentlyBanned] = useState(false);
   const [banDetails, setBanDetails] = useState<BanInfo | null>(null);
+  const canSyncModerationToSupabase = Boolean(
+    supabase &&
+      currentUser.authProvider === "supabase" &&
+      currentUser.uid &&
+      (currentUser.role === "owner" || currentUser.role === "admin"),
+  );
+
+  const addBanEntry = async (
+    ban: BanInfo,
+    options?: {
+      sync?: boolean;
+    },
+  ) => {
+    setBannedUsersList((prev) => mergeBanLists(prev, [ban]));
+
+    if (!options?.sync || !supabase || !canSyncModerationToSupabase) {
+      return;
+    }
+
+    const payload: BannedUserRow = {
+      uid:
+        ban.fingerprint ||
+        ban.localStorageId ||
+        ban.nickname.trim().toLowerCase(),
+      author: ban.nickname,
+      banner: ban.banner,
+      reason: serializeBanRowReason(ban),
+    };
+
+    const { data, error } = await supabase
+      .from("banned_users")
+      .insert(payload)
+      .select("*")
+      .single();
+
+    if (error) {
+      console.warn("Failed to sync ban entry to Supabase", error);
+      return;
+    }
+
+    if (data) {
+      setBannedUsersList((prev) =>
+        mergeBanLists(prev, [parseBannedUserRow(data as BannedUserRow)]),
+      );
+    }
+  };
+
+  const removeBanEntries = async (
+    matcher: (ban: BanInfo) => boolean,
+    options?: {
+      sync?: boolean;
+    },
+  ) => {
+    let removedEntries: BanInfo[] = [];
+    setBannedUsersList((prev) => {
+      removedEntries = prev.filter(matcher);
+      return prev.filter((ban) => !matcher(ban));
+    });
+
+    if (!options?.sync || !supabase || !canSyncModerationToSupabase) {
+      return;
+    }
+
+    const remoteIds = removedEntries
+      .map((ban) => ban.id)
+      .filter((id): id is string => isUuidLike(id));
+
+    if (remoteIds.length === 0) {
+      return;
+    }
+
+    const { error } = await supabase.from("banned_users").delete().in("id", remoteIds);
+
+    if (error) {
+      console.warn("Failed to remove ban entry from Supabase", error);
+    }
+  };
 
   // User profiles click state
   const [selectedProfileMember, setSelectedProfileMember] =
@@ -883,27 +1605,34 @@ export default function ChatScreen({
 
   // Lists of friends, ignored, and blocked users
   const [friendsList, setFriendsList] = useState<string[]>(() => {
-    const saved = localStorage.getItem("lamma_friends_list");
+    const saved = localStorage.getItem(friendsListStorageKey);
     return saved ? JSON.parse(saved) : [];
   });
   const [ignoredUsers, setIgnoredUsers] = useState<string[]>(() => {
-    const saved = localStorage.getItem("lamma_ignored_users");
+    const saved = localStorage.getItem(ignoredUsersStorageKey);
     return saved ? JSON.parse(saved) : [];
   });
   const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
-    const saved = localStorage.getItem("lamma_blocked_users");
+    const saved = localStorage.getItem(blockedUsersStorageKey);
     return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem("lamma_friends_list", JSON.stringify(friendsList));
-    localStorage.setItem("lamma_ignored_users", JSON.stringify(ignoredUsers));
-    localStorage.setItem("lamma_blocked_users", JSON.stringify(blockedUsers));
-  }, [friendsList, ignoredUsers, blockedUsers]);
+    localStorage.setItem(friendsListStorageKey, JSON.stringify(friendsList));
+    localStorage.setItem(ignoredUsersStorageKey, JSON.stringify(ignoredUsers));
+    localStorage.setItem(blockedUsersStorageKey, JSON.stringify(blockedUsers));
+  }, [
+    blockedUsers,
+    blockedUsersStorageKey,
+    friendsList,
+    friendsListStorageKey,
+    ignoredUsers,
+    ignoredUsersStorageKey,
+  ]);
 
   const [myCustomBio, setMyCustomBio] = useState(() => {
     return (
-      localStorage.getItem("lamma_user_bio") ||
+      localStorage.getItem(userBioStorageKey) ||
       "شخص مميز يشغل حسابه في شات لمة الرائد 💚"
     );
   });
@@ -929,8 +1658,8 @@ export default function ChatScreen({
   );
   const tempEntryTopicLastTriggerRef = useRef("");
   useEffect(() => {
-    localStorage.setItem("lamma_user_bio", myCustomBio);
-  }, [myCustomBio]);
+    localStorage.setItem(userBioStorageKey, myCustomBio);
+  }, [myCustomBio, userBioStorageKey]);
   useEffect(() => {
     if (showStatus) {
       const timer = setTimeout(() => setShowStatus(false), 5000);
@@ -1072,6 +1801,7 @@ export default function ChatScreen({
     const isOwner = currentUser.role === "owner";
     const isAdmin = currentUser.role === "admin";
     if (isOwner || isAdmin) return true;
+    if (supabase && !currentUser.uid) return false;
     const cleanAuthor = msg.author
       .replace(/\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g, "")
       .trim();
@@ -1213,10 +1943,7 @@ export default function ChatScreen({
       if (remainingDays <= 0) {
         // EXPIRED! BOT REMOVES VIP AUTOMATICALLY
         const expiredSub = { ...subscription, isActive: false };
-        localStorage.setItem(
-          "lamma_user_subscription",
-          JSON.stringify(expiredSub),
-        );
+        localStorage.setItem(subscriptionStorageKey, JSON.stringify(expiredSub));
         setSubscription(expiredSub);
 
         setMyActiveSession((prev) => ({
@@ -1297,20 +2024,30 @@ export default function ChatScreen({
 
   // Dynamic online chat members state
   const [isGhostMode, setIsGhostMode] = useState<boolean>(() => {
-    return localStorage.getItem("lamma_ghost_mode") === "true";
+    if (!ghostModeStorageKey) return false;
+    return localStorage.getItem(ghostModeStorageKey) === "true";
   });
 
   useEffect(() => {
-    localStorage.setItem("lamma_ghost_mode", String(isGhostMode));
-  }, [isGhostMode]);
+    if (!ghostModeStorageKey) {
+      setIsGhostMode(false);
+      return;
+    }
+    localStorage.setItem(ghostModeStorageKey, String(isGhostMode));
+  }, [ghostModeStorageKey, isGhostMode]);
 
   const [isSpyMode, setIsSpyMode] = useState<boolean>(() => {
-    return localStorage.getItem("lamma_spy_mode") === "true";
+    if (!spyModeStorageKey) return false;
+    return localStorage.getItem(spyModeStorageKey) === "true";
   });
 
   useEffect(() => {
-    localStorage.setItem("lamma_spy_mode", String(isSpyMode));
-  }, [isSpyMode]);
+    if (!spyModeStorageKey) {
+      setIsSpyMode(false);
+      return;
+    }
+    localStorage.setItem(spyModeStorageKey, String(isSpyMode));
+  }, [isSpyMode, spyModeStorageKey]);
 
   const normalizeChatMemberRole = (
     role: string | undefined,
@@ -1756,6 +2493,9 @@ export default function ChatScreen({
             setWallTheme(settings.wall_theme);
           }
           setRoomBgMap(sanitizeRoomBgMap(settings.room_bg_map));
+          if (Array.isArray((settings as any).design_presets)) {
+            setDesignPresets((settings as any).design_presets as DesignPreset[]);
+          }
         }
 
         if (Array.isArray(permissionsResult.data)) {
@@ -1927,6 +2667,18 @@ export default function ChatScreen({
   }, [roomBgMap]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(
+        designPresetsStorageKey,
+        JSON.stringify(designPresets),
+      );
+    } catch (e) {
+      // ignore
+    }
+  }, [designPresets, designPresetsStorageKey]);
+
+  useEffect(() => {
     if (
       !ownerSettingsSyncReadyRef.current ||
       !supabase ||
@@ -1957,6 +2709,7 @@ export default function ChatScreen({
         glow_color: glowColor,
         wall_theme: wallTheme,
         room_bg_map: roomBgMap,
+        design_presets: designPresets,
       };
 
       const { error } = await supabase
@@ -1977,6 +2730,7 @@ export default function ChatScreen({
     bannedWords,
     brandLogoUrl,
     canPersistOwnerSettings,
+    designPresets,
     glowColor,
     isAdsEnabled,
     isBotSilent,
@@ -2205,6 +2959,7 @@ export default function ChatScreen({
   const [showCommandsDropdown, setShowCommandsDropdown] = useState(false);
   const [showPrivacyDropdown, setShowPrivacyDropdown] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
   const pmImageUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -2384,7 +3139,7 @@ export default function ChatScreen({
     if (modal === "leadership" && !isOwnerRole) return;
     if (modal === "owner" && !isOwnerRole) return;
     if (modal === "guard" && !isOwnerRole) return;
-    if (modal === "admin" && (!isAdminRole || isOwnerRole)) return;
+    if (modal === "admin" && !isManagementRole) return;
     setShowAttachmentDropdown(false);
     setShowGamesDropdown(false);
     setShowMusicDropdown(false);
@@ -2413,7 +3168,12 @@ export default function ChatScreen({
       if (
         !target.closest(".dropdown-container") &&
         !target.closest(".sidebar-toggle-btn") &&
-        !target.closest(".sidebar-container")
+        !target.closest(".sidebar-container") &&
+        !target.closest(".lamma-sheet-shell") &&
+        !target.closest(".lamma-popover-shell") &&
+        !target.closest(".lamma-feature-shell") &&
+        !target.closest(".lamma-modal-shell") &&
+        !target.closest(".lamma-list-panel")
       ) {
         setShowNotificationsDropdown(false);
         setShowGamesDropdown(false);
@@ -2467,6 +3227,76 @@ export default function ChatScreen({
   useEffect(() => {
     localStorage.setItem("lamma_banned_list", JSON.stringify(bannedUsersList));
   }, [bannedUsersList]);
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    let isCancelled = false;
+
+    const fetchSyncedBans = async () => {
+      const { data, error } = await supabase
+        .from("banned_users")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.warn("Failed to load banned users from Supabase", error);
+        return;
+      }
+
+      if (!data || isCancelled) return;
+
+      setBannedUsersList((prev) =>
+        mergeBanLists(
+          prev,
+          (data as BannedUserRow[]).map((row) => parseBannedUserRow(row)),
+        ),
+      );
+    };
+
+    void fetchSyncedBans();
+
+    const subscription = supabase
+      .channel("banned_users_sync")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "banned_users",
+        },
+        (payload) => {
+          if (isCancelled) return;
+          setBannedUsersList((prev) =>
+            mergeBanLists(prev, [
+              parseBannedUserRow(payload.new as BannedUserRow),
+            ]),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "banned_users",
+        },
+        (payload) => {
+          if (isCancelled) return;
+          const deletedId = (payload.old as { id?: string } | null)?.id;
+          if (!deletedId) return;
+          setBannedUsersList((prev) =>
+            prev.filter((ban) => ban.id !== deletedId),
+          );
+        },
+      )
+      .subscribe();
+
+    return () => {
+      isCancelled = true;
+      void supabase.removeChannel(subscription);
+    };
+  }, []);
 
   // System Event Logging handler
   const addSystemActivityLog = (
@@ -2587,6 +3417,13 @@ export default function ChatScreen({
     setShowUserContextPop(true);
   };
 
+  const handleInlineMemberTap = (nickname: string) => {
+    // On small touch screens, opening profile cards from every message tap is
+    // easy to trigger by accident and feels like the messages "disappear".
+    if (typeof window !== "undefined" && window.innerWidth < 768) return;
+    openMemberProfile(nickname);
+  };
+
   // Interactive full-index check for block enforcement (IP, Fingerprint, LocalStorage, Emails, Session, Browser Sig)
   useEffect(() => {
     const isGuest =
@@ -2640,6 +3477,8 @@ export default function ChatScreen({
 
   // System Action Trigger Logout with audit logs
   const handleInitiateLogout = () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
     closeFloatingUi();
     setActiveModal(null);
     setIsSidebarOpen(false);
@@ -2652,7 +3491,9 @@ export default function ChatScreen({
       `تسجيل خروج ناجح للعضو ${currentUser.nickname} من الخادم وتدمير الجلسة المؤقتة.`,
       currentUser.nickname,
     );
-    onLogout();
+    window.setTimeout(() => {
+      onLogout();
+    }, 0);
   };
 
   // Safe Room switching with block validation
@@ -2867,52 +3708,20 @@ export default function ChatScreen({
     return "member";
   };
 
+  type PMTargetState = {
+    nickname: string;
+    role: string;
+    avatar: string;
+  };
+
   // Active open PM recipient/target state
-  const [pmTarget, setPmTarget] = useState({
-    nickname: "سارة",
-    role: "vip",
-    avatar: "🌸",
-  });
+  const [pmTarget, setPmTarget] = useState<PMTargetState | null>(null);
   const pmThreadsStorageKey = `lamma_pm_threads_${currentUser.uid || currentUser.nickname}`;
 
   // Deep private message threads map grouped by nickname
   const [pmThreads, setPmThreads] = useState<Record<string, PMThreadMessage[]>>(
     () => {
-      const fallbackThreads = {
-        سارة: [
-          { text: "مرحباً 😇", isOwn: false, time: "10:40 PM" },
-          {
-            text: "مساء النور 🌹",
-            isOwn: true,
-            time: "10:40 PM",
-            status: "read",
-          },
-          {
-            text: "كيف حالك? 😄",
-            isOwn: true,
-            time: "10:40 PM",
-            status: "read",
-          },
-          { text: "بخير الحمد لله", isOwn: false, time: "10:41 PM" },
-          {
-            text: "ماذا تفعلين الآن؟",
-            isOwn: true,
-            time: "10:41 PM",
-            status: "read",
-          },
-          {
-            text: "أتحدث مع الأصدقاء في الشات 🎉",
-            isOwn: false,
-            time: "10:41 PM",
-          },
-          {
-            text: "جميل جداً، استمري 😊",
-            isOwn: true,
-            time: "10:42 PM",
-            status: "read",
-          },
-        ],
-      };
+      const fallbackThreads: Record<string, PMThreadMessage[]> = {};
       const saved = localStorage.getItem(pmThreadsStorageKey);
       if (!saved) return fallbackThreads;
       try {
@@ -2925,9 +3734,11 @@ export default function ChatScreen({
     },
   );
 
-  const pmMessages = pmThreads[pmTarget.nickname] || [];
+  const activePmNickname = pmTarget?.nickname || "";
+  const pmMessages = activePmNickname ? pmThreads[activePmNickname] || [] : [];
   const [pmInputText, setPmInputText] = useState("");
   const [isPmTyping, setIsPmTyping] = useState(false);
+  const pmInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const trimmedThreads: Record<string, any[]> = {};
@@ -2951,10 +3762,12 @@ export default function ChatScreen({
 
   // Sync / Load permanent private messages (PM) from Supabase and listen in realtime
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || currentUser.authProvider !== "supabase" || !currentUser.uid) {
+      return;
+    }
 
     const fetchDatabasePMs = async () => {
-      const myUid = currentUser.uid || currentUser.nickname;
+      const myUid = currentUser.uid;
       const myNick = currentUser.nickname;
 
       let query = supabase.from("pm_messages").select("*");
@@ -3024,7 +3837,7 @@ export default function ChatScreen({
 
     fetchDatabasePMs();
 
-    const myUid = currentUser.uid || currentUser.nickname;
+    const myUid = currentUser.uid;
     const myNick = currentUser.nickname;
 
     const pmSubscription = supabase
@@ -3162,9 +3975,30 @@ export default function ChatScreen({
         Authorization: `Bearer ${supabaseAnonKey}`,
       },
       keepalive: useKeepalive,
-    }).catch((error) => {
-      console.warn("Failed to clean public session messages:", error);
-    });
+    })
+      .then((response) => {
+        if (!response.ok) {
+          console.warn(
+            "Failed to clean public session messages:",
+            response.status,
+            response.statusText,
+          );
+        }
+      })
+      .catch((error) => {
+        const message =
+          error instanceof Error ? error.message : String(error ?? "");
+        const isAbortLike =
+          message.includes("AbortError") ||
+          message.includes("ERR_ABORTED") ||
+          message.includes("Failed to fetch");
+
+        // During logout / beforeunload the browser may legitimately cancel a
+        // keepalive request. Avoid noisy production warnings for that case.
+        if (useKeepalive && isAbortLike) return;
+
+        console.warn("Failed to clean public session messages:", error);
+      });
   };
 
   useEffect(() => {
@@ -3393,6 +4227,153 @@ export default function ChatScreen({
   const pmEndRef = useRef<HTMLDivElement>(null);
   const rateLimitRef = useRef<number[]>([]);
 
+  const updateComposerText = (
+    transform: (
+      text: string,
+      selectionStart: number,
+      selectionEnd: number,
+    ) => {
+      nextText: string;
+      selectionStart: number;
+      selectionEnd: number;
+    },
+  ) => {
+    const textarea = messageInputRef.current;
+    const rawText = inputText;
+    const selectionStart = textarea?.selectionStart ?? rawText.length;
+    const selectionEnd = textarea?.selectionEnd ?? rawText.length;
+    const nextState = transform(rawText, selectionStart, selectionEnd);
+
+    setInputText(nextState.nextText);
+    requestAnimationFrame(() => {
+      const liveTextarea = messageInputRef.current;
+      if (!liveTextarea) return;
+      liveTextarea.focus();
+      liveTextarea.setSelectionRange(
+        nextState.selectionStart,
+        nextState.selectionEnd,
+      );
+    });
+  };
+
+  const wrapComposerSelection = (
+    prefix: string,
+    suffix: string,
+    placeholder: string,
+  ) => {
+    updateComposerText((text, selectionStart, selectionEnd) => {
+      const selectedText = text.slice(selectionStart, selectionEnd);
+      const innerText = selectedText || placeholder;
+      const inserted = `${prefix}${innerText}${suffix}`;
+      const nextText =
+        text.slice(0, selectionStart) + inserted + text.slice(selectionEnd);
+      const highlightStart = selectionStart + prefix.length;
+      const highlightEnd = highlightStart + innerText.length;
+
+      return {
+        nextText,
+        selectionStart: highlightStart,
+        selectionEnd: highlightEnd,
+      };
+    });
+    setShowSettingsDropdown(false);
+  };
+
+  const applyComposerColor = () => {
+    const suggestedColor =
+      currentUser.color && /^#[0-9a-f]{3,8}$/i.test(currentUser.color)
+        ? currentUser.color
+        : "#10b981";
+    const pickedColor = window
+      .prompt("اكتب لون HEX مثل #10b981 أو #0ea5e9", suggestedColor)
+      ?.trim();
+
+    if (!pickedColor) return;
+    if (!/^#[0-9a-f]{3,8}$/i.test(pickedColor)) {
+      alert("صيغة اللون غير صحيحة. استخدم مثال مثل #10b981");
+      return;
+    }
+
+    wrapComposerSelection(
+      `[color=${pickedColor}]`,
+      "[/color]",
+      "نص ملون",
+    );
+  };
+
+  const updatePmComposerText = (
+    transform: (
+      text: string,
+      selectionStart: number,
+      selectionEnd: number,
+    ) => {
+      nextText: string;
+      selectionStart: number;
+      selectionEnd: number;
+    },
+  ) => {
+    const input = pmInputRef.current;
+    const rawText = pmInputText;
+    const selectionStart = input?.selectionStart ?? rawText.length;
+    const selectionEnd = input?.selectionEnd ?? rawText.length;
+    const nextState = transform(rawText, selectionStart, selectionEnd);
+
+    setPmInputText(nextState.nextText);
+    requestAnimationFrame(() => {
+      const liveInput = pmInputRef.current;
+      if (!liveInput) return;
+      liveInput.focus();
+      liveInput.setSelectionRange(
+        nextState.selectionStart,
+        nextState.selectionEnd,
+      );
+    });
+  };
+
+  const wrapPmComposerSelection = (
+    prefix: string,
+    suffix: string,
+    placeholder: string,
+  ) => {
+    updatePmComposerText((text, selectionStart, selectionEnd) => {
+      const selectedText = text.slice(selectionStart, selectionEnd);
+      const innerText = selectedText || placeholder;
+      const inserted = `${prefix}${innerText}${suffix}`;
+      const nextText =
+        text.slice(0, selectionStart) + inserted + text.slice(selectionEnd);
+      const highlightStart = selectionStart + prefix.length;
+      const highlightEnd = highlightStart + innerText.length;
+
+      return {
+        nextText,
+        selectionStart: highlightStart,
+        selectionEnd: highlightEnd,
+      };
+    });
+  };
+
+  const applyPmComposerColor = () => {
+    const suggestedColor =
+      currentUser.color && /^#[0-9a-f]{3,8}$/i.test(currentUser.color)
+        ? currentUser.color
+        : "#10b981";
+    const pickedColor = window
+      .prompt("اكتب لون HEX مثل #10b981 أو #0ea5e9", suggestedColor)
+      ?.trim();
+
+    if (!pickedColor) return;
+    if (!/^#[0-9a-f]{3,8}$/i.test(pickedColor)) {
+      alert("صيغة اللون غير صحيحة. استخدم مثال مثل #10b981");
+      return;
+    }
+
+    wrapPmComposerSelection(
+      `[color=${pickedColor}]`,
+      "[/color]",
+      "نص ملون",
+    );
+  };
+
   // Scroll logic
   useEffect(() => {
     if (isPostsRoom) {
@@ -3448,6 +4429,7 @@ export default function ChatScreen({
   };
 
   const addLammaBotMessage = (roomId: string, text: string) => {
+    if (isBotSilent) return;
     const timeStr = new Date().toLocaleTimeString("ar-EG", {
       hour: "numeric",
       minute: "numeric",
@@ -3473,7 +4455,7 @@ export default function ChatScreen({
   };
 
   const handleAccelerateDays = (days: number) => {
-    const savedSub = localStorage.getItem("lamma_user_subscription");
+    const savedSub = localStorage.getItem(subscriptionStorageKey);
     if (!savedSub) {
       alert(
         "❌ لا يوجد اشتراك VIP نشط حالياً لتسريع عجلة الزمن عليه! يرجى شراء باقة VIP أولاً من واجهة المتجر.",
@@ -3493,10 +4475,7 @@ export default function ChatScreen({
         ...sub,
         expiresAt: sub.expiresAt - days * 24 * 60 * 60 * 1000,
       };
-      localStorage.setItem(
-        "lamma_user_subscription",
-        JSON.stringify(adjustedSub),
-      );
+      localStorage.setItem(subscriptionStorageKey, JSON.stringify(adjustedSub));
       setSubscription(adjustedSub);
 
       addLammaBotMessage(
@@ -3607,7 +4586,7 @@ export default function ChatScreen({
     };
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     const now = Date.now();
     rateLimitRef.current = rateLimitRef.current.filter((t) => now - t < 1000);
     if (rateLimitRef.current.length >= 3) {
@@ -3631,6 +4610,71 @@ export default function ChatScreen({
         ...prev,
         [activeRoomId]: [],
       }));
+      setInputText("");
+      return;
+    }
+
+    if (inputText.trim() === "/zen") {
+      setIsZenMode(true);
+      setIsSidebarOpen(false);
+      setInputText("");
+      return;
+    }
+
+    if (inputText.trim() === "/compact") {
+      setIsCompactView((prev) => !prev);
+      setInputText("");
+      return;
+    }
+
+    if (inputText.trim() === "/help") {
+      addBotSystemWarning(
+        activeRoomId,
+        `📘 أوامر شات لمة السريعة:
+- /ping قياس سرعة الاستجابة
+- /clear مسح الشاشة تجميلياً
+- /zen وضع التركيز (Zen)
+- /compact وضع العرض المدمج
+- /guard أو /status تقرير بوت الحماية`,
+      );
+      setInputText("");
+      return;
+    }
+
+    if (inputText.trim() === "/ping") {
+      const started =
+        typeof performance !== "undefined" ? performance.now() : Date.now();
+
+      if (!supabase) {
+        const elapsed =
+          typeof performance !== "undefined"
+            ? performance.now() - started
+            : Date.now() - started;
+        addBotSystemWarning(activeRoomId, `🏓 Pong (local) — ${Math.round(elapsed)}ms`);
+        setInputText("");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("owner_settings")
+        .select("id")
+        .eq("id", OWNER_SETTINGS_ROW_ID)
+        .maybeSingle();
+
+      const elapsed =
+        typeof performance !== "undefined"
+          ? performance.now() - started
+          : Date.now() - started;
+
+      if (error) {
+        addBotSystemWarning(
+          activeRoomId,
+          `🏓 Pong — ${Math.round(elapsed)}ms (مع تحذير)\nتعذر التحقق من اتصال قاعدة البيانات: ${error.message}`,
+        );
+      } else {
+        addBotSystemWarning(activeRoomId, `🏓 Pong — ${Math.round(elapsed)}ms`);
+      }
+
       setInputText("");
       return;
     }
@@ -3911,7 +4955,7 @@ export default function ChatScreen({
   };
 
   const handleSendPM = async () => {
-    if (!pmInputText.trim()) return;
+    if (!pmTarget || !pmInputText.trim()) return;
 
     // Rate limiting: max 3 messages per second
     const now = Date.now();
@@ -3949,66 +4993,62 @@ export default function ChatScreen({
     }));
     setPmInputText("");
 
-    if (supabase) {
+    if (
+      supabase &&
+      currentUser.authProvider === "supabase" &&
+      currentUser.uid
+    ) {
       const rxUser = rawChatMembers.find((m) => m.nickname === targetNickname);
       const receiverUid =
-        rxUser?.id || rxUser?.localStorageId || targetNickname;
+        rxUser && isUuidLike(rxUser.id) ? rxUser.id : null;
 
-      const { error } = await supabase.from("pm_messages").insert([
-        {
-          sender_uid: currentUser.uid || currentUser.nickname,
-          sender_nickname: currentUser.nickname,
-          receiver_uid: receiverUid,
-          receiver_nickname: targetNickname,
-          text: textToSend,
-          type: "text",
-        },
-      ]);
-      if (error) console.error("PM insert error:", error);
+      if (receiverUid) {
+        const { error } = await supabase.from("pm_messages").insert([
+          {
+            sender_uid: currentUser.uid,
+            sender_nickname: currentUser.nickname,
+            receiver_uid: receiverUid,
+            receiver_nickname: targetNickname,
+            text: textToSend,
+            type: "text",
+          },
+        ]);
+        if (error) console.error("PM insert error:", error);
+      }
     }
 
     // Auto-reply bot simulator for offline/local fake targets (e.g., "سارة")
     const isRealUserActive = rawChatMembers.some(
       (m) => m.nickname === targetNickname && m.nickname !== "سارة",
     );
-    if (targetNickname === "سارة" || !isRealUserActive) {
-      setTimeout(async () => {
+    if (
+      (targetNickname === "سارة" || !isRealUserActive) &&
+      isBotEnabled &&
+      !isBotSilent
+    ) {
+      setTimeout(() => {
         const replyText = getDynamicReply(targetNickname);
-        if (supabase) {
-          const { error } = await supabase.from("pm_messages").insert([
+        setPmThreads((prev) => ({
+          ...prev,
+          [targetNickname]: [
+            ...(prev[targetNickname] || []),
             {
-              sender_uid: targetNickname,
-              sender_nickname: targetNickname,
-              receiver_uid: currentUser.uid || currentUser.nickname,
-              receiver_nickname: currentUser.nickname,
               text: replyText,
-              type: "text",
+              isOwn: false,
+              time: new Date().toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "numeric",
+                hour12: true,
+              }),
             },
-          ]);
-          if (error) console.error("PM Bot insert error:", error);
-        } else {
-          setPmThreads((prev) => ({
-            ...prev,
-            [targetNickname]: [
-              ...(prev[targetNickname] || []),
-              {
-                text: replyText,
-                isOwn: false,
-                time: new Date().toLocaleTimeString("en-US", {
-                  hour: "numeric",
-                  minute: "numeric",
-                  hour12: true,
-                }),
-              },
-            ].slice(-100),
-          }));
-        }
-      }, 1500);
+          ].slice(-100),
+        }));
+      }, 900);
     }
   };
 
   const handleSendPM_ignoredConsumingHook = () => {
-    if (!pmInputText.trim()) return;
+    if (!pmTarget || !pmInputText.trim()) return;
     const timeStr = new Date().toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "numeric",
@@ -4032,25 +5072,27 @@ export default function ChatScreen({
     }));
     setPmInputText("");
 
-    // Sarah/Target replies automatically after 1.5s
-    setTimeout(() => {
-      const replyText = getDynamicReply(targetNickname);
-      setPmThreads((prev) => ({
-        ...prev,
-        [targetNickname]: [
-          ...(prev[targetNickname] || []),
-          {
-            text: replyText,
-            isOwn: false,
-            time: new Date().toLocaleTimeString("en-US", {
-              hour: "numeric",
-              minute: "numeric",
-              hour12: true,
-            }),
-          },
-        ],
-      }));
-    }, 1500);
+    // Sarah/Target replies automatically only while bot automation is active.
+    if (isBotEnabled && !isBotSilent) {
+      setTimeout(() => {
+        const replyText = getDynamicReply(targetNickname);
+        setPmThreads((prev) => ({
+          ...prev,
+          [targetNickname]: [
+            ...(prev[targetNickname] || []),
+            {
+              text: replyText,
+              isOwn: false,
+              time: new Date().toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "numeric",
+                hour12: true,
+              }),
+            },
+          ],
+        }));
+      }, 900);
+    }
   };
 
   const triggerGiftFlying = (icon: string) => {
@@ -4290,6 +5332,88 @@ export default function ChatScreen({
     return true;
   };
 
+  const designOwnerBgUploadRef = useRef<HTMLInputElement | null>(null);
+  const designRoomBgUploadRef = useRef<HTMLInputElement | null>(null);
+  const designLogoUploadRef = useRef<HTMLInputElement | null>(null);
+
+  const uploadDesignAsset = async (file: File, folder: string) => {
+    if (!supabase) {
+      alert("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.");
+      return null;
+    }
+    if (!isOwnerRole || currentUser.authProvider !== "supabase") {
+      alert("⚠️ رفع ملفات التصميم متاح للمالك بحساب مسجل فقط.");
+      return null;
+    }
+    const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
+    const objectPath = `${folder}/${Date.now()}_${crypto.randomUUID()}_${safeName}`;
+    const { error: uploadError } = await supabase.storage
+      .from("design-assets")
+      .upload(objectPath, file, {
+        cacheControl: "3600",
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
+    if (uploadError) {
+      alert(`❌ فشل رفع الملف: ${uploadError.message}`);
+      return null;
+    }
+    const { data: publicData } = supabase.storage
+      .from("design-assets")
+      .getPublicUrl(objectPath);
+    const publicUrl = publicData?.publicUrl;
+    if (!publicUrl) {
+      alert("❌ حصل خطأ في توليد رابط الملف بعد الرفع.");
+      return null;
+    }
+    return publicUrl;
+  };
+
+  const handleDesignOwnerBgUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("⚠️ الملف اللي اخترته مش صورة.");
+      return;
+    }
+    const url = await uploadDesignAsset(file, "backgrounds/global");
+    if (!url) return;
+    setOwnerBgImage(url);
+  };
+
+  const handleDesignRoomBgUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("⚠️ الملف اللي اخترته مش صورة.");
+      return;
+    }
+    const url = await uploadDesignAsset(file, `backgrounds/rooms/${activeRoomId}`);
+    if (!url) return;
+    setRoomBgMap((prev) => ({ ...prev, [activeRoomId]: url }));
+  };
+
+  const handleDesignLogoUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("⚠️ الملف اللي اخترته مش صورة.");
+      return;
+    }
+    const url = await uploadDesignAsset(file, "logos");
+    if (!url) return;
+    setBrandLogoUrl(url);
+  };
+
   const handlePmImageUploadChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -4347,6 +5471,10 @@ export default function ChatScreen({
         minute: "numeric",
         hour12: true,
       });
+      if (!pmTarget) {
+        alert("⚠️ اختر محادثة خاصة أولاً.");
+        return;
+      }
       const targetNickname = pmTarget.nickname;
       setPmThreads((prev) => ({
         ...prev,
@@ -4685,9 +5813,9 @@ export default function ChatScreen({
         <header className="lamma-header px-2 sm:px-4 md:px-6 flex items-center justify-between relative z-20 shrink-0">
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
             <img
-              src="/images/lamma-wordmark.svg"
+              src={brandLogoUrl || "/images/lamma-wordmark.svg"}
               alt="LAMMA CHAT"
-              className="h-4 sm:h-5 opacity-55"
+              className="h-4 sm:h-5 opacity-55 object-contain"
             />
           </div>
           {/* Right side controls (User account & actions - Now in the visual start "اول الصفحة" due to RTL) */}
@@ -4798,7 +5926,8 @@ export default function ChatScreen({
                 >
                   {/* Rooms selector button */}
                   <div className="relative dropdown-container flex items-center xl:hidden">
-                    <button
+                    <HeaderIconButton
+                      title="كل الغرف"
                       onClick={() => {
                         toggleDropdown("rooms" as any);
                         if (isSidebarOpen && activeSidebarTab === "rooms") {
@@ -4809,15 +5938,15 @@ export default function ChatScreen({
                         }
                       }}
                       className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${isSidebarOpen && activeSidebarTab === "rooms" ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
-                      title="كل الغرف"
                     >
                       <Compass size={10} strokeWidth={2.2} />
-                    </button>
+                    </HeaderIconButton>
                   </div>
 
                   {/* Members selector button */}
                   <div className="relative dropdown-container flex items-center xl:hidden">
-                    <button
+                    <HeaderIconButton
+                      title="المتصلون"
                       onClick={() => {
                         toggleDropdown("members" as any);
                         if (isSidebarOpen && activeSidebarTab === "members") {
@@ -4828,39 +5957,37 @@ export default function ChatScreen({
                         }
                       }}
                       className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${isSidebarOpen && activeSidebarTab === "members" ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
-                      title="المتصلون"
                     >
                       <Users size={10} />
                       <span className="absolute -top-0.5 -right-0.5 lamma-icon-dot"></span>
-                    </button>
+                    </HeaderIconButton>
                   </div>
 
                   {isOwnerRole && (
                     <div className="relative dropdown-container flex items-center">
-                      <button
-                        type="button"
+                      <HeaderIconButton
+                        title="غرفة القيادة"
                         onClick={(e) => {
                           e.stopPropagation();
                           setLeadershipTab("quick");
                           openModal("leadership");
                         }}
                         className="flex items-center justify-center transition-colors relative cursor-pointer text-yellow-400 lamma-toolbar-btn lamma-header-mini-btn"
-                        title="غرفة القيادة"
                       >
                         <Crown size={10} />
-                      </button>
+                      </HeaderIconButton>
                     </div>
                   )}
 
                   {/* Master Settings Dropdown container inline */}
                   <div className="relative dropdown-container flex items-center">
-                    <button
+                    <HeaderIconButton
+                      title="القائمة والإعدادات"
                       onClick={() => toggleDropdown("headerMenu")}
                       className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${showHeaderMenu ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
-                      title="القائمة والإعدادات"
                     >
                       <SettingsIcon size={10} />
-                    </button>
+                    </HeaderIconButton>
                     <AnimatePresence>
                       {showHeaderMenu && (
                         <motion.div
@@ -5011,16 +6138,16 @@ export default function ChatScreen({
 
                   {/* Inline PM Dropdown Container */}
                   <div className="relative dropdown-container flex items-center">
-                    <button
+                    <HeaderIconButton
+                      title="الرسائل الخاصة"
                       onClick={() => toggleDropdown("pmList")}
                       className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${showPmListDropdown ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
-                      title="الرسائل الخاصة"
                     >
                       <MessageCircle size={11} strokeWidth={2.2} />
                       {Object.keys(pmThreads).length > 0 && (
                         <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border border-black/60 bg-red-500/80 shadow-[0_0_8px_rgba(239,68,68,0.14)]"></span>
                       )}
-                    </button>
+                    </HeaderIconButton>
 
                     <AnimatePresence>
                       {showPmListDropdown && (
@@ -5260,10 +6387,10 @@ export default function ChatScreen({
 
                   {/* Inline Notifications Dropdown Container */}
                   <div className="relative dropdown-container flex items-center">
-                    <button
+                    <HeaderIconButton
+                      title="الإشعارات"
                       onClick={() => toggleDropdown("notifications")}
                       className={`flex items-center justify-center transition-colors relative cursor-pointer ml-1 sm:ml-2 lamma-header-mini-btn ${showNotificationsDropdown ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
-                      title="الإشعارات"
                     >
                       <Bell size={11} strokeWidth={2.2} />
                       {unreadNotificationsCount > 0 ? (
@@ -5275,7 +6402,7 @@ export default function ChatScreen({
                       ) : (
                         <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border border-black/60 bg-red-500/80 shadow-[0_0_8px_rgba(239,68,68,0.14)]"></span>
                       )}
-                    </button>
+                    </HeaderIconButton>
 
                     <AnimatePresence>
                       {showNotificationsDropdown && (
@@ -6719,6 +7846,8 @@ export default function ChatScreen({
               {isManagementRole && (
                 <div className="relative dropdown-container">
                   <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={() => toggleDropdown("commands")}
                     className={`transition-all lamma-room-strip-action flex items-center justify-center ${
@@ -7024,6 +8153,157 @@ export default function ChatScreen({
                 </div>
               )}
 
+              {isOwnerRoom && (
+                <div
+                  className="mx-2 mb-3 rounded-[26px] border border-amber-400/15 bg-[linear-gradient(135deg,rgba(28,22,10,0.92),rgba(11,10,9,0.9))] p-4 text-right shadow-[0_18px_60px_rgba(0,0,0,0.28)]"
+                  dir="rtl"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-300">
+                      <Crown size={20} />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-black text-white">
+                        غرفة المالك
+                      </h4>
+                      <p className="mt-1 text-[11px] leading-5 text-gray-300">
+                        مركز الشات الكامل: من هنا تراجع الحماية، التصميم،
+                        الإحصائيات، وسجل النشاط بدل ما تكون الغرفة فاضية.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
+                      <div className="text-[10px] text-gray-400">الحالة العامة</div>
+                      <div className="mt-1 text-xs font-black text-white">
+                        {isMaintenanceMode ? "وضع الصيانة مفعل" : "الشات يعمل طبيعي"}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
+                      <div className="text-[10px] text-gray-400">سجل الأنشطة</div>
+                      <div className="mt-1 text-xs font-black text-white">
+                        {activityLogs.length} حدث إداري
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
+                      <div className="text-[10px] text-gray-400">الكلمات المحظورة</div>
+                      <div className="mt-1 text-xs font-black text-white">
+                        {bannedWords.length} كلمة
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
+                      <div className="text-[10px] text-gray-400">المطرودون</div>
+                      <div className="mt-1 text-xs font-black text-white">
+                        {bannedUsersList.length} عضو
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLeadershipTab("quick");
+                        openModal("leadership");
+                      }}
+                      className="rounded-2xl border border-white/8 bg-white/5 px-3 py-2 text-[11px] font-black text-white transition-all hover:bg-white/10"
+                    >
+                      التحكم السريع
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLeadershipTab("guard");
+                        openModal("leadership");
+                      }}
+                      className="rounded-2xl border border-white/8 bg-white/5 px-3 py-2 text-[11px] font-black text-white transition-all hover:bg-white/10"
+                    >
+                      الحماية
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLeadershipTab("design");
+                        openModal("leadership");
+                      }}
+                      className="rounded-2xl border border-white/8 bg-white/5 px-3 py-2 text-[11px] font-black text-white transition-all hover:bg-white/10"
+                    >
+                      التصميم
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLeadershipTab("stats");
+                        openModal("leadership");
+                      }}
+                      className="rounded-2xl border border-white/8 bg-white/5 px-3 py-2 text-[11px] font-black text-white transition-all hover:bg-white/10"
+                    >
+                      الإحصائيات
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isAdminRoom && (
+                <div
+                  className="mx-2 mb-3 rounded-[26px] border border-cyan-400/15 bg-[linear-gradient(135deg,rgba(7,18,28,0.92),rgba(8,11,16,0.9))] p-4 text-right shadow-[0_18px_60px_rgba(0,0,0,0.24)]"
+                  dir="rtl"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-300">
+                      <Shield size={20} />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-black text-white">
+                        غرفة الإدارة
+                      </h4>
+                      <p className="mt-1 text-[11px] leading-5 text-gray-300">
+                        غلاف إداري واضح للمشرفين: متابعة الكتم العام، المايك،
+                        حالة الوسائط، وسجل التصرفات بدل الفراغ الحالي.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
+                      <div className="text-[10px] text-gray-400">الكتابة العامة</div>
+                      <div className="mt-1 text-xs font-black text-white">
+                        {isGlobalMute ? "مقفولة حاليًا" : "مفتوحة"}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
+                      <div className="text-[10px] text-gray-400">الميكروفونات</div>
+                      <div className="mt-1 text-xs font-black text-white">
+                        {isGlobalMicMute ? "محظورة" : "مسموح بها"}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
+                      <div className="text-[10px] text-gray-400">وسائط الشات</div>
+                      <div className="mt-1 text-xs font-black text-white">
+                        {isOnlyVIPCanSendImages ? "VIP فقط" : "متاحة للجميع"}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
+                      <div className="text-[10px] text-gray-400">آخر السجلات</div>
+                      <div className="mt-1 text-xs font-black text-white">
+                        {activityLogs.length} إجراء
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => openModal("admin")}
+                      className="w-full rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-[11px] font-black text-cyan-100 transition-all hover:bg-cyan-500/20"
+                    >
+                      فتح غلاف ولوحة الإدارة
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {isPostsRoom ? (
                 <PostsFeedRoom
                   posts={postsFeedMessages}
@@ -7047,7 +8327,7 @@ export default function ChatScreen({
                       {/* Author Avatar */}
                       <div
                         className="flex-shrink-0 cursor-pointer mt-1 group/author animate-fadeIn"
-                        onClick={() => openMemberProfile(msg.author)}
+                        onClick={() => handleInlineMemberTap(msg.author)}
                       >
                         <AMLogo
                           size={isCompactView ? 16 : 22}
@@ -7069,7 +8349,7 @@ export default function ChatScreen({
                       {/* Author Name and Time Column */}
                       <div
                         className="flex flex-col items-start cursor-pointer group/author shrink-0 pt-0"
-                        onClick={() => openMemberProfile(msg.author)}
+                        onClick={() => handleInlineMemberTap(msg.author)}
                       >
                         {(() => {
                           const role = isSystem
@@ -7900,6 +9180,7 @@ export default function ChatScreen({
               )}
 
               <textarea
+                ref={messageInputRef}
                 id="messageInput"
                 name="messageInput"
                 autoComplete="off"
@@ -7948,7 +9229,7 @@ export default function ChatScreen({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="fixed bottom-24 right-4 md:right-10 w-48 rounded-2xl z-[99] flex flex-col pb-1 lamma-popover-shell"
+                      className="fixed bottom-24 right-4 md:right-10 w-48 max-h-[70vh] rounded-2xl z-[99] flex flex-col overflow-hidden pb-1 lamma-popover-shell"
                     >
                       <div className="flex items-center justify-between p-2.5 border-b border-green-500/20 bg-black/40 cursor-grab active:cursor-grabbing">
                         <div className="text-[10px] text-gray-400 font-bold pointer-events-none">
@@ -7965,14 +9246,33 @@ export default function ChatScreen({
                           <X size={12} />
                         </button>
                       </div>
-                      <div className="flex flex-col p-2 gap-1.5">
-                        <button className="text-right p-1.5 hover:bg-white/10 rounded-lg text-xs text-white transition-all cursor-pointer lamma-list-item">
+                      <div className="flex flex-col gap-1.5 overflow-y-auto p-2">
+                        <button
+                          type="button"
+                          title="اختيار لون للنص المحدد"
+                          className="text-right p-1.5 rounded-lg text-xs text-gray-200 transition-all cursor-pointer lamma-list-item hover:bg-white/10"
+                          onClick={applyComposerColor}
+                        >
                           تغيير لون الخط
                         </button>
-                        <button className="text-right p-1.5 hover:bg-white/10 rounded-lg text-xs text-white transition-all cursor-pointer lamma-list-item">
+                        <button
+                          type="button"
+                          title="تطبيق الخط المائل على النص المحدد"
+                          className="text-right p-1.5 rounded-lg text-xs text-gray-200 transition-all cursor-pointer lamma-list-item hover:bg-white/10"
+                          onClick={() =>
+                            wrapComposerSelection("*", "*", "نص مائل")
+                          }
+                        >
                           الخط المائل
                         </button>
-                        <button className="text-right p-1.5 hover:bg-white/10 rounded-lg text-xs text-white transition-all cursor-pointer lamma-list-item">
+                        <button
+                          type="button"
+                          title="تطبيق الخط العريض على النص المحدد"
+                          className="text-right p-1.5 rounded-lg text-xs text-gray-200 transition-all cursor-pointer lamma-list-item hover:bg-white/10"
+                          onClick={() =>
+                            wrapComposerSelection("**", "**", "نص عريض")
+                          }
+                        >
                           الخط العريض
                         </button>
                         <button
@@ -8404,7 +9704,7 @@ export default function ChatScreen({
           </div>
         </aside>
 
-        {/* ----------------- PANEL 5: FLOATING PRIVATE CONVERSATION WINDOW WITH SARAH (5th column) ----------------- */}
+        {/* ----------------- PANEL 5: FLOATING PRIVATE CONVERSATION WINDOW ----------------- */}
         <motion.aside
           drag={mobileTab !== "private"}
           dragMomentum={false}
@@ -8428,342 +9728,398 @@ export default function ChatScreen({
               : undefined
           }
         >
-          {/* Header of private messaging panel matching exactly standard visual style */}
-          <div className="p-3.5 flex items-center justify-between cursor-move touching-none lamma-modal-header">
-            <div className="flex items-center gap-2.5 text-right">
-              <span className="lamma-icon-dot" />
-              <div>
-                <div className="text-xs font-black text-white flex items-center gap-1.5 flex-wrap">
-                  <span>{pmTarget.nickname}</span>
-                  {pmTarget.role === "platinum_vip" ? (
-                    <span className="text-[8px] lamma-role-chip lamma-role-plat">
-                      PLATINUM VIP
-                    </span>
-                  ) : pmTarget.role === "vip" ? (
-                    <span className="text-[8px] lamma-role-chip lamma-role-vip">
-                      VIP
-                    </span>
-                  ) : pmTarget.role === "owner" ? (
-                    <span className="text-[8px] lamma-role-chip lamma-role-owner">
-                      OWNER
-                    </span>
-                  ) : pmTarget.role === "admin" ? (
-                    <span className="text-[8px] lamma-role-chip lamma-role-admin">
-                      ADMIN
-                    </span>
-                  ) : null}
-                </div>
-                <div className="text-[9px] text-gray-400 font-bold">
-                  متصل الآن
-                </div>
-              </div>
-            </div>
-
-            {/* Calling trigger buttons on right of header */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  const isOwner = currentUser.role === "owner";
-                  const perm =
-                    memberCustomPermissions[currentUser.nickname]?.callsAllowed;
-                  if (!isOwner && !perm) {
-                    alert(
-                      "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
-                    );
-                    return;
-                  }
-                  const normalizedRole = currentUser.role.toLowerCase();
-                  if (normalizedRole === "guest" || normalizedRole === "زائر") {
-                    alert(
-                      "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإجراء المكالمات الصوتية والمرئية! يرجى غلق الجلسة والتسجيل كعضو للاستفادة بكافة الخدمات الفائقة 📞.",
-                    );
-                    return;
-                  }
-                  initiateCall(pmTarget.nickname, "audio");
-                }}
-                className="w-7 h-7 rounded-lg text-green-300 flex items-center justify-center lamma-quiet-power-btn"
-                title="الاتصال الهاتفي"
-              >
-                <Phone size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const isOwner = currentUser.role === "owner";
-                  const perm =
-                    memberCustomPermissions[currentUser.nickname]?.callsAllowed;
-                  if (!isOwner && !perm) {
-                    alert(
-                      "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
-                    );
-                    return;
-                  }
-                  const normalizedRole = currentUser.role.toLowerCase();
-                  if (normalizedRole === "guest" || normalizedRole === "زائر") {
-                    alert(
-                      "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإجراء المكالمات الصوتية والمرئية! يرجى غلق الجلسة والتسجيل كعضو للاستفادة بكافة الخدمات الفائقة 📞.",
-                    );
-                    return;
-                  }
-                  initiateCall(pmTarget.nickname, "video");
-                }}
-                className="w-7 h-7 rounded-lg text-[#c1d86a] flex items-center justify-center lamma-quiet-power-btn"
-                title="مكالمة الفيديو"
-              >
-                <VideoIcon size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  alert("🖥️ جاري بدء مشاركة الشاشة... (محاكاة)");
-                  setPmThreads((prev) => ({
-                    ...prev,
-                    [pmTarget.nickname]: [
-                      ...(prev[pmTarget.nickname] || []),
-                      {
-                        text: "🖥️ يشارك شاشته معك...",
-                        isOwn: true,
-                        time: new Date().toLocaleTimeString("ar-EG", {
-                          hour: "numeric",
-                          minute: "numeric",
-                          hour12: true,
-                        }),
-                        status: "sent",
-                      },
-                    ],
-                  }));
-                }}
-                className="w-7 h-7 rounded-lg text-teal-300 flex items-center justify-center lamma-quiet-power-btn"
-                title="مشاركة الشاشة"
-              >
-                <Tv size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (mobileTab === "private") setMobileTab("chat");
-                  else setIsPmOpen(false);
-                }}
-                className="w-7 h-7 ml-1 rounded-lg text-gray-400 flex items-center justify-center lamma-soft-action"
-                title="إغلاق"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          </div>
-
-          {/* PM conversation log viewport */}
-          <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
-            {pmMessages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex flex-col max-w-[85%] ${msg.isOwn ? "mr-auto items-start" : "ml-auto items-end"}`}
-              >
-                <div
-                  className={`p-2.5 rounded-2xl text-xs leading-normal ${
-                    msg.isOwn
-                      ? "bg-white/12 border border-white/10 text-white font-extrabold rounded-tr-none"
-                      : "bg-black/40 border border-white/8 text-gray-100 rounded-tl-none"
-                  }`}
-                >
-                  {msg.mediaUrl ? (
-                    <img
-                      src={msg.mediaUrl}
-                      alt="مرفق"
-                      className="max-w-[220px] max-h-[220px] rounded-xl mb-1.5 object-cover"
-                      loading="lazy"
-                    />
-                  ) : null}
-                  {msg.text ? (
-                    <p className="m-0 text-right">{msg.text}</p>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-[8px] text-gray-500 font-mono">
-                    {msg.time}
-                  </span>
-                  {msg.isOwn && (
-                    <span
-                      className={`text-[10px] ${
-                        msg.status === "read"
-                          ? "text-blue-400"
-                          : msg.status === "delivered"
-                            ? "text-gray-300"
-                            : "text-gray-500"
-                      }`}
-                    >
-                      {msg.status === "read"
-                        ? "✓✓"
-                        : msg.status === "delivered"
-                          ? "✓✓"
-                          : "✓"}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-            <AnimatePresence>
-              {isPmTyping && (
-                <motion.div
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 5 }}
-                  className="flex items-center gap-2 mb-2 w-fit"
-                >
-                  <div className="bg-white/5 px-3 py-1.5 rounded-2xl rounded-tl-none border border-white/10 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"></span>
-                    <span
-                      className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "0.1s" }}
-                    ></span>
-                    <span
-                      className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "0.2s" }}
-                    ></span>
-                    <span className="text-[9px] text-gray-400 mr-2">
-                      {pmTarget.nickname} يكتب الان...
-                    </span>
+          {pmTarget ? (
+            <>
+              {/* Header of private messaging panel matching exactly standard visual style */}
+              <div className="p-3.5 flex items-center justify-between cursor-move touching-none lamma-modal-header">
+                <div className="flex items-center gap-2.5 text-right">
+                  <span className="lamma-icon-dot" />
+                  <div>
+                    <div className="text-xs font-black text-white flex items-center gap-1.5 flex-wrap">
+                      <span>{pmTarget.nickname}</span>
+                      {pmTarget.role === "platinum_vip" ? (
+                        <span className="text-[8px] lamma-role-chip lamma-role-plat">
+                          PLATINUM VIP
+                        </span>
+                      ) : pmTarget.role === "vip" ? (
+                        <span className="text-[8px] lamma-role-chip lamma-role-vip">
+                          VIP
+                        </span>
+                      ) : pmTarget.role === "owner" ? (
+                        <span className="text-[8px] lamma-role-chip lamma-role-owner">
+                          OWNER
+                        </span>
+                      ) : pmTarget.role === "admin" ? (
+                        <span className="text-[8px] lamma-role-chip lamma-role-admin">
+                          ADMIN
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="text-[9px] text-gray-400 font-bold">
+                      متصل الآن
+                    </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <div ref={pmEndRef} />
-          </div>
+                </div>
 
-          {/* PM input toolbar container */}
-          <div className="p-3.5 border-t border-green-500/10 bg-black/40 relative">
-            {/* Emoji Picker Popup for PM */}
-            <AnimatePresence>
-              {showPmEmojiPicker && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="absolute bottom-16 right-3 bg-white/[0.04] border border-white/10 backdrop-blur-xl shadow-xl rounded-2xl p-2 grid grid-cols-4 gap-1 z-50 w-52 overflow-y-auto max-h-40 lamma-popover-shell"
-                >
-                  {EMOTICONS.map((e) => (
-                    <button
-                      key={e}
-                      onClick={() => setPmInputText((prev) => prev + e)}
-                      className="p-1 hover:bg-green-500/10 rounded-lg text-lg flex items-center justify-center transition-all"
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Attachment Popup */}
-            <AnimatePresence>
-              {showPmAttachment && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute bottom-16 right-10 bg-white/[0.04] border border-white/10 backdrop-blur-xl shadow-xl rounded-2xl p-2 grid grid-cols-1 gap-1 z-50 w-40 lamma-popover-shell"
-                >
+                {/* Calling trigger buttons on right of header */}
+                <div className="flex items-center gap-2">
                   <button
-                    className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right"
+                    type="button"
                     onClick={() => {
-                      setShowPmAttachment(false);
-                      if (isUploadingImage) return;
-                      if (currentUser.authProvider !== "supabase") {
+                      const isOwner = currentUser.role === "owner";
+                      const perm =
+                        memberCustomPermissions[currentUser.nickname]?.callsAllowed;
+                      if (!isOwner && !perm) {
                         alert(
-                          "📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.",
+                          "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
                         );
                         return;
                       }
-                      pmImageUploadInputRef.current?.click();
+                      const normalizedRole = currentUser.role.toLowerCase();
+                      if (
+                        normalizedRole === "guest" ||
+                        normalizedRole === "زائر"
+                      ) {
+                        alert(
+                          "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإجراء المكالمات الصوتية والمرئية! يرجى غلق الجلسة والتسجيل كعضو للاستفادة بكافة الخدمات الفائقة 📞.",
+                        );
+                        return;
+                      }
+                      initiateCall(pmTarget.nickname, "audio");
                     }}
+                    className="w-7 h-7 rounded-lg text-green-300 flex items-center justify-center lamma-quiet-power-btn"
+                    title="الاتصال الهاتفي"
                   >
-                    <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                      <Image size={14} />
-                    </div>
-                    <span>صورة</span>
+                    <Phone size={12} />
                   </button>
                   <button
-                    className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right"
-                    onClick={() => setShowPmAttachment(false)}
+                    type="button"
+                    onClick={() => {
+                      const isOwner = currentUser.role === "owner";
+                      const perm =
+                        memberCustomPermissions[currentUser.nickname]?.callsAllowed;
+                      if (!isOwner && !perm) {
+                        alert(
+                          "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
+                        );
+                        return;
+                      }
+                      const normalizedRole = currentUser.role.toLowerCase();
+                      if (
+                        normalizedRole === "guest" ||
+                        normalizedRole === "زائر"
+                      ) {
+                        alert(
+                          "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإجراء المكالمات الصوتية والمرئية! يرجى غلق الجلسة والتسجيل كعضو للاستفادة بكافة الخدمات الفائقة 📞.",
+                        );
+                        return;
+                      }
+                      initiateCall(pmTarget.nickname, "video");
+                    }}
+                    className="w-7 h-7 rounded-lg text-[#c1d86a] flex items-center justify-center lamma-quiet-power-btn"
+                    title="مكالمة الفيديو"
                   >
-                    <div className="w-8 h-8 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center">
-                      <Tv size={14} />
-                    </div>
-                    <span>يوتيوب</span>
+                    <VideoIcon size={12} />
                   </button>
                   <button
-                    className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right"
-                    onClick={() => setShowPmAttachment(false)}
+                    type="button"
+                    onClick={() => {
+                      alert("🖥️ جاري بدء مشاركة الشاشة... (محاكاة)");
+                      setPmThreads((prev) => ({
+                        ...prev,
+                        [pmTarget.nickname]: [
+                          ...(prev[pmTarget.nickname] || []),
+                          {
+                            text: "🖥️ يشارك شاشته معك...",
+                            isOwn: true,
+                            time: new Date().toLocaleTimeString("ar-EG", {
+                              hour: "numeric",
+                              minute: "numeric",
+                              hour12: true,
+                            }),
+                            status: "sent",
+                          },
+                        ],
+                      }));
+                    }}
+                    className="w-7 h-7 rounded-lg text-teal-300 flex items-center justify-center lamma-quiet-power-btn"
+                    title="مشاركة الشاشة"
                   >
-                    <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                      <VideoIcon size={14} />
-                    </div>
-                    <span>فيديو</span>
+                    <Tv size={12} />
                   </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (mobileTab === "private") setMobileTab("chat");
+                      else setIsPmOpen(false);
+                    }}
+                    className="w-7 h-7 ml-1 rounded-lg text-gray-400 flex items-center justify-center lamma-soft-action"
+                    title="إغلاق"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
 
-            <div className="flex items-center lamma-composer-cluster bg-black/60 rounded-xl px-2.5 py-1.5 border border-green-500/10">
-              <button
-                type="button"
-                onClick={() => setShowPmEmojiPicker(!showPmEmojiPicker)}
-                className={`flex items-center justify-center transition-all lamma-composer-tool ${
-                  showPmEmojiPicker
-                    ? "bg-green-500/20 text-[#a3e635]"
-                    : "text-gray-500 hover:bg-white/10 hover:text-[#a3e635]"
-                }`}
-                title="إيموجي"
-              >
-                <Smile size={16} />
-              </button>
-              <button
-                type="button"
-                className={`flex items-center justify-center transition-all lamma-composer-tool ${
-                  showPmAttachment
-                    ? "bg-green-500/20 text-green-400"
-                    : "text-gray-500 hover:bg-white/10 hover:text-green-400"
-                }`}
-                title="إلحاق ملف"
-                onClick={() => setShowPmAttachment(!showPmAttachment)}
-              >
-                <Plus
-                  size={16}
-                  className={`transition-transform duration-300 ${showPmAttachment ? "rotate-45" : ""}`}
+              {/* PM conversation log viewport */}
+              <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
+                {pmMessages.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex flex-col max-w-[85%] ${msg.isOwn ? "mr-auto items-start" : "ml-auto items-end"}`}
+                  >
+                    <div
+                      className={`p-2.5 rounded-2xl text-xs leading-normal ${
+                        msg.isOwn
+                          ? "bg-white/12 border border-white/10 text-white font-extrabold rounded-tr-none"
+                          : "bg-black/40 border border-white/8 text-gray-100 rounded-tl-none"
+                      }`}
+                    >
+                      {msg.mediaUrl ? (
+                        <img
+                          src={msg.mediaUrl}
+                          alt="مرفق"
+                          className="max-w-[220px] max-h-[220px] rounded-xl mb-1.5 object-cover"
+                          loading="lazy"
+                        />
+                      ) : null}
+                      {msg.text ? (
+                        <div className="m-0 text-right">
+                          {renderTextMessageWithMedia(msg.text)}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[8px] text-gray-500 font-mono">
+                        {msg.time}
+                      </span>
+                      {msg.isOwn && (
+                        <span
+                          className={`text-[10px] ${
+                            msg.status === "read"
+                              ? "text-blue-400"
+                              : msg.status === "delivered"
+                                ? "text-gray-300"
+                                : "text-gray-500"
+                          }`}
+                        >
+                          {msg.status === "read"
+                            ? "✓✓"
+                            : msg.status === "delivered"
+                              ? "✓✓"
+                              : "✓"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <AnimatePresence>
+                  {isPmTyping && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 5 }}
+                      className="flex items-center gap-2 mb-2 w-fit"
+                    >
+                      <div className="bg-white/5 px-3 py-1.5 rounded-2xl rounded-tl-none border border-white/10 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"></span>
+                        <span
+                          className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"
+                          style={{ animationDelay: "0.1s" }}
+                        ></span>
+                        <span
+                          className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"
+                          style={{ animationDelay: "0.2s" }}
+                        ></span>
+                        <span className="text-[9px] text-gray-400 mr-2">
+                          {pmTarget.nickname} يكتب الان...
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <div ref={pmEndRef} />
+              </div>
+
+              {/* PM input toolbar container */}
+              <div className="p-3.5 border-t border-green-500/10 bg-black/40 relative">
+                {/* Emoji Picker Popup for PM */}
+                <AnimatePresence>
+                  {showPmEmojiPicker && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="absolute bottom-16 right-3 bg-white/[0.04] border border-white/10 backdrop-blur-xl shadow-xl rounded-2xl p-2 grid grid-cols-4 gap-1 z-50 w-52 overflow-y-auto max-h-40 lamma-popover-shell"
+                    >
+                      {EMOTICONS.map((e) => (
+                        <button
+                          key={e}
+                          onClick={() => setPmInputText((prev) => prev + e)}
+                          className="p-1 hover:bg-green-500/10 rounded-lg text-lg flex items-center justify-center transition-all"
+                        >
+                          {e}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Attachment Popup */}
+                <AnimatePresence>
+                  {showPmAttachment && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute bottom-16 right-10 bg-white/[0.04] border border-white/10 backdrop-blur-xl shadow-xl rounded-2xl p-2 grid grid-cols-1 gap-1 z-50 w-40 lamma-popover-shell"
+                    >
+                      <button
+                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right"
+                        onClick={() => {
+                          setShowPmAttachment(false);
+                          if (isUploadingImage) return;
+                          if (currentUser.authProvider !== "supabase") {
+                            alert(
+                              "📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.",
+                            );
+                            return;
+                          }
+                          pmImageUploadInputRef.current?.click();
+                        }}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                          <Image size={14} />
+                        </div>
+                        <span>صورة</span>
+                      </button>
+                      <button
+                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right"
+                        onClick={() => setShowPmAttachment(false)}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center">
+                          <Tv size={14} />
+                        </div>
+                        <span>يوتيوب</span>
+                      </button>
+                      <button
+                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right"
+                        onClick={() => setShowPmAttachment(false)}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                          <VideoIcon size={14} />
+                        </div>
+                        <span>فيديو</span>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="flex items-center lamma-composer-cluster bg-black/60 rounded-xl px-2.5 py-1.5 border border-green-500/10">
+                  <button
+                    type="button"
+                    onClick={() => setShowPmEmojiPicker(!showPmEmojiPicker)}
+                    className={`flex items-center justify-center transition-all lamma-composer-tool ${
+                      showPmEmojiPicker
+                        ? "bg-green-500/20 text-[#a3e635]"
+                        : "text-gray-500 hover:bg-white/10 hover:text-[#a3e635]"
+                    }`}
+                    title="إيموجي"
+                  >
+                    <Smile size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`flex items-center justify-center transition-all lamma-composer-tool ${
+                      showPmAttachment
+                        ? "bg-green-500/20 text-green-400"
+                        : "text-gray-500 hover:bg-white/10 hover:text-green-400"
+                    }`}
+                    title="إلحاق ملف"
+                    onClick={() => setShowPmAttachment(!showPmAttachment)}
+                  >
+                    <Plus
+                      size={16}
+                      className={`transition-transform duration-300 ${showPmAttachment ? "rotate-45" : ""}`}
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={applyPmComposerColor}
+                    className="flex items-center justify-center transition-all lamma-composer-tool text-gray-500 hover:bg-white/10 hover:text-fuchsia-300"
+                    title="تغيير لون الخط"
+                  >
+                    <Palette size={16} />
+                  </button>
+
+                  <input
+                    ref={pmInputRef}
+                    id="pmInputText"
+                    name="pmInputText"
+                    type="text"
+                    autoComplete="off"
+                    value={pmInputText}
+                    onChange={(e) => setPmInputText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSendPM();
+                    }}
+                    placeholder="اكتب على راحتك..."
+                    className="flex-1 bg-transparent border-none text-right font-semibold text-[11px] text-white focus:ring-0 focus:outline-none"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleSendPM}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center lamma-send-orb"
+                  >
+                    <Send size={11} className="rotate-180" />
+                  </button>
+                </div>
+                <input
+                  ref={pmImageUploadInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePmImageUploadChange}
                 />
-              </button>
-
-              <input
-                id="pmInputText"
-                name="pmInputText"
-                type="text"
-                autoComplete="off"
-                value={pmInputText}
-                onChange={(e) => setPmInputText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSendPM();
-                }}
-                placeholder="اكتب على راحتك..."
-                className="flex-1 bg-transparent border-none text-right font-semibold text-[11px] text-white focus:ring-0 focus:outline-none"
-              />
-
-              <button
-                type="button"
-                onClick={handleSendPM}
-                className="w-6 h-6 rounded-lg flex items-center justify-center lamma-send-orb"
-              >
-                <Send size={11} className="rotate-180" />
-              </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-white/5 border border-white/10 text-[var(--theme-primary)]">
+                <MessageCircle size={22} />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-black text-white">
+                  لا توجد محادثة محددة
+                </h3>
+                <p className="text-[11px] leading-6 text-gray-400 max-w-xs">
+                  افتح محادثة من قائمة الرسائل الخاصة أو من ملف أي عضو بدل
+                  فتح الخاص تلقائيًا على اسم افتراضي.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPmListDropdown(true)}
+                  className="px-3 py-2 rounded-xl text-[11px] font-black text-white lamma-soft-action"
+                >
+                  المحادثات الخاصة
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileTab("members");
+                    setActiveSidebarTab("members");
+                    setIsSidebarOpen(true);
+                  }}
+                  className="px-3 py-2 rounded-xl text-[11px] font-black text-gray-300 lamma-soft-action"
+                >
+                  المتصلون
+                </button>
+              </div>
             </div>
-            <input
-              ref={pmImageUploadInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handlePmImageUploadChange}
-            />
-          </div>
+          )}
         </motion.aside>
       </div>
 
@@ -9578,29 +10934,13 @@ export default function ChatScreen({
                             {/* Toggle 6: Welcome Toast Greetings */}
                             <button
                               type="button"
-                              onClick={() => {
-                                const nextVal = !isWelcomeToastEnabled;
-                                setIsWelcomeToastEnabled(nextVal);
-                                addSystemActivityLog(
-                                  "promote",
-                                  currentUser.nickname,
-                                  `ضبط ميزة ترحيب الدخول الفلاشي للشات إلى: [${nextVal ? "نشط" : "معطل"}]`,
-                                  "👑 إدارة المالك",
-                                );
-                              }}
-                              className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
-                                isWelcomeToastEnabled
-                                  ? "bg-lime-500/10 border-lime-500/35 text-lime-400"
-                                  : "lamma-tab-soft text-gray-300 hover:text-white"
-                              }`}
+                              disabled
+                              title="هذه الميزة غير مفعلة بعد"
+                              className="p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-not-allowed opacity-60 border-white/8 text-gray-400"
                             >
-                              <span>✨ تفعيل الترحيب الفلاشي السريع</span>
-                              <span
-                                className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${isWelcomeToastEnabled ? "bg-lime-500/20 text-lime-300" : "bg-white/5 text-gray-400"}`}
-                              >
-                                {isWelcomeToastEnabled
-                                  ? "نشط ومبهج"
-                                  : "معطل مؤقتاً"}
+                              <span>✨ ترحيب الدخول الفلاشي</span>
+                              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-white/5 text-gray-400">
+                                قريباً
                               </span>
                             </button>
 
@@ -10096,8 +11436,9 @@ export default function ChatScreen({
                             </div>
                             <button
                               onClick={() => {
-                                setBannedUsersList((prev) =>
-                                  prev.filter((b) => b.id !== item.id),
+                                void removeBanEntries(
+                                  (ban) => ban.id === item.id,
+                                  { sync: true },
                                 );
                                 addSystemActivityLog(
                                   "promote",
@@ -11756,7 +13097,7 @@ export default function ChatScreen({
                                     expiresAt: expiresAtMs,
                                   };
                                   localStorage.setItem(
-                                    "lamma_user_subscription",
+                                    subscriptionStorageKey,
                                     JSON.stringify(subInfo),
                                   );
                                   setSubscription(subInfo);
@@ -11951,6 +13292,218 @@ export default function ChatScreen({
 
                     {isOwnerRole && (
                       <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="text-[11px] text-emerald-300 font-black">
+                              🤖 المساعد الذكي الآمن
+                            </div>
+                            <div className="text-[10px] text-gray-400 font-bold mt-1">
+                              يفحص ويقترح فقط. لا يغيّر أي شيء إلا بعد موافقتك.
+                            </div>
+                          </div>
+                          <span className="px-2 py-1 rounded-full text-[9px] font-black bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                            Safe Mode
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                          <button
+                            type="button"
+                            onClick={runAssistantAudit}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            فحص الشات
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAssistantProposal("premium")}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            اقتراح فاخر
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAssistantProposal("calm")}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            اقتراح هادئ
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAssistantProposal("night")}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            اقتراح ليلي
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAssistantProposal("room-focus")}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            اقتراح للغرفة
+                          </button>
+                        </div>
+
+                        {assistantAudit && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div className="rounded-2xl p-3 lamma-admin-card">
+                              <div className="text-[10px] text-gray-400 font-black">
+                                تقييم المظهر
+                              </div>
+                              <div className="text-2xl font-black text-emerald-300 mt-1">
+                                {assistantAudit.score}/100
+                              </div>
+                              <div className="text-[10px] text-gray-300 font-bold mt-1">
+                                {assistantAudit.verdict}
+                              </div>
+                            </div>
+                            <div className="rounded-2xl p-3 lamma-admin-card">
+                              <div className="text-[10px] text-gray-400 font-black">
+                                الغرفة المستهدفة
+                              </div>
+                              <div className="text-[14px] font-black text-cyan-300 mt-2">
+                                {assistantAudit.roomLabel}
+                              </div>
+                              <div className="text-[10px] text-gray-300 font-bold mt-1">
+                                المساعد يراجع الغرفة المفتوحة الآن ويحسب اقتراحه عليها.
+                              </div>
+                            </div>
+                            <div className="rounded-2xl p-3 lamma-admin-card">
+                              <div className="text-[10px] text-gray-400 font-black">
+                                خلاصة سريعة
+                              </div>
+                              <div className="space-y-1.5 mt-2">
+                                {assistantAudit.highlights.map((item, index) => (
+                                  <div
+                                    key={`${item}-${index}`}
+                                    className="text-[10px] text-gray-300 font-bold"
+                                  >
+                                    • {item}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {assistantFindings.length > 0 && (
+                          <div className="rounded-2xl p-3 space-y-2 lamma-admin-card">
+                            <div className="text-[10px] text-cyan-300 font-black">
+                              نتيجة الفحص
+                            </div>
+                            <div className="space-y-1.5">
+                              {assistantFindings.map((finding, index) => (
+                                <div
+                                  key={`${finding.text}-${index}`}
+                                  className={`text-[10px] font-bold rounded-xl px-2.5 py-2 border ${
+                                    finding.tone === "warn"
+                                      ? "text-yellow-200 border-yellow-500/20 bg-yellow-500/5"
+                                      : "text-emerald-200 border-emerald-500/20 bg-emerald-500/5"
+                                  }`}
+                                >
+                                  {finding.tone === "warn" ? "⚠️" : "✅"} {finding.text}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {assistantProposal && (
+                          <div className="rounded-2xl p-3 space-y-3 border border-fuchsia-500/20 bg-fuchsia-500/[0.04]">
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <div className="text-[11px] text-fuchsia-300 font-black">
+                                  {assistantProposal.title}
+                                </div>
+                                <div className="text-[10px] text-gray-300 font-bold mt-1">
+                                  {assistantProposal.summary}
+                                </div>
+                              </div>
+                              <span className="px-2 py-1 rounded-full text-[9px] font-black bg-fuchsia-500/10 text-fuchsia-200 border border-fuchsia-500/20">
+                                بانتظار إذنك
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              {assistantProposal.changes.chatTheme && (
+                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                  ثيم الشات: {assistantProposal.changes.chatTheme}
+                                </div>
+                              )}
+                              {assistantProposal.changes.wallTheme && (
+                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                  ألوان الجدران: {assistantProposal.changes.wallTheme}
+                                </div>
+                              )}
+                              {assistantProposal.changes.glowColor && (
+                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card flex items-center justify-between gap-2">
+                                  <span>الإضاءة: {assistantProposal.changes.glowColor}</span>
+                                  <span
+                                    className="w-4 h-4 rounded-full border border-white/15"
+                                    style={{
+                                      backgroundColor: assistantProposal.changes.glowColor,
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              {typeof assistantProposal.changes.brandLogoUrl !== "undefined" && (
+                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                  الشعار: {assistantProposal.changes.brandLogoUrl ? "سيتم توحيد الشعار الحالي" : "الرجوع للافتراضي"}
+                                </div>
+                              )}
+                              {typeof assistantProposal.changes.roomBgCurrent !== "undefined" && (
+                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                  خلفية الغرفة الحالية: {assistantProposal.changes.roomBgCurrent ? "تحديث" : "إزالة التخصيص"}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="space-y-1.5">
+                              {assistantProposal.reasoning.map((reason, index) => (
+                                <div
+                                  key={`${assistantProposal.id}-${index}`}
+                                  className="text-[10px] text-gray-300 font-bold"
+                                >
+                                  • {reason}
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                              <button
+                                type="button"
+                                onClick={handleApplyAssistantProposal}
+                                className="py-2 rounded-xl text-[10px] font-black text-white transition-all lamma-accent-btn"
+                              >
+                                تطبيق المقترح
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setAssistantProposal(null)}
+                                className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                              >
+                                تجاهل المقترح
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!lastAppliedDesignSnapshot}
+                                onClick={handleRestoreLastDesignSnapshot}
+                                className={`py-2 rounded-xl text-[10px] font-black transition-all ${
+                                  lastAppliedDesignSnapshot
+                                    ? "lamma-danger-btn"
+                                    : "opacity-50 cursor-not-allowed lamma-tab-soft"
+                                }`}
+                              >
+                                استعادة آخر شكل
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {isOwnerRole && (
+                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
                         <div className="text-[11px] text-cyan-300 font-black">
                           ألوان الجدران
                         </div>
@@ -12011,6 +13564,80 @@ export default function ChatScreen({
                       </div>
                     )}
 
+                    {isOwnerRole && (
+                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
+                        <div className="text-[11px] text-cyan-300 font-black">
+                          ستايلات محفوظة
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-bold">
+                          احفظ شكل كامل وبدّل بينهم بضغطة.
+                        </div>
+                        <div className="flex gap-2 p-2 rounded-xl lamma-admin-card">
+                          <input
+                            type="text"
+                            value={designPresetName}
+                            onChange={(e) => setDesignPresetName(e.target.value)}
+                            placeholder="اسم الستايل..."
+                            className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSaveDesignPreset}
+                            className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
+                          >
+                            حفظ
+                          </button>
+                        </div>
+                        {designPresets.length > 0 && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {designPresets.map((preset) => (
+                              <div
+                                key={preset.id}
+                                className="p-3 rounded-2xl space-y-2 lamma-admin-card"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="text-[11px] text-white font-black">
+                                    {preset.name}
+                                  </div>
+                                  <div className="text-[9px] text-gray-400 font-bold font-mono">
+                                    {new Date(preset.createdAt).toLocaleDateString("ar-EG")}
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const ok = window.confirm(
+                                        `تطبيق ستايل: ${preset.name} ؟`,
+                                      );
+                                      if (!ok) return;
+                                      applyDesignPreset(preset);
+                                    }}
+                                    className="py-2 rounded-xl text-[10px] font-black text-white transition-all lamma-accent-btn"
+                                  >
+                                    تطبيق
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const ok = window.confirm(
+                                        `حذف ستايل: ${preset.name} ؟`,
+                                      );
+                                      if (!ok) return;
+                                      handleDeleteDesignPreset(preset.id);
+                                    }}
+                                    className="py-2 rounded-xl text-[10px] font-black transition-all lamma-danger-btn"
+                                  >
+                                    حذف
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
                       <div className="text-[11px] text-cyan-300 font-black">
                         الشعار
@@ -12023,22 +13650,34 @@ export default function ChatScreen({
                           draggable={false}
                         />
                       </div>
-                      <div className="flex p-1.5 rounded-lg lamma-admin-card">
+                      <div className="flex gap-2 p-1.5 rounded-lg lamma-admin-card">
+                        <input
+                          ref={designLogoUploadRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleDesignLogoUpload}
+                          className="hidden"
+                        />
                         <input
                           type="text"
                           id="leadership_logo_url_input"
-                          defaultValue={brandLogoUrl || ""}
+                          value={designLogoInput}
+                          onChange={(e) => setDesignLogoInput(e.target.value)}
                           placeholder="رابط الشعار (URL)..."
                           className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
                         />
                         <button
                           type="button"
+                          onClick={() => designLogoUploadRef.current?.click()}
+                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-tab-soft hover:text-white"
+                        >
+                          رفع
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => {
-                            const inp = document.getElementById(
-                              "leadership_logo_url_input",
-                            ) as HTMLInputElement;
-                            if (inp && inp.value.trim() !== "") {
-                              setBrandLogoUrl(inp.value.trim());
+                            if (designLogoInput.trim() !== "") {
+                              setBrandLogoUrl(designLogoInput.trim());
                             } else {
                               setBrandLogoUrl(null);
                             }
@@ -12085,21 +13724,33 @@ export default function ChatScreen({
                         {openRooms.find((r) => r.id === activeRoomId)?.name ||
                           activeRoomId}
                       </div>
-                      <div className="flex p-1.5 rounded-lg lamma-admin-card">
+                      <div className="flex gap-2 p-1.5 rounded-lg lamma-admin-card">
+                        <input
+                          ref={designRoomBgUploadRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleDesignRoomBgUpload}
+                          className="hidden"
+                        />
                         <input
                           type="text"
                           id="leadership_room_bg_url_input"
-                          defaultValue={roomBgMap[activeRoomId] || ""}
+                          value={designRoomBgInput}
+                          onChange={(e) => setDesignRoomBgInput(e.target.value)}
                           placeholder="رابط صورة خلفية لهذه الغرفة (URL)..."
                           className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
                         />
                         <button
                           type="button"
+                          onClick={() => designRoomBgUploadRef.current?.click()}
+                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-tab-soft hover:text-white"
+                        >
+                          رفع
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => {
-                            const inp = document.getElementById(
-                              "leadership_room_bg_url_input",
-                            ) as HTMLInputElement;
-                            const next = inp?.value?.trim() || "";
+                            const next = designRoomBgInput.trim();
                             const updated = { ...roomBgMap };
                             if (next) updated[activeRoomId] = next;
                             else delete updated[activeRoomId];
@@ -12116,6 +13767,7 @@ export default function ChatScreen({
                           const updated = { ...roomBgMap };
                           delete updated[activeRoomId];
                           setRoomBgMap(updated);
+                            setDesignRoomBgInput("");
                         }}
                         className="w-full py-2.5 rounded-xl font-black text-[10px] transition-all lamma-danger-btn"
                       >
@@ -12127,22 +13779,34 @@ export default function ChatScreen({
                       <div className="text-[11px] text-cyan-300 font-black">
                         الخلفية الافتراضية
                       </div>
-                      <div className="flex p-1.5 rounded-lg lamma-admin-card">
+                      <div className="flex gap-2 p-1.5 rounded-lg lamma-admin-card">
+                        <input
+                          ref={designOwnerBgUploadRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleDesignOwnerBgUpload}
+                          className="hidden"
+                        />
                         <input
                           type="text"
                           id="leadership_bg_url_input"
-                          defaultValue={ownerBgImage || ""}
+                          value={designOwnerBgInput}
+                          onChange={(e) => setDesignOwnerBgInput(e.target.value)}
                           placeholder="رابط صورة الخلفية (URL)..."
                           className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
                         />
                         <button
                           type="button"
+                          onClick={() => designOwnerBgUploadRef.current?.click()}
+                          className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-tab-soft hover:text-white"
+                        >
+                          رفع
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => {
-                            const inp = document.getElementById(
-                              "leadership_bg_url_input",
-                            ) as HTMLInputElement;
-                            if (inp && inp.value.trim() !== "") {
-                              setOwnerBgImage(inp.value.trim());
+                            if (designOwnerBgInput.trim() !== "") {
+                              setOwnerBgImage(designOwnerBgInput.trim());
                             } else {
                               setOwnerBgImage(null);
                             }
@@ -12535,15 +14199,12 @@ export default function ChatScreen({
                                 b.type === "mute",
                             );
                             if (isCurrentlyMuted) {
-                              setBannedUsersList((prev) =>
-                                prev.filter(
-                                  (b) =>
-                                    !(
-                                      b.nickname.toLowerCase() ===
-                                        selectedProfileMember.nickname.toLowerCase() &&
-                                      b.type === "mute"
-                                    ),
-                                ),
+                              void removeBanEntries(
+                                (ban) =>
+                                  ban.nickname.toLowerCase() ===
+                                    selectedProfileMember.nickname.toLowerCase() &&
+                                  ban.type === "mute",
+                                { sync: true },
                               );
                               addSystemActivityLog(
                                 "promote",
@@ -12570,7 +14231,7 @@ export default function ChatScreen({
                                   minute: "numeric",
                                 }),
                               };
-                              setBannedUsersList((prev) => [...prev, muteBan]);
+                              void addBanEntry(muteBan, { sync: true });
                               addSystemActivityLog(
                                 "ban",
                                 selectedProfileMember.nickname,
@@ -12706,7 +14367,7 @@ export default function ChatScreen({
                                     minute: "numeric",
                                   }),
                                 };
-                                setBannedUsersList((prev) => [...prev, rb]);
+                                void addBanEntry(rb, { sync: true });
                                 addSystemActivityLog(
                                   "ban",
                                   selectedProfileMember.nickname,
@@ -13023,7 +14684,7 @@ export default function ChatScreen({
                                         { hour: "numeric", minute: "numeric" },
                                       ),
                                     };
-                                    setBannedUsersList((prev) => [...prev, mb]);
+                                    void addBanEntry(mb, { sync: true });
                                     addSystemActivityLog(
                                       "ban",
                                       selectedProfileMember.nickname,
@@ -13080,15 +14741,12 @@ export default function ChatScreen({
                                         b.type === "shadow",
                                     );
                                     if (isShadow) {
-                                      setBannedUsersList((prev) =>
-                                        prev.filter(
-                                          (b) =>
-                                            !(
-                                              b.nickname.toLowerCase() ===
-                                                selectedProfileMember.nickname.toLowerCase() &&
-                                              b.type === "shadow"
-                                            ),
-                                        ),
+                                      void removeBanEntries(
+                                        (ban) =>
+                                          ban.nickname.toLowerCase() ===
+                                            selectedProfileMember.nickname.toLowerCase() &&
+                                          ban.type === "shadow",
+                                        { sync: true },
                                       );
                                       addSystemActivityLog(
                                         "promote",
@@ -13120,10 +14778,7 @@ export default function ChatScreen({
                                           },
                                         ),
                                       };
-                                      setBannedUsersList((prev) => [
-                                        ...prev,
-                                        sb,
-                                      ]);
+                                      void addBanEntry(sb, { sync: true });
                                       addSystemActivityLog(
                                         "ban",
                                         selectedProfileMember.nickname,
@@ -13436,9 +15091,10 @@ export default function ChatScreen({
           },
           onToggleFriend: (target) => {
             if (friendsList.includes(target.nickname)) {
-              alert(
-                `العضو [${target.nickname}] موجود بالفعل في قائمة أصدقائك! 🌟`,
+              setFriendsList((prev) =>
+                prev.filter((u) => u !== target.nickname),
               );
+              alert(`💔 تم إزالة [${target.nickname}] من قائمة أصدقائك.`);
             } else {
               setFriendsList((prev) => [...prev, target.nickname]);
               triggerGiftFlying("💚");
@@ -13477,7 +15133,7 @@ export default function ChatScreen({
                 prev.filter((u) => u !== target.nickname),
               );
               alert(
-                `🚫 تم حظر العضو [${target.nickname}] بالكامل وتجميد محادثاته فوسفورياً!`,
+                `🚫 تم حظر [${target.nickname}] في هذه الجلسة وإخفاء رسائله من واجهتك الحالية.`,
               );
             }
             setShowUserContextPop(false);
@@ -13692,10 +15348,12 @@ export default function ChatScreen({
         appLink={appLink}
       />
 
-      <ThemeSettings
-        isOpen={showThemeSettingsModal}
-        onClose={() => setShowThemeSettingsModal(false)}
-      />
+      {showThemeSettingsModal && (
+        <ThemeSettings
+          isOpen={showThemeSettingsModal}
+          onClose={() => setShowThemeSettingsModal(false)}
+        />
+      )}
 
       {/* Real audio elements for Radio and Music streaming/playback */}
       <audio ref={radioAudioRef} src={currentRadioStation.url} preload="none" />

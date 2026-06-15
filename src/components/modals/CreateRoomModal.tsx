@@ -45,7 +45,7 @@ export function CreateRoomModal({
         >
           <div className="p-6 rounded-3xl w-full max-w-sm space-y-4 lamma-modal-shell">
             <h2 className="text-sm font-black text-white">
-              إنشاء غرفة خاصة جديدة
+              إنشاء غرفة جديدة
             </h2>
             <input
               type="text"
@@ -64,13 +64,16 @@ export function CreateRoomModal({
               id="createRoomPassword"
               name="createRoomPassword"
               autoComplete="off"
-              placeholder="كلمة المرور (اختياري)"
+              placeholder="كلمة المرور ستتوفر لاحقاً"
               value={details.password}
-              onChange={(e) =>
-                setDetails((prev) => ({ ...prev, password: e.target.value }))
-              }
-              className="w-full p-3 rounded-xl text-white text-xs lamma-input-shell"
+              disabled
+              title="قفل الغرف بكلمة مرور لم يتم تفعيله بعد"
+              className="w-full p-3 rounded-xl text-white text-xs lamma-input-shell opacity-60 cursor-not-allowed"
             />
+            <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
+              سيتم تفعيل كلمة مرور الغرفة في تحديث لاحق. حالياً الغرف الجديدة
+              تُنشأ بدون قفل فعلي حتى لا تظهر الميزة كأنها شغالة وهي غير مفعلة.
+            </p>
             <div className="flex gap-2">
               <button
                 onClick={handleClose}

@@ -5,22 +5,20 @@
 //  - Network-First  for HTML / routes
 //  - Offline fallback page
 
-const VERSION = "lamma-v1.0.15";
+const VERSION = "lamma-v1.0.17";
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const IMAGE_CACHE = `${VERSION}-images`;
 const API_CACHE = `${VERSION}-api`;
+const OFFLINE_URL = "/offline.html";
 
 const PRECACHE_URLS = [
-  "/",
-  "/index.html",
   "/manifest.json",
-  "/images/lamma-favicon.svg",
-  "/images/lamma-logo.png",
-  "/images/lamma-logo-نايس.png",
+  "/images/lamma-search-icon.svg",
+  "/images/lamma-logo-nice.png",
   "/images/lamma-wordmark.svg",
   "/images/login-hero-1.jpg",
-  "/offline.html",
+  OFFLINE_URL,
 ];
 
 // ─────────────────────────────────────────────
@@ -63,6 +61,9 @@ self.addEventListener("activate", (event) => {
           )
           .map((n) => caches.delete(n)),
       );
+      if ("navigationPreload" in self.registration) {
+        await self.registration.navigationPreload.enable().catch(() => {});
+      }
       await self.clients.claim();
     })(),
   );
@@ -101,12 +102,14 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 5. HTML / navigation — Network first to avoid stale app shells
+  // 5. HTML / navigation — always prefer a fresh network response.
+  // If the network is unavailable, return the dedicated offline page
+  // instead of a stale cached app shell that may reference old bundles.
   if (
     request.mode === "navigate" ||
     request.destination === "document"
   ) {
-    event.respondWith(networkFirst(request, RUNTIME_CACHE));
+    event.respondWith(networkOnlyDocument(request));
     return;
   }
 
@@ -150,6 +153,21 @@ async function networkFirst(request, cacheName) {
     if (cached) return cached;
     return new Response("Offline", { status: 503, statusText: "Offline" });
   }
+}
+
+async function networkOnlyDocument(request) {
+  try {
+    const res = await fetch(request, { cache: "no-store" });
+    if (res.ok) {
+      return res;
+    }
+  } catch {
+    // Fall back to the offline document below.
+  }
+
+  const offline = await caches.match(OFFLINE_URL);
+  if (offline) return offline;
+  return new Response("Offline", { status: 503, statusText: "Offline" });
 }
 
 // ─────────────────────────────────────────────

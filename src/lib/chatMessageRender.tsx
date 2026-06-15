@@ -4,6 +4,48 @@
 import React from "react";
 import { getYoutubeId } from "./chatHelpers.ts";
 
+const INLINE_FORMAT_REGEX =
+  /(\[color=(#[0-9a-fA-F]{3,8})\]([\s\S]*?)\[\/color\]|\*\*([\s\S]+?)\*\*|\*([\s\S]+?)\*)/g;
+
+function renderInlineFormattedText(text: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  INLINE_FORMAT_REGEX.lastIndex = 0;
+
+  while ((match = INLINE_FORMAT_REGEX.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    const [fullMatch, _whole, colorValue, colorText, boldText, italicText] = match;
+    const key = `${match.index}-${fullMatch.length}-${nodes.length}`;
+
+    if (colorValue && typeof colorText === "string") {
+      nodes.push(
+        <span key={key} style={{ color: colorValue }}>
+          {renderInlineFormattedText(colorText)}
+        </span>,
+      );
+    } else if (typeof boldText === "string") {
+      nodes.push(<strong key={key}>{renderInlineFormattedText(boldText)}</strong>);
+    } else if (typeof italicText === "string") {
+      nodes.push(<em key={key}>{renderInlineFormattedText(italicText)}</em>);
+    } else {
+      nodes.push(fullMatch);
+    }
+
+    lastIndex = match.index + fullMatch.length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes;
+}
+
 export function renderTextMessageWithMedia(text: string) {
   if (!text) return null;
 
@@ -28,7 +70,7 @@ export function renderTextMessageWithMedia(text: string) {
         </a>
       );
     }
-    return <span key={index}>{part}</span>;
+    return <span key={index}>{renderInlineFormattedText(part)}</span>;
   });
 
   // Now, parse and extract media previews to render UNDER the text

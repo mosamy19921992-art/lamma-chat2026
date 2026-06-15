@@ -77,6 +77,7 @@ export interface OwnerSettingsRow {
   glow_color?: string | null;
   wall_theme?: string | null;
   room_bg_map?: Record<string, string> | null;
+  design_presets?: unknown[] | null;
 }
 
 export interface OwnerMemberPermissionRow {
@@ -97,6 +98,15 @@ export interface OwnerActivityLogRow {
   user_nickname: string;
   operator_nickname: string;
   details: string;
+}
+
+export interface BannedUserRow {
+  id?: string;
+  created_at?: string;
+  uid: string;
+  author: string;
+  banner: string;
+  reason: string;
 }
 
 export interface NicknameChangeRequestRow {

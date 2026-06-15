@@ -91,14 +91,9 @@ export function ShareModal({ isOpen, onClose, appLink }: ShareModalProps) {
 
             <div className="space-y-4">
               <p className="text-xs text-gray-300 leading-relaxed">
-                💡{" "}
-                <strong className="text-green-400 font-black">
-                  ليه شات لمة مش بيظهر بالبحث على جوجل؟
-                </strong>
-                <br />
-                شات لمة بيشتغل بخصوصية تامة ومشفر لتوفير غرف آمنة وسريعة لك
-                ولأصدقائك. محركات البحث مثل جوجل لا تقوم بأرشفة هذه الروابط
-                لحماية خصوصيتك وسرية غرفتك من الغرباء أو المتسللين.
+                💡 هذا رابط فتح الشات على الغرفة الحالية قدر الإمكان. لو كانت
+                الغرفة متاحة عند الطرف الآخر سيفتحها مباشرة، ولو لم تكن متاحة
+                عنده سيدخل على الشات الرئيسي أولاً.
               </p>
 
               <div className="p-3 rounded-xl lamma-section-card">
@@ -106,7 +101,7 @@ export function ShareModal({ isOpen, onClose, appLink }: ShareModalProps) {
                   htmlFor="share-modal-app-link-input"
                   className="block text-[10px] text-gray-400 font-bold mb-1.5"
                 >
-                  رابط الدخول المباشر للغرفة:
+                  رابط فتح الشات/الغرفة:
                 </label>
                 <div className="flex gap-2 items-center">
                   <button

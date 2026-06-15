@@ -84,7 +84,24 @@ function applyTheme(theme: Theme): void {
   const root = document.documentElement;
   const safeTheme = resolveTheme(theme);
   const p = safeTheme.palette;
+  const [primaryR = "209", primaryG = "213", primaryB = "219"] = p.primaryRgb
+    .split(",")
+    .map((part) => part.trim());
   root.dataset.appTheme = safeTheme.id;
+  // Keep a dedicated "app theme" channel so chat-specific skins can read the
+  // live palette without fighting their own CSS overrides.
+  root.style.setProperty("--app-theme-primary", p.primary);
+  root.style.setProperty("--app-theme-accent", p.accent);
+  root.style.setProperty("--app-theme-bg-1", p.bg1);
+  root.style.setProperty("--app-theme-bg-2", p.bg2);
+  root.style.setProperty("--app-theme-bg-3", p.bg3);
+  root.style.setProperty("--app-theme-text", p.text);
+  root.style.setProperty("--app-theme-text-muted", p.textMuted);
+  root.style.setProperty("--app-theme-primary-rgb", p.primaryRgb);
+  root.style.setProperty("--app-theme-accent-rgb", p.accentRgb);
+  root.style.setProperty("--app-theme-primary-r", primaryR);
+  root.style.setProperty("--app-theme-primary-g", primaryG);
+  root.style.setProperty("--app-theme-primary-b", primaryB);
   root.style.setProperty("--theme-primary", p.primary);
   root.style.setProperty("--theme-accent", p.accent);
   root.style.setProperty("--theme-bg-1", p.bg1);
