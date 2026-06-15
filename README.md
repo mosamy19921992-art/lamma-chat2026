@@ -34,6 +34,7 @@ npm install
 VITE_SUPABASE_URL="YOUR_SUPABASE_URL"
 VITE_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
 VITE_APP_URL="http://localhost:5173"
+VITE_ENABLE_PWA="false"
 VITE_GEMINI_SEARCH_ENDPOINT=""
 VITE_BRAND_NAME="Lamma Chat"
 VITE_BRAND_CREDIT="Your Name"
@@ -44,6 +45,8 @@ VITE_LOGIN_HERO_BG="/images/login-hero.jpg"
 
 - `VITE_SUPABASE_URL` و`VITE_SUPABASE_ANON_KEY` مطلوبان لتشغيل المصادقة والرسائل
   والوسائط بشكل كامل.
+- `VITE_ENABLE_PWA` معطّل افتراضياً لتجنب مشاكل الكاش القديمة بعد إعادة النشر.
+  فعّله فقط إذا كنت تحتاج تثبيت التطبيق والعمل دون اتصال.
 - `VITE_GEMINI_SEARCH_ENDPOINT` اختياري.
 - المشروع لا يعتمد حالياً على `GEMINI_API_KEY` كمتطلب أساسي للتشغيل المحلي.
 

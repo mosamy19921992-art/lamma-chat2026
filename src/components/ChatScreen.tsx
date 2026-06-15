@@ -2405,80 +2405,80 @@ export default function ChatScreen({
   const canPersistOwnerSettings = currentUser.role === "owner";
 
   useEffect(() => {
-    let cancelled = false;
-
-    useEffect(() => {
-      if (!supabase) return;
-      const subscription = supabase
-        .channel('owner_settings_sync')
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'owner_settings', filter: 'id=eq.global' },
-          (payload) => {
-            const settings = payload.new;
-            if (settings.ghost_mode !== undefined) setIsGhostMode(!!settings.ghost_mode);
-            if (settings.spy_mode !== undefined) setIsSpyMode(!!settings.spy_mode);
-            if (settings.maintenance_mode !== undefined) setIsMaintenanceMode(!!settings.maintenance_mode);
-            if (settings.global_mute !== undefined) setIsGlobalMute(!!settings.global_mute);
-            if (settings.global_mic_mute !== undefined) setIsGlobalMicMute(!!settings.global_mic_mute);
-            if (settings.vip_only_images !== undefined) setIsOnlyVIPCanSendImages(!!settings.vip_only_images);
-            if (settings.bot_silent !== undefined) setIsBotSilent(!!settings.bot_silent);
-            if (settings.ads_enabled !== undefined) setIsAdsEnabled(!!settings.ads_enabled);
-            if (settings.greetings_enabled !== undefined) setIsWelcomeToastEnabled(!!settings.greetings_enabled);
-            if (settings.banned_words) setBannedWords(settings.banned_words);
-            if (settings.owner_bg_image !== undefined) setOwnerBgImage(settings.owner_bg_image);
-            if (settings.custom_logo_url !== undefined) {
-              setBrandLogoUrl(settings.custom_logo_url);
-              setDesignLogoInput(settings.custom_logo_url || '');
-            }
-            if (settings.glow_color !== undefined) setGlowColor(settings.glow_color || '#e4e4e7');
-            if (settings.wall_theme !== undefined) setWallTheme(settings.wall_theme as any || 'fire');
-            if (settings.room_bg_map !== undefined) setRoomBgMap(settings.room_bg_map || {});
-            if (settings.chat_theme !== undefined) setChatTheme(settings.chat_theme as any || 'classic');
+    if (!supabase) return;
+    const subscription = supabase
+      .channel('owner_settings_sync')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'owner_settings', filter: 'id=eq.global' },
+        (payload) => {
+          const settings = payload.new;
+          if (settings.ghost_mode !== undefined) setIsGhostMode(!!settings.ghost_mode);
+          if (settings.spy_mode !== undefined) setIsSpyMode(!!settings.spy_mode);
+          if (settings.maintenance_mode !== undefined) setIsMaintenanceMode(!!settings.maintenance_mode);
+          if (settings.global_mute !== undefined) setIsGlobalMute(!!settings.global_mute);
+          if (settings.global_mic_mute !== undefined) setIsGlobalMicMute(!!settings.global_mic_mute);
+          if (settings.vip_only_images !== undefined) setIsOnlyVIPCanSendImages(!!settings.vip_only_images);
+          if (settings.bot_silent !== undefined) setIsBotSilent(!!settings.bot_silent);
+          if (settings.ads_enabled !== undefined) setIsAdsEnabled(!!settings.ads_enabled);
+          if (settings.greetings_enabled !== undefined) setIsWelcomeToastEnabled(!!settings.greetings_enabled);
+          if (settings.banned_words) setBannedWords(settings.banned_words);
+          if (settings.owner_bg_image !== undefined) setOwnerBgImage(settings.owner_bg_image);
+          if (settings.custom_logo_url !== undefined) {
+            setBrandLogoUrl(settings.custom_logo_url);
+            setDesignLogoInput(settings.custom_logo_url || '');
           }
-        )
-        .subscribe();
-      return () => {
-        supabase.removeChannel(subscription);
-      };
-    }, []);
+          if (settings.glow_color !== undefined) setGlowColor(settings.glow_color || '#e4e4e7');
+          if (settings.wall_theme !== undefined) setWallTheme(settings.wall_theme as any || 'fire');
+          if (settings.room_bg_map !== undefined) setRoomBgMap(settings.room_bg_map || {});
+          if (settings.chat_theme !== undefined) setChatTheme(settings.chat_theme as any || 'classic');
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, []);
 
-    useEffect(() => {
-      if (!supabase) return;
-      const subscription = supabase
-        .channel('owner_permissions_sync')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'owner_member_permissions' },
-          (payload) => {
-            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-              const p = payload.new;
-              setMemberCustomPermissions(prev => ({
-                ...prev,
-                [p.nickname]: {
-                  recordingAllowed: !!p.recording_allowed,
-                  callsAllowed: !!p.calls_allowed,
-                  musicRadioAllowed: !!p.music_radio_allowed,
-                  roomCreationAllowed: !!p.room_creation_allowed,
-                }
-              }));
-            } else if (payload.eventType === 'DELETE') {
-              const p = payload.old;
-              if (p && p.nickname) {
-                setMemberCustomPermissions(prev => {
-                  const next = { ...prev };
-                  delete next[p.nickname];
-                  return next;
-                });
+  useEffect(() => {
+    if (!supabase) return;
+    const subscription = supabase
+      .channel('owner_permissions_sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'owner_member_permissions' },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const p = payload.new;
+            setMemberCustomPermissions(prev => ({
+              ...prev,
+              [p.nickname]: {
+                recordingAllowed: !!p.recording_allowed,
+                callsAllowed: !!p.calls_allowed,
+                musicRadioAllowed: !!p.music_radio_allowed,
+                roomCreationAllowed: !!p.room_creation_allowed,
               }
+            }));
+          } else if (payload.eventType === 'DELETE') {
+            const p = payload.old;
+            if (p && p.nickname) {
+              setMemberCustomPermissions(prev => {
+                const next = { ...prev };
+                delete next[p.nickname];
+                return next;
+              });
             }
           }
-        )
-        .subscribe();
-      return () => {
-        supabase.removeChannel(subscription);
-      };
-    }, []);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
 
     const loadOwnerData = async () => {
       ownerSettingsSyncReadyRef.current = false;

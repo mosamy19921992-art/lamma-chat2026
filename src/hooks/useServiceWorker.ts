@@ -10,6 +10,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 
+const ENABLE_PWA = import.meta.env.VITE_ENABLE_PWA === "true";
+const CACHE_PREFIXES = ["lamma-"];
+
 interface ServiceWorkerState {
   needRefresh: boolean;
   offlineReady: boolean;
@@ -18,6 +21,22 @@ interface ServiceWorkerState {
   update: () => Promise<void>;
   promptInstall: () => Promise<void>;
   isOnline: boolean;
+}
+
+async function clearLammaCaches(): Promise<void> {
+  if (typeof window === "undefined" || !("caches" in window)) return;
+  const keys = await caches.keys();
+  await Promise.all(
+    keys
+      .filter((key) => CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)))
+      .map((key) => caches.delete(key)),
+  );
+}
+
+async function unregisterAllServiceWorkers(): Promise<void> {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  await Promise.all(registrations.map((registration) => registration.unregister()));
 }
 
 export function useServiceWorker(): ServiceWorkerState {
@@ -31,7 +50,6 @@ export function useServiceWorker(): ServiceWorkerState {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!("serviceWorker" in navigator)) return;
     let mounted = true;
     let hasRefreshedForUpdate = false;
 
@@ -45,6 +63,11 @@ export function useServiceWorker(): ServiceWorkerState {
         setIsInstalled(Boolean(standalone));
       }
     };
+
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     const bindRegistrationEvents = (registration: ServiceWorkerRegistration) => {
       if (!mounted) return;
@@ -74,6 +97,22 @@ export function useServiceWorker(): ServiceWorkerState {
       });
     };
 
+    const disableServiceWorker = async () => {
+      try {
+        await unregisterAllServiceWorkers();
+        await clearLammaCaches();
+      } catch (err) {
+        console.warn("[SW] Cleanup failed:", err);
+      } finally {
+        if (mounted) {
+          setNeedRefresh(false);
+          setOfflineReady(false);
+          setInstallPromptEvent(null);
+          setIsInstalled(false);
+        }
+      }
+    };
+
     const registerServiceWorker = async () => {
       try {
         const registration = await navigator.serviceWorker.register("/sw.js");
@@ -86,7 +125,18 @@ export function useServiceWorker(): ServiceWorkerState {
       }
     };
 
-    // Listen for the native install prompt.
+    updateInstalledState();
+
+    if (!("serviceWorker" in navigator) || !ENABLE_PWA) {
+      void disableServiceWorker();
+      return () => {
+        mounted = false;
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+      };
+    }
+
+    // Listen for the native install prompt only when PWA mode is enabled.
     const handleBeforeInstallPrompt = (event: any) => {
       event.preventDefault();
       setInstallPromptEvent(event);
@@ -104,13 +154,6 @@ export function useServiceWorker(): ServiceWorkerState {
     window.addEventListener("appinstalled", handleAppInstalled);
     navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
 
-    // Online / offline tracking.
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    updateInstalledState();
     void registerServiceWorker();
 
     return () => {
