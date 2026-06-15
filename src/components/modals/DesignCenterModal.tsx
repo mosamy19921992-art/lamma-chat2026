@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, setWallTheme, wallTheme, designPresetName, setDesignPresetName, handleSaveDesignPreset, designPresets, applyDesignPreset, handleDeleteDesignPreset, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, chatTheme, setChatTheme, glowColor, setGlowColor, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage }: any) => {
+export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, queueRecommendedAssistantProposal, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, setWallTheme, wallTheme, designPresetName, setDesignPresetName, handleSaveDesignPreset, designPresets, applyDesignPreset, handleDeleteDesignPreset, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, chatTheme, setChatTheme, glowColor, setGlowColor, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage }: any) => {
   return (
     <>
                   <div className="space-y-4 select-none" dir="rtl">
@@ -30,13 +30,20 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                        <div className="grid grid-cols-2 md:grid-cols-7 gap-2">
                           <button
                             type="button"
                             onClick={runAssistantAudit}
                             className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
                           >
                             فحص الشات
+                          </button>
+                          <button
+                            type="button"
+                            onClick={queueRecommendedAssistantProposal}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all text-white lamma-accent-btn"
+                          >
+                            اقتراح ذكي
                           </button>
                           <button
                             type="button"
@@ -66,10 +73,25 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           >
                             اقتراح للغرفة
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAssistantProposal("identity-refresh")}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            تحديث الهوية
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAssistantProposal("immersive")}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            وضع الغمر
+                          </button>
                         </div>
 
                         {assistantAudit && (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                             <div className="rounded-2xl p-3 lamma-admin-card">
                               <div className="text-[10px] text-gray-400 font-black">
                                 تقييم المظهر
@@ -107,6 +129,56 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                                 ))}
                               </div>
                             </div>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                              <div className="rounded-2xl p-3 lamma-admin-card">
+                                <div className="text-[10px] text-gray-400 font-black">الهوية</div>
+                                <div className="text-lg font-black text-amber-300 mt-1">
+                                  {assistantAudit.identityScore}/100
+                                </div>
+                              </div>
+                              <div className="rounded-2xl p-3 lamma-admin-card">
+                                <div className="text-[10px] text-gray-400 font-black">القراءة</div>
+                                <div className="text-lg font-black text-sky-300 mt-1">
+                                  {assistantAudit.readabilityScore}/100
+                                </div>
+                              </div>
+                              <div className="rounded-2xl p-3 lamma-admin-card">
+                                <div className="text-[10px] text-gray-400 font-black">الغرفة</div>
+                                <div className="text-lg font-black text-violet-300 mt-1">
+                                  {assistantAudit.roomScore}/100
+                                </div>
+                              </div>
+                              <div className="rounded-2xl p-3 lamma-admin-card">
+                                <div className="text-[10px] text-gray-400 font-black">الصقل</div>
+                                <div className="text-lg font-black text-emerald-300 mt-1">
+                                  {assistantAudit.polishScore}/100
+                                </div>
+                              </div>
+                              <div className="rounded-2xl p-3 lamma-admin-card">
+                                <div className="text-[10px] text-gray-400 font-black">الخطوة الأنسب</div>
+                                <div className="text-[10px] text-gray-200 font-black mt-2 leading-5">
+                                  {assistantAudit.nextAction}
+                                </div>
+                              </div>
+                            </div>
+                            {assistantAudit.quickWins.length > 0 && (
+                              <div className="rounded-2xl p-3 border border-cyan-500/20 bg-cyan-500/[0.04] space-y-2">
+                                <div className="text-[10px] text-cyan-300 font-black">
+                                  أسرع خطوات تخليك أقرب لشكل احترافي
+                                </div>
+                                <div className="space-y-1.5">
+                                  {assistantAudit.quickWins.map((item, index) => (
+                                    <div
+                                      key={`${item}-${index}`}
+                                      className="text-[10px] text-cyan-100 font-bold"
+                                    >
+                                      {index + 1}. {item}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -120,12 +192,20 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                                 <div
                                   key={`${finding.text}-${index}`}
                                   className={`text-[10px] font-bold rounded-xl px-2.5 py-2 border ${
-                                    finding.tone === "warn"
-                                      ? "text-yellow-200 border-yellow-500/20 bg-yellow-500/5"
-                                      : "text-emerald-200 border-emerald-500/20 bg-emerald-500/5"
+                                    finding.tone === "critical"
+                                      ? "text-red-200 border-red-500/20 bg-red-500/5"
+                                      : finding.tone === "warn"
+                                        ? "text-yellow-200 border-yellow-500/20 bg-yellow-500/5"
+                                        : "text-emerald-200 border-emerald-500/20 bg-emerald-500/5"
                                   }`}
                                 >
-                                  {finding.tone === "warn" ? "⚠️" : "✅"} {finding.text}
+                                  {finding.tone === "critical"
+                                    ? "⛔"
+                                    : finding.tone === "warn"
+                                      ? "⚠️"
+                                      : "✅"}{" "}
+                                  <span className="font-black">{finding.title}:</span>{" "}
+                                  {finding.text}
                                 </div>
                               ))}
                             </div>
@@ -146,6 +226,40 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                               <span className="px-2 py-1 rounded-full text-[9px] font-black bg-fuchsia-500/10 text-fuchsia-200 border border-fuchsia-500/20">
                                 بانتظار إذنك
                               </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                              <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                مجال التركيز: {assistantProposal.focusArea}
+                              </div>
+                              <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                الأثر: {assistantProposal.impact}
+                              </div>
+                              <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                الثقة: {assistantProposal.confidence}%
+                              </div>
+                              <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                النتيجة المتوقعة: {assistantProposal.expectedScore}/100
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              <div className="rounded-2xl p-3 lamma-admin-card">
+                                <div className="text-[10px] text-gray-400 font-black">
+                                  قبل التطبيق
+                                </div>
+                                <div className="text-[10px] text-gray-200 font-bold mt-2 leading-5">
+                                  {assistantProposal.beforeState}
+                                </div>
+                              </div>
+                              <div className="rounded-2xl p-3 border border-emerald-500/20 bg-emerald-500/[0.05]">
+                                <div className="text-[10px] text-emerald-300 font-black">
+                                  بعد التطبيق
+                                </div>
+                                <div className="text-[10px] text-emerald-100 font-bold mt-2 leading-5">
+                                  {assistantProposal.afterState}
+                                </div>
+                              </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
@@ -192,6 +306,36 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                                 </div>
                               ))}
                             </div>
+
+                            <div className="rounded-2xl p-3 border border-white/10 bg-white/[0.03] space-y-1.5">
+                              <div className="text-[10px] text-white font-black">
+                                خطوات التنفيذ الاحترافية
+                              </div>
+                              {assistantProposal.implementationSteps.map((step, index) => (
+                                <div
+                                  key={`${assistantProposal.id}-step-${index}`}
+                                  className="text-[10px] text-gray-200 font-bold"
+                                >
+                                  {index + 1}. {step}
+                                </div>
+                              ))}
+                            </div>
+
+                            {assistantProposal.warnings.length > 0 && (
+                              <div className="rounded-2xl p-3 border border-yellow-500/20 bg-yellow-500/[0.05] space-y-1.5">
+                                <div className="text-[10px] text-yellow-200 font-black">
+                                  ملاحظات قبل التطبيق
+                                </div>
+                                {assistantProposal.warnings.map((warning, index) => (
+                                  <div
+                                    key={`${assistantProposal.id}-warning-${index}`}
+                                    className="text-[10px] text-yellow-100 font-bold"
+                                  >
+                                    • {warning}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                               <button

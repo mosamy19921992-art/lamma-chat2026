@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { ChatScreenProps } from "../lib/chatTypes";
 import {
   Send,
@@ -112,6 +112,18 @@ import {
 } from "../lib/chatHelpers.ts";
 import { renderTextMessageWithMedia } from "../lib/chatMessageRender.tsx";
 import { createPortal } from "react-dom";
+import { useChatMessages } from "../hooks/useChatMessages";
+import { usePrivateMessages } from "../hooks/usePrivateMessages";
+import { useRoomComposer } from "../hooks/useRoomComposer";
+import {
+  buildDesignAssistantAudit,
+  buildDesignAssistantProposal,
+} from "../services/design/designAssistantService";
+import {
+  appendPmThreadMessage,
+  createOptimisticPmMessage,
+  persistPrivateMessage,
+} from "../services/chat/privateMessagesService";
 
 function MobileBottomSheet({
   isOpen,
@@ -821,7 +833,6 @@ export default function ChatScreen({
   const publicChatSessionStartedAtRef = useRef<string>(
     new Date().toISOString(),
   );
-  const publicChatCleanupDoneRef = useRef(false);
   const publicChatSessionStartedAt = publicChatSessionStartedAtRef.current;
   const publicChatSessionStartedAtMs = new Date(
     publicChatSessionStartedAt,
@@ -933,218 +944,43 @@ export default function ChatScreen({
     localStorage.setItem(CHAT_THEME_CUSTOMIZED_STORAGE_KEY, "true");
   }, [chatTheme, hasUserChosenChatTheme]);
 
-  const buildAssistantFindings = (): DesignAssistantFinding[] => {
-    const findings: DesignAssistantFinding[] = [];
-
-    if (!brandLogoUrl?.trim()) {
-      findings.push({
-        tone: "warn",
-        text: "الشعار داخل الشات يعتمد على الافتراضي. توحيد الشعار يرفع فخامة الهوية.",
-      });
-    } else {
-      findings.push({
-        tone: "good",
-        text: "الشعار المخصص مفعّل داخل الشات، وده يحسن ثبات الهوية البصرية.",
-      });
-    }
-
-    if (chatTheme === "classic") {
-      findings.push({
-        tone: "warn",
-        text: "ثيم الشات ما زال كلاسيكي؛ يوجد مجال واضح لمظهر أهدى أو أفخم.",
-      });
-    } else {
-      findings.push({
-        tone: "good",
-        text: `ثيم الشات الحالي (${chatTheme}) مفعل ويعطي هوية أوضح من الوضع الكلاسيكي.`,
-      });
-    }
-
-    if (!roomBgMap[activeRoomId]) {
-      findings.push({
-        tone: "warn",
-        text: "الغرفة الحالية لا تملك خلفية مستقلة، لذلك شكلها يعتمد على الخلفية العامة فقط.",
-      });
-    } else {
-      findings.push({
-        tone: "good",
-        text: "الغرفة الحالية لها خلفية مخصصة، وده يمنحها شخصية مستقلة.",
-      });
-    }
-
-    if (!ownerBgImage?.trim()) {
-      findings.push({
-        tone: "warn",
-        text: "الخلفية العامة غير مخصصة حاليًا، وسيتم الرجوع للصورة الافتراضية فقط.",
-      });
-    }
-
-    if (!/^#[0-9a-f]{6}$/i.test(glowColor)) {
-      findings.push({
-        tone: "warn",
-        text: "لون الإضاءة الحالي غير مثالي أو غير مكتوب بصيغة HEX واضحة.",
-      });
-    } else {
-      findings.push({
-        tone: "good",
-        text: `لون الإضاءة الحالي (${glowColor}) صالح ويمكن البناء عليه في أي اقتراح جديد.`,
-      });
-    }
-
-    return findings;
-  };
-
-  const buildAssistantAudit = (): DesignAssistantAudit => {
-    const findings = buildAssistantFindings();
-    const roomLabel =
-      openRooms.find((r) => r.id === activeRoomId)?.name || activeRoomId;
-    let score = 100;
-
-    if (!brandLogoUrl?.trim()) score -= 16;
-    if (chatTheme === "classic") score -= 18;
-    if (!roomBgMap[activeRoomId]) score -= 10;
-    if (!ownerBgImage?.trim()) score -= 12;
-    if (!/^#[0-9a-f]{6}$/i.test(glowColor)) score -= 10;
-    if (wallTheme === "fire" && chatTheme === "classic") score -= 6;
-
-    score = Math.max(52, Math.min(100, score));
-
-    const highlights: string[] = [];
-    if (chatTheme === "classic") {
-      highlights.push("الغرفة الحالية ما زالت على الشكل الكلاسيكي، وده يقلل إحساس التجديد.");
-    }
-    if (!roomBgMap[activeRoomId]) {
-      highlights.push(`الغرفة الحالية (${roomLabel}) لا تملك بصمة بصرية مستقلة حتى الآن.`);
-    }
-    if (!brandLogoUrl?.trim()) {
-      highlights.push("الشعار الموحد داخل الشات لم يُفعّل بعد.");
-    }
-    if (highlights.length === 0) {
-      highlights.push("المظهر العام متماسك، والمطلوب الآن تحسينات ذوقية فقط.");
-    }
-
-    const verdict =
-      score >= 90
-        ? "الشكل الحالي قوي ومتماسك"
-        : score >= 75
-          ? "الشكل جيد لكن ما زال قابلًا للتحسين"
-          : "الشكل يحتاج ضبط بصري أوضح";
-
-    return {
-      score,
-      verdict,
-      roomLabel,
-      highlights,
-      findings,
-    };
-  };
-
-  const buildAssistantProposal = (
-    preset: DesignAssistantProposal["id"],
-  ): DesignAssistantProposal => {
-    const sharedLogo = brandLogoUrl?.trim() || "/images/lamma-logo-nice.png";
-    const roomLabel =
-      openRooms.find((r) => r.id === activeRoomId)?.name || activeRoomId;
-
-    if (preset === "premium") {
-      return {
-        id: "premium",
-        title: "الستايل الفاخر",
-        summary: "يقرب الشات من طابع ذهبي هادئ مع حضور أفخم للشعار داخل الواجهة.",
-        changes: {
-          wallTheme: "fire",
-          glowColor: "#d4a63a",
-          brandLogoUrl: sharedLogo,
-          chatTheme: "night-paper",
-        },
-        reasoning: [
-          "يوحد الشعار مع مظهر الشات الأساسي.",
-          "يستخدم إضاءة ذهبية أقل حدة وأكثر فخامة.",
-          "ينقل الشات من الوضع الكلاسيكي إلى Night Paper.",
-        ],
-      };
-    }
-
-    if (preset === "calm") {
-      return {
-        id: "calm",
-        title: "الستايل الهادئ",
-        summary: "يخفف الزحام اللوني ويجعل القراءة أسهل خاصة في الجلسات الطويلة.",
-        changes: {
-          wallTheme: "ice",
-          glowColor: "#93c5fd",
-          chatTheme: "charcoal-calm",
-          roomBgCurrent: null,
-        },
-        reasoning: [
-          "يقلل حدة التباين البصري على الغرفة الحالية.",
-          "يعطي الأعضاء مظهرًا أكثر هدوءًا وراحة في القراءة.",
-          "يحافظ على الهوية بدون قفزات لونية مزعجة.",
-        ],
-      };
-    }
-
-    if (preset === "room-focus") {
-      const nextTheme: ChatTheme =
-        wallTheme === "violet"
-          ? "violet-night"
-          : wallTheme === "ice"
-            ? "charcoal-calm"
-            : "night-paper";
-      const nextGlow =
-        wallTheme === "violet"
-          ? "#8b5cf6"
-          : wallTheme === "ice"
-            ? "#93c5fd"
-            : "#d4a63a";
-
-      return {
-        id: "room-focus",
-        title: `اقتراح مخصص لغرفة ${roomLabel}`,
-        summary: "يضبط الشكل الحالي بما يناسب الغرفة المفتوحة الآن بدل تطبيق ستايل عام على كل المشهد.",
-        changes: {
-          chatTheme: nextTheme,
-          glowColor: nextGlow,
-          brandLogoUrl: sharedLogo,
-        },
-        reasoning: [
-          `يركز على الغرفة الحالية (${roomLabel}) بدل تعديل عام غير موجه.`,
-          "يحافظ على الشعار ظاهرًا داخل الهيدر لضمان ثبات الهوية.",
-          "يضبط الثيم والإضاءة حسب لون الجدران الحالي لتقليل التضارب.",
-        ],
-      };
-    }
-
-    return {
-      id: "night",
-      title: "الستايل الليلي",
-      summary: "يمنح الشات شخصية ليلية أوضح وإضاءة بنفسجية مناسبة للغرف الليلية.",
-      changes: {
-        wallTheme: "violet",
-        glowColor: "#8b5cf6",
-        chatTheme: "violet-night",
-        brandLogoUrl: sharedLogo,
-      },
-      reasoning: [
-        "يوائم بين لون الجدران وثيم الشات الليلي.",
-        "يحافظ على الشعار ظاهرًا داخل الهيدر.",
-        "يعطي طابعًا حديثًا ومختلفًا عن الشكل التقليدي.",
-      ],
-    };
-  };
+  const getDesignAssistantContext = () => ({
+    activeRoomId,
+    activeRoomName:
+      availableRooms.find((room) => room.id === activeRoomId)?.name || activeRoomId,
+    totalRooms: availableRooms.length,
+    brandLogoUrl,
+    chatTheme,
+    glowColor,
+    ownerBgImage,
+    roomBgMap,
+    wallTheme,
+    defaultAmbientBg: DEFAULT_AMBIENT_BG,
+  });
 
   const runAssistantAudit = () => {
-    const audit = buildAssistantAudit();
+    const audit = buildDesignAssistantAudit(getDesignAssistantContext());
     setAssistantAudit(audit);
     setAssistantFindings(audit.findings);
     setAssistantProposal(null);
   };
 
   const queueAssistantProposal = (preset: DesignAssistantProposal["id"]) => {
-    const audit = buildAssistantAudit();
+    const context = getDesignAssistantContext();
+    const audit = buildDesignAssistantAudit(context);
     setAssistantAudit(audit);
     setAssistantFindings(audit.findings);
-    setAssistantProposal(buildAssistantProposal(preset));
+    setAssistantProposal(buildDesignAssistantProposal(preset, context));
+  };
+
+  const queueRecommendedAssistantProposal = () => {
+    const context = getDesignAssistantContext();
+    const audit = buildDesignAssistantAudit(context);
+    setAssistantAudit(audit);
+    setAssistantFindings(audit.findings);
+    setAssistantProposal(
+      buildDesignAssistantProposal(audit.recommendedPreset, context),
+    );
   };
 
   const applyAssistantPatch = (patch: DesignAssistantPatch) => {
@@ -1218,17 +1054,19 @@ export default function ChatScreen({
 
   useEffect(() => {
     if (assistantFindings.length === 0 && !assistantAudit) return;
-    const nextAudit = buildAssistantAudit();
+    const nextAudit = buildDesignAssistantAudit(getDesignAssistantContext());
     setAssistantAudit(nextAudit);
     setAssistantFindings(nextAudit.findings);
   }, [
     activeRoomId,
     assistantFindings.length,
+    availableRooms,
     brandLogoUrl,
     chatTheme,
     glowColor,
     ownerBgImage,
     roomBgMap,
+    wallTheme,
   ]);
 
   const performSearch = async () => {
@@ -3069,6 +2907,34 @@ export default function ChatScreen({
       // ignore
     }
   };
+  const handleIncomingRoomMessage = useCallback(
+    (sMsg: SupabaseMessage, roomId: string) => {
+      const mentionMatch =
+        typeof sMsg.text === "string" &&
+        sMsg.text.includes(`@${currentUser.nickname}`);
+      const newNotif = {
+        id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        kind: mentionMatch ? ("mention" as const) : ("system" as const),
+        title: mentionMatch
+          ? `${sMsg.author} ذكرك في ${roomId}`
+          : `رسالة جديدة من ${sMsg.author}`,
+        body: (sMsg.text || sMsg.media_url || "[مرفق]").slice(0, 120),
+        at: Date.now(),
+        read: false,
+      };
+      setNotifications((prevN) => {
+        const next = [newNotif, ...prevN].slice(0, 30);
+        try {
+          localStorage.setItem("lamma_notifications", JSON.stringify(next));
+        } catch (e) {
+          // ignore
+        }
+        return next;
+      });
+      if (document.hidden) playMessageSound();
+    },
+    [currentUser.nickname],
+  );
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
   const closeFloatingUi = () => {
@@ -3770,208 +3636,23 @@ export default function ChatScreen({
 
 
 
-  // Active open PM recipient/target state
-  const [pmTarget, setPmTarget] = useState<PMTargetState | null>(null);
-  const pmThreadsStorageKey = `lamma_pm_threads_${currentUser.uid || currentUser.nickname}`;
-
-  // Deep private message threads map grouped by nickname
-  const [pmThreads, setPmThreads] = useState<Record<string, PMThreadMessage[]>>(
-    () => {
-      const fallbackThreads: Record<string, PMThreadMessage[]> = {};
-      const saved = localStorage.getItem(pmThreadsStorageKey);
-      if (!saved) return fallbackThreads;
-      try {
-        const parsed = JSON.parse(saved);
-        if (!parsed || typeof parsed !== "object") return fallbackThreads;
-        return parsed;
-      } catch {
-        return fallbackThreads;
-      }
-    },
-  );
-
-  const activePmNickname = pmTarget?.nickname || "";
-  const pmMessages = activePmNickname ? pmThreads[activePmNickname] || [] : [];
-  const [pmInputText, setPmInputText] = useState("");
-  const [isPmTyping, setIsPmTyping] = useState(false);
+  const {
+    pmTarget,
+    setPmTarget,
+    pmThreads,
+    setPmThreads,
+    activePmNickname,
+    pmMessages,
+    pmInputText,
+    setPmInputText,
+    isPmTyping,
+  } = usePrivateMessages({
+    currentUser,
+    isSpyMode,
+    isPmOpen,
+    playMessageSound,
+  });
   const pmInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const trimmedThreads: Record<string, any[]> = {};
-    Object.keys(pmThreads).forEach((user) => {
-      trimmedThreads[user] = pmThreads[user].slice(-100);
-    });
-    localStorage.setItem(pmThreadsStorageKey, JSON.stringify(trimmedThreads));
-  }, [pmThreads, pmThreadsStorageKey]);
-
-  // PM Fake typing effect
-  useEffect(() => {
-    if (isPmOpen && pmTarget) {
-      const t = setTimeout(() => setIsPmTyping(true), 2000);
-      const t2 = setTimeout(() => setIsPmTyping(false), 6000);
-      return () => {
-        clearTimeout(t);
-        clearTimeout(t2);
-      };
-    }
-  }, [isPmOpen, pmTarget, pmMessages.length]);
-
-  // Sync / Load permanent private messages (PM) from Supabase and listen in realtime
-  useEffect(() => {
-    if (!supabase || currentUser.authProvider !== "supabase" || !currentUser.uid) {
-      return;
-    }
-
-    const fetchDatabasePMs = async () => {
-      const myUid = currentUser.uid;
-      const myNick = currentUser.nickname;
-
-      let query = supabase.from("pm_messages").select("*");
-      if (!(currentUser.role === "owner" && isSpyMode)) {
-        query = query.or(
-          `sender_uid.eq.${myUid},receiver_uid.eq.${myUid},sender_nickname.eq.${myNick},receiver_nickname.eq.${myNick}`,
-        );
-      }
-      const { data, error } = await query.order("created_at", { ascending: true });
-
-      if (error) {
-        console.error("Error fetching database PMs:", error);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        setPmThreads((prev) => {
-          const next = { ...prev };
-          data.forEach((sMsg: any) => {
-            const isOwn =
-              sMsg.sender_nickname === currentUser.nickname ||
-              sMsg.sender_uid === myUid;
-            
-            let otherPerson = isOwn
-              ? sMsg.receiver_nickname
-              : sMsg.sender_nickname;
-            
-            // In Spy Mode for owner, group logs if the owner is not involved
-            if (currentUser.role === "owner" && isSpyMode && !isOwn && sMsg.receiver_nickname !== myNick && sMsg.receiver_uid !== myUid) {
-               otherPerson = `🕵️ ${sMsg.sender_nickname} -> ${sMsg.receiver_nickname}`;
-            }
-
-            if (!next[otherPerson]) {
-              next[otherPerson] = [];
-            }
-
-            const exists = next[otherPerson].some(
-              (m) =>
-                (m as any).dbId === sMsg.id ||
-                (m.text === sMsg.text && m.isOwn === isOwn),
-            );
-
-            if (!exists) {
-              next[otherPerson].push({
-                text: sMsg.text,
-                isOwn,
-                time: sMsg.created_at
-                  ? new Date(sMsg.created_at).toLocaleTimeString("ar-EG", {
-                      hour: "numeric",
-                      minute: "numeric",
-                      hour12: true,
-                    })
-                  : new Date().toLocaleTimeString("ar-EG", {
-                      hour: "numeric",
-                      minute: "numeric",
-                      hour12: true,
-                    }),
-                status: "read",
-                dbId: sMsg.id,
-              } as any);
-            }
-          });
-          return next;
-        });
-      }
-    };
-
-    fetchDatabasePMs();
-
-    const myUid = currentUser.uid;
-    const myNick = currentUser.nickname;
-
-    const pmSubscription = supabase
-      .channel("pm_realtime_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "pm_messages",
-        },
-        (payload) => {
-          const sMsg = payload.new as any;
-          const isSender =
-            sMsg.sender_nickname === myNick || sMsg.sender_uid === myUid;
-          const isReceiver =
-            sMsg.receiver_nickname === myNick || sMsg.receiver_uid === myUid;
-          
-          const spyIntercept = currentUser.role === "owner" && isSpyMode && !isSender && !isReceiver;
-
-          if (isSender || isReceiver || spyIntercept) {
-            let otherPerson = isSender
-              ? sMsg.receiver_nickname
-              : sMsg.sender_nickname;
-            
-            if (spyIntercept) {
-               otherPerson = `🕵️ ${sMsg.sender_nickname} -> ${sMsg.receiver_nickname}`;
-            }
-
-            setPmThreads((prev) => {
-              const currentThread = prev[otherPerson] || [];
-              const exists = currentThread.some(
-                (m) =>
-                  (m as any).dbId === sMsg.id ||
-                  (m.text === sMsg.text && m.isOwn === isSender),
-              );
-
-              if (exists) return prev;
-
-              const nextThread = [
-                ...currentThread,
-                {
-                  text: sMsg.text,
-                  isOwn: isSender,
-                  time: sMsg.created_at
-                    ? new Date(sMsg.created_at).toLocaleTimeString("ar-EG", {
-                        hour: "numeric",
-                        minute: "numeric",
-                        hour12: true,
-                      })
-                    : new Date().toLocaleTimeString("ar-EG", {
-                        hour: "numeric",
-                        minute: "numeric",
-                        hour12: true,
-                      }),
-                  status: "read",
-                  dbId: sMsg.id,
-                } as any,
-              ];
-
-              return {
-                ...prev,
-                [otherPerson]: nextThread.slice(-100),
-              };
-            });
-
-            if (!isSender && document.hidden) {
-              playMessageSound();
-            }
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(pmSubscription);
-    };
-  }, [currentUser.nickname, currentUser.uid, currentUser.role, isSpyMode]);
 
   // Chat Header Welcome Message editability for owner
   const [welcomeMessage, setWelcomeMessage] = useState(
@@ -3979,10 +3660,23 @@ export default function ChatScreen({
   );
   const [isEditingWelcome, setIsEditingWelcome] = useState(false);
 
-  // Public chat now starts empty for every fresh session.
-  const [roomMessages, setRoomMessages] = useState<Record<string, Message[]>>(
-    {},
-  );
+  const {
+    roomMessages,
+    setRoomMessages,
+    allMessages,
+    cleanupPublicChatSession,
+  } = useChatMessages({
+    activeRoomId,
+    currentUserNickname: currentUser.nickname,
+    ignoredUsers,
+    blockedUsers,
+    publicChatSessionStartedAt,
+    publicChatSessionStartedAtMs,
+    senderUid,
+    supabaseRestUrl,
+    supabaseAnonKey,
+    onIncomingMessage: handleIncomingRoomMessage,
+  });
 
   // Room mapped topics
   const [roomTopics, setRoomTopics] = useState<Record<string, string>>({
@@ -3998,263 +3692,12 @@ export default function ChatScreen({
 
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const clearPublicChatStorage = () => {
-    try {
-      for (const key of Object.keys(localStorage)) {
-        if (key.startsWith("lamma_messages_")) {
-          localStorage.removeItem(key);
-        }
-      }
-    } catch (error) {
-      console.warn("Failed to clear public chat storage:", error);
-    }
-  };
-
-  const cleanupPublicChatSession = (useKeepalive = false) => {
-    if (publicChatCleanupDoneRef.current) return;
-    publicChatCleanupDoneRef.current = true;
-
-    clearPublicChatStorage();
-    setRoomMessages({});
-
-    if (!supabaseRestUrl || !supabaseAnonKey) return;
-
-    const params = new URLSearchParams({
-      sender_uid: `eq.${senderUid}`,
-      created_at: `gte.${publicChatSessionStartedAt}`,
-    });
-
-    void fetch(`${supabaseRestUrl}/rest/v1/messages?${params.toString()}`, {
-      method: "DELETE",
-      headers: {
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${supabaseAnonKey}`,
-      },
-      keepalive: useKeepalive,
-    })
-      .then((response) => {
-        if (!response.ok) {
-          console.warn(
-            "Failed to clean public session messages:",
-            response.status,
-            response.statusText,
-          );
-        }
-      })
-      .catch((error) => {
-        const message =
-          error instanceof Error ? error.message : String(error ?? "");
-        const isAbortLike =
-          message.includes("AbortError") ||
-          message.includes("ERR_ABORTED") ||
-          message.includes("Failed to fetch");
-
-        // During logout / beforeunload the browser may legitimately cancel a
-        // keepalive request. Avoid noisy production warnings for that case.
-        if (useKeepalive && isAbortLike) return;
-
-        console.warn("Failed to clean public session messages:", error);
-      });
-  };
-
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      cleanupPublicChatSession(true);
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [publicChatSessionStartedAt, senderUid]);
-
-  // Public chat is session-based, so it starts empty on each new entry.
-  useEffect(() => {
-    setRoomMessages((prev) => ({
-      ...prev,
-      [activeRoomId]: prev[activeRoomId] || [],
-    }));
-  }, [activeRoomId]);
-
-  useEffect(() => {
-    if (!supabase) return;
-
-    // Fetch initial messages for active room from Supabase
-    const fetchSupabaseMessages = async () => {
-      const { data, error } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("room_id", activeRoomId)
-        .gte("created_at", publicChatSessionStartedAt)
-        .order("created_at", { ascending: true })
-        .limit(100);
-
-      if (!error && data) {
-        setRoomMessages((prev) => {
-          const currentLocal = prev[activeRoomId] || [];
-          // Instead of purely replacing, we might want to merge,
-          // or we can just replace to keep Supabase as the source of truth for text msgs.
-          // Let's replace purely non-local types.
-          const localOnly = currentLocal.filter(
-            (m) =>
-              (m.id && m.id.startsWith("local-")) ||
-              m.type === "join" ||
-              m.type === "leave" ||
-              m.type === "system",
-          );
-          const spbMsgs = data.map((sMsg: any) => ({
-            id: sMsg.id,
-            author: sMsg.author,
-            text: sMsg.text,
-            color: sMsg.color,
-            isOwn: sMsg.author === currentUser.nickname,
-            time: sMsg.created_at
-              ? new Date(sMsg.created_at).toLocaleTimeString("ar-EG", {
-                  hour: "numeric",
-                  minute: "numeric",
-                  hour12: true,
-                })
-              : new Date().toLocaleTimeString("ar-EG", {
-                  hour: "numeric",
-                  minute: "numeric",
-                  hour12: true,
-                }),
-            type: sMsg.type || "text",
-            mediaUrl: sMsg.media_url,
-            giftIcon: sMsg.gift_icon,
-            giftName: sMsg.gift_name,
-            youtubeId: sMsg.youtube_id,
-            reactions: sMsg.reactions,
-          }));
-          return {
-            ...prev,
-            [activeRoomId]: [...localOnly, ...spbMsgs],
-          };
-        });
-      }
-    };
-
-    fetchSupabaseMessages();
-
-    // Listen to new messages for active room
-    const subscription = supabase
-      .channel(`room_${activeRoomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `room_id=eq.${activeRoomId}`,
-        },
-        (payload) => {
-          const sMsg = payload.new as SupabaseMessage;
-          if (
-            sMsg.created_at &&
-            new Date(sMsg.created_at).getTime() < publicChatSessionStartedAtMs
-          ) {
-            return;
-          }
-
-          const newLocalMsg = {
-            id: sMsg.id || Date.now().toString(),
-            author: sMsg.author,
-            text: sMsg.text,
-            color: sMsg.color,
-            isOwn: sMsg.author === currentUser.nickname,
-            time: sMsg.created_at
-              ? new Date(sMsg.created_at).toLocaleTimeString("ar-EG", {
-                  hour: "numeric",
-                  minute: "numeric",
-                  hour12: true,
-                })
-              : new Date().toLocaleTimeString("ar-EG", {
-                  hour: "numeric",
-                  minute: "numeric",
-                  hour12: true,
-                }),
-            type: (sMsg.type as any) || "text",
-            mediaUrl: sMsg.media_url,
-            giftIcon: sMsg.gift_icon,
-            giftName: sMsg.gift_name,
-            youtubeId: sMsg.youtube_id,
-            reactions: sMsg.reactions,
-          };
-
-          setRoomMessages((prev) => {
-            const current = prev[activeRoomId] || [];
-            // check if already exists
-            if (current.some((m) => m.id === newLocalMsg.id)) {
-              return prev;
-            }
-            return {
-              ...prev,
-              [activeRoomId]: [...current, newLocalMsg],
-            };
-          });
-
-          // Notify + sound for incoming messages from others
-          if (sMsg.author !== currentUser.nickname && sMsg.author) {
-            const mentionMatch =
-              typeof sMsg.text === "string" &&
-              sMsg.text.includes(`@${currentUser.nickname}`);
-            const newNotif = {
-              id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              kind: mentionMatch ? ("mention" as const) : ("system" as const),
-              title: mentionMatch
-                ? `${sMsg.author} ذكرك في ${activeRoomId}`
-                : `رسالة جديدة من ${sMsg.author}`,
-              body: (sMsg.text || sMsg.media_url || "[مرفق]").slice(0, 120),
-              at: Date.now(),
-              read: false,
-            };
-            setNotifications((prevN) => {
-              const next = [newNotif, ...prevN].slice(0, 30);
-              try {
-                localStorage.setItem(
-                  "lamma_notifications",
-                  JSON.stringify(next),
-                );
-              } catch (e) {
-                // ignore
-              }
-              return next;
-            });
-            if (document.hidden) playMessageSound();
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(subscription);
-    };
-  }, [activeRoomId, currentUser.nickname, publicChatSessionStartedAt, publicChatSessionStartedAtMs]);
-
   const [messageShowCount, setMessageShowCount] = useState<number>(50);
 
   // Reset message count when changing room
   useEffect(() => {
     setMessageShowCount(50);
   }, [activeRoomId]);
-
-  const allMessages = (roomMessages[activeRoomId] || []).filter((msg: any) => {
-    if (msg.isShadowMsg) {
-      return msg.author === currentUser.nickname;
-    }
-    const cleanAuthor = msg.author
-      .replace(/\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g, "")
-      .trim()
-      .toLowerCase();
-    if (
-      ignoredUsers.some((u) => u.toLowerCase() === cleanAuthor) ||
-      blockedUsers.some((u) => u.toLowerCase() === cleanAuthor)
-    ) {
-      return false;
-    }
-    return true;
-  });
 
   const messages = allMessages.slice(
     Math.max(0, allMessages.length - messageShowCount),
@@ -4543,455 +3986,42 @@ export default function ChatScreen({
     }
   };
 
-  const checkSecurityAndModerate = (
-    text: string,
-    authorName: string,
-    roomId: string,
-  ) => {
-    let isBlocked = false;
-    let isCensored = false;
-    let cleanText = text;
-    let warningMessage = null;
-    let logMsg = null;
-    let logSeverity: "info" | "warn" | "danger" = "info";
-
-    if (!isBotEnabled) {
-      return {
-        isBlocked,
-        isCensored,
-        cleanText,
-        warningMessage,
-        logMsg,
-        logSeverity,
-      };
-    }
-
-    // 1. Anti-Link Protection
-    if (
-      botRuleAntiLinks &&
-      (text.includes("http://") ||
-        text.includes("https://") ||
-        text.includes("www.") ||
-        text.includes(".com") ||
-        text.includes(".net"))
-    ) {
-      isBlocked = true;
-      warningMessage = `⚠️ تم حجب رسالة العضو (${authorName}) لأنها تحتوي على رابط خارجي غير مسموح به.`;
-      logMsg = `محاولة نشر رابط خارجي مشبوه من [${authorName}] في غرفة [${systemRooms.find((r) => r.id === roomId)?.name || roomId}] تم حظرها تلقائياً.`;
-      logSeverity = "danger";
-      return {
-        isBlocked,
-        isCensored,
-        cleanText: "",
-        warningMessage,
-        logMsg,
-        logSeverity,
-      };
-    }
-
-    // 2. Anti-Spam (Duplicates)
-    const currentMsgs = roomMessages[roomId] || [];
-    const lastUserMsg =
-      currentMsgs.length > 0 ? currentMsgs[currentMsgs.length - 1] : null;
-    if (
-      botRuleAntiSpam &&
-      lastUserMsg &&
-      lastUserMsg.author === authorName &&
-      lastUserMsg.text === text &&
-      lastUserMsg.type === "text"
-    ) {
-      isBlocked = true;
-      warningMessage = `⚠️ يرجى عدم تكرار نفس الرسالة بسرعة يا (${authorName}).`;
-      logMsg = `رصد محاولة تكرار رسالة متطابقة (Spam) من [${authorName}] وتم حجبها لمنع الإزعاج.`;
-      logSeverity = "warn";
-      return {
-        isBlocked,
-        isCensored,
-        cleanText: "",
-        warningMessage,
-        logMsg,
-        logSeverity,
-      };
-    }
-
-    // 3. Swear/Offensive Filter
-    if (botRuleSwearFilter) {
-      let foundViolation = false;
-      bannedWords.forEach((word) => {
-        if (word && text.toLowerCase().includes(word.toLowerCase())) {
-          foundViolation = true;
-          const stars = "*".repeat(word.length);
-          cleanText = cleanText.replace(new RegExp(word, "gi"), stars);
-        }
-      });
-      if (foundViolation) {
-        isCensored = true;
-        warningMessage = `🛡️ تمت مراجعة رسالة العضو (${authorName}) وإخفاء بعض الألفاظ غير المناسبة تلقائياً.`;
-        logMsg = `مخالفة فلترة الكلام: تم العثور على ألفاظ منافية لآداب الشات في رسالة [${authorName}] وعُدلت تلقائياً.`;
-        logSeverity = "warn";
-      }
-    }
-
-    return {
-      isBlocked,
-      isCensored,
-      cleanText,
-      warningMessage,
-      logMsg,
-      logSeverity,
-    };
-  };
-
-  const handleSendMessage = async () => {
-    const now = Date.now();
-    rateLimitRef.current = rateLimitRef.current.filter((t) => now - t < 1000);
-    if (rateLimitRef.current.length >= 3) {
-      alert(
-        "⚠️ الرجاء الانتظار، لا يمكنك إرسال أكثر من 3 رسائل في الثانية الواحدة لحماية الشات من الإزعاج!",
-      );
-      return;
-    }
-    rateLimitRef.current.push(now);
-    if (!inputText.trim()) return;
-
-    if (isPostsRoom && !canPublishPosts) {
-      alert(
-        "📰 النشر في روم المنشورات متاح للأعضاء المسجلين فقط. يمكنك المشاهدة الآن أو تسجيل حساب للنشر.",
-      );
-      return;
-    }
-
-    if (inputText.trim() === "/clear") {
-      setRoomMessages((prev) => ({
-        ...prev,
-        [activeRoomId]: [],
-      }));
-      setInputText("");
-      return;
-    }
-
-    if (inputText.trim() === "/zen") {
-      setIsZenMode(true);
-      setIsSidebarOpen(false);
-      setInputText("");
-      return;
-    }
-
-    if (inputText.trim() === "/compact") {
-      setIsCompactView((prev) => !prev);
-      setInputText("");
-      return;
-    }
-
-    if (inputText.trim() === "/help") {
-      addBotSystemWarning(
-        activeRoomId,
-        `📘 أوامر شات لمة السريعة:
-- /ping قياس سرعة الاستجابة
-- /clear مسح الشاشة تجميلياً
-- /zen وضع التركيز (Zen)
-- /compact وضع العرض المدمج
-- /guard أو /status تقرير بوت الحماية`,
-      );
-      setInputText("");
-      return;
-    }
-
-    if (inputText.trim() === "/ping") {
-      const started =
-        typeof performance !== "undefined" ? performance.now() : Date.now();
-
-      if (!supabase) {
-        const elapsed =
-          typeof performance !== "undefined"
-            ? performance.now() - started
-            : Date.now() - started;
-        addBotSystemWarning(activeRoomId, `🏓 Pong (local) — ${Math.round(elapsed)}ms`);
-        setInputText("");
-        return;
-      }
-
-      const { error } = await supabase
-        .from("owner_settings")
-        .select("id")
-        .eq("id", OWNER_SETTINGS_ROW_ID)
-        .maybeSingle();
-
-      const elapsed =
-        typeof performance !== "undefined"
-          ? performance.now() - started
-          : Date.now() - started;
-
-      if (error) {
-        addBotSystemWarning(
-          activeRoomId,
-          `🏓 Pong — ${Math.round(elapsed)}ms (مع تحذير)\nتعذر التحقق من اتصال قاعدة البيانات: ${error.message}`,
-        );
-      } else {
-        addBotSystemWarning(activeRoomId, `🏓 Pong — ${Math.round(elapsed)}ms`);
-      }
-
-      setInputText("");
-      return;
-    }
-
-    // Bot status report command!
-    if (inputText.trim() === "/guard" || inputText.trim() === "/status") {
-      const timeStr = new Date().toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
-      });
-      addBotSystemWarning(
-        activeRoomId,
-        `🤖 تقرير حارس الشات اللاسلكي Lamma Guard:
-- حالة البوت: ${isBotEnabled ? "🟢 نشط ويحمي الغرف" : "🔴 معطل مؤقتاً"}
-- تصفية الروابط: ${botRuleAntiLinks ? "✅ مفعّل" : "❌ معطل"}
-- منع المزعجين: ${botRuleAntiSpam ? "✅ مفعّل" : "❌ معطل"}
-- تصفية الشتائم: ${botRuleSwearFilter ? "✅ مفعّل" : "❌ معطل"}
-- عدد الكلمات المحظورة: ${bannedWords.length} كلمة.
-- جودة أمان الشات: 100% مستقر ونظيف.`,
-      );
-      setInputText("");
-      return;
-    }
-
-    const isMuted = bannedUsersList.some(
-      (b) =>
-        b.nickname.toLowerCase() === currentUser.nickname.toLowerCase() &&
-        b.type === "mute",
-    );
-    if (isMuted) {
-      alert(
-        "🔇 تنبيه حظر الصوت: لقد تم كتم صوتك من الكتابة الشات بقرار من الإدارة لمخالفة قوانين الحوار والآداب العامة.",
-      );
-      setInputText("");
-      return;
-    }
-
-    const isOwnerOrAdmin =
-      currentUser.role === "owner" || currentUser.role === "admin";
-
-    if (isMaintenanceMode && !isOwnerOrAdmin) {
-      alert(
-        "⚙️ الشات تحت الصيانة حالياً: يرجى الانتظار لحين انتهاء المالك من أعمال الصيانة والتحديث الفني المباشر.",
-      );
-      setInputText("");
-      return;
-    }
-
-    if (isGlobalMute && !isOwnerOrAdmin) {
-      alert(
-        "🔇 الروم مغلق للكتابة: لقد قامت الإدارة بكتم الدردشة العامة لجميع الأعضاء مؤقتاً للمحافظة على هدوء واستقرار الحوار العامة.",
-      );
-      setInputText("");
-      return;
-    }
-
-    const {
-      isBlocked,
-      isCensored,
-      cleanText,
-      warningMessage,
-      logMsg,
-      logSeverity,
-    } = checkSecurityAndModerate(inputText, currentUser.nickname, activeRoomId);
-    const timeStr = new Date().toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "numeric",
-      hour12: true,
-    });
-
-    if (logMsg) {
-      setBotLogs((prev) => [
-        {
-          id: `${Date.now()}`,
-          time: timeStr,
-          text: logMsg,
-          severity: logSeverity,
-        },
-        ...prev,
-      ]);
-    }
-
-    const userNick = currentUser.nickname;
-    const isViolation = isBlocked || isCensored;
-
-    if (isViolation && isBotEnabled) {
-      const nextCount = (violationCount[userNick] || 0) + 1;
-      setViolationCount((prev) => ({ ...prev, [userNick]: nextCount }));
-
-      if (nextCount === 1) {
-        setTimeout(() => {
-          addLammaBotMessage(
-            activeRoomId,
-            `⚠️ تنبيه رقابي لـ [${userNick}]: يرجى الالتزام بالقواعد والآداب العامة لشات لمة (إنذار 1 من 3).`,
-          );
-        }, 800);
-      } else if (nextCount === 2) {
-        setTimeout(() => {
-          addLammaBotMessage(
-            activeRoomId,
-            `🚨 تحذير نهائي لـ [${userNick}]: عدم الالتزام في المرة القادمة سيعرضك للكتم التلقائي والفوري (إنذار 2 من 3).`,
-          );
-        }, 850);
-      } else if (nextCount >= 3) {
-        setTimeout(() => {
-          addLammaBotMessage(
-            activeRoomId,
-            `🔇 كتم تلقائي لـ [${userNick}]: تم إيقاف رخصتك الكتابية لمدة 60 ثانية إثر تكرار المخالفات المكتشفة وتجاهل إنذارات الرقابة الآلية.`,
-          );
-
-          const autoBanInfo: BanInfo = {
-            id: `auto-mute-${Date.now()}`,
-            nickname: userNick,
-            email: "",
-            fingerprint: myFingerprint,
-            browserSignature: myBrowserSig,
-            ip: myIp,
-            localStorageId: "local-storage-auto",
-            type: "mute",
-            banner: "🤖 LAMMA SYSTEM",
-            reason: "تكرار المخالفات وتجاهل الحاكم الذكي",
-            time: new Date().toLocaleTimeString("ar-EG", {
-              hour: "numeric",
-              minute: "numeric",
-            }),
-          };
-
-          setBannedUsersList((prev) => {
-            const updated = [autoBanInfo, ...prev];
-            localStorage.setItem("lamma_banned_list", JSON.stringify(updated));
-            return updated;
-          });
-
-          addSystemActivityLog(
-            "ban",
-            userNick,
-            "تم تطبيق الكتم التلقائي بمقدار 60 ثانية لتجاوز الإنذارات الرقابية.",
-            "🤖 LAMMA SYSTEM",
-          );
-
-          setTimeout(() => {
-            setBannedUsersList((prev) => {
-              const filtered = prev.filter(
-                (b) =>
-                  b.nickname.toLowerCase() !== userNick.toLowerCase() ||
-                  b.type !== "mute",
-              );
-              localStorage.setItem(
-                "lamma_banned_list",
-                JSON.stringify(filtered),
-              );
-              return filtered;
-            });
-            addLammaBotMessage(
-              activeRoomId,
-              `🕊️ فك الكتم التلقائي لـ [${userNick}]: انتهت عقوبة الدقيقة الواحدة. نرجو التزام بالمعايير الرصينة المعتمدة للشات.`,
-            );
-            addSystemActivityLog(
-              "promote",
-              userNick,
-              "إلغاء الكتم التلقائي بعد نهاية العقوبة بنجاح بفضل نظام الأتمتة.",
-              "🤖 LAMMA SYSTEM",
-            );
-          }, 60000);
-        }, 900);
-      }
-    }
-
-    if (isBlocked) {
-      if (warningMessage) {
-        addBotSystemWarning(activeRoomId, warningMessage);
-      }
-      setInputText("");
-      return;
-    }
-
-    const isShadowed = bannedUsersList.some(
-      (b) =>
-        b.nickname.toLowerCase() === currentUser.nickname.toLowerCase() &&
-        b.type === "shadow",
-    );
-
-    if (false) {
-      // Local fallback mode when Firebase Auth anonymous sign-ins are restricted or unconfigured in Firebase Console
-      const localMsg: Message = {
-        id: "local-" + Date.now(),
-        author: userNick,
-        text: cleanText,
-        color: currentUser.color || "#10b981",
-        isOwn: true,
-        time: new Date().toLocaleTimeString("ar-EG", {
-          hour: "numeric",
-          minute: "numeric",
-          hour12: true,
-        }),
-        type: "text",
-      };
-
-      setRoomMessages((prev) => {
-        const currentMsgs = prev[activeRoomId] || [];
-        return {
-          ...prev,
-          [activeRoomId]: [...currentMsgs, localMsg],
-        };
-      });
-    } else {
-      // Standard Firebase live production mode
-      const newUuid = crypto.randomUUID();
-      const newMessage: Message = {
-        id: newUuid,
-        author: userNick,
-        text: cleanText,
-        color: currentUser.color,
-        isOwn: true,
-        time: new Date().toLocaleTimeString("ar-EG", {
-          hour: "numeric",
-          minute: "numeric",
-          hour12: true,
-        }),
-        type: isShadowed ? "shadow_msg" : "text",
-      };
-      const updatedMessages = [
-        ...(roomMessages[activeRoomId] || []),
-        newMessage,
-      ];
-      setRoomMessages((prev) => ({
-        ...prev,
-        [activeRoomId]: updatedMessages,
-      }));
-
-      // Push to Supabase if not shadowed
-      if (!isShadowed && supabase) {
-        supabase
-          .from("messages")
-          .insert([
-            {
-              id: newUuid,
-              room_id: activeRoomId,
-              author: userNick,
-              text: cleanText,
-              color: currentUser.color || "#10b981",
-              type: "text",
-              sender_uid: senderUid,
-            },
-          ])
-          .then(({ error }) => {
-            if (error) console.error("Error sending to Supabase:", error);
-          });
-      }
-    }
-
-    if (isCensored && warningMessage) {
-      setTimeout(() => {
-        addBotSystemWarning(activeRoomId, warningMessage);
-      }, 600);
-    }
-
-    setInputText("");
-    setShowEmojiPicker(false);
-  };
+  const { handleSendMessage } = useRoomComposer({
+    activeRoomId,
+    activeRoomName: systemRooms.find((r) => r.id === activeRoomId)?.name || activeRoomId,
+    currentUser,
+    inputText,
+    isPostsRoom,
+    canPublishPosts,
+    isBotEnabled,
+    botRuleAntiLinks,
+    botRuleAntiSpam,
+    botRuleSwearFilter,
+    bannedWords,
+    bannedUsersList,
+    isMaintenanceMode,
+    isGlobalMute,
+    roomMessages,
+    violationCount,
+    myFingerprint,
+    myBrowserSig,
+    myIp,
+    senderUid,
+    ownerSettingsRowId: OWNER_SETTINGS_ROW_ID,
+    rateLimitRef,
+    setInputText,
+    setShowEmojiPicker,
+    setRoomMessages,
+    setIsZenMode,
+    setIsSidebarOpen,
+    setIsCompactView,
+    setBotLogs,
+    setViolationCount,
+    setBannedUsersList,
+    addBotSystemWarning,
+    addLammaBotMessage,
+    addSystemActivityLog,
+  });
 
   const handleSendPM = async () => {
     if (!pmTarget || !pmInputText.trim()) return;
@@ -5007,80 +4037,30 @@ export default function ChatScreen({
     }
     rateLimitRef.current.push(now);
 
-    const timeStr = new Date().toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "numeric",
-      hour12: true,
-    });
     const targetNickname = pmTarget.nickname;
     const textToSend = pmInputText;
+    const optimisticMessage = createOptimisticPmMessage(textToSend);
 
     // Optimistically update local UI state (will be merged with realtime database value)
-    const updatedThread = [
-      ...(pmThreads[targetNickname] || []),
-      {
+    setPmThreads((prev) => ({
+      ...prev,
+      [targetNickname]: appendPmThreadMessage(
+        prev[targetNickname] || [],
+        optimisticMessage,
+      ),
+    }));
+    setPmInputText("");
+
+    try {
+      await persistPrivateMessage({
+        currentUser,
+        targetNickname,
         text: textToSend,
-        isOwn: true,
-        time: timeStr,
-        status: "delivered" as const,
-      },
-    ];
-
-    setPmThreads((prev) => ({
-      ...prev,
-      [targetNickname]: updatedThread.slice(-100),
-    }));
-    setPmInputText("");
-
-    if (
-      supabase &&
-      currentUser.authProvider === "supabase" &&
-      currentUser.uid
-    ) {
-      const rxUser = rawChatMembers.find((m) => m.nickname === targetNickname);
-      const receiverUid =
-        rxUser && isUuidLike(rxUser.id) ? rxUser.id : null;
-
-      if (receiverUid) {
-        const { error } = await supabase.from("pm_messages").insert([
-          {
-            sender_uid: currentUser.uid,
-            sender_nickname: currentUser.nickname,
-            receiver_uid: receiverUid,
-            receiver_nickname: targetNickname,
-            text: textToSend,
-            type: "text",
-          },
-        ]);
-        if (error) console.error("PM insert error:", error);
-      }
+        members: rawChatMembers,
+      });
+    } catch (error) {
+      console.error("PM insert error:", error);
     }
-  };
-
-  const handleSendPM_ignoredConsumingHook = () => {
-    if (!pmTarget || !pmInputText.trim()) return;
-    const timeStr = new Date().toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "numeric",
-      hour12: true,
-    });
-    const targetNickname = pmTarget.nickname;
-
-    const updatedThread = [
-      ...(pmThreads[targetNickname] || []),
-      {
-        text: pmInputText,
-        isOwn: true,
-        time: timeStr,
-        status: "delivered" as const,
-      },
-    ];
-
-    setPmThreads((prev) => ({
-      ...prev,
-      [targetNickname]: updatedThread,
-    }));
-    setPmInputText("");
   };
 
   const triggerGiftFlying = (icon: string) => {
@@ -10447,6 +9427,7 @@ export default function ChatScreen({
                     isOwnerRole={isOwnerRole}
                     runAssistantAudit={runAssistantAudit}
                     queueAssistantProposal={queueAssistantProposal}
+                    queueRecommendedAssistantProposal={queueRecommendedAssistantProposal}
                     assistantAudit={assistantAudit}
                     assistantFindings={assistantFindings}
                     assistantProposal={assistantProposal}

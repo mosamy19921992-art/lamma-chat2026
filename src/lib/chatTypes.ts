@@ -141,16 +141,33 @@ export type DesignAssistantPatch = {
   chatTheme?: ChatTheme;
 };
 
+export type DesignAssistantProposalId =
+  | "premium"
+  | "calm"
+  | "night"
+  | "room-focus"
+  | "identity-refresh"
+  | "immersive";
+
 export type DesignAssistantProposal = {
-  id: "premium" | "calm" | "night" | "room-focus";
+  id: DesignAssistantProposalId;
   title: string;
   summary: string;
   changes: DesignAssistantPatch;
   reasoning: string[];
+  focusArea: string;
+  impact: "خفيف" | "متوسط" | "قوي";
+  confidence: number;
+  expectedScore: number;
+  warnings: string[];
+  beforeState: string;
+  afterState: string;
+  implementationSteps: string[];
 };
 
 export type DesignAssistantFinding = {
-  tone: "good" | "warn";
+  tone: "good" | "warn" | "critical";
+  title: string;
   text: string;
 };
 
@@ -160,6 +177,13 @@ export type DesignAssistantAudit = {
   roomLabel: string;
   highlights: string[];
   findings: DesignAssistantFinding[];
+  identityScore: number;
+  readabilityScore: number;
+  roomScore: number;
+  polishScore: number;
+  nextAction: string;
+  recommendedPreset: DesignAssistantProposalId;
+  quickWins: string[];
 };
 
 export type DesignAssistantSnapshot = {
