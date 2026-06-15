@@ -13,6 +13,7 @@ interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  attemptedHardReload: boolean;
 }
 
 export class ErrorBoundary extends Component<
@@ -23,6 +24,7 @@ export class ErrorBoundary extends Component<
     hasError: false,
     error: null,
     errorInfo: null,
+    attemptedHardReload: false,
   };
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
@@ -34,6 +36,15 @@ export class ErrorBoundary extends Component<
     // POST this to /api/logs for server-side observability.
     console.error("[LammaChat ErrorBoundary] Caught error:", error, errorInfo);
     this.setState({ errorInfo });
+
+    const msg = `${error?.name ?? ""} ${error?.message ?? ""}`.toLowerCase();
+    const isChunkFailure =
+      msg.includes("failed to fetch dynamically imported module") ||
+      msg.includes("chunkloaderror") ||
+      msg.includes("loading chunk");
+    if (isChunkFailure) {
+      void this.tryHardReloadOnce();
+    }
   }
 
   handleReset = (): void => {
@@ -42,6 +53,29 @@ export class ErrorBoundary extends Component<
 
   handleReload = (): void => {
     window.location.reload();
+  };
+
+  tryHardReloadOnce = async (): Promise<void> => {
+    if (this.state.attemptedHardReload) return;
+    if (typeof sessionStorage !== "undefined") {
+      const key = "lamma_hard_reload_attempted";
+      if (sessionStorage.getItem(key) === "1") return;
+      sessionStorage.setItem(key, "1");
+    }
+
+    this.setState({ attemptedHardReload: true });
+    try {
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } finally {
+      window.location.reload();
+    }
   };
 
   render(): ReactNode {
