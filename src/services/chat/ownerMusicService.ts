@@ -6,6 +6,23 @@ import { normalizeAuthRole } from "../../lib/authProfile";
 const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
 const AUDIO_TYPES = /^audio\//;
 
+/** Storage keys must be ASCII-only (Supabase rejects Arabic/spaces in paths). */
+function buildMusicStorageFileName(fileName: string): string {
+  const extMatch = fileName.match(/(\.[a-z0-9]+)$/i);
+  const ext = extMatch?.[1]?.toLowerCase() || ".mp3";
+  const base = fileName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^\w.\-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    .slice(0, 60);
+  return `${base || "track"}${ext}`;
+}
+
+function buildMusicDisplayTitle(fileName: string): string {
+  return fileName.replace(/\.[^.]+$/, "").trim() || "أغنية المالك";
+}
+
 export function parseDjLibrary(raw: unknown): OwnerMusicTrack[] {
   if (!Array.isArray(raw)) return [];
   const tracks: OwnerMusicTrack[] = [];
@@ -63,8 +80,9 @@ export async function uploadOwnerMusicFile(
     return { error: "حجم الملف كبير. الحد الأقصى 20MB." };
   }
 
-  const safeName = file.name.replace(/[^\w.\-أ-ي\s]+/gi, "_").slice(0, 80);
-  const objectPath = `dj/${session.user.id}/${Date.now()}_${crypto.randomUUID()}_${safeName}`;
+  const storageFileName = buildMusicStorageFileName(file.name);
+  const displayTitle = buildMusicDisplayTitle(file.name);
+  const objectPath = `dj/${session.user.id}/${Date.now()}_${crypto.randomUUID()}_${storageFileName}`;
 
   const { error: uploadError } = await supabase.storage
     .from("chat-media")
@@ -97,15 +115,14 @@ export async function uploadOwnerMusicFile(
     return { error: "تعذر إنشاء رابط الأغنية بعد الرفع." };
   }
 
-  const title =
-    safeName.replace(/\.[^.]+$/, "").replace(/_/g, " ").trim() || "أغنية المالك";
+  const title = displayTitle;
 
   return {
     track: {
       id: crypto.randomUUID(),
       title,
       url: publicUrl,
-      fileName: safeName,
+      fileName: file.name,
       uploadedAt: new Date().toISOString(),
     },
   };
