@@ -295,14 +295,14 @@ export function AdminPanelModal({
                 </span>
               </button>
 
-              {/* Toggle 4: AI Guard Power */}
+              {/* Toggle 4: AI Guard — coming soon */}
               <button
                 type="button"
-                className="p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-not-allowed bg-emerald-500/10 border-emerald-500/35 text-emerald-400 opacity-70"
+                className="p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-not-allowed lamma-tab-soft text-gray-300 opacity-70"
               >
                 <span>🤖 حارس الذكاء الاصطناعي الآلي</span>
-                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
-                  مستقر/يعمل دائمًا
+                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-white/5 text-gray-400">
+                  قريباً
                 </span>
               </button>
 

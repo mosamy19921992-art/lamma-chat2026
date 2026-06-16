@@ -1283,14 +1283,7 @@ export default function ChatScreen({
       navigator.userAgent ||
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0.0.0",
   );
-  const [myIp] = useState(() => {
-    let ip = localStorage.getItem("lamma_device_ip");
-    if (!ip) {
-      ip = "197.34.82." + Math.floor(Math.random() * 253 + 2);
-      localStorage.setItem("lamma_device_ip", ip);
-    }
-    return ip;
-  });
+  const myIp = "غير متاح";
 
   // Dynamic lists of banned users persisted in local storage
   const [bannedUsersList, setBannedUsersList] = useState<BanInfo[]>(() => {
@@ -3728,18 +3721,7 @@ export default function ChatScreen({
         cleanName.startsWith("LC_Guest") ||
         cleanName.includes("زائر") ||
         cleanName.includes("Guest");
-      const derivedRole =
-        cleanName.includes("أدمن") || cleanName.includes("علي")
-          ? "admin"
-          : cleanName.includes("أحمد")
-            ? "owner"
-            : cleanName.includes("VIP") ||
-                cleanName.includes("سارة") ||
-                cleanName.includes("محمد")
-              ? "vip"
-              : isGuest
-                ? "guest"
-                : "user";
+      const derivedRole = isGuest ? "guest" : "user";
 
       member = {
         id: `offline-${cleanName.toLowerCase().replace(/\s+/g, "-")}`,
@@ -7521,19 +7503,6 @@ export default function ChatScreen({
                           والإدارة فقط.
                         </p>
                         <div className="grid gap-3 select-none">
-                          <div className="p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all lamma-admin-card">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-white text-xs font-black">
-                                حظر الرسائل الخاصة
-                              </span>
-                              <span className="text-[9px] text-gray-400 font-bold">
-                                منع أي شخص غير الأصدقاء من مراسلتك على الخاص
-                              </span>
-                            </div>
-                            <div className="w-10 h-5 rounded-full relative lamma-toggle-on">
-                              <div className="w-4 h-4 bg-green-300 rounded-full absolute top-0.5 right-0.5"></div>
-                            </div>
-                          </div>
                           <button
                             type="button"
                             onClick={() => {
@@ -7554,7 +7523,7 @@ export default function ChatScreen({
                                 </span>
                               </span>
                               <span className="text-[9px] text-gray-400 font-bold">
-                                إخفاء حالتك "متصل الآن" (ميزة VIP)
+                                إخفاء حالتك "متصل الآن" (للمالك فقط)
                               </span>
                             </div>
                             <div
@@ -7571,18 +7540,15 @@ export default function ChatScreen({
                               ></div>
                             </div>
                           </button>
-                          <div className="p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all lamma-soft-danger">
+                          <div className="p-3 rounded-xl flex items-center justify-between lamma-soft-danger">
                             <div className="flex flex-col gap-1">
                               <span className="text-red-400 text-xs font-black">
-                                قائمة المحظورين
+                                المحظورون ({blockedUsers.length})
                               </span>
                               <span className="text-[9px] text-gray-400 font-bold">
-                                عرض الأشخاص الذين قمت بحظرهم وفك الحظر عنهم
+                                الأشخاص المحظورون من إرسال رسائل لك على الخاص
                               </span>
                             </div>
-                            <button className="px-3 py-1 rounded-lg text-[10px] font-black lamma-danger-btn">
-                              إدارة
-                            </button>
                           </div>
                         </div>
                       </div>
@@ -9472,7 +9438,7 @@ export default function ChatScreen({
                       ) : null}
                     </div>
                     <div className="text-[9px] font-bold" style={{ color: pmTarget.nickname.startsWith("🕵️") ? "#a78bfa" : "#9ca3af" }}>
-                      {pmTarget.nickname.startsWith("🕵️") ? "🔍 محادثة مراقَبة — للمالك فقط" : "متصل الآن"}
+                      {pmTarget.nickname.startsWith("🕵️") ? "🔍 محادثة مراقَبة — للمالك فقط" : "محادثة خاصة"}
                     </div>
                   </div>
                 </div>
@@ -10341,6 +10307,10 @@ export default function ChatScreen({
                     setDbStatusLogs={setDbStatusLogs}
                     handleAccelerateDays={handleAccelerateDays}
                     subscriptionPlans={subscriptionPlans}
+                    chatMembers={chatMembers}
+                    bannedUsersList={bannedUsersList}
+                    openRooms={openRooms}
+                    roomMessages={roomMessages}
                   />
                 )}
                 {activeModal === 'leadership' && leadershipTab === 'design' && (

@@ -210,12 +210,6 @@ export function UserProfileBioPopup({
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500">حالة التفاعل:</span>{" "}
-                  <span className="text-green-400 font-extrabold">
-                    مشارك نشط بالتجانس
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
                   <span className="text-gray-500">الرقم الفريد:</span>{" "}
                   <span className="text-gray-500">
                     {target.id || "N/A"}

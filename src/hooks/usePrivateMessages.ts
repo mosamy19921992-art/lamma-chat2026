@@ -63,16 +63,7 @@ export function usePrivateMessages({
     localStorage.setItem(pmThreadsStorageKey, JSON.stringify(trimmedThreads));
   }, [pmThreads, pmThreadsStorageKey]);
 
-  useEffect(() => {
-    if (isPmOpen && pmTarget) {
-      const t = setTimeout(() => setIsPmTyping(true), 2000);
-      const t2 = setTimeout(() => setIsPmTyping(false), 6000);
-      return () => {
-        clearTimeout(t);
-        clearTimeout(t2);
-      };
-    }
-  }, [isPmOpen, pmMessages.length, pmTarget]);
+  // Typing indicator removed — was a fake timer, not real remote typing signal
 
   useEffect(() => {
     if (!supabase || currentUser.authProvider !== "supabase" || !currentUser.uid) {

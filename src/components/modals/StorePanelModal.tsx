@@ -42,6 +42,10 @@ interface StorePanelModalProps {
   setDbStatusLogs: React.Dispatch<React.SetStateAction<string[]>>;
   handleAccelerateDays: (days: number) => void;
   subscriptionPlans: SubscriptionPlan[];
+  chatMembers?: any[];
+  bannedUsersList?: any[];
+  openRooms?: { id: string; name: string }[];
+  roomMessages?: Record<string, any[]>;
 }
 
 export function StorePanelModal({
@@ -76,6 +80,10 @@ export function StorePanelModal({
   setDbStatusLogs,
   handleAccelerateDays,
   subscriptionPlans,
+  chatMembers = [],
+  bannedUsersList = [],
+  openRooms = [],
+  roomMessages = {},
 }: StorePanelModalProps) {
   const subscriptionStorageKey = `lamma_subscription_${currentUser.uid}`;
   const isOwner = currentUser.role === "owner";
@@ -473,7 +481,7 @@ export function StorePanelModal({
                   }}
                   className="mt-2 py-1.5 rounded-lg text-[9px] font-black transition-all cursor-pointer lamma-toggle-on"
                 >
-                  احصل علي الإطار فوراً
+                  طلب الإطار
                 </button>
               </div>
             ))}
@@ -510,7 +518,7 @@ export function StorePanelModal({
                   }}
                   className="w-full mt-3 py-1.5 rounded-xl text-[9px] font-black transition-all cursor-pointer lamma-toggle-on"
                 >
-                  تثبيت اللقب فوراً آلياً
+                  طلب اللقب
                 </button>
               </div>
             ))}
@@ -534,116 +542,49 @@ export function StorePanelModal({
         </div>
       )}
 
-      {/* TAB CONTENTS - 5. AUTOMATED CHARTS & STATISTICS (owner only) */}
+      {/* TAB CONTENTS - 5. STATISTICS (owner only) — real live counts */}
       {isOwner && shopTab === "stats" && (
         <div className="space-y-3 font-sans">
           <p className="text-[9.5px] text-gray-400 font-bold leading-normal pb-1">
-            📊 إحصائيات الغرف اليومية التلقائية المستخرجة آلياً لتقديم إشارات
-            الأمان والنشاط للإدارة على مدار الساعة:
+            📊 إحصائيات الجلسة الحالية (بيانات حقيقية من الاتصال المباشر):
           </p>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div className="p-3 rounded-xl text-center lamma-stat-card">
-              <span className="text-gray-500 text-[8.5px] font-black">
-                إجمالي الرسائل
-              </span>
+              <span className="text-gray-500 text-[8.5px] font-black">المتصلون الآن</span>
               <h5 className="text-[13px] font-black text-green-400 mt-1 font-mono">
-                5,820
+                {chatMembers.length}
               </h5>
             </div>
             <div className="p-3 rounded-xl text-center lamma-stat-card">
-              <span className="text-gray-500 text-[8.5px] font-black">
-                الأعضاء المتفاعلين
-              </span>
-              <h5 className="text-[13px] font-black text-cyan-400 mt-1 font-mono">
-                409
-              </h5>
-            </div>
-            <div className="p-3 rounded-xl text-center lamma-stat-card">
-              <span className="text-gray-500 text-[8.5px] font-black">
-                الزوار الجدد
-              </span>
-              <h5 className="text-[13px] font-black text-yellow-400 mt-1 font-mono">
-                +185
-              </h5>
-            </div>
-            <div className="p-3 rounded-xl text-center lamma-stat-card">
-              <span className="text-gray-500 text-[8.5px] font-black">
-                جودة الاستقرار
-              </span>
-              <h5 className="text-[13px] font-black text-purple-400 mt-1 font-mono">
-                100%
+              <span className="text-gray-500 text-[8.5px] font-black">المحظورون</span>
+              <h5 className="text-[13px] font-black text-red-400 mt-1 font-mono">
+                {bannedUsersList.length}
               </h5>
             </div>
           </div>
 
           <div className="p-3 rounded-2xl lamma-section-card">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
-              <span className="text-[8.5px] text-gray-500 font-black">
-                مؤشر نشاط الغرف بالساعات السابقة (النسبة النأوية)
-              </span>
-              <span className="text-[9px] text-emerald-400 font-black">
-                سيرفر الإحصائيات الآلي مكلل
-              </span>
-            </div>
-            <div className="space-y-2 pt-1 font-sans">
-              <div>
-                <div className="flex justify-between text-[8px] font-black text-gray-400 mb-0.5">
-                  <span>58% نشاط تفاعلي</span>
-                  <span>🇪🇬 غرفة مصر للحديث</span>
-                </div>
-                <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full rounded-full"
-                    style={{ width: "58%" }}
-                  ></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-[8px] font-black text-gray-400 mb-0.5">
-                  <span>32% نشاط تفاعلي</span>
-                  <span>👫 لمة شباب وبنات العرب</span>
-                </div>
-                <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-cyan-500 h-full rounded-full"
-                    style={{ width: "32%" }}
-                  ></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-[8px] font-black text-gray-400 mb-0.5">
-                  <span>10% نشاط تفاعلي</span>
-                  <span>💖 شات الرومانسية</span>
-                </div>
-                <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-purple-500 h-full rounded-full"
-                    style={{ width: "10%" }}
-                  ></div>
-                </div>
-              </div>
+            <div className="text-[9px] text-gray-400 font-black mb-2">رسائل الغرف المفتوحة (الجلسة الحالية):</div>
+            <div className="space-y-2">
+              {openRooms.slice(0, 5).map((room) => {
+                const count = (roomMessages[room.id] || []).length;
+                const maxCount = Math.max(...openRooms.map((r) => (roomMessages[r.id] || []).length), 1);
+                const pct = Math.round((count / maxCount) * 100);
+                return (
+                  <div key={room.id}>
+                    <div className="flex justify-between text-[8px] font-black text-gray-400 mb-0.5">
+                      <span>{count} رسالة</span>
+                      <span>{room.name}</span>
+                    </div>
+                    <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-
-          <button
-            onClick={() => {
-              addLammaBotMessage(
-                activeRoomId,
-                `📊 التقرير الإحصائي العام التلقائي (Lamma Analytics Report):
-- إجمالي رسائل اليوم بغرف الشات: 5,820 رسالة متبادلة رسائل حرة 💬.
-- عدد المسجلين النشطين على المنصة: 409 عضو فائق الفعالية 🚀.
-- أفضل الغرف حرقاً ونشاطاً بالساعة: [غرفة مصر الوازنة EG] بمستويات نشاط 58% ✨.
-- العضو الأكثر فاعلية وحضوراً لليوم: أحمد صاحب النخوة 👑.`
-              );
-              alert(
-                "📊 تم بنجاح بث تقرير الإحصائيات الشامل التلقائي كرسالة رسمية مرئية للجميع بغرفة الدردشة!"
-              );
-            }}
-            className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-[10px] border border-emerald-500/20 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
-          >
-            📢 بث تقرير الإحصائيات الشامل في الغرفة
-          </button>
         </div>
       )}
 

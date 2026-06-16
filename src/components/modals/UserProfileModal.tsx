@@ -355,10 +355,10 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                     </div>
                     <div className="flex justify-between items-center border-b border-white/5 pb-1">
                       <span className="text-gray-500 select-none">
-                        عنوان الـ IP الحالي:
+                        IP:
                       </span>{" "}
-                      <span className="text-red-400 font-bold">
-                        {selectedProfileMember.ip}
+                      <span className="text-gray-500 text-[9px]">
+                        غير متاح
                       </span>
                     </div>
                     <div className="flex justify-between items-center border-b border-white/5 pb-1">
