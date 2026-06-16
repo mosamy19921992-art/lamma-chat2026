@@ -686,3 +686,10 @@ alter table public.owner_settings
 -- Owner-uploaded music library
 alter table public.owner_settings
   add column if not exists dj_library jsonb not null default '[]'::jsonb;
+
+-- Bot control toggles (synced from owner panel to all clients)
+alter table public.owner_settings
+  add column if not exists bot_enabled boolean not null default true,
+  add column if not exists bot_rule_anti_links boolean not null default true,
+  add column if not exists bot_rule_anti_spam boolean not null default true,
+  add column if not exists bot_rule_swear_filter boolean not null default true;

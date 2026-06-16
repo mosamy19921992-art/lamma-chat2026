@@ -264,7 +264,11 @@ create table if not exists public.owner_settings (
   design_presets jsonb not null default '[]'::jsonb,
   chat_theme text default 'classic',
   room_dj_map jsonb not null default '{}'::jsonb,
-  dj_library jsonb not null default '[]'::jsonb
+  dj_library jsonb not null default '[]'::jsonb,
+  bot_enabled boolean not null default true,
+  bot_rule_anti_links boolean not null default true,
+  bot_rule_anti_spam boolean not null default true,
+  bot_rule_swear_filter boolean not null default true
 );
 
 alter table public.owner_settings enable row level security;
