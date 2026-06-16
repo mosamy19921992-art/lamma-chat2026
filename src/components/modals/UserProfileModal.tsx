@@ -4,6 +4,8 @@ import { X, LinkIcon, Shield, Mic, Phone, Video, Radio, Compass, Lock, Ghost, Tr
 import { type BanInfo } from "../../lib/chatTypes.ts";
 import { MemberAvatar } from "../MemberAvatar";
 import { PROFILE_AVATAR_EMOJIS } from "../../lib/avatarDisplay";
+import { OwnerIdCard } from "../OwnerIdCard";
+import { isOwnerChatRole } from "../../lib/ownerIdentity";
 
 export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setShowProfileModal, setSelectedProfileMember, myActiveSession, currentUser, isOwnerRole, isRegisteredAccount, tempEntryTopicInput, setTempEntryTopicInput, setTempEntryTopicStatusText, tempEntryTopicEnabled, setTempEntryTopicEnabled, handleSaveTempEntryTopic, tempEntryTopicStatusText, nicknameRequestInput, setNicknameRequestInput, nicknameRequestLoading, handleSubmitNicknameChangeRequest, nicknameRequestStatusText, nicknameRequests, setRoomMessages, activeRoomId, addSystemActivityLog, addLammaBotMessage, bannedUsersList, removeBanEntries, addBanEntry, chatMembers, setChatMembers, memberCustomPermissions, setMemberCustomPermissions, myCustomBio, setMyCustomBio, handleSelectProfileEmoji, handleProfileAvatarUploadChange, profileAvatarInputRef, profileAvatarSaving, profileAvatarStatus }: any) => {
   const isOwnProfile =
@@ -13,6 +15,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
     currentUser.role === "admin" ||
     currentUser.role === "mod";
   const showStaffTools = isStaffViewer && !isOwnProfile;
+  const isOwnerProfile = isOwnerChatRole(selectedProfileMember?.role);
 
   return (
     <>
@@ -44,7 +47,9 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                   <span className="text-sm">👤</span>
                   <h3 className="font-sans font-black text-white text-xs">
                     {isOwnProfile
-                      ? "بطاقتي الشخصية والإعدادات"
+                      ? isOwnerProfile
+                        ? "بطاقة BOSS • المالك"
+                        : "بطاقتي الشخصية والإعدادات"
                       : showStaffTools
                         ? `الملف التعريفي والرقابة • ${selectedProfileMember.nickname}`
                         : `الملف التعريفي • ${selectedProfileMember.nickname}`}
@@ -63,7 +68,26 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
 
               {/* Profile Body */}
               <div className="p-5 overflow-y-auto space-y-4 text-right">
-                {/* Visual Avatar Card */}
+                {isOwnerProfile ? (
+                  <div className="space-y-3">
+                    <OwnerIdCard
+                      nickname={selectedProfileMember.nickname}
+                      email={selectedProfileMember.email || currentUser.email}
+                      tagline={
+                        isOwnProfile
+                          ? "غرفة القيادة • بطاقتي الرسمية"
+                          : "مالك المنصة • LAMMA CHAT"
+                      }
+                    />
+                    {isOwnProfile && (
+                      <p className="text-[10px] text-amber-200/80 font-bold text-center leading-relaxed px-2">
+                        هذه بطاقتك التعريفية الرسمية كمالك — تظهر لكل الأعضاء
+                        عند فتح ملفك.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                <>
                 <div className="p-4 rounded-2xl flex items-center gap-3 lamma-section-card">
                   <div className="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden shrink-0 lamma-quiet-power-btn">
                     <MemberAvatar
@@ -112,8 +136,10 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                     </div>
                   </div>
                 </div>
+                </>
+                )}
 
-                {isOwnProfile && isRegisteredAccount && (
+                {isOwnProfile && isRegisteredAccount && !isOwnerProfile && (
                   <div className="p-4 rounded-2xl lamma-section-card space-y-3">
                     <div className="flex items-center gap-2 text-[11px] font-black text-emerald-300">
                       <Image size={13} className="text-emerald-300" />

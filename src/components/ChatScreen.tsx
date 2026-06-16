@@ -59,6 +59,7 @@ import { motion, AnimatePresence, useDragControls } from "motion/react";
 import AMLogo from "./AMLogo.tsx";
 import BossSigil from "./BossSigil.tsx";
 import { OwnerAvatarAura } from "./OwnerPrestige.tsx";
+import { resolveOwnerDisplayAvatar } from "../lib/ownerIdentity";
 import ShareModal from "./modals/ShareModal.tsx";
 import CreateRoomModal from "./modals/CreateRoomModal.tsx";
 import UserContextPopup from "./modals/UserContextPopup.tsx";
@@ -5733,10 +5734,14 @@ export default function ChatScreen({
                 >
                   <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden lamma-admin-card">
                     <MemberAvatar
-                      avatar={myActiveSession.avatar}
+                      avatar={
+                        isOwnerRole
+                          ? resolveOwnerDisplayAvatar(myActiveSession.avatar)
+                          : myActiveSession.avatar
+                      }
                       size="sm"
                       className="w-full h-full"
-                      imageClassName="w-full h-full rounded-full"
+                      imageClassName="w-full h-full rounded-full object-cover"
                     />
                   </div>
                 </div>
