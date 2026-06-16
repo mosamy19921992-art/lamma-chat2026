@@ -185,6 +185,11 @@ export type DesignAssistantPatch = {
   brandLogoUrl?: string | null;
   ownerBgImage?: string | null;
   roomBgCurrent?: string | null;
+  layoutSections?: {
+    left: { store: number; radio: number; music: number };
+    right: { rooms: number; members: number };
+  };
+  customFacePresetId?: string;
 };
 
 export type DesignAssistantProposalId =
@@ -193,7 +198,10 @@ export type DesignAssistantProposalId =
   | "night"
   | "room-focus"
   | "identity-refresh"
-  | "immersive";
+  | "immersive"
+  | "geometric"
+  | "layout-balance"
+  | "layout-chat-focus";
 
 export type DesignAssistantProposal = {
   id: DesignAssistantProposalId;
@@ -236,6 +244,10 @@ export type DesignAssistantSnapshot = {
   brandLogoUrl: string | null;
   ownerBgImage: string | null;
   roomBgCurrent: string | null;
+  layoutSections?: {
+    left: { store: number; radio: number; music: number };
+    right: { rooms: number; members: number };
+  };
 };
 
 export type DesignPreset = {

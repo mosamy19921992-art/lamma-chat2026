@@ -33,7 +33,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-7 gap-2">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                           <button
                             type="button"
                             onClick={runAssistantAudit}
@@ -47,6 +47,27 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                             className="py-2 rounded-xl text-[10px] font-black transition-all text-white lamma-accent-btn"
                           >
                             اقتراح ذكي
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAssistantProposal("geometric")}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            وجه هندسي
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAssistantProposal("layout-balance")}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            توازن التقسيم
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAssistantProposal("layout-chat-focus")}
+                            className="py-2 rounded-xl text-[10px] font-black transition-all lamma-tab-soft hover:text-white"
+                          >
+                            تركيز الشات
                           </button>
                           <button
                             type="button"
@@ -295,6 +316,16 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                               {typeof assistantProposal.changes.roomBgCurrent !== "undefined" && (
                                 <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
                                   خلفية الغرفة الحالية: {assistantProposal.changes.roomBgCurrent ? "تحديث" : "إزالة التخصيص"}
+                                </div>
+                              )}
+                              {assistantProposal.changes.layoutSections && (
+                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                  تقسيم الأعمدة: ضبط نسب المتجر ({Math.round(assistantProposal.changes.layoutSections.left.store)}%) · الغرف ({Math.round(assistantProposal.changes.layoutSections.right.rooms)}%)
+                                </div>
+                              )}
+                              {assistantProposal.changes.customFacePresetId && (
+                                <div className="rounded-xl p-2 text-[10px] font-bold lamma-admin-card">
+                                  الوجه المخصص: {assistantProposal.changes.customFacePresetId === "geometric" ? "هندسي 📐" : assistantProposal.changes.customFacePresetId}
                                 </div>
                               )}
                             </div>

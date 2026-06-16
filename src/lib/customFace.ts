@@ -263,6 +263,35 @@ export const FACE_PRESETS: FacePreset[] = [
       bubbleRadius: 10,
     },
   },
+  {
+    id: "geometric",
+    name: "الوجه الهندسي",
+    emoji: "📐",
+    face: {
+      ...DEFAULT_FACE,
+      enabled: true,
+      primary: "#64748b",
+      accent: "#cbd5e1",
+      text: "#f1f5f9",
+      frame: "#475569",
+      glow: "#38bdf8",
+      glowStrength: 9,
+      appBg: "#0b0f14",
+      appBgImage: "",
+      leftColor: "#111820",
+      leftImage: "",
+      centerColor: "#0a0e12",
+      centerImage: "",
+      rightColor: "#111820",
+      rightImage: "",
+      ownMsgBg: "rgba(56,189,248,0.16)",
+      ownMsgBorder: "rgba(148,163,184,0.62)",
+      otherMsgBg: "rgba(12,17,24,0.94)",
+      otherMsgBorder: "rgba(100,116,139,0.38)",
+      fontFamily: "Space Grotesk",
+      bubbleRadius: 6,
+    },
+  },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -351,6 +380,7 @@ export function applyFace(face: CustomFace): boolean {
 
   if (!face.enabled) {
     root.dataset.customFace = "off";
+    root.dataset.faceStyle = "soft";
     return true;
   }
 
@@ -390,6 +420,7 @@ export function applyFace(face: CustomFace): boolean {
   root.style.setProperty("--face-bubble-radius", `${Math.max(0, Math.min(32, face.bubbleRadius))}px`);
 
   root.dataset.customFace = "on";
+  root.dataset.faceStyle = face.bubbleRadius <= 8 ? "geometric" : "soft";
   return true;
 }
 

@@ -5,6 +5,11 @@ import type {
   DesignAssistantProposal,
   DesignAssistantProposalId,
 } from "../../lib/chatTypes";
+import {
+  describeLayoutBalance,
+  getLayoutPreset,
+  type ChatLayoutPrefs,
+} from "../../lib/chatLayoutPrefs";
 
 interface DesignAssistantContext {
   activeRoomId: string;
@@ -14,6 +19,9 @@ interface DesignAssistantContext {
   ownerBgImage: string | null;
   roomBgMap: Record<string, string>;
   defaultAmbientBg: string;
+  layoutPrefs: ChatLayoutPrefs;
+  customFaceEnabled: boolean;
+  customFaceBubbleRadius: number;
 }
 
 function clampScore(value: number, min = 0, max = 100): number {
@@ -104,7 +112,7 @@ export function buildDesignAssistantFindings(
       title: "تغطية الغرف ضعيفة",
       text: "عدد قليل فقط من الغرف يملك تخصيصًا مرئيًا؛ يستحسن رفع التغطية حتى يبدو المشروع كاملاً.",
     });
-  } else if (roomCoverageScore >= 80) {
+  } else   if (roomCoverageScore >= 80) {
     findings.push({
       tone: "good",
       title: "تغطية قوية",
@@ -112,14 +120,53 @@ export function buildDesignAssistantFindings(
     });
   }
 
+  const layoutBalance = describeLayoutBalance(context.layoutPrefs);
+  if (!layoutBalance.isBalanced) {
+    findings.push({
+      tone: "warn",
+      title: "تقسيم الأعمدة يحتاج ضبط",
+      text: layoutBalance.notes[0] || "نسب الأقسام الجانبية غير متوازنة وقد تؤثر على سهولة الاستخدام.",
+    });
+  } else {
+    findings.push({
+      tone: "good",
+      title: "توازن التقسيم",
+      text: "أقسام الأعمدة الجانبية متوازنة ومناسبة للتصفح اليومي.",
+    });
+  }
+
+  if (!context.customFaceEnabled) {
+    findings.push({
+      tone: "warn",
+      title: "الوجه المخصص غير مفعّل",
+      text: "استوديو التصميم يمكنه تفعيل وجه هندسي أو سمة مخصصة لرفع تميز الواجهة.",
+    });
+  } else if (context.customFaceBubbleRadius <= 8) {
+    findings.push({
+      tone: "good",
+      title: "وجه هندسي نشط",
+      text: "الزوايا الحادة والألوان الباردة تعطي إحساسًا تقنيًا واضحًا.",
+    });
+  }
+
   return findings;
+}
+
+function getLayoutScore(context: DesignAssistantContext): number {
+  return describeLayoutBalance(context.layoutPrefs).score;
 }
 
 function getRecommendedProposalId(
   identityScore: number,
   roomScore: number,
   polishScore: number,
+  layoutScore: number,
+  context: DesignAssistantContext,
 ): DesignAssistantProposalId {
+  if (layoutScore < 72) return "layout-balance";
+  if (!context.customFaceEnabled || context.customFaceBubbleRadius > 10) {
+    return "geometric";
+  }
   if (identityScore <= 65) return "identity-refresh";
   if (roomScore <= 70) return "immersive";
   if (polishScore <= 74) return "premium";
@@ -134,16 +181,24 @@ export function buildDesignAssistantAudit(
   const readabilityScore = 80;
   const roomScore = getActiveRoomScore(context);
   const polishScore = getPolishScore(context);
+  const layoutScore = getLayoutScore(context);
   const score = clampScore(
-    identityScore * 0.35 +
-      readabilityScore * 0.2 +
-      roomScore * 0.25 +
-      polishScore * 0.2,
+    identityScore * 0.3 +
+      readabilityScore * 0.18 +
+      roomScore * 0.22 +
+      polishScore * 0.18 +
+      layoutScore * 0.12,
     48,
     100,
   );
 
-  const recommendedPreset = getRecommendedProposalId(identityScore, roomScore, polishScore);
+  const recommendedPreset = getRecommendedProposalId(
+    identityScore,
+    roomScore,
+    polishScore,
+    layoutScore,
+    context,
+  );
 
   const highlights: string[] = [];
   if (identityScore < 75) {
@@ -155,6 +210,9 @@ export function buildDesignAssistantAudit(
   if (polishScore < 75) {
     highlights.push("يمكن رفع مستوى الصقل عن طريق تنسيق الشعار مع الخلفيات.");
   }
+  if (layoutScore < 78) {
+    highlights.push("أعد ضبط تقسيم الأعمدة الجانبية لتحسين التصفح والتركيز على الشات.");
+  }
   if (highlights.length === 0) {
     highlights.push("الشكل الحالي قوي، وأفضل خطوة الآن هي تحسين ذكي موجه للغرفة المفتوحة.");
   }
@@ -165,6 +223,9 @@ export function buildDesignAssistantAudit(
   }
   if (!context.roomBgMap[context.activeRoomId]?.trim()) {
     quickWins.push(`أضف خلفية خاصة لغرفة ${context.activeRoomName} حتى تحس إن لها شخصية مستقلة.`);
+  }
+  if (layoutScore < 78) {
+    quickWins.push("جرّب «توازن التقسيم» لإعادة ضبط الأعمدة الجانبية تلقائيًا.");
   }
   if (quickWins.length === 0) {
     quickWins.push("ابدأ باقتراح ذكي ثم راجع النتيجة المتوقعة قبل التطبيق.");
@@ -187,6 +248,9 @@ export function buildDesignAssistantAudit(
     "room-focus": "طبّق اقتراح الغرفة الحالية لتحسين المشهد المفتوح الآن فقط.",
     "identity-refresh": "ابدأ باقتراح تحديث الهوية لتقوية الشعار والخلفية العامة.",
     immersive: "فعّل وضع الغمر لإعطاء الغرفة الحالية حضورًا بصريًا أقوى.",
+    geometric: "فعّل الوجه الهندسي مع تقسيم متوازن للأعمدة.",
+    "layout-balance": "أعد توازن الأعمدة الجانبية بين المتجر والراديو والغرف.",
+    "layout-chat-focus": "وسّع منطقة الشات بتقليل مساحة الأقسام الجانبية.",
   };
 
   return {
@@ -253,6 +317,12 @@ function buildProposalMetadata(
   }
   if (!context.brandLogoUrl?.trim() && typeof patch.brandLogoUrl === "undefined") {
     warnings.push("لا يزال الشعار المخصص غير مفعّل، لذلك قوة البراند لن تصل لأقصى مستوى.");
+  }
+  if (patch.layoutSections) {
+    warnings.push("سيتم تغيير نسب تقسيم الأعمدة الجانبية؛ يمكنك سحب الفواصل يدويًا بعد التطبيق.");
+  }
+  if (patch.customFacePresetId) {
+    warnings.push("سيتم تطبيق وجه مخصص جديد من استوديو التصميم.");
   }
 
   return {
@@ -396,6 +466,79 @@ export function buildDesignAssistantProposal(
       [
         `خصص خلفية صريحة لغرفة ${context.activeRoomName}.`,
         "ثبّت الشعار بحيث يخدم الغرفة المفتوحة.",
+      ],
+    );
+  }
+
+  if (preset === "geometric") {
+    return buildProposalMetadata(
+      "geometric",
+      {
+        customFacePresetId: "geometric",
+        layoutSections: getLayoutPreset("balanced"),
+      },
+      context,
+      [
+        "يفعّل وجهًا هندسيًا بزوايا حادة وألوان تقنية.",
+        "يعيد توازن تقسيم الأعمدة لقراءة أوضح.",
+      ],
+      "الوجه الهندسي",
+      "يطبّق سمة هندسية حادة مع تقسيم متوازن للأعمدة الجانبية.",
+      "الشكل والتقسيم",
+      "متوسط",
+      91,
+      "الواجهة تعتمد على زوايا ناعمة أو تقسيم غير متوازن.",
+      "مظهر هندسي تقني مع أعمدة جانبية متوازنة وسهلة التصفح.",
+      [
+        "يفعّل preset الهندسي في استوديو الوجه.",
+        "يضبط نسب المتجر والراديو والموسيقى والغرف.",
+      ],
+    );
+  }
+
+  if (preset === "layout-balance") {
+    return buildProposalMetadata(
+      "layout-balance",
+      { layoutSections: getLayoutPreset("balanced") },
+      context,
+      [
+        "يعيد نسب الأقسام الجانبية إلى توازن متساوٍ.",
+        "يحافظ على الألوان والوجه الحاليين.",
+      ],
+      "توازن التقسيم",
+      "يضبط نسب الأعمدة الجانبية دون تغيير الهوية البصرية.",
+      "تقسيم الواجهة",
+      "خفيف",
+      89,
+      describeLayoutBalance(context.layoutPrefs).notes.join(" ") ||
+        "التقسيم الحالي قد يكون غير متوازن بين الأقسام.",
+      "أعمدة جانبية متوازنة بين المتجر والراديو والموسيقى والغرف والأعضاء.",
+      [
+        "يُعاد ضبط الفواصل بين الأقسام تلقائيًا.",
+        "يمكنك سحب الفواصل يدويًا بعد التطبيق.",
+      ],
+    );
+  }
+
+  if (preset === "layout-chat-focus") {
+    return buildProposalMetadata(
+      "layout-chat-focus",
+      { layoutSections: getLayoutPreset("chat-focus") },
+      context,
+      [
+        "يوسّع منطقة الشات بتقليل مساحة الأقسام الجانبية.",
+        "يرفع مساحة قائمة الغرف في العمود الأيمن.",
+      ],
+      "تركيز على الشات",
+      "يقلل ازدحام الأعمدة الجانبية ويعطي الشات مساحة أكبر.",
+      "تقسيم الواجهة",
+      "متوسط",
+      88,
+      "الأقسام الجانبية تأخذ مساحة كبيرة عن الشات المركزي.",
+      "شات أوسع مع أقسام جانبية مضغوطة ومركّزة.",
+      [
+        "يُضبط العمود الأيسر لصالح الموسيقى.",
+        "يُوسّع قسم الغرف في العمود الأيمن.",
       ],
     );
   }

@@ -176,6 +176,18 @@ import {
   buildDesignAssistantProposal,
 } from "../services/design/designAssistantService";
 import {
+  loadChatLayoutPrefs,
+  saveChatLayoutPrefs,
+  type ChatLayoutPrefs,
+} from "../lib/chatLayoutPrefs";
+import {
+  applyFace,
+  FACE_PRESETS,
+  loadFace,
+  saveFace,
+  type CustomFace,
+} from "../lib/customFace";
+import {
   appendPmThreadMessage,
   createOptimisticPmMessage,
   persistPrivateMessage,
@@ -732,6 +744,8 @@ export default function ChatScreen({
   const spyModeStorageKey = isCurrentUserOwner
     ? userScopedStorageKey("lamma_spy_mode")
     : null;
+  const chatLayoutStorageKey = userScopedStorageKey("lamma_chat_layout_prefs");
+  const initialChatLayoutPrefs = loadChatLayoutPrefs(chatLayoutStorageKey);
 
   const readRequestedRoomId = () => {
     if (typeof window === "undefined") return "egypt";
@@ -803,16 +817,13 @@ export default function ChatScreen({
   const [isLeftColumnCollapsed, setIsLeftColumnCollapsed] = useState(false);
   const [isRightColumnCollapsed, setIsRightColumnCollapsed] = useState(false);
   const leftColumnLayoutRef = useRef<HTMLDivElement | null>(null);
-  const [leftColumnSectionsPct, setLeftColumnSectionsPct] = useState({
-    store: 33.333,
-    radio: 33.333,
-    music: 33.334,
-  });
+  const [leftColumnSectionsPct, setLeftColumnSectionsPct] = useState(
+    initialChatLayoutPrefs.left,
+  );
   const rightColumnLayoutRef = useRef<HTMLDivElement | null>(null);
-  const [rightColumnSectionsPct, setRightColumnSectionsPct] = useState({
-    rooms: 50,
-    members: 50,
-  });
+  const [rightColumnSectionsPct, setRightColumnSectionsPct] = useState(
+    initialChatLayoutPrefs.right,
+  );
   const [isCompactView, setIsCompactView] = useState(false);
   const READING_MODE_STORAGE_KEY = "lamma_reading_mode";
 
@@ -845,6 +856,7 @@ export default function ChatScreen({
     useState<DesignAssistantProposal | null>(null);
   const [lastAppliedDesignSnapshot, setLastAppliedDesignSnapshot] =
     useState<DesignAssistantSnapshot | null>(null);
+  const lastAppliedFaceRef = useRef<CustomFace | null>(null);
   const applyDesignPreset = (preset: DesignPreset) => {
     const snapshot = preset.snapshot;
     setBrandLogoUrl(snapshot.brandLogoUrl);
@@ -1001,16 +1013,39 @@ export default function ChatScreen({
     );
   }, [readingMode]);
 
-  const getDesignAssistantContext = () => ({
-    activeRoomId,
-    activeRoomName:
-      availableRooms.find((room) => room.id === activeRoomId)?.name || activeRoomId,
-    totalRooms: availableRooms.length,
-    brandLogoUrl,
-    ownerBgImage,
-    roomBgMap,
-    defaultAmbientBg: DEFAULT_AMBIENT_BG,
-  });
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      saveChatLayoutPrefs(chatLayoutStorageKey, {
+        left: leftColumnSectionsPct,
+        right: rightColumnSectionsPct,
+      });
+    }, 280);
+    return () => window.clearTimeout(timer);
+  }, [
+    chatLayoutStorageKey,
+    leftColumnSectionsPct,
+    rightColumnSectionsPct,
+  ]);
+
+  const getDesignAssistantContext = () => {
+    const loadedFace = loadFace();
+    return {
+      activeRoomId,
+      activeRoomName:
+        availableRooms.find((room) => room.id === activeRoomId)?.name || activeRoomId,
+      totalRooms: availableRooms.length,
+      brandLogoUrl,
+      ownerBgImage,
+      roomBgMap,
+      defaultAmbientBg: DEFAULT_AMBIENT_BG,
+      layoutPrefs: {
+        left: leftColumnSectionsPct,
+        right: rightColumnSectionsPct,
+      } satisfies ChatLayoutPrefs,
+      customFaceEnabled: loadedFace.enabled,
+      customFaceBubbleRadius: loadedFace.bubbleRadius,
+    };
+  };
 
   const runAssistantAudit = () => {
     const audit = buildDesignAssistantAudit(getDesignAssistantContext());
@@ -1037,13 +1072,20 @@ export default function ChatScreen({
     );
   };
 
-  const applyAssistantPatch = (patch: DesignAssistantPatch) => {
+  const captureDesignSnapshot = () => {
+    lastAppliedFaceRef.current = loadFace();
     setLastAppliedDesignSnapshot({
       brandLogoUrl,
       ownerBgImage,
       roomBgCurrent: roomBgMap[activeRoomId] || null,
+      layoutSections: {
+        left: leftColumnSectionsPct,
+        right: rightColumnSectionsPct,
+      },
     });
+  };
 
+  const applyAssistantPatch = (patch: DesignAssistantPatch) => {
     if (typeof patch.brandLogoUrl !== "undefined") {
       setBrandLogoUrl(patch.brandLogoUrl);
       setDesignLogoInput(patch.brandLogoUrl || "");
@@ -1061,6 +1103,17 @@ export default function ChatScreen({
       });
       setDesignRoomBgInput(patch.roomBgCurrent || "");
     }
+    if (patch.layoutSections) {
+      setLeftColumnSectionsPct(patch.layoutSections.left);
+      setRightColumnSectionsPct(patch.layoutSections.right);
+    }
+    if (patch.customFacePresetId) {
+      const preset = FACE_PRESETS.find((item) => item.id === patch.customFacePresetId);
+      if (preset) {
+        saveFace(preset.face);
+        applyFace(preset.face);
+      }
+    }
   };
 
   const handleApplyAssistantProposal = () => {
@@ -1070,6 +1123,7 @@ export default function ChatScreen({
     );
     if (!allowed) return;
 
+    captureDesignSnapshot();
     applyAssistantPatch(assistantProposal.changes);
     addSystemActivityLog(
       "promote",
@@ -1088,6 +1142,10 @@ export default function ChatScreen({
     if (!allowed) return;
 
     applyAssistantPatch(lastAppliedDesignSnapshot);
+    if (lastAppliedFaceRef.current) {
+      saveFace(lastAppliedFaceRef.current);
+      applyFace(lastAppliedFaceRef.current);
+    }
     addSystemActivityLog(
       "demote",
       currentUser.nickname,
@@ -1107,7 +1165,9 @@ export default function ChatScreen({
     assistantFindings.length,
     availableRooms,
     brandLogoUrl,
+    leftColumnSectionsPct,
     ownerBgImage,
+    rightColumnSectionsPct,
     roomBgMap,
   ]);
 
