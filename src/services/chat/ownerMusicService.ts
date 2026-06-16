@@ -1,5 +1,7 @@
 import { supabase } from "../../lib/supabase";
 import type { OwnerMusicTrack } from "../../lib/chatTypes";
+import { fetchServerUserRole } from "../auth/userRoleService";
+import { normalizeAuthRole } from "../../lib/authProfile";
 
 const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
 const AUDIO_TYPES = /^audio\//;
@@ -34,6 +36,28 @@ export async function uploadOwnerMusicFile(
   } = await supabase.auth.getSession();
   if (!session?.user) {
     return { error: "يجب تسجيل الدخول بحساب مسجل قبل رفع الأغاني." };
+  }
+
+  const metadataRole = normalizeAuthRole(
+    typeof session.user.user_metadata?.role === "string"
+      ? session.user.user_metadata.role
+      : undefined,
+  );
+  const resolvedRole = await fetchServerUserRole(session.user.id);
+  const effectiveRole = resolvedRole ?? metadataRole;
+  if (effectiveRole !== "owner") {
+    return {
+      error:
+        "رفع الأغاني للمالك فقط. سجّل دخول بـ mohamed.samy2821992@gmail.com (مش حساب الأدمن).",
+    };
+  }
+
+  const { data: bucketData, error: bucketError } =
+    await supabase.storage.getBucket("chat-media");
+  if (bucketError || !bucketData) {
+    return {
+      error: `تخزين الأغاني غير جاهز: ${bucketError?.message || "bucket chat-media غير موجود"}.`,
+    };
   }
 
   if (
@@ -105,8 +129,13 @@ export async function persistDjLibrary(
 
   const { error } = await supabase
     .from("owner_settings")
-    .update({ dj_library: library })
-    .eq("id", settingsRowId);
+    .upsert(
+      {
+        id: settingsRowId,
+        dj_library: library,
+      },
+      { onConflict: "id" },
+    );
 
   if (error) {
     const hint = error.message.includes("row-level security")
