@@ -4263,12 +4263,12 @@ export default function ChatScreen({
     .filter((msg) => ["text", "image", "video", "audio"].includes(msg.type))
     .reverse();
 
-  // Audio elements: background broadcast and call simulations
+  // Audio elements for the in-extras call widget (decorative, not wired to WebRTC)
   const [isMuted, setIsMuted] = useState(false);
-  const [isCalling, setIsCalling] = useState(true); // default calling simulated
-  const [callingSeconds, setCallingSeconds] = useState(12);
+  const [isCalling, setIsCalling] = useState(false);
+  const [callingSeconds, setCallingSeconds] = useState(0);
 
-  // Audio visualizer wave simulation
+  // Audio visualizer wave heights
   const [waveHeights, setWaveHeights] = useState([
     12, 28, 45, 12, 34, 18, 50, 14, 38, 22, 10,
   ]);
@@ -7343,39 +7343,26 @@ export default function ChatScreen({
                           </div>
                         </div>
 
-                        {/* Block 2: Achievements and statistics summary */}
-                        <div className="p-2.5 rounded-xl flex flex-col justify-between text-right lamma-list-item">
-                          <div className="text-[10px] font-black text-green-300 mb-1.5">
-                            أوسمة الإنجازات
+                        {/* Block 2: Achievements — coming soon */}
+                        <div className="p-2.5 rounded-xl flex items-center gap-2 text-right lamma-list-item">
+                          <span className="text-lg">🏆</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[10px] font-black text-green-300">أوسمة الإنجازات</div>
+                            <div className="text-[8.5px] text-gray-500 font-bold mt-0.5">قريباً — سيتم إضافة نظام الإنجازات الحقيقي</div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-yellow-400 text-lg">🏆</span>
-                            <div className="text-right flex-1 leading-tight">
-                              <div className="text-[10px] text-gray-200 font-bold">
-                                بطل الأسبوع المتفاعل
-                              </div>
-                              <span className="text-[8px] text-gray-500">
-                                تم كسب الوسام بفضل 2,8k دردشة
-                              </span>
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs">⭐</span>
-                              <span className="text-xs">⚔️</span>
-                            </div>
-                          </div>
+                          <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-white/5 text-gray-400 shrink-0">قريباً</span>
                         </div>
 
-                        {/* Block 3: Live calling indicator/player perfectly matching bottom block in screenshot 1 */}
+                        {/* Block 3: Active call indicator — only show when a call is running */}
+                        {isCalling && (
                         <div className="p-2.5 rounded-xl flex flex-col justify-between relative overflow-hidden text-right lamma-admin-card">
                           <div className="flex justify-between items-center text-[10px] font-bold text-gray-300">
-                            <span>المكالمات الصوتية</span>
+                            <span>مكالمة نشطة</span>
                             <span className="text-green-400 font-mono text-[9px] font-black tracking-wider flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
                               <span>{formatSecs(callingSeconds)}</span>
                             </span>
                           </div>
-
-                          {/* Dynamic waveform simulation vectors */}
                           <div className="flex items-end justify-center gap-1 h-8 my-1.5">
                             {waveHeights.map((h, i) => (
                               <span
@@ -7385,45 +7372,16 @@ export default function ChatScreen({
                               />
                             ))}
                           </div>
-
-                          {/* MIC mute / Red decline keys */}
                           <div className="flex items-center justify-center gap-3">
                             <button
                               onClick={() => setIsMuted(!isMuted)}
-                              className={`p-1.5 rounded-full border transition-all ${
-                                isMuted
-                                  ? "bg-red-500/20 border-red-500/40 text-red-400"
-                                  : "bg-green-500/20 border-green-500/40 text-green-400"
-                              }`}
+                              className={`p-1.5 rounded-full border transition-all ${isMuted ? "bg-red-500/20 border-red-500/40 text-red-400" : "bg-green-500/20 border-green-500/40 text-green-400"}`}
                               title="كتم الصوت"
                             >
                               <Mic size={11} />
                             </button>
                             <button
-                              onClick={() => {
-                                const isOwner = currentUser.role === "owner";
-                                const perm =
-                                  memberCustomPermissions[currentUser.nickname]
-                                    ?.callsAllowed;
-                                if (!isOwner && !perm) {
-                                  alert(
-                                    "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
-                                  );
-                                  return;
-                                }
-                                const normalizedRole =
-                                  currentUser.role.toLowerCase();
-                                if (
-                                  normalizedRole === "guest" ||
-                                  normalizedRole === "زائر"
-                                ) {
-                                  alert(
-                                    "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإجراء المكالمات الصوتية والمرئية! يرجى غلق الجلسة والتسجيل كعضو للاستفادة بكافة الخدمات الفائقة 📞.",
-                                  );
-                                  return;
-                                }
-                                setIsCalling(!isCalling);
-                              }}
+                              onClick={() => { setIsCalling(false); setCallingSeconds(0); }}
                               className="p-1.5 rounded-full bg-red-600 hover:bg-red-500 text-white transition-all border border-red-500/30"
                               title="إنهاء المكالمة"
                             >
@@ -7431,6 +7389,7 @@ export default function ChatScreen({
                             </button>
                           </div>
                         </div>
+                        )}
                   </div>
                 </FloatingDropdownPortal>
 
@@ -7464,93 +7423,41 @@ export default function ChatScreen({
                       </div>
                     </div>
 
-                    {/* Block 2: Achievements and statistics summary */}
-                    <div className="p-3 rounded-xl flex items-center justify-between text-right lamma-list-item bg-black/20">
-                      <div className="flex items-center gap-2 flex-row-reverse">
-                        <span className="text-yellow-400 text-lg">🏆</span>
-                        <div className="text-right flex-1 leading-tight mr-1">
-                          <div className="text-[11px] text-gray-200 font-bold">
-                            بطل الأسبوع المتفاعل
-                          </div>
-                          <span className="text-[9px] text-gray-500">
-                            تم كسب الوسام بفضل 2,8k دردشة
-                          </span>
-                        </div>
+                    {/* Block 2: Achievements — coming soon */}
+                    <div className="p-3 rounded-xl flex items-center gap-3 text-right lamma-list-item bg-black/20">
+                      <span className="text-yellow-400 text-xl shrink-0">🏆</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[11px] text-green-300 font-black">أوسمة الإنجازات</div>
+                        <div className="text-[9px] text-gray-500 font-bold mt-0.5">قريباً — سيتم إضافة نظام الإنجازات الحقيقي</div>
                       </div>
-                      <div className="flex flex-col gap-1 items-center">
-                        <span className="text-xs">⭐</span>
-                        <span className="text-xs">⚔️</span>
-                      </div>
+                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-white/5 text-gray-400 shrink-0">قريباً</span>
                     </div>
 
-                    {/* Block 3: Live calling indicator/player */}
+                    {/* Block 3: Active call indicator — only when a call is running */}
+                    {isCalling && (
                     <div className="p-3 rounded-xl flex flex-col justify-between relative overflow-hidden text-right lamma-admin-card bg-black/25">
                       <div className="flex justify-between items-center text-[11px] font-bold text-gray-300 mb-1">
-                        <span>المكالمات الصوتية</span>
+                        <span>مكالمة نشطة</span>
                         <span className="text-green-400 font-mono text-[10px] font-black tracking-wider flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
                           <span>{formatSecs(callingSeconds)}</span>
                         </span>
                       </div>
-
-                      {/* Dynamic waveform simulation vectors */}
                       <div className="flex items-end justify-center gap-1 h-8 my-2">
                         {waveHeights.map((h, i) => (
-                          <span
-                            key={i}
-                            className="w-[3.5px] bg-[#a3e635] rounded-full transition-all duration-300"
-                            style={{ height: `${h}%` }}
-                          />
+                          <span key={i} className="w-[3.5px] bg-[#a3e635] rounded-full transition-all duration-300" style={{ height: `${h}%` }} />
                         ))}
                       </div>
-
-                      {/* MIC mute / Red decline keys */}
                       <div className="flex items-center justify-center gap-3 mt-1">
-                        <button
-                          type="button"
-                          onClick={() => setIsMuted(!isMuted)}
-                          className={`p-2 rounded-full border transition-all ${
-                            isMuted
-                              ? "bg-red-500/20 border-red-500/40 text-red-400"
-                              : "bg-green-500/20 border-green-500/40 text-green-400"
-                          }`}
-                          title="كتم الصوت"
-                        >
-                          <Mic size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const isOwner = currentUser.role === "owner";
-                            const perm =
-                              memberCustomPermissions[currentUser.nickname]
-                                ?.callsAllowed;
-                            if (!isOwner && !perm) {
-                              alert(
-                                "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
-                              );
-                              return;
-                            }
-                            const normalizedRole =
-                              currentUser.role.toLowerCase();
-                            if (
-                              normalizedRole === "guest" ||
-                              normalizedRole === "زائر"
-                            ) {
-                              alert(
-                                "👤 تنبيه العضوية: رتبة زائر غير مصرح لها بإجراء المكالمات الصوتية والمرئية! يرجى غلق الجلسة والتسجيل كعضو للاستفادة بكافة الخدمات الفائقة 📞.",
-                              );
-                              return;
-                            }
-                            setIsCalling(!isCalling);
-                          }}
+                        <button type="button" onClick={() => setIsMuted(!isMuted)}
+                          className={`p-2 rounded-full border transition-all ${isMuted ? "bg-red-500/20 border-red-500/40 text-red-400" : "bg-green-500/20 border-green-500/40 text-green-400"}`}
+                          title="كتم الصوت"><Mic size={14} /></button>
+                        <button type="button" onClick={() => { setIsCalling(false); setCallingSeconds(0); }}
                           className="p-2 rounded-full bg-red-600 hover:bg-red-500 text-white transition-all border border-red-500/30"
-                          title="إنهاء المكالمة"
-                        >
-                          <Phone size={14} className="rotate-[135deg]" />
-                        </button>
+                          title="إنهاء المكالمة"><Phone size={14} className="rotate-[135deg]" /></button>
                       </div>
                     </div>
+                    )}
                   </div>
                 </MobileBottomSheet>
               </div>
