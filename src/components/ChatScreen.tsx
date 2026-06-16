@@ -5746,8 +5746,8 @@ export default function ChatScreen({
                   </div>
                 </div>
                 </OwnerAvatarAura>
-                {(isOwnerRole ||
-                  isAdminRole ||
+                {!isOwnerRole &&
+                (isAdminRole ||
                   hasStoreVipDisplay(
                     myActiveSession.nickname,
                     myActiveSession,
@@ -5756,18 +5756,16 @@ export default function ChatScreen({
                   )) && (
                   <div
                     className={`absolute -top-0.5 left-1/2 -translate-x-1/2 lamma-prestige-seal ${
-                      isOwnerRole
-                        ? "lamma-prestige-owner"
-                        : isAdminRole
-                          ? "lamma-prestige-admin"
-                          : hasStorePlatinumDisplay(
-                                myActiveSession.nickname,
-                                myActiveSession,
-                                subscription,
-                                memberCosmeticGrants,
-                              )
-                            ? "lamma-prestige-plat"
-                            : "lamma-prestige-vip"
+                      isAdminRole
+                        ? "lamma-prestige-admin"
+                        : hasStorePlatinumDisplay(
+                              myActiveSession.nickname,
+                              myActiveSession,
+                              subscription,
+                              memberCosmeticGrants,
+                            )
+                          ? "lamma-prestige-plat"
+                          : "lamma-prestige-vip"
                     }`}
                     aria-hidden="true"
                   >
@@ -5792,9 +5790,6 @@ export default function ChatScreen({
                   }}
                 >
                   {myActiveSession.nickname}
-                  {myVisualRole === "owner" && (
-                    <BossSigil size={14} className="opacity-95 shrink-0" />
-                  )}
                   {activeTempEntryTopic && (
                     <span className="max-w-[120px] truncate rounded-full border border-cyan-400/25 bg-cyan-500/10 px-1.5 py-0.5 text-[7px] text-cyan-200">
                       {activeTempEntryTopic}
@@ -5827,10 +5822,6 @@ export default function ChatScreen({
                       !isAdminRole ? (
                       <span className="text-[8px] lamma-role-chip lamma-role-vip">
                         VIP
-                      </span>
-                    ) : myVisualRole === "owner" ? (
-                      <span className="text-[8px] lamma-role-chip lamma-role-owner">
-                        OWNER
                       </span>
                     ) : myVisualRole === "admin" ? (
                       <span className="text-[8px] lamma-role-chip lamma-role-admin">
