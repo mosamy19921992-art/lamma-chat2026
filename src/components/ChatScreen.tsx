@@ -55,7 +55,7 @@ import {
   Link as LinkIcon,
   Palette,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useDragControls } from "motion/react";
 import AMLogo from "./AMLogo.tsx";
 import BossSigil from "./BossSigil.tsx";
 import { OwnerAvatarAura } from "./OwnerPrestige.tsx";
@@ -1250,6 +1250,7 @@ export default function ChatScreen({
   const [leadershipTab, setLeadershipTab] = useState<
     "quick" | "features" | "cosmetics" | "guard" | "store" | "design" | "stats" | "owner_store"
   >("quick");
+  const modalDragControls = useDragControls();
 
   // --- AUTOMATION AND STORE SYSTEM STATES ---
   const [subscription, setSubscription] = useState<any>(() =>
@@ -2374,11 +2375,8 @@ export default function ChatScreen({
   const registeredMemberNames = useMemo(() => {
     const names = new Set<string>();
     for (const member of rawChatMembers) {
-      if (
-        member.role !== "guest" &&
-        /^[0-9a-f-]{36}$/i.test(member.id)
-      ) {
-        names.add(member.nickname);
+      if (member.role !== "guest" && member.nickname?.trim()) {
+        names.add(member.nickname.trim());
       }
     }
     for (const nickname of Object.keys(memberCustomPermissions)) {
@@ -10096,6 +10094,8 @@ export default function ChatScreen({
         {activeModal && !hasFloatingDropdownOpen && (
           <motion.div
             drag
+            dragControls={modalDragControls}
+            dragListener={false}
             dragConstraints={{ left: -400, right: 400, top: -200, bottom: 200 }}
             dragMomentum={false}
             initial={{ scale: 0.95, opacity: 0 }}
@@ -10111,8 +10111,11 @@ export default function ChatScreen({
             }}
           >
             <div className="flex flex-col w-full h-full min-h-0">
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/[0.04] cursor-grab active:cursor-grabbing shrink-0 lamma-modal-header">
+              {/* Modal Header — drag handle only (clicks in body stay clickable) */}
+              <div
+                className="flex items-center justify-between p-4 border-b border-white/10 bg-white/[0.04] cursor-grab active:cursor-grabbing shrink-0 lamma-modal-header touch-none"
+                onPointerDown={(event) => modalDragControls.start(event)}
+              >
                 <div className="flex items-center gap-2 pointer-events-none">
                   <span className="text-lg flex items-center justify-center">
                     {(activeModal === "leadership" ||

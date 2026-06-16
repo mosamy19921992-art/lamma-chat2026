@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Crown, Flame, Palette, Search, Snowflake, Sparkles, X } from "lucide-react";
 import {
   COSMETIC_FRAME_PRESETS,
@@ -91,6 +91,13 @@ export function OwnerMemberCosmeticsPanel({
     null,
   );
   const [query, setQuery] = useState("");
+  const [manualNickname, setManualNickname] = useState("");
+  const managePanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!activeCosmetic) return;
+    managePanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [activeCosmetic]);
 
   const filteredNames = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -189,8 +196,10 @@ export function OwnerMemberCosmeticsPanel({
                 onClick={() => {
                   setActiveCosmetic(key);
                   setQuery("");
+                  setManualNickname("");
                 }}
-                className="w-full py-2 rounded-xl text-[10px] font-black bg-amber-600/15 text-amber-200 border border-amber-500/25 hover:bg-amber-600/25 transition-all"
+                onPointerDown={(event) => event.stopPropagation()}
+                className="w-full py-2 rounded-xl text-[10px] font-black bg-amber-600/15 text-amber-200 border border-amber-500/25 hover:bg-amber-600/25 transition-all cursor-pointer"
               >
                 منح / إدارة
               </button>
@@ -200,23 +209,52 @@ export function OwnerMemberCosmeticsPanel({
       </div>
 
       {activeCosmetic && (
-        <div className="rounded-2xl p-4 lamma-admin-card border border-white/10 space-y-3">
+        <div
+          ref={managePanelRef}
+          className="rounded-2xl p-4 lamma-admin-card border border-amber-500/30 bg-amber-500/5 space-y-3 ring-1 ring-amber-500/20"
+        >
           <div className="flex items-center justify-between gap-2">
             <div>
               <div className="text-xs font-black text-white">
                 {COSMETIC_META[activeCosmetic].label}
               </div>
-              <div className="text-[10px] text-gray-500">
-                اضغط على الاسم للمنح أو السحب
+              <div className="text-[10px] text-amber-200/90 font-bold">
+                اختر عضواً من القائمة — أو اكتب الاسم بالأسفل
               </div>
             </div>
             <button
               type="button"
               onClick={() => setActiveCosmetic(null)}
-              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
+              onPointerDown={(event) => event.stopPropagation()}
+              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 cursor-pointer"
               aria-label="إغلاق"
             >
               <X size={14} />
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={manualNickname}
+              onChange={(e) => setManualNickname(e.target.value)}
+              onPointerDown={(event) => event.stopPropagation()}
+              placeholder="اسم العضو (حتى لو غير متصل)"
+              className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder:text-gray-500"
+            />
+            <button
+              type="button"
+              disabled={!manualNickname.trim()}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => {
+                const nickname = manualNickname.trim();
+                if (!nickname) return;
+                toggleCosmetic(nickname, true);
+                setManualNickname("");
+              }}
+              className="px-4 py-2 rounded-xl text-[10px] font-black bg-amber-600/20 text-amber-100 border border-amber-500/30 hover:bg-amber-600/30 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              منح بالاسم
             </button>
           </div>
 
@@ -229,6 +267,7 @@ export function OwnerMemberCosmeticsPanel({
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onPointerDown={(event) => event.stopPropagation()}
               placeholder="ابحث بالاسم…"
               className="w-full pr-9 pl-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder:text-gray-500"
             />
@@ -236,7 +275,7 @@ export function OwnerMemberCosmeticsPanel({
 
           {registeredMemberNames.length === 0 ? (
             <p className="text-[11px] text-yellow-400/90 text-center py-4">
-              لا يوجد أعضاء مسجّلون متصلون الآن.
+              لا يوجد أعضاء مسجّلون متصلون الآن — استخدم «منح بالاسم» أعلاه.
             </p>
           ) : (
             <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
@@ -250,7 +289,8 @@ export function OwnerMemberCosmeticsPanel({
                     key={nickname}
                     type="button"
                     onClick={() => toggleCosmetic(nickname, !on)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-bold transition-all border ${
+                    onPointerDown={(event) => event.stopPropagation()}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-bold transition-all border cursor-pointer ${
                       on
                         ? "bg-amber-500/10 border-amber-500/30 text-amber-200"
                         : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
