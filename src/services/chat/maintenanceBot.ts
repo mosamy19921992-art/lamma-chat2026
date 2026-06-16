@@ -134,7 +134,7 @@ async function checkDatabase(): Promise<MaintenanceCheck> {
   }
 }
 
-// Real realtime test — actually subscribes to a channel and waits for SUBSCRIBED state.
+// Real realtime test — reuse active channels when possible; otherwise probe subscribe.
 async function checkRealtime(): Promise<MaintenanceCheck> {
   if (!isSupabaseConfigured || !supabase) {
     return {
@@ -153,40 +153,68 @@ async function checkRealtime(): Promise<MaintenanceCheck> {
     };
   }
 
+  const activeChannels = supabase.getChannels().filter((channel) => {
+    const state = (channel as { state?: string }).state;
+    return state === "joined" || state === "joining";
+  });
+  if (activeChannels.length > 0) {
+    return {
+      id: "realtime",
+      label: "الاتصال اللحظي (Realtime)",
+      status: "ok",
+      detail: `القنوات اللحظية نشطة (${activeChannels.length}) — الرسائل والمتصلون يعملون.`,
+    };
+  }
+
   return new Promise((resolve) => {
+    let settled = false;
+    const finish = (check: MaintenanceCheck) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        supabase!.removeChannel(channel);
+      } catch {
+        /* ignore */
+      }
+      resolve(check);
+    };
+
     const timer = setTimeout(() => {
-      try { supabase!.removeChannel(channel); } catch { /* ignore */ }
-      resolve({
+      finish({
         id: "realtime",
         label: "الاتصال اللحظي (Realtime)",
         status: "fail",
-        detail: "انتهت المهلة بدون استجابة من خادم Realtime (أكثر من 8 ثوانٍ).",
+        detail: "انتهت المهلة بدون استجابة من خادم Realtime (أكثر من 10 ثوانٍ).",
       });
-    }, 8000);
+    }, 10000);
 
     const channel = supabase!
       .channel(`__lamma_health_${Date.now()}`)
-      .on("presence", { event: "sync" }, () => {})
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        () => {},
+      )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
-          clearTimeout(timer);
-          try { supabase!.removeChannel(channel); } catch { /* ignore */ }
-          resolve({
+          finish({
             id: "realtime",
             label: "الاتصال اللحظي (Realtime)",
             status: "ok",
             detail: "القناة اللحظية وصلت وشغالة فعلاً — الرسائل تصل في الحظة.",
           });
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          clearTimeout(timer);
-          try { supabase!.removeChannel(channel); } catch { /* ignore */ }
-          resolve({
+          return;
+        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          finish({
             id: "realtime",
             label: "الاتصال اللحظي (Realtime)",
             status: "fail",
             detail: `فشل الاتصال اللحظي (${status}) — الرسائل ممكن تتأخر.`,
           });
         }
+        // Ignore CLOSED — fires during reconnect/teardown and caused false alarms.
       });
   });
 }
@@ -322,15 +350,15 @@ async function checkServiceWorker(): Promise<MaintenanceCheck> {
       return {
         id: "sw",
         label: "عامل الخدمة (Service Worker / PWA)",
-        status: "warn",
-        detail: "لا يوجد Service Worker مسجّل حاليًا.",
+        status: "ok",
+        detail: "PWA معطّل — لا يوجد Service Worker (الوضع الطبيعي).",
       };
     }
     return {
       id: "sw",
       label: "عامل الخدمة (Service Worker / PWA)",
-      status: "ok",
-      detail: `Service Worker مسجّل ويعمل (${regs.length}).`,
+      status: "warn",
+      detail: `Service Worker قديم مسجّل (${regs.length}) — اضغط «إصلاح تلقائي» لإزالته.`,
     };
   } catch {
     return {
@@ -502,22 +530,40 @@ export async function runMaintenanceAutoFix(): Promise<MaintenanceFixResult> {
     failed.push("تعذّر تنظيف الكاش.");
   }
 
-  // 3) Refresh the service worker.
+  // 3) Remove legacy service workers (PWA is disabled in production).
   try {
     if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations();
       if (regs.length === 0) {
-        noop.push("لا يوجد Service Worker لتحديثه.");
+        noop.push("لا يوجد Service Worker للإزالة.");
       } else {
-        await Promise.all(regs.map((reg) => reg.update()));
-        fixed.push("تم تحديث عامل الخدمة (Service Worker).");
+        await Promise.all(regs.map((reg) => reg.unregister()));
+        fixed.push(`تم إلغاء ${regs.length} Service Worker قديم.`);
       }
     }
   } catch {
-    failed.push("تعذّر تحديث عامل الخدمة.");
+    failed.push("تعذّر إزالة Service Worker.");
   }
 
-  // 4) Refresh auth session if Supabase is available (safe — no logout).
+  // 4) Reconnect Supabase Realtime.
+  try {
+    if (isSupabaseConfigured && supabase) {
+      for (const channel of supabase.getChannels()) {
+        const topic = (channel as { topic?: string }).topic ?? "";
+        if (topic.includes("__lamma_health")) {
+          await supabase.removeChannel(channel);
+        }
+      }
+      supabase.realtime.disconnect();
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      supabase.realtime.connect();
+      fixed.push("تم إعادة تشغيل الاتصال اللحظي (Realtime).");
+    }
+  } catch {
+    failed.push("تعذّر إعادة تشغيل Realtime.");
+  }
+
+  // 5) Refresh auth session if Supabase is available (safe — no logout).
   try {
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.auth.refreshSession();
@@ -544,7 +590,7 @@ export async function runMaintenanceAutoFix(): Promise<MaintenanceFixResult> {
 const HEAL_LOG_KEY = "lamma_autofix_log";
 const MAX_LOG_ENTRIES = 20;
 
-function appendHealLog(entries: string[]) {
+export function appendHealLog(entries: string[]) {
   if (!entries.length || typeof localStorage === "undefined") return;
   try {
     const raw = localStorage.getItem(HEAL_LOG_KEY);

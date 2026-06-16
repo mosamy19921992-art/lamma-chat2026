@@ -71,8 +71,10 @@ export function GuardPanelModal({
           </div>
         </div>
         <button
+          type="button"
           onClick={() => setIsBotEnabled(!isBotEnabled)}
-          className={`px-4 py-2 rounded-xl text-[11px] font-black transition-all flex items-center gap-1.5 shrink-0 select-none ${
+          onPointerDown={(event) => event.stopPropagation()}
+          className={`px-4 py-2 rounded-xl text-[11px] font-black transition-all flex items-center gap-1.5 shrink-0 select-none cursor-pointer ${
             isBotEnabled ? "lamma-toggle-on" : "lamma-toggle-off"
           }`}
         >
@@ -100,23 +102,29 @@ export function GuardPanelModal({
           </p>
           <div className="flex flex-wrap gap-1 mt-1">
             <button
+              type="button"
               onClick={() =>
                 setBotRuleSwearFilter(!botRuleSwearFilter)
               }
+              onPointerDown={(event) => event.stopPropagation()}
               className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleSwearFilter ? "lamma-toggle-on" : "lamma-toggle-off"}`}
             >
               جدار الكلمات {botRuleSwearFilter ? "🟢" : "🔴"}
             </button>
             <button
+              type="button"
               onClick={() => setBotRuleAntiSpam(!botRuleAntiSpam)}
+              onPointerDown={(event) => event.stopPropagation()}
               className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleAntiSpam ? "lamma-toggle-on" : "lamma-toggle-off"}`}
             >
               منع السبام {botRuleAntiSpam ? "🟢" : "🔴"}
             </button>
             <button
+              type="button"
               onClick={() =>
                 setBotRuleAntiLinks(!botRuleAntiLinks)
               }
+              onPointerDown={(event) => event.stopPropagation()}
               className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleAntiLinks ? "lamma-toggle-on" : "lamma-toggle-off"}`}
             >
               حجب الروابط {botRuleAntiLinks ? "🟢" : "🔴"}
@@ -157,7 +165,9 @@ export function GuardPanelModal({
           </p>
           <div className="flex flex-col gap-1 mt-1">
             <button
+              type="button"
               onClick={runTrackerCheck}
+              onPointerDown={(event) => event.stopPropagation()}
               disabled={trackerLoading}
               className="px-2 py-1.5 rounded-lg text-[9px] font-bold text-center lamma-section-card text-purple-300 cursor-pointer hover:text-purple-200 transition-colors disabled:opacity-60"
             >

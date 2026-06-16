@@ -8,6 +8,7 @@ import {
   runMaintenanceDiagnostics,
   runMaintenanceAutoFix,
   readHealLog,
+  appendHealLog,
   type MaintenanceReport,
   type MaintenanceStatus,
 } from "../../services/chat/maintenanceBot";
@@ -85,15 +86,22 @@ export function MaintenancePanel({
       const result = await runMaintenanceAutoFix();
       result.fixed.forEach((line) => log(line, "warn"));
       result.failed.forEach((line) => log(line, "danger"));
+      result.noop.forEach((line) => log(line, "info"));
 
       if (result.fixed.length > 0) {
+        appendHealLog(result.fixed);
+        setHealLog(readHealLog());
         addBotSystemWarning(
           activeRoomId,
           `🛠️ بوت الصيانة أصلح ${result.fixed.length} مشكلة تلقائيًا وحافظ على استقرار الشات.`,
         );
+      } else if (result.failed.length > 0) {
+        log("تعذّر إكمال بعض خطوات الإصلاح — جرّب تحديث الصفحة.", "danger");
       } else {
-        log("بوت الصيانة فحص ولم يجد مشاكل تحتاج إصلاح.", "info");
+        log("بوت الصيانة فحص ولم يجد مشاكل إضافية — جارٍ إعادة الفحص...", "info");
       }
+
+      await new Promise((resolve) => setTimeout(resolve, 800));
       await runScan();
     } finally {
       setIsFixing(false);
@@ -173,8 +181,9 @@ export function MaintenancePanel({
         <button
           type="button"
           onClick={() => void runScan()}
+          onPointerDown={(event) => event.stopPropagation()}
           disabled={isScanning || isFixing}
-          className="py-2.5 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 lamma-soft-action text-gray-200"
+          className="py-2.5 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 lamma-soft-action text-gray-200 cursor-pointer"
         >
           <RefreshCw size={13} className={isScanning ? "animate-spin" : ""} />
           {isScanning ? "جارٍ الفحص..." : "إعادة فحص شامل"}
@@ -182,8 +191,9 @@ export function MaintenancePanel({
         <button
           type="button"
           onClick={() => void runFix()}
+          onPointerDown={(event) => event.stopPropagation()}
           disabled={isScanning || isFixing}
-          className="py-2.5 rounded-xl text-[10px] font-black text-white transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 lamma-accent-btn"
+          className="py-2.5 rounded-xl text-[10px] font-black text-white transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 lamma-accent-btn cursor-pointer"
         >
           {isFixing ? (
             <RefreshCw size={13} className="animate-spin" />
@@ -209,7 +219,8 @@ export function MaintenancePanel({
             setHealLog(readHealLog());
             setShowHealLog((v) => !v);
           }}
-          className="w-full flex items-center justify-between text-[10px] font-black text-gray-400 hover:text-gray-200 transition-colors py-1"
+          onPointerDown={(event) => event.stopPropagation()}
+          className="w-full flex items-center justify-between text-[10px] font-black text-gray-400 hover:text-gray-200 transition-colors py-1 cursor-pointer"
         >
           <span className="flex items-center gap-1.5">
             <ShieldCheck size={11} className="text-blue-400" />
