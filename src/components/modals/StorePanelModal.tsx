@@ -1234,7 +1234,7 @@ export function StorePanelModal({
       )}
 
       {/* --- SIMULATED CHRONOLOGICAL TESTING PANEL (FOR COMPREHENSIVE DEBUGGING) --- */}
-      {subscription && subscription.isActive && (
+      {isOwner && subscription && subscription.isActive && (
         <div className="p-4 bg-yellow-500/[0.03] border border-yellow-500/15 rounded-2xl text-right mt-4 space-y-2 select-none font-sans">
           <div className="flex items-center gap-1.5 justify-end">
             <span className="text-yellow-400">⏳</span>

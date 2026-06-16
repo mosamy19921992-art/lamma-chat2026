@@ -7159,47 +7159,53 @@ export default function ChatScreen({
                           className="text-[8px] font-bold leading-normal text-emerald-300/90"
                           dir="rtl"
                         >
-                          دخل الشات ↘
+                          انضم للغرفة
                         </span>
                       </div>
                     </>
                   ) : roomEntryTicker.kind === "leave" ? (
                     <>
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-400/20 text-base">
-                        👋
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-500/10 border border-gray-400/20">
+                        <LogIn
+                          size={14}
+                          className="text-gray-400 rotate-180"
+                          strokeWidth={2.4}
+                        />
                       </span>
                       <div className="flex flex-col text-left mr-1 justify-center min-w-0">
                         <span
-                          className="text-[10px] font-black text-amber-100 truncate max-w-[100px] sm:max-w-[130px] leading-normal"
+                          className="text-[10px] font-black text-gray-300 truncate max-w-[100px] sm:max-w-[130px] leading-normal"
                           dir="rtl"
                         >
                           {roomEntryTicker.nickname}
                         </span>
                         <span
-                          className="text-[8px] font-bold leading-normal text-amber-200/90"
+                          className="text-[8px] font-bold leading-normal text-gray-400/90"
                           dir="rtl"
                         >
-                          غادر الشات
+                          غادر الغرفة
                         </span>
                       </div>
                     </>
                   ) : (
                     <>
-                      <span className="text-sm flex-shrink-0">📡</span>
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-400/20">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      </span>
                       <div className="flex flex-col text-left mr-1 justify-center min-w-0">
                         <span
-                          className="text-[10px] font-bold text-gray-200 truncate max-w-[100px] sm:max-w-[130px] leading-normal"
+                          className="text-[10px] font-black text-emerald-200 truncate max-w-[100px] sm:max-w-[130px] leading-normal"
                           dir="rtl"
                         >
                           {roomEntryTicker.onlineCount > 1
-                            ? `${roomEntryTicker.onlineCount} متصلين`
-                            : "جلسة مباشرة"}
+                            ? `${roomEntryTicker.onlineCount} متصل`
+                            : "متصل واحد"}
                         </span>
                         <span
-                          className="text-[8px] font-black uppercase leading-normal text-emerald-300"
-                          dir="ltr"
+                          className="text-[8px] font-bold leading-normal text-gray-400"
+                          dir="rtl"
                         >
-                          Live session
+                          في الغرفة الآن
                         </span>
                       </div>
                     </>
@@ -9636,32 +9642,6 @@ export default function ChatScreen({
                     title="مكالمة الفيديو"
                   >
                     <VideoIcon size={12} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      alert("🖥️ جاري بدء مشاركة الشاشة... (محاكاة)");
-                      setPmThreads((prev) => ({
-                        ...prev,
-                        [pmTarget.nickname]: [
-                          ...(prev[pmTarget.nickname] || []),
-                          {
-                            text: "🖥️ يشارك شاشته معك...",
-                            isOwn: true,
-                            time: new Date().toLocaleTimeString("ar-EG", {
-                              hour: "numeric",
-                              minute: "numeric",
-                              hour12: true,
-                            }),
-                            status: "sent",
-                          },
-                        ],
-                      }));
-                    }}
-                    className="w-7 h-7 rounded-lg text-teal-300 flex items-center justify-center lamma-quiet-power-btn"
-                    title="مشاركة الشاشة"
-                  >
-                    <Tv size={12} />
                   </button>
                   <button
                     type="button"
