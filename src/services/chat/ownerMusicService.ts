@@ -10,13 +10,13 @@ const AUDIO_TYPES = /^audio\//;
 function buildMusicStorageFileName(fileName: string): string {
   const extMatch = fileName.match(/(\.[a-z0-9]+)$/i);
   const ext = extMatch?.[1]?.toLowerCase() || ".mp3";
-  const base = fileName
+  const asciiBase = fileName
     .replace(/\.[^.]+$/, "")
-    .replace(/[^\w.\-]+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_|_$/g, "")
-    .slice(0, 60);
-  return `${base || "track"}${ext}`;
+    .replace(/[^a-z0-9]+/gi, "")
+    .slice(0, 32);
+  const base =
+    asciiBase || `track_${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
+  return `${base}${ext}`;
 }
 
 function buildMusicDisplayTitle(fileName: string): string {
