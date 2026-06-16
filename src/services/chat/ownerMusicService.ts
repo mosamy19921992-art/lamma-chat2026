@@ -52,14 +52,6 @@ export async function uploadOwnerMusicFile(
     };
   }
 
-  const { data: bucketData, error: bucketError } =
-    await supabase.storage.getBucket("chat-media");
-  if (bucketError || !bucketData) {
-    return {
-      error: `تخزين الأغاني غير جاهز: ${bucketError?.message || "bucket chat-media غير موجود"}.`,
-    };
-  }
-
   if (
     !AUDIO_TYPES.test(file.type) &&
     !/\.(mp3|wav|ogg|m4a|aac|webm|flac)$/i.test(file.name)
