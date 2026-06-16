@@ -71,114 +71,144 @@ export function useOnlinePresence({
 
     const myUid = currentUser.uid;
     let lastEvent: PresenceUpdateEvent["type"] = "sync";
+    let activeChannel: ReturnType<typeof supabase.channel> | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let stopped = false;
 
-    const channel = supabase.channel("lamma_online_presence", {
-      config: { presence: { key: myUid } },
-    });
+    const attach = () => {
+      if (stopped || !supabase) return;
 
-    const emitUpdate = (type: PresenceUpdateEvent["type"], nickname?: string) => {
-      lastEvent = type;
-      const state = channel.presenceState<PresenceMeta>();
-      let count = 0;
-      Object.values(state).forEach((entries) => {
-        count += (entries as PresenceMeta[]).length;
+      const channel = supabase.channel(`lamma_online_presence_${Date.now()}`, {
+        config: { presence: { key: myUid } },
       });
-      onPresenceUpdate?.({
-        type,
-        nickname,
-        onlineCount: Math.max(count, 1),
-      });
-    };
+      activeChannel = channel;
 
-    const syncFromPresence = (eventType: PresenceUpdateEvent["type"] = "sync") => {
-      const state = channel.presenceState<PresenceMeta>();
-      const byUid = new Map<string, ChatMember>();
-
-      Object.values(state).forEach((entries) => {
-        (entries as PresenceMeta[]).forEach((meta) => {
-          if (meta?.uid && meta?.nickname) {
-            byUid.set(meta.uid, presenceToMember(meta, normalizeRole));
-          }
+      const emitUpdate = (
+        type: PresenceUpdateEvent["type"],
+        nickname?: string,
+      ) => {
+        lastEvent = type;
+        const state = channel.presenceState<PresenceMeta>();
+        let count = 0;
+        Object.values(state).forEach((entries) => {
+          count += (entries as PresenceMeta[]).length;
         });
-      });
-
-      if (!byUid.has(myUid)) {
-        byUid.set(myUid, {
-          id: myUid,
-          nickname: displayNickname,
-          role: normalizeRole(
-            typeof currentUser.role === "string" ? currentUser.role : undefined,
-          ),
-          color: displayColor || "#10b981",
-          avatar: displayAvatar || "👤",
-          status: "online",
-          email: currentUser.email || undefined,
-          fingerprint: myFingerprint,
-          browserSignature: myBrowserSig,
-          ip: "",
-          localStorageId: `local-${myUid}`,
+        onPresenceUpdate?.({
+          type,
+          nickname,
+          onlineCount: Math.max(count, 1),
         });
-      }
+      };
 
-      setChatMembers(Array.from(byUid.values()));
-      emitUpdate(eventType);
-    };
+      const syncFromPresence = (
+        eventType: PresenceUpdateEvent["type"] = "sync",
+      ) => {
+        const state = channel.presenceState<PresenceMeta>();
+        const byUid = new Map<string, ChatMember>();
 
-    channel
-      .on("presence", { event: "sync" }, () => syncFromPresence("sync"))
-      .on("presence", { event: "join" }, ({ newPresences }) => {
-        const joined = (newPresences as unknown as PresenceMeta[])[0];
-        syncFromPresence("join");
-        if (joined?.nickname && joined.uid !== myUid) {
-          onPresenceUpdate?.({
-            type: "join",
-            nickname: joined.nickname,
-            onlineCount: Object.keys(channel.presenceState()).length,
+        Object.values(state).forEach((entries) => {
+          (entries as PresenceMeta[]).forEach((meta) => {
+            if (meta?.uid && meta?.nickname) {
+              byUid.set(meta.uid, presenceToMember(meta, normalizeRole));
+            }
           });
-        }
-      })
-      .on("presence", { event: "leave" }, ({ leftPresences }) => {
-        const left = (leftPresences as unknown as PresenceMeta[])[0];
-        syncFromPresence("leave");
-        if (left?.nickname && left.uid !== myUid) {
-          onPresenceUpdate?.({
-            type: "leave",
-            nickname: left.nickname,
-            onlineCount: Math.max(
-              Object.keys(channel.presenceState()).length,
-              1,
-            ),
-          });
-        }
-      })
-      .subscribe(async (status, err) => {
-        if (status === "SUBSCRIBED") {
-          await channel.track({
-            uid: myUid,
+        });
+
+        if (!byUid.has(myUid)) {
+          byUid.set(myUid, {
+            id: myUid,
             nickname: displayNickname,
-            role: currentUser.role,
+            role: normalizeRole(
+              typeof currentUser.role === "string"
+                ? currentUser.role
+                : undefined,
+            ),
             color: displayColor || "#10b981",
             avatar: displayAvatar || "👤",
+            status: "online",
+            email: currentUser.email || undefined,
             fingerprint: myFingerprint,
             browserSignature: myBrowserSig,
-            authProvider: currentUser.authProvider,
-          } satisfies PresenceMeta);
-          syncFromPresence("sync");
-          return;
-        }
-
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.warn("Presence channel error:", status, err);
-          onPresenceUpdate?.({
-            type: lastEvent,
-            onlineCount: 1,
+            ip: "",
+            localStorageId: `local-${myUid}`,
           });
         }
-      });
+
+        setChatMembers(Array.from(byUid.values()));
+        emitUpdate(eventType);
+      };
+
+      channel
+        .on("presence", { event: "sync" }, () => syncFromPresence("sync"))
+        .on("presence", { event: "join" }, ({ newPresences }) => {
+          const joined = (newPresences as unknown as PresenceMeta[])[0];
+          syncFromPresence("join");
+          if (joined?.nickname && joined.uid !== myUid) {
+            onPresenceUpdate?.({
+              type: "join",
+              nickname: joined.nickname,
+              onlineCount: Object.keys(channel.presenceState()).length,
+            });
+          }
+        })
+        .on("presence", { event: "leave" }, ({ leftPresences }) => {
+          const left = (leftPresences as unknown as PresenceMeta[])[0];
+          syncFromPresence("leave");
+          if (left?.nickname && left.uid !== myUid) {
+            onPresenceUpdate?.({
+              type: "leave",
+              nickname: left.nickname,
+              onlineCount: Math.max(
+                Object.keys(channel.presenceState()).length,
+                1,
+              ),
+            });
+          }
+        })
+        .subscribe(async (status, err) => {
+          if (stopped) return;
+
+          if (status === "SUBSCRIBED") {
+            await channel.track({
+              uid: myUid,
+              nickname: displayNickname,
+              role: currentUser.role,
+              color: displayColor || "#10b981",
+              avatar: displayAvatar || "👤",
+              fingerprint: myFingerprint,
+              browserSignature: myBrowserSig,
+              authProvider: currentUser.authProvider,
+            } satisfies PresenceMeta);
+            syncFromPresence("sync");
+            return;
+          }
+
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            console.warn("Presence channel error:", status, err);
+            onPresenceUpdate?.({
+              type: lastEvent,
+              onlineCount: 1,
+            });
+            if (activeChannel) {
+              void supabase.removeChannel(activeChannel);
+              activeChannel = null;
+            }
+            retryTimer = setTimeout(attach, 2500);
+          }
+        });
+    };
+
+    attach();
 
     return () => {
-      void channel.untrack();
-      supabase.removeChannel(channel);
+      stopped = true;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
+      if (activeChannel) {
+        void activeChannel.untrack();
+        supabase.removeChannel(activeChannel);
+      }
     };
   }, [
     currentUser.authProvider,

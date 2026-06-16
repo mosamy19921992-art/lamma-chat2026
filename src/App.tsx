@@ -5,7 +5,7 @@ import { useServiceWorker } from './hooks/useServiceWorker';
 import UpdateBanner from './components/pwa/UpdateBanner';
 import OnlineStatus from './components/pwa/OnlineStatus';
 import { startSilentAutoHeal } from './services/chat/maintenanceBot';
-import { supabase, getClientUid } from './lib/supabase';
+import { supabase, getClientUid, isSupabaseConfigured } from './lib/supabase';
 import type { UserSession } from './lib/chatTypes';
 import {
   hasStoredInviteAccess,
@@ -176,6 +176,7 @@ async function hydrateSupabaseUserSession(
 
 export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
+  const [authReady, setAuthReady] = useState(() => !isSupabaseConfigured);
   const [pendingSupabaseUser, setPendingSupabaseUser] = useState<SupabaseUser | null>(null);
   const [primaryTheme, setPrimaryTheme] = useState<Theme>('dark');
   const [inviteOnlyMode, setInviteOnlyMode] = useState(false);
@@ -250,14 +251,8 @@ export default function App() {
     if (!supabase) {
       if (guestSession) setUser(guestSession);
       else if (devSession) setUser(devSession);
+      setAuthReady(true);
       return;
-    }
-
-    // Restore guest/dev sessions immediately so returning visitors don't wait on auth.
-    if (guestSession) {
-      setUser(guestSession);
-    } else if (devSession) {
-      setUser(devSession);
     }
 
     let cancelled = false;
@@ -298,6 +293,10 @@ export default function App() {
           setUser(guestSession);
         } else if (devSession) {
           setUser(devSession);
+        }
+      } finally {
+        if (!cancelled) {
+          setAuthReady(true);
         }
       }
     };
@@ -371,7 +370,9 @@ export default function App() {
     <ErrorBoundary>
       <div className="app-container">
         <OnlineStatus isOnline={sw.isOnline} />
-        {!user ? (
+        {!authReady ? (
+          <AuthBootScreen />
+        ) : !user ? (
           <LoginScreen
             onLogin={handleLogin}
             primaryTheme={primaryTheme}
@@ -389,6 +390,8 @@ export default function App() {
               currentUser={user}
               onLogout={handleLogout}
               primaryTheme={primaryTheme}
+              inviteOnlyMode={inviteOnlyMode}
+              hasInviteAccess={hasInviteAccess}
               onUserSessionUpdate={(patch) => {
                 setUser((prev) => (prev ? { ...prev, ...patch } : prev));
               }}
@@ -403,6 +406,17 @@ export default function App() {
         />
       </div>
     </ErrorBoundary>
+  );
+}
+
+function AuthBootScreen() {
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center lamma-fallback-shell">
+      <div className="flex flex-col items-center gap-3 px-5 py-6 rounded-3xl lamma-fallback-card max-w-sm text-center">
+        <div className="w-12 h-12 rounded-full animate-spin lamma-loading-orb" />
+        <p className="text-xs text-gray-300 font-bold">جاري التحقق من جلسة الدخول...</p>
+      </div>
+    </div>
   );
 }
 
@@ -453,5 +467,3 @@ function ChatLoadingScreen() {
     </div>
   );
 }
-
-// Deployed 00:38

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type SupabaseMessage } from "../lib/supabase";
+import { supabase, type SupabaseMessage } from "../lib/supabase";
 import type { Message } from "../lib/chatTypes";
 import {
   fetchRoomMessages,
@@ -15,8 +15,6 @@ interface UseChatMessagesOptions {
   publicChatSessionStartedAt: string;
   publicChatSessionStartedAtMs: number;
   senderUid: string;
-  supabaseRestUrl: string;
-  supabaseAnonKey: string;
   onIncomingMessage?: (message: SupabaseMessage, roomId: string) => void;
 }
 
@@ -57,8 +55,6 @@ export function useChatMessages({
   publicChatSessionStartedAt,
   publicChatSessionStartedAtMs,
   senderUid,
-  supabaseRestUrl,
-  supabaseAnonKey,
   onIncomingMessage,
 }: UseChatMessagesOptions) {
   const publicChatCleanupDoneRef = useRef(false);
@@ -86,31 +82,46 @@ export function useChatMessages({
       clearPublicChatStorage();
       setRoomMessages({});
 
-      if (!supabaseRestUrl || !supabaseAnonKey) return;
+      if (!supabase) return;
 
-      const params = new URLSearchParams({
-        sender_uid: `eq.${senderUid}`,
-        created_at: `gte.${publicChatSessionStartedAt}`,
-      });
+      void (async () => {
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
 
-      void fetch(`${supabaseRestUrl}/rest/v1/messages?${params.toString()}`, {
-        method: "DELETE",
-        headers: {
-          apikey: supabaseAnonKey,
-          Authorization: `Bearer ${supabaseAnonKey}`,
-        },
-        keepalive: useKeepalive,
-      })
-        .then((response) => {
-          if (!response.ok) {
-            console.warn(
-              "Failed to clean public session messages:",
-              response.status,
-              response.statusText,
-            );
+          const { error } = await supabase
+            .from("messages")
+            .delete()
+            .eq("sender_uid", senderUid)
+            .gte("created_at", publicChatSessionStartedAt);
+
+          if (error) {
+            console.warn("Failed to clean public session messages:", error.message);
           }
-        })
-        .catch((error) => {
+
+          if (useKeepalive && session?.access_token) {
+            const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").replace(
+              /\/rest\/v1\/?$/,
+              "",
+            );
+            if (!supabaseUrl) return;
+
+            const params = new URLSearchParams({
+              sender_uid: `eq.${senderUid}`,
+              created_at: `gte.${publicChatSessionStartedAt}`,
+            });
+
+            void fetch(`${supabaseUrl}/rest/v1/messages?${params.toString()}`, {
+              method: "DELETE",
+              headers: {
+                apikey: import.meta.env.VITE_SUPABASE_ANON_KEY || "",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              keepalive: true,
+            }).catch(() => {});
+          }
+        } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error ?? "");
           const isAbortLike =
@@ -121,14 +132,13 @@ export function useChatMessages({
           if (useKeepalive && isAbortLike) return;
 
           console.warn("Failed to clean public session messages:", error);
-        });
+        }
+      })();
     },
     [
       clearPublicChatStorage,
       publicChatSessionStartedAt,
       senderUid,
-      supabaseAnonKey,
-      supabaseRestUrl,
     ],
   );
 
@@ -182,30 +192,40 @@ export function useChatMessages({
 
     void fetchSupabaseMessages();
 
-    const subscription = subscribeToRoomMessages(activeRoomId, (sMsg) => {
-      if (
-        sMsg.created_at &&
-        new Date(sMsg.created_at).getTime() < publicChatSessionStartedAtMs
-      ) {
-        return;
-      }
-
-      const newLocalMsg = mapSupabaseMessage(sMsg, currentUserNickname);
-
-      setRoomMessages((prev) => {
-        const current = prev[activeRoomId] || [];
-        if (current.some((m) => m.id === newLocalMsg.id)) {
-          return prev;
+    const subscription = subscribeToRoomMessages(activeRoomId, {
+      onInsert: (sMsg) => {
+        if (
+          sMsg.created_at &&
+          new Date(sMsg.created_at).getTime() < publicChatSessionStartedAtMs
+        ) {
+          return;
         }
-        return {
-          ...prev,
-          [activeRoomId]: [...current, newLocalMsg],
-        };
-      });
 
-      if (sMsg.author !== currentUserNickname && sMsg.author) {
-        onIncomingMessage?.(sMsg, activeRoomId);
-      }
+        const newLocalMsg = mapSupabaseMessage(sMsg, currentUserNickname);
+
+        setRoomMessages((prev) => {
+          const current = prev[activeRoomId] || [];
+          if (current.some((m) => m.id === newLocalMsg.id)) {
+            return prev;
+          }
+          return {
+            ...prev,
+            [activeRoomId]: [...current, newLocalMsg],
+          };
+        });
+
+        if (sMsg.author !== currentUserNickname && sMsg.author) {
+          onIncomingMessage?.(sMsg, activeRoomId);
+        }
+      },
+      onDelete: (messageId) => {
+        setRoomMessages((prev) => ({
+          ...prev,
+          [activeRoomId]: (prev[activeRoomId] || []).filter(
+            (message) => message.id !== messageId,
+          ),
+        }));
+      },
     });
 
     return () => {

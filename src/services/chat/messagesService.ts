@@ -93,30 +93,89 @@ export async function persistRoomMessage({
   }
 }
 
+interface RoomMessageSubscriptionHandlers {
+  onInsert: (message: SupabaseMessage) => void;
+  onDelete?: (messageId: string) => void;
+}
+
 export function subscribeToRoomMessages(
   roomId: string,
-  onInsert: (message: SupabaseMessage) => void,
+  handlers: RoomMessageSubscriptionHandlers,
 ) {
   if (!supabase) return null;
 
-  return supabase
-    .channel(`room_${roomId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "messages",
-        filter: `room_id=eq.${roomId}`,
-      },
-      (payload) => {
-        onInsert(payload.new as SupabaseMessage);
-      },
-    )
-    .subscribe();
+  let activeChannel: ReturnType<typeof supabase.channel> | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let stopped = false;
+
+  const attach = () => {
+    if (stopped || !supabase) return;
+
+    activeChannel = supabase
+      .channel(`room_${roomId}_${Date.now()}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `room_id=eq.${roomId}`,
+        },
+        (payload) => {
+          handlers.onInsert(payload.new as SupabaseMessage);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "messages",
+          filter: `room_id=eq.${roomId}`,
+        },
+        (payload) => {
+          const deletedId = (payload.old as { id?: string }).id;
+          if (deletedId) {
+            handlers.onDelete?.(deletedId);
+          }
+        },
+      )
+      .subscribe((status, err) => {
+        if (stopped) return;
+
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn(
+            `[Chat] Realtime channel issue for room "${roomId}":`,
+            status,
+            err,
+          );
+          if (activeChannel) {
+            void supabase.removeChannel(activeChannel);
+            activeChannel = null;
+          }
+          retryTimer = setTimeout(attach, 2500);
+        }
+      });
+  };
+
+  attach();
+
+  return {
+    unsubscribe: () => {
+      stopped = true;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
+      if (activeChannel) {
+        supabase.removeChannel(activeChannel);
+      }
+    },
+  };
 }
 
-export function unsubscribeFromRoomMessages(subscription: ReturnType<typeof subscribeToRoomMessages>) {
-  if (!subscription || !supabase) return;
-  supabase.removeChannel(subscription);
+export function unsubscribeFromRoomMessages(
+  subscription: ReturnType<typeof subscribeToRoomMessages>,
+) {
+  if (!subscription) return;
+  subscription.unsubscribe();
 }

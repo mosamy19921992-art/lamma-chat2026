@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { supabase, getClientUid } from "../lib/supabase.ts";
 import { Smartphone, X, Download, Info, Check, Apple, HelpCircle, User, Sparkles } from "lucide-react";
 import {
+  buildAuthRedirectUrl,
   getResolvedSupabaseColor,
   getResolvedSupabaseNickname,
   hasPlaceholderSupabaseNickname,
@@ -211,7 +212,7 @@ export default function LoginScreen(props: LoginScreenProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: buildAuthRedirectUrl(),
         },
       });
 
@@ -361,7 +362,7 @@ export default function LoginScreen(props: LoginScreenProps) {
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: buildAuthRedirectUrl(),
         },
       });
 

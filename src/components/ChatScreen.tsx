@@ -721,10 +721,19 @@ export default function ChatScreen({
   onLogout,
   primaryTheme,
   onUserSessionUpdate,
+  inviteOnlyMode: inviteOnlyModeProp = false,
+  hasInviteAccess = false,
 }: ChatScreenProps) {
   const DEFAULT_AMBIENT_BG: string = "/MAN.png";
   const POSTS_ROOM_ID = "posts-feed";
   const customRoomsStorageKey = `lamma_custom_rooms_${currentUser.uid || currentUser.nickname}`;
+  const [isInviteOnlyMode, setIsInviteOnlyMode] = useState<boolean>(
+    () => inviteOnlyModeProp,
+  );
+
+  useEffect(() => {
+    setIsInviteOnlyMode(inviteOnlyModeProp);
+  }, [inviteOnlyModeProp]);
   const currentUserRoleLower = String(currentUser.role || "").toLowerCase();
   const isCurrentUserOwner = currentUserRoleLower === "owner";
   const currentUserStorageIdentity = String(
@@ -749,13 +758,48 @@ export default function ChatScreen({
   const chatLayoutStorageKey = userScopedStorageKey("lamma_chat_layout_prefs");
   const initialChatLayoutPrefs = loadChatLayoutPrefs(chatLayoutStorageKey);
 
+  const readStoredCustomRoomIds = (): string[] => {
+    try {
+      const saved = localStorage.getItem(customRoomsStorageKey);
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .map((room: { id?: string }) => room?.id?.trim().toLowerCase())
+        .filter(Boolean) as string[];
+    } catch {
+      return [];
+    }
+  };
+
   const readRequestedRoomId = () => {
     if (typeof window === "undefined") return "egypt";
     const requestedRoom = new URLSearchParams(window.location.search)
       .get("room")
       ?.trim()
       .toLowerCase();
-    return requestedRoom || "egypt";
+    const roomId = requestedRoom || "egypt";
+    const exists =
+      ROOMS_DEF.some((room) => room.id === roomId) ||
+      readStoredCustomRoomIds().includes(roomId);
+    return exists ? roomId : "egypt";
+  };
+
+  const buildInitialOpenRooms = (roomId: string) => {
+    const defaultTab = { id: "egypt", name: "مصر", flag: "🇪🇬" };
+    if (roomId === "egypt") {
+      return [defaultTab];
+    }
+
+    const requested = ROOMS_DEF.find((room) => room.id === roomId);
+    if (!requested) {
+      return [defaultTab];
+    }
+
+    return [
+      defaultTab,
+      { id: requested.id, name: requested.name, flag: requested.icon },
+    ];
   };
 
   const buildRoomLink = (roomId: string) => {
@@ -768,9 +812,7 @@ export default function ChatScreen({
     );
     url.searchParams.set("room", roomId || "egypt");
     const link = url.toString();
-    const inviteOnly =
-      typeof window !== "undefined" &&
-      localStorage.getItem("lamma_invite_only_mode") === "true";
+    const inviteOnly = inviteOnlyModeProp || isInviteOnlyMode;
     return inviteOnly ? appendInviteParam(link) : link;
   };
 
@@ -894,9 +936,9 @@ export default function ChatScreen({
   };
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [showPmListDropdown, setShowPmListDropdown] = useState(false);
-  const [openRooms, setOpenRooms] = useState([
-    { id: "egypt", name: "مصر", flag: "🇪🇬" },
-  ]);
+  const [openRooms, setOpenRooms] = useState(() =>
+    buildInitialOpenRooms(readRequestedRoomId()),
+  );
   const [customRooms, setCustomRooms] = useState<CustomRoomEntry[]>(() => {
     const saved = localStorage.getItem(customRoomsStorageKey);
     if (!saved) return [];
@@ -912,11 +954,6 @@ export default function ChatScreen({
   const geminiSearchEndpoint =
     import.meta.env.VITE_GEMINI_SEARCH_ENDPOINT || "";
   const senderUid = currentUser.uid || getClientUid();
-  const supabaseRestUrl = (import.meta.env.VITE_SUPABASE_URL || "").replace(
-    /\/rest\/v1\/?$/,
-    "",
-  );
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
   const publicChatSessionStartedAtRef = useRef<string>(
     new Date().toISOString(),
   );
@@ -941,6 +978,22 @@ export default function ChatScreen({
       setActiveRoomId("egypt");
     }
   }, [activeRoomId, availableRooms, isAdminRole, isOwnerRole]);
+
+  useEffect(() => {
+    const roomDef = ROOMS_DEF.find((room) => room.id === activeRoomId);
+    if (!roomDef) return;
+
+    setOpenRooms((prev) => {
+      if (prev.some((room) => room.id === activeRoomId)) {
+        return prev;
+      }
+
+      return [
+        ...prev,
+        { id: roomDef.id, name: roomDef.name, flag: roomDef.icon },
+      ];
+    });
+  }, [activeRoomId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1658,10 +1711,8 @@ export default function ChatScreen({
   const canDeleteMessage = (msg: any): boolean => {
     if (!msg) return false;
     if (msg.type === "system") return false;
-    const isOwner = currentUser.role === "owner";
-    const isAdmin = currentUser.role === "admin";
-    if (isOwner || isAdmin) return true;
-    if (supabase && !currentUser.uid) return false;
+    if (isOwnerRole || isAdminRole) return true;
+    if (currentUser.authProvider === "guest" || !currentUser.uid) return false;
     const cleanAuthor = msg.author
       .replace(/\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g, "")
       .trim();
@@ -2163,9 +2214,6 @@ export default function ChatScreen({
       return localStorage.getItem("lamma_greetings_enabled") !== "false";
     },
   );
-  const [isInviteOnlyMode, setIsInviteOnlyMode] = useState<boolean>(() => {
-    return localStorage.getItem("lamma_invite_only_mode") === "true";
-  });
   const [djLibrary, setDjLibrary] = useState<OwnerMusicTrack[]>([]);
   const [roomDjMap, setRoomDjMap] = useState<Record<string, RoomDjState>>({});
   const roomDjMapRef = useRef<Record<string, RoomDjState>>({});
@@ -4068,6 +4116,11 @@ export default function ChatScreen({
     const isOwner = roleLower === "owner";
     const isAdmin = roleLower === "admin" || isOwner;
 
+    if (roomId === "admin" && !isAdmin) {
+      alert("🛡️ غرفة الإدارة والشكاوى متاحة للمشرفين والمالك فقط.");
+      return;
+    }
+
     setActiveRoomId(roomId);
     setShowRoomsLists(false);
 
@@ -4286,8 +4339,6 @@ export default function ChatScreen({
     publicChatSessionStartedAt,
     publicChatSessionStartedAtMs,
     senderUid,
-    supabaseRestUrl,
-    supabaseAnonKey,
     onIncomingMessage: handleIncomingRoomMessage,
   });
 
@@ -7064,7 +7115,9 @@ export default function ChatScreen({
                 )}
 
                 {(() => {
-                  const visibleRooms = ROOMS_DEF;
+                  const visibleRooms = ROOMS_DEF.filter(
+                    (room) => room.id !== "admin" || isManagementRole,
+                  );
                   const mergedVisibleRooms = [...visibleRooms, ...customRooms];
 
                   return ROOM_CATEGORIES.map((category) => {

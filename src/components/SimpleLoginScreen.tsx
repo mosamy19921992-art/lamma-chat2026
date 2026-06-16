@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import { ChevronRight, LogIn, Mail, Shield, Sparkles } from "lucide-react";
 import LoginScreen from "./LoginScreen";
+import { buildAuthRedirectUrl } from "../lib/authProfile";
 import { supabase } from "../lib/supabase";
 
 interface SimpleLoginScreenProps {
@@ -88,7 +89,7 @@ export default function SimpleLoginScreen({
     }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: buildAuthRedirectUrl() },
     });
     if (error) showLoginError(error.message);
   };

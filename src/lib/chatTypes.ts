@@ -41,6 +41,8 @@ export interface ChatScreenProps {
   onLogout: () => void;
   primaryTheme: "dark" | "amoled";
   onUserSessionUpdate?: (patch: Partial<UserSession>) => void;
+  inviteOnlyMode?: boolean;
+  hasInviteAccess?: boolean;
 }
 
 export interface Message {

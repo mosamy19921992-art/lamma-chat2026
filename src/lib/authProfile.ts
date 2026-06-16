@@ -107,6 +107,33 @@ export function getResolvedSupabaseColor(user: SupabaseLikeUser): string {
   return getDeterministicPaletteColor(seed || "lamma-default-user");
 }
 
+const AUTH_REDIRECT_QUERY_KEYS = ["room", "invite", "reading"] as const;
+
+/** Preserve deep-link params (room/invite/reading) after Supabase OAuth/email redirects. */
+export function buildAuthRedirectUrl(fallbackOrigin?: string): string {
+  if (typeof window === "undefined") {
+    return (fallbackOrigin || import.meta.env.VITE_APP_URL || "").trim();
+  }
+
+  const current = new URL(window.location.href);
+  const redirect = new URL(
+    `${current.origin}${current.pathname || "/"}`,
+  );
+
+  for (const key of AUTH_REDIRECT_QUERY_KEYS) {
+    const value = current.searchParams.get(key);
+    if (value) {
+      redirect.searchParams.set(key, value);
+    }
+  }
+
+  if (!redirect.searchParams.has("room")) {
+    redirect.searchParams.set("room", "egypt");
+  }
+
+  return redirect.toString();
+}
+
 export function hasPlaceholderSupabaseNickname(user: SupabaseLikeUser): boolean {
   const nickname = getResolvedSupabaseNickname(user);
   const role = normalizeAuthRole(

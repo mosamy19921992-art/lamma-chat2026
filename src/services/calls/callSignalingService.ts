@@ -53,23 +53,50 @@ export function subscribeToCallSignals(
 ): () => void {
   if (!supabase || !myUid) return () => {};
 
-  const channel = supabase
-    .channel(`call_signals:${myUid}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "call_signals",
-        filter: `to_uid=eq.${myUid}`,
-      },
-      (payload) => {
-        onSignal(payload.new as CallSignalRow);
-      },
-    )
-    .subscribe();
+  let activeChannel: ReturnType<typeof supabase.channel> | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let stopped = false;
+
+  const attach = () => {
+    if (stopped || !supabase || !myUid) return;
+
+    activeChannel = supabase
+      .channel(`call_signals:${myUid}:${Date.now()}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "call_signals",
+          filter: `to_uid=eq.${myUid}`,
+        },
+        (payload) => {
+          onSignal(payload.new as CallSignalRow);
+        },
+      )
+      .subscribe((status, err) => {
+        if (stopped) return;
+
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("[Calls] Signal channel error:", status, err);
+          if (activeChannel) {
+            void supabase.removeChannel(activeChannel);
+            activeChannel = null;
+          }
+          retryTimer = setTimeout(attach, 2500);
+        }
+      });
+  };
+
+  attach();
 
   return () => {
-    supabase.removeChannel(channel);
+    stopped = true;
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+    }
+    if (activeChannel) {
+      supabase.removeChannel(activeChannel);
+    }
   };
 }

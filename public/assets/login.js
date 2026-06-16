@@ -32,8 +32,26 @@ function setEmailMethodOpen(nextOpen) {
   emailMethodToggle.setAttribute("aria-expanded", String(nextOpen));
 }
 
+function buildAuthRedirectUrl(baseUrl = window.location.origin) {
+  const current = new URL(window.location.href);
+  const redirect = new URL(APP_ENTRY_PATH, baseUrl);
+
+  for (const key of ["room", "invite", "reading"]) {
+    const value = current.searchParams.get(key);
+    if (value) {
+      redirect.searchParams.set(key, value);
+    }
+  }
+
+  if (!redirect.searchParams.has("room")) {
+    redirect.searchParams.set("room", "egypt");
+  }
+
+  return redirect.toString();
+}
+
 function getAppEntryUrl(baseUrl = window.location.origin) {
-  return new URL(APP_ENTRY_PATH, baseUrl).toString();
+  return buildAuthRedirectUrl(baseUrl);
 }
 
 function redirectToApp(baseUrl) {
@@ -130,7 +148,7 @@ async function handleGoogleLogin() {
   const { error } = await client.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: getAppEntryUrl(appUrl),
+      redirectTo: buildAuthRedirectUrl(appUrl),
     },
   });
   if (error) throw error;
