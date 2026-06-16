@@ -18,6 +18,7 @@ import {
   normalizeAuthRole,
 } from './lib/authProfile';
 import { mergeSessionRole } from './services/auth/userRoleService';
+import { ensureFreshAppBuild } from './lib/appCache';
 
 const CHAT_SCREEN_IMPORT = () => import('./components/ChatScreen');
 
@@ -184,6 +185,11 @@ export default function App() {
 
   // PWA: register service worker, expose install/update state.
   const sw = useServiceWorker();
+
+  // Drop stale bundles after deploy (fixes old cached DJ upload code).
+  useEffect(() => {
+    void ensureFreshAppBuild();
+  }, []);
 
   // Silent background auto-heal: quietly fixes corrupted data / full cache
   // every 5 minutes without touching messages or showing any UI.

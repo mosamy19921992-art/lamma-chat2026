@@ -53,17 +53,28 @@ async function api(path, options = {}) {
 
 async function applySql() {
   const root = dirname(fileURLToPath(import.meta.url));
-  const sql = readFileSync(
+
+  const hardeningSql = readFileSync(
     join(root, "..", "supabase-production-hardening.sql"),
     "utf8",
   );
-
   console.log("Applying supabase-production-hardening.sql ...");
   await api(`/projects/${PROJECT_REF}/database/query`, {
     method: "POST",
-    body: JSON.stringify({ query: sql }),
+    body: JSON.stringify({ query: hardeningSql }),
   });
   console.log("SQL hardening applied.");
+
+  const storageSql = readFileSync(
+    join(root, "..", "supabase-storage.sql"),
+    "utf8",
+  );
+  console.log("Applying supabase-storage.sql ...");
+  await api(`/projects/${PROJECT_REF}/database/query`, {
+    method: "POST",
+    body: JSON.stringify({ query: storageSql }),
+  });
+  console.log("Storage buckets/policies applied.");
 }
 
 async function updateAuthUrls() {
