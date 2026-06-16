@@ -1249,29 +1249,7 @@ export default function ChatScreen({
   const [dbStatusLogs, setDbStatusLogs] = useState<string[]>([]);
 
   // Custom user suggestions friend request list
-  const [friendSuggestions, setFriendSuggestions] = useState([
-    {
-      id: "sug-1",
-      name: "أدهم التونسي 🇹🇳",
-      interest: "🎮 Trivia والمسابقات",
-      icon: "🎸",
-      status: "suggested",
-    },
-    {
-      id: "sug-2",
-      name: "رنا النمس 🇪🇬",
-      interest: "🎵 سماع وتحليل الموسيقى",
-      icon: "👩",
-      status: "suggested",
-    },
-    {
-      id: "sug-3",
-      name: "شريف الأخرس 🇸🇦",
-      interest: "🛡️ الإشراف والحوار الرصين",
-      icon: "👳",
-      status: "suggested",
-    },
-  ]);
+  const [friendSuggestions, setFriendSuggestions] = useState<any[]>([]);
 
   // Shop interactive state variables
   const [shopTab, setShopTab] = useState<
@@ -4614,6 +4592,12 @@ export default function ChatScreen({
   const handleSendPM = async () => {
     if (!pmTarget || !pmInputText.trim()) return;
 
+    if (currentUser.authProvider === "guest") {
+      alert("💌 الرسائل الخاصة للمسجلين فقط.\n\nسجّل حساباً مجاناً عبر البريد أو Google للاستمتاع بالرسائل الخاصة.");
+      setPmInputText("");
+      return;
+    }
+
     // Rate limiting: max 3 messages per second
     const now = Date.now();
     rateLimitRef.current = rateLimitRef.current.filter((t) => now - t < 1000);
@@ -6269,18 +6253,43 @@ export default function ChatScreen({
                     isOpen={showNotificationsDropdown}
                     onClose={() => setShowNotificationsDropdown(false)}
                     title="مركز الإشعارات"
-                    icon={
-                      <Bell size={16} className="text-[rgb(148,163,184)]" />
-                    }
+                    icon={<Bell size={16} className="text-[rgb(148,163,184)]" />}
                   >
                     <div className="bg-transparent text-right space-y-2">
-                      <p className="text-[11px] text-gray-400 font-bold border-b border-white/5 pb-2">
-                        أحدث التنبيهات والأحداث الخاصة بك في البرنامج.
-                      </p>
-
-                      <div className="grid gap-2">
-                        {/* Fake notifications removed to avoid confusion */}
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                        <p className="text-[11px] text-gray-400 font-bold">أحدث الإشعارات.</p>
+                        <div className="flex items-center gap-1.5">
+                          {unreadNotificationsCount > 0 && (
+                            <span className="text-[8px] px-1.5 py-0.5 font-mono lamma-notify-pill">{unreadNotificationsCount} جديد</span>
+                          )}
+                          <button onClick={() => setNotifications((prev) => { const next = prev.map((n) => ({ ...n, read: true })); try { localStorage.setItem("lamma_notifications", JSON.stringify(next)); } catch {} return next; })}
+                            className="text-[9px] text-gray-300 px-2 py-0.5 rounded cursor-pointer lamma-soft-action">تحديد الكل كمقروء</button>
+                          <button onClick={() => { setNotifications([]); try { localStorage.removeItem("lamma_notifications"); } catch {} }}
+                            className="text-[9px] text-red-400 px-2 py-0.5 rounded cursor-pointer lamma-soft-action">مسح الكل</button>
+                        </div>
                       </div>
+                      {notifications.length === 0 ? (
+                        <div className="p-6 text-center text-[11px] text-gray-500">مفيش إشعارات لسه 💤</div>
+                      ) : (
+                        <div className="grid gap-2">
+                          {notifications.slice(0, 20).map((n) => (
+                            <div key={n.id}
+                              className={`p-2.5 rounded-xl border flex items-start gap-2.5 cursor-pointer lamma-notification-card ${n.read ? "opacity-75" : "lamma-notification-card-unread"}`}
+                              onClick={() => setNotifications((prev) => { const next = prev.map((x) => x.id === n.id ? { ...x, read: true } : x); try { localStorage.setItem("lamma_notifications", JSON.stringify(next)); } catch {} return next; })}
+                            >
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${n.kind === "mention" ? "bg-yellow-500/20 text-yellow-400" : n.kind === "pm" ? "bg-blue-500/20 text-blue-400" : "bg-green-500/20 text-green-400"}`}>
+                                <Bell size={12} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-[11px] font-black text-white truncate">{n.title}</h4>
+                                <p className="text-[9px] text-gray-400 mt-0.5 break-words">{n.body}</p>
+                                <span className="text-[8px] text-gray-500 font-mono mt-1 block">{new Date(n.at).toLocaleString("ar-EG", { hour: "numeric", minute: "numeric", day: "2-digit", month: "short" })}</span>
+                              </div>
+                              {!n.read && <span className="w-2 h-2 rounded-full bg-green-400 shrink-0 mt-1" />}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </MobileBottomSheet>
                 </div>
@@ -8284,30 +8293,6 @@ export default function ChatScreen({
                             >
                               👍
                             </button>
-                            <div className="w-[1px] h-3 bg-white/20 mx-0.5"></div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const translations = [
-                                  "Hello everyone!",
-                                  "How are you?",
-                                  "Welcome to the group",
-                                  "Good morning!",
-                                ];
-                                const randomTranslation =
-                                  translations[
-                                    Math.floor(
-                                      Math.random() * translations.length,
-                                    )
-                                  ];
-                                alert(
-                                  `الترجمة التقريبية:\n\n${randomTranslation}`,
-                                );
-                              }}
-                              className="text-[9px] text-[#10b981] hover:text-green-300 font-bold px-1 cursor-pointer"
-                            >
-                              ترجمة
-                            </button>
                             {canDeleteMessage(msg) && (
                               <>
                                 <div className="w-[1px] h-3 bg-white/20 mx-0.5"></div>
@@ -8983,9 +8968,11 @@ export default function ChatScreen({
                     handleSendMessage();
                   }
                 }}
-                disabled={isPostsRoom && !canPublishPosts}
+                disabled={(isPostsRoom && !canPublishPosts) || (isMaintenanceMode && !isManagementRole)}
                 placeholder={
-                  isPostsRoom
+                  isMaintenanceMode && !isManagementRole
+                    ? "⚙️ الشات في وضع الصيانة — الكتابة متوقفة مؤقتاً"
+                    : isPostsRoom
                     ? canPublishPosts
                       ? "اكتب منشورك العام هنا..."
                       : "المشاهدة متاحة للجميع، والنشر للمسجلين فقط"
@@ -9830,8 +9817,9 @@ export default function ChatScreen({
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleSendPM();
                     }}
-                    placeholder="اكتب على راحتك..."
-                    className="flex-1 bg-transparent border-none text-right font-semibold text-[11px] text-white focus:ring-0 focus:outline-none"
+                    placeholder={currentUser.authProvider === "guest" ? "الرسائل الخاصة للمسجلين فقط..." : "اكتب على راحتك..."}
+                    disabled={currentUser.authProvider === "guest"}
+                    className={`flex-1 bg-transparent border-none text-right font-semibold text-[11px] focus:ring-0 focus:outline-none ${currentUser.authProvider === "guest" ? "text-gray-500 cursor-not-allowed" : "text-white"}`}
                   />
 
                   <button
@@ -10691,6 +10679,11 @@ export default function ChatScreen({
         blockedUsers={blockedUsers}
         handlers={{
           onSendPM: (target) => {
+            if (currentUser.authProvider === "guest") {
+              alert("💌 الرسائل الخاصة متاحة للمسجلين فقط.\n\nسجّل حساباً مجاناً عبر البريد أو Google للاستمتاع بالرسائل الخاصة.");
+              setShowUserContextPop(false);
+              return;
+            }
             setPmTarget({
               nickname: target.nickname,
               role: normalizePmRole(target.role),

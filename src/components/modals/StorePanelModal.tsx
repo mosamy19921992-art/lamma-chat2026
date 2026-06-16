@@ -522,93 +522,15 @@ export function StorePanelModal({
         </div>
       )}
 
-      {/* TAB CONTENTS - 4. AUTOMATED FRIEND SUGGESTIONS */}
+      {/* TAB CONTENTS - 4. FRIEND SUGGESTIONS (coming soon) */}
       {shopTab === "suggests" && (
-        <div className="space-y-3">
-          <div className="p-3 rounded-2xl lamma-section-card">
-            <p className="text-[9.5px] text-gray-300 font-bold leading-relaxed">
-              🤖 بوت الأرجحة الآلي يقترح عليك هؤلاء الأعضاء المتواجدين حالياً
-              الحاملين لنفس اهتمامات الحوار والثقافة لتلقيح روابط الصداقة
-              تلقائياً:
-            </p>
+        <div className="p-6 rounded-2xl lamma-section-card flex flex-col items-center gap-3 text-center">
+          <span className="text-3xl">👥</span>
+          <div className="text-[11px] font-black text-white">اقتراحات الأصدقاء</div>
+          <div className="text-[9.5px] text-gray-400 font-bold leading-relaxed">
+            سيتم إطلاق نظام اقتراح الأعضاء قريباً — يعتمد على الاهتمامات المشتركة والتفاعل الحقيقي.
           </div>
-
-          <div className="space-y-2">
-            {friendSuggestions.map((sug) => (
-              <div
-                key={sug.id}
-                className="p-3 rounded-xl flex items-center justify-between gap-3 text-right lamma-admin-card"
-              >
-                {sug.status === "pending" ? (
-                  <span className="text-[9px] bg-yellow-500/15 text-yellow-500 border border-yellow-500/25 py-1 px-2.5 rounded-lg font-bold animate-pulse font-sans">
-                    ⏳ جاري التفاوض الآلي...
-                  </span>
-                ) : sug.status === "accepted" ? (
-                  <span className="text-[9px] bg-green-500/10 text-green-400 border border-green-500/20 py-1 px-2.5 rounded-lg font-bold font-sans">
-                    🤝 تم القبول والصداقة مفعّلة!
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setFriendSuggestions((prev) =>
-                        prev.map((item) =>
-                          item.id === sug.id
-                            ? { ...item, status: "pending" }
-                            : item
-                        )
-                      );
-
-                      const timeStr = new Date().toLocaleTimeString("ar-EG", {
-                        hour: "numeric",
-                        minute: "numeric",
-                        hour12: true,
-                      });
-                      setBotLogs((prev) => [
-                        {
-                          id: `${Date.now()}`,
-                          time: timeStr,
-                          text: `ماتش أوفر للتلقين: جاري مطابقة بيانات الاهتمام والصداقة مع ${sug.name} آلياً.`,
-                          severity: "info",
-                        },
-                        ...prev,
-                      ]);
-
-                      setTimeout(() => {
-                        setFriendSuggestions((prev) =>
-                          prev.map((item) =>
-                            item.id === sug.id
-                              ? { ...item, status: "accepted" }
-                              : item
-                          )
-                        );
-                        addLammaBotMessage(
-                          activeRoomId,
-                          `🤖 تم إرسال طلب الصداقة المقترح بين [${currentUser.nickname}] و[${sug.name}] بنجاح.`
-                        );
-                      }, 2000);
-                    }}
-                    className="py-1 px-3 font-bold text-[9.5px] rounded-lg transition-all cursor-pointer lamma-feature-primary"
-                  >
-                    📨 إرسال طلب صداقة آلي
-                  </button>
-                )}
-
-                <div className="flex items-center gap-2">
-                  <div className="space-y-0.5">
-                    <h6 className="text-[11px] font-black text-white">
-                      {sug.name}
-                    </h6>
-                    <p className="text-[8.5px] text-gray-500 font-extrabold">
-                      {sug.interest}
-                    </p>
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-base shrink-0 select-none">
-                    {sug.icon}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <span className="text-[8px] font-bold px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/10">قريباً</span>
         </div>
       )}
 
@@ -837,398 +759,97 @@ export function StorePanelModal({
       )}
 
       {/* GATEWAY PAYMENT PANEL (IF PRODUCT CHOSEN) */}
-      {selectedProduct && payStatus !== "loading" && payStatus !== "success" && (
+      {selectedProduct && payStatus !== "success" && (
         <div className="p-4 rounded-2xl text-right space-y-3 font-sans animate-fadeIn lamma-section-card">
           <div className="flex items-center justify-between border-b border-green-500/15 pb-2">
             <button
-              onClick={() => setSelectedProduct(null)}
+              onClick={() => { setSelectedProduct(null); setPayStatus("idle"); setPaymentAccountInput(""); setPayGateway(null); }}
               className="text-[9.5px] text-gray-500 hover:text-white font-black hover:underline"
             >
               رجوع للتسوق
             </button>
             <h6 className="font-sans font-black text-white text-xs">
-              عملية دفع آمنة مؤتمتة • Lamma AutoPay
+              طلب تفعيل • يراجعه المالك
             </h6>
           </div>
 
           <div className="p-3 rounded-xl space-y-1.5 text-right lamma-admin-card">
-            <div className="text-[10px] text-gray-400 font-bold leading-normal">
-              المنتج المحدد للتفعيل التلقائي:
-            </div>
-            <div className="text-white text-[12px] font-black">
-              {selectedProduct.name}
-            </div>
-            <div className="text-emerald-400 text-[10.5px] font-mono">
-              طريقة الدفع وقيمتها: {selectedProduct.price}
-            </div>
+            <div className="text-[10px] text-gray-400 font-bold leading-normal">المنتج المطلوب:</div>
+            <div className="text-white text-[12px] font-black">{selectedProduct.name}</div>
+            <div className="text-emerald-400 text-[10.5px] font-mono">السعر: {selectedProduct.price}</div>
+          </div>
+
+          <div className="p-3 rounded-xl lamma-admin-card text-right space-y-1.5">
+            <div className="text-[9px] text-amber-300 font-black">📋 آلية التفعيل</div>
+            <p className="text-[9px] text-gray-400 font-bold leading-relaxed">
+              بعد إرسال الطلب، يتم مراجعته من المالك وتفعيله يدوياً خلال 24 ساعة.
+              ستصلك رسالة في الشات فور التفعيل.
+            </p>
           </div>
 
           <div className="space-y-1.5">
-            <span className="text-[9px] text-gray-400 font-extrabold pr-1">
-              اختر مزود الدفع الفوري:
-            </span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button
-                onClick={() => {
-                  setPayGateway("vodafone");
-                  setPaymentAccountInput("");
-                }}
-                className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
-                  payGateway === "vodafone"
-                    ? "lamma-toggle-off"
-                    : "lamma-tab-soft text-gray-400 hover:text-white"
-                }`}
-              >
-                🍎 فودافون كاش
-              </button>
-              <button
-                onClick={() => {
-                  setPayGateway("instapay");
-                  setPaymentAccountInput("");
-                }}
-                className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
-                  payGateway === "instapay"
-                    ? "lamma-accent-btn"
-                    : "lamma-tab-soft text-gray-400 hover:text-white"
-                }`}
-              >
-                ⚡ إنستاباي IPA
-              </button>
-              <button
-                onClick={() => {
-                  setPayGateway("paymob");
-                  setPaymentAccountInput("");
-                }}
-                className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
-                  payGateway === "paymob"
-                    ? "lamma-accent-btn"
-                    : "lamma-tab-soft text-gray-400 hover:text-white"
-                }`}
-              >
-                💳 بطاقة فيزا/ميزة
-              </button>
-              <button
-                onClick={() => {
-                  setPayGateway("stripe");
-                  setPaymentAccountInput("");
-                }}
-                className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
-                  payGateway === "stripe"
-                    ? "lamma-accent-btn"
-                    : "lamma-tab-soft text-gray-400 hover:text-white"
-                }`}
-              >
-                💳 Stripe الآلي
-              </button>
-              <button
-                onClick={() => {
-                  setPayGateway("paypal");
-                  setPaymentAccountInput("");
-                }}
-                className={`py-2 rounded-xl text-[9px] font-black border transition-all ${
-                  payGateway === "paypal"
-                    ? "lamma-soft-warn"
-                    : "lamma-tab-soft text-gray-400 hover:text-white"
-                }`}
-              >
-                🅿️ PayPal
-              </button>
+            <span className="text-[9px] text-gray-400 font-extrabold pr-1">اختر طريقة الإشعار:</span>
+            <div className="grid grid-cols-2 gap-2">
+              {(["vodafone", "instapay"] as const).map((m) => (
+                <button key={m} onClick={() => { setPayGateway(m); setPaymentAccountInput(""); }}
+                  className={`py-2 rounded-xl text-[9px] font-black border transition-all ${payGateway === m ? "lamma-toggle-on" : "lamma-tab-soft text-gray-400 hover:text-white"}`}>
+                  {m === "vodafone" ? "📱 فودافون كاش" : "💳 إنستاباي"}
+                </button>
+              ))}
             </div>
           </div>
 
-          {payGateway === "vodafone" && (
+          {payGateway && (
             <div className="space-y-1 text-right">
-              <label
-                htmlFor="vodafone-wallet-input"
-                className="text-[9px] text-gray-400 font-extrabold pr-1"
-              >
-                قم بتحويل المبلغ فودافون كاش للرقم{" "}
-                <span className="text-white text-xs font-mono">01029384756</span>{" "}
-                ثم اكتب رقم محفظتك للتأكيد التلقائي:
+              <label className="text-[9px] text-gray-400 font-extrabold pr-1">
+                {payGateway === "vodafone" ? "رقم المحفظة اللي حولت منها:" : "عنوان إنستاباي:"}
               </label>
-              <input
-                type="text"
-                id="vodafone-wallet-input"
-                name="vodafoneWallet"
-                autoComplete="tel"
-                maxLength={11}
-                placeholder="01xxxxxxxxx (رقم المحفظة المحول منها)"
-                value={paymentAccountInput}
-                onChange={(e) =>
-                  setPaymentAccountInput(e.target.value.replace(/\D/g, ""))
-                }
-                className="w-full rounded-xl p-2.5 text-xs text-white text-right focus:outline-none text-right lamma-input-shell"
-              />
-            </div>
-          )}
-
-          {payGateway === "instapay" && (
-            <div className="space-y-1 text-right">
-              <label
-                htmlFor="instapay-address-input"
-                className="text-[9px] text-gray-400 font-extrabold pr-1"
-              >
-                قم بالتحويل الآمن لعنوان إنستاباي{" "}
-                <span className="text-white text-xs font-mono">
-                  lamma@instapay
-                </span>{" "}
-                ثم اكتب الـ Adresse الخاص بك:
-              </label>
-              <input
-                type="text"
-                id="instapay-address-input"
-                name="instapayAddress"
-                autoComplete="off"
-                placeholder="username@instapay (عنوان إرسالك للتسوية)"
-                value={paymentAccountInput}
+              <input type="text" autoComplete="off" value={paymentAccountInput}
                 onChange={(e) => setPaymentAccountInput(e.target.value)}
-                className="w-full rounded-xl p-2.5 text-xs text-white text-right focus:outline-none text-right lamma-input-shell"
-              />
-            </div>
-          )}
-
-          {payGateway === "paymob" && (
-            <div className="space-y-2 text-right">
-              <div className="text-[9px] text-gray-400 font-extrabold pr-1">
-                أدخل بيانات بطاقتك الائتمانية للتسوية الآمنة:
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <input
-                  type="text"
-                  id="paymob-cvv"
-                  name="paymob-cvv"
-                  autoComplete="cc-csc"
-                  maxLength={3}
-                  placeholder="CVV"
-                  className="rounded-xl p-2 text-xs text-center text-white lamma-input-shell"
-                />
-                <input
-                  type="text"
-                  id="paymob-expiry"
-                  name="paymob-expiry"
-                  autoComplete="cc-exp"
-                  maxLength={5}
-                  placeholder="MM/YY"
-                  className="rounded-xl p-2 text-xs text-center text-white lamma-input-shell"
-                />
-                <input
-                  type="text"
-                  id="paymob-card-number"
-                  name="paymob-card-number"
-                  autoComplete="cc-number"
-                  maxLength={16}
-                  placeholder="رقم البطاقة المكون من 16 رقم"
-                  className="rounded-xl p-2 text-xs text-right text-white col-span-2 lamma-input-shell"
-                />
-              </div>
-            </div>
-          )}
-
-          {payGateway === "paypal" && (
-            <div className="space-y-1 text-right">
-              <label
-                htmlFor="paypal-email-input"
-                className="text-[9px] text-gray-400 font-extrabold pr-1"
-              >
-                قم بإدخال بريدك الإلكتروني المسجل في PayPal للتسوية التلقائية:
-              </label>
-              <input
-                type="email"
-                id="paypal-email-input"
-                name="paypal-email"
-                autoComplete="email"
-                placeholder="name@example.com (حسابك لتسجيل المعاملة)"
-                value={paymentAccountInput}
-                onChange={(e) => setPaymentAccountInput(e.target.value)}
-                className="w-full rounded-xl p-2.5 text-xs text-white text-right focus:outline-none text-right lamma-input-shell"
-              />
+                placeholder={payGateway === "vodafone" ? "01xxxxxxxxx" : "username@instapay"}
+                className="w-full rounded-xl p-2.5 text-xs text-white text-right focus:outline-none lamma-input-shell" />
             </div>
           )}
 
           <button
-            onClick={() => {
-              if (
-                (payGateway === "vodafone" || payGateway === "instapay") &&
-                !paymentAccountInput.trim()
-              ) {
-                alert(
-                  "❌ يرجى إدخال محفظة التحويل أو عنوان إنستاباي بنجاح للمطابقة الآلية!"
-                );
-                return;
-              }
-
-              setPayStatus("loading");
-              setPaymentLogs([
-                "⏳ جاري إنشاء حلقة تسوية المعاملة عبر Lamma AutoPay Server...",
-                "🔍 جاري التحري والتدقيق المالي من صحة تسليم إشعار فودافون كاش / إنستاباي اللاسلكي...",
-              ]);
-
-              setTimeout(() => {
-                setPaymentLogs((prev) => [
-                  ...prev,
-                  "📂 عثرنا على إثبات الإشعار المعنون آلياً بمستويات سداد مقابلة.",
-                  "⚡ جاري المطابقة والتصديق الفوري في قواعد كبار الشخصيات والشارات المقترحة...",
-                ]);
-              }, 1000);
-
-              setTimeout(() => {
-                setPaymentLogs((prev) => [
-                  ...prev,
-                  "💎 تم تأكيد الدفع بنسبة سلامة 100%! جاري التفعيل، ترقية الصلاحيات، وحقن الجوان مظهر الشات...",
-                ]);
-              }, 2200);
-
-              setTimeout(() => {
-                setPayStatus("success");
-
-                if (
-                  selectedProduct.type === "bronze" ||
-                  selectedProduct.type === "platinum" ||
-                  selectedProduct.type === "vip"
-                ) {
-                  const isPlat = selectedProduct.type === "platinum";
-                  const expiresAtMs = Date.now() + 30 * 24 * 60 * 60 * 1000;
-                  const subInfo = {
-                    isActive: true,
-                    type: isPlat ? "platinum" : "vip",
-                    color: isPlat
-                      ? "gradient"
-                      : selectedProduct.color || "#10b981",
-                    badge:
-                      selectedProduct.badge || (isPlat ? "PLATINUM" : "VIP"),
-                    frame: isPlat
-                      ? "from-yellow-500 via-amber-500 to-yellow-600"
-                      : selectedProduct.frame || "",
-                    avatar: selectedProduct.avatar || "👤",
-                    expiresAt: expiresAtMs,
-                  };
-                  localStorage.setItem(
-                    subscriptionStorageKey,
-                    JSON.stringify(subInfo)
-                  );
-                  setSubscription(subInfo);
-
-                  setMyActiveSession((prev: any) => ({
-                    ...prev,
-                    color:
-                      subInfo.color === "gradient" ? undefined : subInfo.color,
-                    badge: subInfo.badge,
-                    avatar: subInfo.avatar,
-                    frame: subInfo.frame,
-                  }));
-
-                  addLammaBotMessage(
-                    activeRoomId,
-                    `🤖 تم تفعيل ميزة [${selectedProduct.name}] للعضو المميز [${currentUser.nickname}] غرفوياً بوقار متناهٍ لمدة 30 يوماً! تم تفعيل الشارات والاتصال الفوري تلقائياً بالتحقق عبر ${payGateway === "vodafone" ? "فودافون كاش 🍎" : payGateway === "instapay" ? "إنستاباي ⚡" : payGateway === "paypal" ? "PayPal 🅿️" : "البطاقة البنكية 💳"} 🎉!`
-                  );
-                  addSystemActivityLog(
-                    "promote",
-                    currentUser.nickname,
-                    `شراء واشتراك تلقائي في باقة كبار الشخصيات VIP وتفعيلها فوراً آلياً بالدفع الرقمي.`,
-                    "🤖 LAMMA AUTO-VERIFIER"
-                  );
-                } else if (selectedProduct.type === "frame") {
-                  setMyActiveSession((prev: any) => ({
-                    ...prev,
-                    frame: selectedProduct.frame,
-                  }));
-                  addLammaBotMessage(
-                    activeRoomId,
-                    `🤖 مظهر جديد متجانس: قام العضو [${currentUser.nickname}] بشراء مظهر الإطار الراقي [${selectedProduct.name}] وتولت الأتمتة المظهرية من تفعليه فوراً حول ملفه الشخصي بنجاح 🎨!`
-                  );
-                  addSystemActivityLog(
-                    "promote",
-                    currentUser.nickname,
-                    `شراء وتفعيل إطار المظهر المتوهج [${selectedProduct.name}] وتوليه فوراً.`,
-                    "🤖 LAMMA AUTO-VERIFIER"
-                  );
-                } else if (selectedProduct.type === "title") {
-                  setMyActiveSession((prev: any) => ({
-                    ...prev,
-                    title: selectedProduct.title,
-                    badge: selectedProduct.badge,
-                  }));
-                  addLammaBotMessage(
-                    activeRoomId,
-                    `🤖 صلاحية فخرية: قام العضو [${currentUser.nickname}] بشراء وتفعيل لقب التفاضل الخاص [${selectedProduct.title}] وتم إرساءه تلقائياً بجواز رتبته في الغرفة 🏷️!`
-                  );
-                  addSystemActivityLog(
-                    "promote",
-                    currentUser.nickname,
-                    `تثبيت لقب العضو الفخري المميز [${selectedProduct.title}] بنجاح آلياً.`,
-                    "🤖 LAMMA AUTO-VERIFIER"
-                  );
-                }
-              }, 3200);
+            onClick={async () => {
+              if (!payGateway) { alert("اختر طريقة الدفع أولاً"); return; }
+              if (!paymentAccountInput.trim()) { alert("أدخل بيانات الدفع"); return; }
+              const { error } = await submitOrder({
+                user_id: currentUser.uid || "",
+                user_nickname: currentUser.nickname,
+                user_email: currentUser.email || undefined,
+                plan_id: selectedProduct.id || "custom-product",
+                plan_name: selectedProduct.name,
+                amount: Number(selectedProduct.price) || 0,
+                payment_method: payGateway,
+                payment_ref: paymentAccountInput.trim(),
+                payment_phone: payGateway === "vodafone" ? paymentAccountInput.trim() : "",
+              });
+              if (error) { alert(`❌ تعذر إرسال الطلب: ${error}`); return; }
+              setPayStatus("success");
             }}
             className="w-full py-2.5 text-white text-[10.5px] font-black rounded-xl transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 lamma-feature-primary"
           >
-            💸 تأكيد الدفع التلقائي الآمن وإصدار الترقية فوراً
+            📨 إرسال الطلب للمالك للمراجعة
           </button>
         </div>
       )}
 
-      {/* GATEWAY PAYMENT LOADER SIMULATION */}
-      {payStatus === "loading" && (
-        <div className="p-5 rounded-2xl text-center space-y-4 font-sans animate-fadeIn lamma-section-card">
-          <div className="w-12 h-12 rounded-full border-t-2 border-emerald-500 animate-spin mx-auto"></div>
-          <div className="space-y-1.5 pt-2">
-            <h6 className="font-sans font-black text-white text-xs">
-              جاري فحص المعاملات آلياً دون تدخل بشري...
-            </h6>
-            <p className="text-[10px] text-gray-400 font-bold leading-normal font-mono animate-pulse">
-              Lamma Auto-Verification Server Connection Node-9
-            </p>
-          </div>
-          <div className="p-3 rounded-xl space-y-1 max-h-[140px] overflow-y-auto lamma-admin-card">
-            {paymentLogs.map((log, i) => (
-              <div
-                key={i}
-                className="text-right text-emerald-400 text-[9px] font-bold font-mono"
-              >
-                ▸ {log}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* GATEWAY PAYMENT SUCCESS PANEL */}
+      {/* ORDER SENT SUCCESS PANEL */}
       {payStatus === "success" && (
-        <div className="p-6 rounded-3xl text-center space-y-4 font-sans animate-bounceIn lamma-soft-success">
-          <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl mx-auto shadow-[0_0_15px_rgba(16,185,129,0.3)] shrink-0 select-none">
-            ✓
-          </div>
-          <div className="space-y-1 pt-1 text-center">
-            <h6 className="font-sans font-black text-white text-sm">
-              تم الدفع والتفعيل التلقائي بنجاح!
-            </h6>
-            <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
-              تم تفعيل الطلب واحتساب رتبك ودمج المزايا بالدردشة تلقائياً. تم
-              تسجيل الحدث وإشعار جميع الغرف في أمان وسلام.
+        <div className="p-6 rounded-3xl text-center space-y-4 font-sans lamma-soft-success">
+          <div className="text-3xl">🎉</div>
+          <div className="space-y-1 text-center">
+            <h6 className="font-sans font-black text-white text-sm">تم إرسال طلبك بنجاح!</h6>
+            <p className="text-[10px] text-gray-300 font-bold leading-relaxed">
+              سيراجع المالك طلبك ويفعّله يدوياً خلال 24 ساعة.
+              ستصلك رسالة في الشات فور التفعيل.
             </p>
           </div>
-          <div className="p-3 rounded-2xl flex items-center justify-between text-right font-sans lamma-admin-card">
-            <div className="flex flex-col items-start leading-tight">
-              <span className="text-white text-xs font-black">
-                {currentUser.nickname}
-              </span>
-              <span className="text-emerald-400 font-mono text-[8.5px] mt-0.5">
-                {myVisualRole || "user"}
-              </span>
-            </div>
-            <span className="text-[9.5px] font-black bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">
-              نشط ومرخص آلياً
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              setSelectedProduct(null);
-              setPayStatus("idle");
-            }}
-            className="w-full py-2 text-white font-extrabold text-[10px] rounded-xl transition-all lamma-feature-primary"
-          >
-            عودة لمركز المتجر والأتمتة
+          <button onClick={() => { setSelectedProduct(null); setPayStatus("idle"); setPayGateway(null); setPaymentAccountInput(""); }}
+            className="w-full py-2 text-white font-extrabold text-[10px] rounded-xl transition-all lamma-feature-primary">
+            عودة للمتجر
           </button>
         </div>
       )}
