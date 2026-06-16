@@ -10,7 +10,7 @@ export const RADIO_STATIONS = [
     id: "nogoum",
     name: "نجوم FM 📻",
     frequency: "100.6 FM",
-    url: "https://n09.radiojar.com/nogoum",
+    url: "https://audio.nrpstream.com/listen/nogoumfm/radio.mp3",
   },
 ] as const;
 

@@ -3171,16 +3171,21 @@ export default function ChatScreen({
     if (isRadioPlaying) {
       radioAudioRef.current.pause();
       setIsRadioPlaying(false);
-    } else {
-      if (isMusicPlaying && musicAudioRef.current) {
-        musicAudioRef.current.pause();
-        setIsMusicPlaying(false);
-      }
-      radioAudioRef.current
-        .play()
-        .catch((err) => console.log("Audio play error", err));
-      setIsRadioPlaying(true);
+      return;
     }
+    if (isMusicPlaying && musicAudioRef.current) {
+      musicAudioRef.current.pause();
+      setIsMusicPlaying(false);
+    }
+    radioAudioRef.current
+      .play()
+      .then(() => setIsRadioPlaying(true))
+      .catch(() => {
+        setIsRadioPlaying(false);
+        alert(
+          "⚠️ تعذر تشغيل الراديو. جرّب محطة أخرى أو تأكد من اتصال الإنترنت.",
+        );
+      });
   };
 
   const handleSelectRadioStation = (station: RadioStation) => {
@@ -11184,8 +11189,20 @@ export default function ChatScreen({
       />
 
       {/* Real audio elements for Radio and Music streaming/playback */}
-      <audio ref={radioAudioRef} src={currentRadioStation.url} preload="none" />
-      <audio ref={musicAudioRef} src={currentMusicTrack.url} preload="none" />
+      <audio
+        ref={radioAudioRef}
+        src={currentRadioStation.url}
+        preload="none"
+        crossOrigin="anonymous"
+        playsInline
+      />
+      <audio
+        ref={musicAudioRef}
+        src={currentMusicTrack.url}
+        preload="none"
+        crossOrigin="anonymous"
+        playsInline
+      />
       <audio ref={djBroadcastAudioRef} preload="none" className="hidden" />
       <input
         ref={musicUploadInputRef}

@@ -59,8 +59,16 @@ export async function uploadOwnerMusicFile(
     });
 
   if (uploadError) {
+    const hint =
+      uploadError.message.includes("Bucket not found") ||
+      uploadError.message.includes("bucket")
+        ? " تأكد أن bucket chat-media موجود في Supabase Storage."
+        : uploadError.message.includes("row-level security") ||
+            uploadError.message.includes("policy")
+          ? " تأكد أنك داخل بحساب المالك (mohamed.samy2821992@gmail.com) وليس الأدمن."
+          : "";
     return {
-      error: `فشل رفع الأغنية: ${uploadError.message}. تأكد أن حسابك مضبوط كمالك.`,
+      error: `فشل رفع الأغنية: ${uploadError.message}.${hint}`,
     };
   }
 
@@ -101,8 +109,11 @@ export async function persistDjLibrary(
     .eq("id", settingsRowId);
 
   if (error) {
+    const hint = error.message.includes("row-level security")
+      ? " سجّل دخول بحساب المالك mohamed.samy2821992@gmail.com ثم أعد المحاولة."
+      : "";
     return {
-      error: `تعذر حفظ قائمة الأغاني: ${error.message}. تأكد أن حسابك owner في Supabase.`,
+      error: `تعذر حفظ قائمة الأغاني: ${error.message}.${hint}`,
     };
   }
 
