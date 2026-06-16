@@ -77,6 +77,10 @@ export interface OwnerSettingsRow {
   maintenance_mode?: boolean;
   global_mute?: boolean;
   global_mic_mute?: boolean;
+  bot_enabled?: boolean;
+  bot_rule_anti_links?: boolean;
+  bot_rule_anti_spam?: boolean;
+  bot_rule_swear_filter?: boolean;
   vip_only_images?: boolean;
   bot_silent?: boolean;
   ads_enabled?: boolean;

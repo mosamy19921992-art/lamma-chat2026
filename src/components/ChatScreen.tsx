@@ -2381,6 +2381,7 @@ export default function ChatScreen({
   const ownerSettingsSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const ownerRlsAlertShownRef = useRef(false);
 
   const canPersistOwnerSettings = isOwnerRole;
 
@@ -2415,6 +2416,10 @@ export default function ChatScreen({
           if (settings.dj_library !== undefined) {
             setDjLibrary(parseDjLibrary(settings.dj_library));
           }
+          if (settings.bot_enabled !== undefined) setIsBotEnabled(!!settings.bot_enabled);
+          if (settings.bot_rule_anti_links !== undefined) setBotRuleAntiLinks(!!settings.bot_rule_anti_links);
+          if (settings.bot_rule_anti_spam !== undefined) setBotRuleAntiSpam(!!settings.bot_rule_anti_spam);
+          if (settings.bot_rule_swear_filter !== undefined) setBotRuleSwearFilter(!!settings.bot_rule_swear_filter);
         }
       )
       .subscribe();
@@ -2584,6 +2589,10 @@ export default function ChatScreen({
           if (Array.isArray((settings as any).design_presets)) {
             setDesignPresets((settings as any).design_presets as DesignPreset[]);
           }
+          if (settings.bot_enabled !== undefined) setIsBotEnabled(Boolean(settings.bot_enabled));
+          if (settings.bot_rule_anti_links !== undefined) setBotRuleAntiLinks(Boolean(settings.bot_rule_anti_links));
+          if (settings.bot_rule_anti_spam !== undefined) setBotRuleAntiSpam(Boolean(settings.bot_rule_anti_spam));
+          if (settings.bot_rule_swear_filter !== undefined) setBotRuleSwearFilter(Boolean(settings.bot_rule_swear_filter));
         }
 
         if (Array.isArray(permissionsResult.data)) {
@@ -2809,6 +2818,10 @@ export default function ChatScreen({
         design_presets: designPresets,
         room_dj_map: roomDjMap,
         dj_library: djLibrary,
+        bot_enabled: isBotEnabled,
+        bot_rule_anti_links: botRuleAntiLinks,
+        bot_rule_anti_spam: botRuleAntiSpam,
+        bot_rule_swear_filter: botRuleSwearFilter,
       };
 
       const { error } = await supabase
@@ -2817,9 +2830,16 @@ export default function ChatScreen({
 
       if (error) {
         console.warn("Failed to sync owner settings", error);
-        // Alert the owner that settings failed to save due to RLS or auth issues
-        if (error.code === "42501") {
-          console.error("Supabase RLS Error: You do not have the owner role in your auth.users metadata.");
+        if (error.code === "42501" && !ownerRlsAlertShownRef.current) {
+          ownerRlsAlertShownRef.current = true;
+          alert(
+            "⚠️ تنبيه: التعديلات لم تُحفظ على السيرفر!\n\n" +
+            "السبب: حساب المالك لا يملك صلاحية الكتابة في قاعدة البيانات (Supabase RLS).\n\n" +
+            "لإصلاح هذا:\n" +
+            "1. تأكد أن metadata الحساب يحتوي على role: \"owner\"\n" +
+            "2. تأكد من صلاحيات جدول owner_settings في Supabase Dashboard\n\n" +
+            "التغييرات ستعمل على جهازك فقط حتى يتم الإصلاح."
+          );
         }
       }
     }, OWNER_SYNC_DEBOUNCE_MS);
@@ -2835,6 +2855,7 @@ export default function ChatScreen({
     canPersistOwnerSettings,
     designPresets,
     isAdsEnabled,
+    isBotEnabled,
     isBotSilent,
     isGhostMode,
     isGlobalMicMute,
@@ -2847,6 +2868,9 @@ export default function ChatScreen({
     roomBgMap,
     roomDjMap,
     djLibrary,
+    botRuleAntiLinks,
+    botRuleAntiSpam,
+    botRuleSwearFilter,
   ]);
 
   useEffect(() => {
@@ -4436,6 +4460,7 @@ export default function ChatScreen({
 
   // Simulated bot chat reactions
   const addBotSystemWarning = (roomId: string, text: string) => {
+    if (isBotSilent) return;
     const timeStr = new Date().toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "numeric",
@@ -10475,6 +10500,12 @@ export default function ChatScreen({
                     designOwnerBgInput={designOwnerBgInput}
                     setDesignOwnerBgInput={setDesignOwnerBgInput}
                     setOwnerBgImage={setOwnerBgImage}
+                    designPresets={designPresets}
+                    designPresetName={designPresetName}
+                    setDesignPresetName={setDesignPresetName}
+                    handleSaveDesignPreset={handleSaveDesignPreset}
+                    applyDesignPreset={applyDesignPreset}
+                    handleDeleteDesignPreset={handleDeleteDesignPreset}
                   />
                 )}
                 {activeModal === 'leadership' && leadershipTab === 'stats' && (
