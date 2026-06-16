@@ -46,6 +46,8 @@ interface StorePanelModalProps {
   bannedUsersList?: any[];
   openRooms?: { id: string; name: string }[];
   roomMessages?: Record<string, any[]>;
+  onOpenMemberProfile?: (nickname: string) => void;
+  onStartPrivateChat?: (nickname: string) => void;
 }
 
 export function StorePanelModal({
@@ -84,6 +86,8 @@ export function StorePanelModal({
   bannedUsersList = [],
   openRooms = [],
   roomMessages = {},
+  onOpenMemberProfile,
+  onStartPrivateChat,
 }: StorePanelModalProps) {
   const subscriptionStorageKey = `lamma_subscription_${currentUser.uid}`;
   const isOwner = currentUser.role === "owner";
@@ -532,13 +536,65 @@ export function StorePanelModal({
 
       {/* TAB CONTENTS - 4. FRIEND SUGGESTIONS (coming soon) */}
       {shopTab === "suggests" && (
-        <div className="p-6 rounded-2xl lamma-section-card flex flex-col items-center gap-3 text-center">
-          <span className="text-3xl">👥</span>
-          <div className="text-[11px] font-black text-white">اقتراحات الأصدقاء</div>
-          <div className="text-[9.5px] text-gray-400 font-bold leading-relaxed">
-            سيتم إطلاق نظام اقتراح الأعضاء قريباً — يعتمد على الاهتمامات المشتركة والتفاعل الحقيقي.
+        <div className="space-y-3">
+          <div className="p-4 rounded-2xl lamma-section-card">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">👥</span>
+              <div>
+                <div className="text-[11px] font-black text-white">اقتراحات الأصدقاء</div>
+                <div className="text-[9px] text-gray-400 font-bold">
+                  أعضاء نشطون في الغرفة الآن — بناءً على التفاعل والحضور المباشر
+                </div>
+              </div>
+            </div>
           </div>
-          <span className="text-[8px] font-bold px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/10">قريباً</span>
+
+          {friendSuggestions.length === 0 ? (
+            <div className="p-6 rounded-2xl lamma-section-card text-center text-[10px] text-gray-500 font-bold">
+              لا يوجد أعضاء مقترحون حالياً — انتظر حتى ينضم آخرون للغرفة.
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              {friendSuggestions.map((friend: any) => (
+                <div
+                  key={friend.id || friend.nickname}
+                  className="p-3 rounded-2xl lamma-admin-card flex items-center justify-between gap-3"
+                >
+                  <div className="flex-1 min-w-0 text-right">
+                    <div className="text-[11px] font-black text-white truncate">
+                      {friend.nickname}
+                    </div>
+                    <div className="text-[9px] text-gray-400 font-bold mt-0.5">
+                      {friend.reason}
+                    </div>
+                    <div className="text-[8px] text-green-400/80 font-bold mt-1">
+                      {friend.role}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    {onOpenMemberProfile && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenMemberProfile(friend.nickname)}
+                        className="px-2.5 py-1 rounded-lg text-[8px] font-black lamma-soft-action text-gray-200"
+                      >
+                        الملف
+                      </button>
+                    )}
+                    {onStartPrivateChat && (
+                      <button
+                        type="button"
+                        onClick={() => onStartPrivateChat(friend.nickname)}
+                        className="px-2.5 py-1 rounded-lg text-[8px] font-black lamma-toggle-on"
+                      >
+                        رسالة خاصة
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

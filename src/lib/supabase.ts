@@ -85,6 +85,7 @@ export interface OwnerSettingsRow {
   bot_silent?: boolean;
   ads_enabled?: boolean;
   greetings_enabled?: boolean;
+  invite_only_mode?: boolean;
   banned_words?: string[] | null;
   owner_bg_image?: string | null;
   custom_logo_url?: string | null;

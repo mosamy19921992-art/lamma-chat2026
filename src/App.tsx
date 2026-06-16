@@ -8,6 +8,10 @@ import { startSilentAutoHeal } from './services/chat/maintenanceBot';
 import { supabase, getClientUid } from './lib/supabase';
 import type { UserSession } from './lib/chatTypes';
 import {
+  hasStoredInviteAccess,
+  markInviteAccessFromUrl,
+} from './lib/inviteAccess';
+import {
   getResolvedSupabaseColor,
   getResolvedSupabaseNickname,
   hasPlaceholderSupabaseNickname,
@@ -174,6 +178,8 @@ export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
   const [pendingSupabaseUser, setPendingSupabaseUser] = useState<SupabaseUser | null>(null);
   const [primaryTheme, setPrimaryTheme] = useState<Theme>('dark');
+  const [inviteOnlyMode, setInviteOnlyMode] = useState(false);
+  const [hasInviteAccess, setHasInviteAccess] = useState(() => hasStoredInviteAccess());
 
   // PWA: register service worker, expose install/update state.
   const sw = useServiceWorker();
@@ -188,6 +194,53 @@ export default function App() {
   // Start downloading the chat bundle immediately so login → chat feels instant.
   useEffect(() => {
     void CHAT_SCREEN_IMPORT();
+  }, []);
+
+  useEffect(() => {
+    if (markInviteAccessFromUrl()) {
+      setHasInviteAccess(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+
+    const loadInvitePolicy = async () => {
+      const { data } = await supabase
+        .from('owner_settings')
+        .select('invite_only_mode')
+        .eq('id', 'global')
+        .maybeSingle();
+      if (cancelled) return;
+      setInviteOnlyMode(Boolean(data?.invite_only_mode));
+    };
+
+    void loadInvitePolicy();
+
+    const channel = supabase
+      .channel('app_invite_policy')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'owner_settings',
+          filter: 'id=eq.global',
+        },
+        (payload) => {
+          const next = (payload.new as { invite_only_mode?: boolean }).invite_only_mode;
+          if (next !== undefined) {
+            setInviteOnlyMode(Boolean(next));
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -327,6 +380,8 @@ export default function App() {
             isInstalledApp={sw.isInstalled}
             onInstallApp={sw.promptInstall}
             pendingSupabaseUser={pendingSupabaseUser}
+            inviteOnlyMode={inviteOnlyMode}
+            hasInviteAccess={hasInviteAccess}
           />
         ) : (
           <Suspense fallback={<ChatLoadingScreen />}>

@@ -158,6 +158,10 @@ import {
   writeDjListenPreference,
   type RadioStation,
 } from "../lib/djConstants";
+import { appendInviteParam } from "../lib/inviteAccess";
+import { bumpUserStat } from "../lib/achievements";
+import { buildFriendSuggestions } from "../lib/friendSuggestions";
+import { AchievementsBlock } from "./AchievementsBlock";
 import {
   applyRoomDjToAudio,
   parseRoomDjMap,
@@ -747,7 +751,11 @@ export default function ChatScreen({
       typeof window !== "undefined" ? window.location.origin : "https://lamma-arabic-chat-room.vercel.app",
     );
     url.searchParams.set("room", roomId || "egypt");
-    return url.toString();
+    const link = url.toString();
+    const inviteOnly =
+      typeof window !== "undefined" &&
+      localStorage.getItem("lamma_invite_only_mode") === "true";
+    return inviteOnly ? appendInviteParam(link) : link;
   };
 
   const [ownerBgImage, setOwnerBgImage] = useState<string | null>(() =>
@@ -1104,23 +1112,11 @@ export default function ChatScreen({
   ]);
 
   const performSearch = async () => {
-    if (!searchQuery) return;
-    if (!geminiSearchEndpoint) {
-      alert("ميزة البحث بالذكاء الاصطناعي غير متاحة حالياً.");
+    if (!searchQuery.trim()) {
+      setShowSearchPop(true);
       return;
     }
-    try {
-      const response = await fetch(geminiSearchEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: searchQuery }),
-      });
-      const data = await response.json();
-      setInputText((prev) => prev + `\nبحث عن "${searchQuery}": ${data.text}`);
-      setSearchQuery("");
-    } catch (err) {
-      console.error(err);
-    }
+    setShowSearchPop(true);
   };
 
   // Missing systems active overlay
@@ -1919,6 +1915,10 @@ export default function ChatScreen({
       nickname: string,
       onlineCount: number,
     ) => {
+      if (localStorage.getItem("lamma_greetings_enabled") === "false") {
+        showRoomEntryStandby(onlineCount);
+        return;
+      }
       if (roomEntryTickerTimerRef.current) {
         clearTimeout(roomEntryTickerTimerRef.current);
       }
@@ -2101,6 +2101,9 @@ export default function ChatScreen({
       return localStorage.getItem("lamma_greetings_enabled") !== "false";
     },
   );
+  const [isInviteOnlyMode, setIsInviteOnlyMode] = useState<boolean>(() => {
+    return localStorage.getItem("lamma_invite_only_mode") === "true";
+  });
   const [djLibrary, setDjLibrary] = useState<OwnerMusicTrack[]>([]);
   const [roomDjMap, setRoomDjMap] = useState<Record<string, RoomDjState>>({});
   const roomDjMapRef = useRef<Record<string, RoomDjState>>({});
@@ -2144,6 +2147,10 @@ export default function ChatScreen({
       String(isWelcomeToastEnabled),
     );
   }, [isWelcomeToastEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem("lamma_invite_only_mode", String(isInviteOnlyMode));
+  }, [isInviteOnlyMode]);
 
   const [bannedWords, setBannedWords] = useState<string[]>(() => {
     const saved = localStorage.getItem("lamma_banned_words");
@@ -2374,6 +2381,7 @@ export default function ChatScreen({
           if (settings.bot_silent !== undefined) setIsBotSilent(!!settings.bot_silent);
           if (settings.ads_enabled !== undefined) setIsAdsEnabled(!!settings.ads_enabled);
           if (settings.greetings_enabled !== undefined) setIsWelcomeToastEnabled(!!settings.greetings_enabled);
+          if (settings.invite_only_mode !== undefined) setIsInviteOnlyMode(!!settings.invite_only_mode);
           if (settings.banned_words) setBannedWords(settings.banned_words);
           if (settings.owner_bg_image !== undefined) setOwnerBgImage(settings.owner_bg_image);
           if (settings.custom_logo_url !== undefined) {
@@ -2540,6 +2548,7 @@ export default function ChatScreen({
           setIsBotSilent(Boolean(settings.bot_silent));
           setIsAdsEnabled(settings.ads_enabled !== false);
           setIsWelcomeToastEnabled(settings.greetings_enabled !== false);
+          setIsInviteOnlyMode(Boolean(settings.invite_only_mode));
           setBannedWords(
             Array.isArray(settings.banned_words)
               ? settings.banned_words.filter(
@@ -2782,6 +2791,7 @@ export default function ChatScreen({
         bot_silent: isBotSilent,
         ads_enabled: isAdsEnabled,
         greetings_enabled: isWelcomeToastEnabled,
+        invite_only_mode: isInviteOnlyMode,
         banned_words: bannedWords,
         owner_bg_image: ownerBgImage,
         custom_logo_url: brandLogoUrl,
@@ -2835,6 +2845,7 @@ export default function ChatScreen({
     isOnlyVIPCanSendImages,
     isSpyMode,
     isWelcomeToastEnabled,
+    isInviteOnlyMode,
     ownerBgImage,
     roomBgMap,
     roomDjMap,
@@ -3273,6 +3284,7 @@ export default function ChatScreen({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
   const pmImageUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const pmVideoUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   // Rate limit: max 3 media uploads per 60s per user (rooms + pm combined)
   const mediaRateStateRef = useRef<{ times: number[] }>({ times: [] });
@@ -3872,6 +3884,28 @@ export default function ChatScreen({
     setSelectedProfileMember(member);
     setUserContextTarget(member);
     setShowUserContextPop(true);
+  };
+
+  const startPrivateChatWithMember = (nickname: string) => {
+    if (currentUser.authProvider === "guest") {
+      alert(
+        "💌 الرسائل الخاصة متاحة للمسجلين فقط.\n\nسجّل حساباً مجاناً عبر البريد أو Google للاستمتاع بالرسائل الخاصة.",
+      );
+      return;
+    }
+    const member = resolveChatMemberByNickname(nickname);
+    if (!member) return;
+    setPmTarget({
+      nickname: member.nickname,
+      role: normalizePmRole(member.role),
+      avatar: member.avatar || "👤",
+    });
+    setActiveModal(null);
+    if (window.innerWidth < 1280) {
+      setMobileTab("private");
+    } else {
+      setIsPmOpen(true);
+    }
   };
 
   const handleInlineMemberTap = (nickname: string) => {
@@ -4532,7 +4566,7 @@ export default function ChatScreen({
     );
   };
 
-  const { handleSendMessage } = useRoomComposer({
+  const { handleSendMessage: sendRoomMessage } = useRoomComposer({
     activeRoomId,
     activeRoomName: systemRooms.find((r) => r.id === activeRoomId)?.name || activeRoomId,
     currentUser,
@@ -4570,6 +4604,23 @@ export default function ChatScreen({
     canShareYoutubeInMessage: () =>
       canShareYoutube(currentUser, memberCustomPermissions),
   });
+
+  const handleSendMessage = useCallback(() => {
+    if (inputText.trim()) {
+      bumpUserStat("messagesSent");
+    }
+    sendRoomMessage();
+  }, [inputText, sendRoomMessage]);
+
+  useEffect(() => {
+    bumpUserStat("sessionCount");
+  }, []);
+
+  useEffect(() => {
+    setFriendSuggestions(
+      buildFriendSuggestions(rawChatMembers, currentUser.nickname),
+    );
+  }, [rawChatMembers, currentUser.nickname]);
 
   const handleSendPM = async () => {
     if (!pmTarget || !pmInputText.trim()) return;
@@ -4636,6 +4687,7 @@ export default function ChatScreen({
       );
       return;
     }
+    bumpUserStat("giftsSent");
     // Append message about gift inside room
     const timeStr = new Date().toLocaleTimeString("en-US", {
       hour: "numeric",
@@ -5023,6 +5075,87 @@ export default function ChatScreen({
             time: timeStr,
             mediaUrl: publicUrl,
             type: "image",
+            status: "delivered",
+          },
+        ],
+      }));
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handlePmVideoUploadChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!canSendMediaByRate()) {
+      alert("⏳ بعت وسائط كتير بسرعة. استنى دقيقة وجرب تاني.");
+      return;
+    }
+    if (currentUser.authProvider !== "supabase") {
+      alert("🎬 رفع الفيديو متاح للحسابات المسجلة فقط. سجل دخول الأول.");
+      return;
+    }
+    if (!supabase) {
+      alert("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.");
+      return;
+    }
+    if (!file.type.startsWith("video/")) {
+      alert("⚠️ الملف اللي اخترته مش فيديو.");
+      return;
+    }
+    const maxBytes = 25 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      alert("⚠️ حجم الفيديو كبير. الحد الأقصى 25MB.");
+      return;
+    }
+    try {
+      setIsUploadingImage(true);
+      const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
+      const target =
+        pmTarget?.nickname?.replace(/[^\w.\-]+/g, "_") || "unknown";
+      const objectPath = `pm/${target}/${Date.now()}_${crypto.randomUUID()}_${safeName}`;
+      const { error: uploadError } = await supabase.storage
+        .from("chat-media")
+        .upload(objectPath, file, {
+          cacheControl: "3600",
+          contentType: file.type,
+          upsert: false,
+        });
+      if (uploadError) {
+        alert(`❌ فشل رفع الفيديو: ${uploadError.message}`);
+        return;
+      }
+      const { data: publicData } = supabase.storage
+        .from("chat-media")
+        .getPublicUrl(objectPath);
+      const publicUrl = publicData?.publicUrl;
+      if (!publicUrl) {
+        alert("❌ حصل خطأ في توليد رابط الفيديو بعد الرفع.");
+        return;
+      }
+      const timeStr = new Date().toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+      });
+      if (!pmTarget) {
+        alert("⚠️ اختر محادثة خاصة أولاً.");
+        return;
+      }
+      const targetNickname = pmTarget.nickname;
+      setPmThreads((prev) => ({
+        ...prev,
+        [targetNickname]: [
+          ...(prev[targetNickname] || []),
+          {
+            text: "",
+            isOwn: true,
+            time: timeStr,
+            mediaUrl: publicUrl,
+            type: "video",
             status: "delivered",
           },
         ],
@@ -7334,15 +7467,8 @@ export default function ChatScreen({
                           </div>
                         </div>
 
-                        {/* Block 2: Achievements — coming soon */}
-                        <div className="p-2.5 rounded-xl flex items-center gap-2 text-right lamma-list-item">
-                          <span className="text-lg">🏆</span>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-[10px] font-black text-green-300">أوسمة الإنجازات</div>
-                            <div className="text-[8.5px] text-gray-500 font-bold mt-0.5">قريباً — سيتم إضافة نظام الإنجازات الحقيقي</div>
-                          </div>
-                          <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-white/5 text-gray-400 shrink-0">قريباً</span>
-                        </div>
+                        {/* Block 2: Achievements */}
+                        <AchievementsBlock role={currentUser.role} compact />
 
                         {/* Block 3: Active call indicator — only show when a call is running */}
                         {isCalling && (
@@ -7414,15 +7540,8 @@ export default function ChatScreen({
                       </div>
                     </div>
 
-                    {/* Block 2: Achievements — coming soon */}
-                    <div className="p-3 rounded-xl flex items-center gap-3 text-right lamma-list-item bg-black/20">
-                      <span className="text-yellow-400 text-xl shrink-0">🏆</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[11px] text-green-300 font-black">أوسمة الإنجازات</div>
-                        <div className="text-[9px] text-gray-500 font-bold mt-0.5">قريباً — سيتم إضافة نظام الإنجازات الحقيقي</div>
-                      </div>
-                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-white/5 text-gray-400 shrink-0">قريباً</span>
-                    </div>
+                    {/* Block 2: Achievements */}
+                    <AchievementsBlock role={currentUser.role} />
 
                     {/* Block 3: Active call indicator — only when a call is running */}
                     {isCalling && (
@@ -9718,12 +9837,17 @@ export default function ChatScreen({
                         <span>يوتيوب</span>
                       </button>
                       <button
-                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right opacity-50 cursor-not-allowed"
+                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right"
                         onClick={() => {
                           setShowPmAttachment(false);
-                          alert(
-                            "🎬 رفع ملف فيdeo مباشر غير متاح حالياً. استخدم رابط يوتيوب أو MP4.",
-                          );
+                          if (isUploadingImage) return;
+                          if (currentUser.authProvider !== "supabase") {
+                            alert(
+                              "🎬 رفع الفيديو متاح للحسابات المسجلة فقط. سجل دخول الأول.",
+                            );
+                            return;
+                          }
+                          pmVideoUploadInputRef.current?.click();
                         }}
                       >
                         <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
@@ -9802,6 +9926,13 @@ export default function ChatScreen({
                   accept="image/*"
                   className="hidden"
                   onChange={handlePmImageUploadChange}
+                />
+                <input
+                  ref={pmVideoUploadInputRef}
+                  type="file"
+                  accept="video/*,.mp4,.webm,.mov"
+                  className="hidden"
+                  onChange={handlePmVideoUploadChange}
                 />
               </div>
               )} {/* end spy thread conditional */}
@@ -10215,6 +10346,12 @@ export default function ChatScreen({
                     setIsGlobalMicMute={setIsGlobalMicMute}
                     isAdsEnabled={isAdsEnabled}
                     setIsAdsEnabled={setIsAdsEnabled}
+                    isBotEnabled={isBotEnabled}
+                    setIsBotEnabled={setIsBotEnabled}
+                    isWelcomeToastEnabled={isWelcomeToastEnabled}
+                    setIsWelcomeToastEnabled={setIsWelcomeToastEnabled}
+                    isInviteOnlyMode={isInviteOnlyMode}
+                    setIsInviteOnlyMode={setIsInviteOnlyMode}
                     addSystemActivityLog={addSystemActivityLog}
                     addLammaBotMessage={addLammaBotMessage}
                     currentUser={currentUser}
@@ -10311,6 +10448,8 @@ export default function ChatScreen({
                     bannedUsersList={bannedUsersList}
                     openRooms={openRooms}
                     roomMessages={roomMessages}
+                    onOpenMemberProfile={openMemberProfile}
+                    onStartPrivateChat={startPrivateChatWithMember}
                   />
                 )}
                 {activeModal === 'leadership' && leadershipTab === 'design' && (

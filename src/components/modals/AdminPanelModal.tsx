@@ -16,6 +16,12 @@ interface AdminPanelModalProps {
   setIsGlobalMicMute: (val: boolean) => void;
   isAdsEnabled: boolean;
   setIsAdsEnabled: (val: boolean) => void;
+  isBotEnabled: boolean;
+  setIsBotEnabled: (val: boolean) => void;
+  isWelcomeToastEnabled: boolean;
+  setIsWelcomeToastEnabled: (val: boolean) => void;
+  isInviteOnlyMode: boolean;
+  setIsInviteOnlyMode: (val: boolean) => void;
   addSystemActivityLog: (type: any, userNickname: string, details: string, operator?: string) => void;
   addLammaBotMessage: (roomId: string, text: string) => void;
   currentUser: UserSession;
@@ -66,6 +72,12 @@ export function AdminPanelModal({
   setIsGlobalMicMute,
   isAdsEnabled,
   setIsAdsEnabled,
+  isBotEnabled,
+  setIsBotEnabled,
+  isWelcomeToastEnabled,
+  setIsWelcomeToastEnabled,
+  isInviteOnlyMode,
+  setIsInviteOnlyMode,
   addSystemActivityLog,
   addLammaBotMessage,
   currentUser,
@@ -295,36 +307,84 @@ export function AdminPanelModal({
                 </span>
               </button>
 
-              {/* Toggle 4: AI Guard — coming soon */}
+              {/* Toggle 4: AI Guard — controls bot protection system */}
               <button
                 type="button"
-                className="p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-not-allowed lamma-tab-soft text-gray-300 opacity-70"
+                onClick={() => {
+                  const nextVal = !isBotEnabled;
+                  setIsBotEnabled(nextVal);
+                  addSystemActivityLog(
+                    "promote",
+                    currentUser.nickname,
+                    `تغيير حارس الذكاء الاصطناعي (منظومة البوتات) إلى: [${nextVal ? "مفعّل" : "معطّل"}]`,
+                    "👑 إدارة المالك",
+                  );
+                }}
+                className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
+                  isBotEnabled
+                    ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-300 shadow-md"
+                    : "lamma-tab-soft text-gray-300 hover:text-white"
+                }`}
               >
                 <span>🤖 حارس الذكاء الاصطناعي الآلي</span>
-                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-white/5 text-gray-400">
-                  قريباً
+                <span
+                  className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${isBotEnabled ? "bg-emerald-500/20 text-emerald-200" : "bg-white/5 text-gray-400"}`}
+                >
+                  {isBotEnabled ? "يعمل" : "متوقف"}
                 </span>
               </button>
 
-              {/* Toggle 5: VIP Force Enable */}
+              {/* Toggle 5: VIP Force Enable — invite-only access */}
               <button
                 type="button"
-                className="p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-not-allowed lamma-tab-soft text-gray-300 opacity-70"
+                onClick={() => {
+                  const nextVal = !isInviteOnlyMode;
+                  setIsInviteOnlyMode(nextVal);
+                  addSystemActivityLog(
+                    "promote",
+                    currentUser.nickname,
+                    `تغيير نظام الدعوات فقط إلى: [${nextVal ? "مفعّل" : "معطّل"}]`,
+                    "👑 إدارة المالك",
+                  );
+                }}
+                className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
+                  isInviteOnlyMode
+                    ? "bg-yellow-500/10 border-yellow-500/35 text-yellow-300 shadow-md"
+                    : "lamma-tab-soft text-gray-300 hover:text-white"
+                }`}
               >
                 <span>⭐ إجبار نظام الدعوات فقط</span>
-                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-white/5 text-gray-400">
-                  قريباً
+                <span
+                  className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${isInviteOnlyMode ? "bg-yellow-500/20 text-yellow-200" : "bg-white/5 text-gray-400"}`}
+                >
+                  {isInviteOnlyMode ? "دعوة فقط" : "مفتوح"}
                 </span>
               </button>
 
-              {/* Toggle 6: Global Splash Screen */}
+              {/* Toggle 6: Global Splash Screen — join/leave greetings ticker */}
               <button
                 type="button"
-                className="p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-not-allowed lamma-tab-soft text-gray-300 opacity-70"
+                onClick={() => {
+                  const nextVal = !isWelcomeToastEnabled;
+                  setIsWelcomeToastEnabled(nextVal);
+                  addSystemActivityLog(
+                    "promote",
+                    currentUser.nickname,
+                    `تغيير ترحيب الدخول الفلاشي إلى: [${nextVal ? "مفعّل" : "معطّل"}]`,
+                    "👑 إدارة المالك",
+                  );
+                }}
+                className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between text-[10px] font-black cursor-pointer ${
+                  isWelcomeToastEnabled
+                    ? "bg-cyan-500/10 border-cyan-500/35 text-cyan-300 shadow-md"
+                    : "lamma-tab-soft text-gray-300 hover:text-white"
+                }`}
               >
                 <span>✨ ترحيب الدخول الفلاشي</span>
-                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-white/5 text-gray-400">
-                  قريباً
+                <span
+                  className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${isWelcomeToastEnabled ? "bg-cyan-500/20 text-cyan-200" : "bg-white/5 text-gray-400"}`}
+                >
+                  {isWelcomeToastEnabled ? "ظاهر" : "مخفي"}
                 </span>
               </button>
 

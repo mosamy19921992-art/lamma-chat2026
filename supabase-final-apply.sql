@@ -693,3 +693,6 @@ alter table public.owner_settings
   add column if not exists bot_rule_anti_links boolean not null default true,
   add column if not exists bot_rule_anti_spam boolean not null default true,
   add column if not exists bot_rule_swear_filter boolean not null default true;
+
+alter table public.owner_settings
+  add column if not exists invite_only_mode boolean not null default false;

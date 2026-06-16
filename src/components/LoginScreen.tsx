@@ -23,6 +23,8 @@ interface LoginScreenProps {
   isInstalledApp?: boolean;
   onInstallApp?: () => Promise<void>;
   pendingSupabaseUser?: any | null;
+  inviteOnlyMode?: boolean;
+  hasInviteAccess?: boolean;
 }
 
 type ViewMode = "main" | "options";
@@ -96,7 +98,8 @@ function EnvelopeIcon() {
 }
 
 export default function LoginScreen(props: LoginScreenProps) {
-  const { onLogin, canInstallApp, onInstallApp, pendingSupabaseUser } = props;
+  const { onLogin, canInstallApp, onInstallApp, pendingSupabaseUser, inviteOnlyMode = false, hasInviteAccess = false } = props;
+  const guestLoginAllowed = !inviteOnlyMode || hasInviteAccess;
   const brandName = import.meta.env.VITE_BRAND_NAME || "Lamma Chat";
   const brandCredit = import.meta.env.VITE_BRAND_CREDIT || "MR / Mohamed Samy";
 
@@ -168,6 +171,14 @@ export default function LoginScreen(props: LoginScreenProps) {
   };
 
   const handleGuestLogin = () => {
+    if (!guestLoginAllowed) {
+      showFeedback(
+        "الدخول كزائر متاح فقط عبر رابط دعوة. اطلب رابطاً من أحد الأعضاء أو سجّل حساباً.",
+        "error",
+        true,
+      );
+      return;
+    }
     const nickname = guestNickname.trim() || randomGuestId();
     onLogin(
       nickname,
@@ -607,9 +618,12 @@ export default function LoginScreen(props: LoginScreenProps) {
                   </div>
 
                   <div className="storyEmailNote">
-                    بعد التسجيل بالإيميل هتختار اسمك بنفسك داخل الشات.
+                    {inviteOnlyMode && !hasInviteAccess
+                      ? "🔒 الدخول حالياً بالدعوة فقط — استخدم رابط دعوة من أحد الأعضاء أو سجّل حساباً."
+                      : "بعد التسجيل بالإيميل هتختار اسمك بنفسك داخل الشات."}
                   </div>
 
+                  {guestLoginAllowed ? (
                   <div className="guestQuick" aria-label="دخول كضيف">
                     <div className="guestQuickTitle">دخول كزائر</div>
                     <div className="guestQuickSub">
@@ -656,6 +670,14 @@ export default function LoginScreen(props: LoginScreenProps) {
                       </div>
                     </div>
                   </div>
+                  ) : (
+                    <div className="guestQuick" aria-label="دخول كضيف مغلق">
+                      <div className="guestQuickTitle">دخول كزائر</div>
+                      <div className="guestQuickSub">
+                        متاح فقط عبر رابط دعوة — اطلب الرابط من صديق داخل لمة.
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
@@ -678,6 +700,7 @@ export default function LoginScreen(props: LoginScreenProps) {
                   <h2 className="methodsTitle">اختيارات دخول لمة</h2>
                 </div>
 
+                {guestLoginAllowed ? (
                 <div className="guestQuick guestQuick--mobile" aria-label="دخول كضيف">
                   <div className="guestQuickTitle">دخول كزائر</div>
                   <div className="guestQuickSub">اسم مولّد تلقائيًا — تقدر تغيّره قبل الدخول.</div>
@@ -722,6 +745,14 @@ export default function LoginScreen(props: LoginScreenProps) {
                     </div>
                   </div>
                 </div>
+                ) : (
+                  <div className="guestQuick guestQuick--mobile" aria-label="دخول كضيف مغلق">
+                    <div className="guestQuickTitle">دخول كزائر</div>
+                    <div className="guestQuickSub">
+                      متاح فقط عبر رابط دعوة — اطلب الرابط من صديق داخل لمة.
+                    </div>
+                  </div>
+                )}
 
                 <button
                   className="secondaryBtn methodRow"

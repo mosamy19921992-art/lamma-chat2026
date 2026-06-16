@@ -268,7 +268,8 @@ create table if not exists public.owner_settings (
   bot_enabled boolean not null default true,
   bot_rule_anti_links boolean not null default true,
   bot_rule_anti_spam boolean not null default true,
-  bot_rule_swear_filter boolean not null default true
+  bot_rule_swear_filter boolean not null default true,
+  invite_only_mode boolean not null default false
 );
 
 alter table public.owner_settings enable row level security;

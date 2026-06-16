@@ -242,7 +242,7 @@ async function checkAuthSession(): Promise<MaintenanceCheck> {
           id: "auth",
           label: "جلسة تسجيل الدخول (Auth Session)",
           status: "warn",
-          detail: `الجلسة ستنتهي خلال ${mins} دقيقة — سيتم التجديد تلقائياً قريباً.`,
+          detail: `الجلسة ستنتهي خلال ${mins} دقيقة — سيتم التجديد تلقائياً عند الاتصال.`,
         };
       }
     }
