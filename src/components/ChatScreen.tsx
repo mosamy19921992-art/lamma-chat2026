@@ -2519,12 +2519,20 @@ export default function ChatScreen({
           if (settings.greetings_enabled !== undefined) setIsWelcomeToastEnabled(!!settings.greetings_enabled);
           if (settings.invite_only_mode !== undefined) setIsInviteOnlyMode(!!settings.invite_only_mode);
           if (settings.banned_words) setBannedWords(settings.banned_words);
-          if (settings.owner_bg_image !== undefined) setOwnerBgImage(settings.owner_bg_image);
-          if (settings.custom_logo_url !== undefined) {
-            setBrandLogoUrl(settings.custom_logo_url);
-            setDesignLogoInput(settings.custom_logo_url || '');
+          if (settings.owner_bg_image !== undefined) {
+            setOwnerBgImage((prev) => settings.owner_bg_image?.trim() || prev);
           }
-          if (settings.room_bg_map !== undefined) setRoomBgMap(settings.room_bg_map || {});
+          if (settings.custom_logo_url !== undefined) {
+            const nextLogo = settings.custom_logo_url?.trim() || null;
+            setBrandLogoUrl((prev) => nextLogo || prev);
+            setDesignLogoInput((prev) => nextLogo || prev);
+          }
+          if (settings.room_bg_map !== undefined) {
+            setRoomBgMap((prev) => {
+              const fromServer = sanitizeRoomBgMap(settings.room_bg_map);
+              return Object.keys(fromServer).length > 0 ? { ...prev, ...fromServer } : prev;
+            });
+          }
           if (settings.room_dj_map !== undefined) {
             setRoomDjMap(parseRoomDjMap(settings.room_dj_map));
           }
@@ -2693,9 +2701,12 @@ export default function ChatScreen({
                 )
               : [],
           );
-          setOwnerBgImage(settings.owner_bg_image?.trim() || null);
-          setBrandLogoUrl(settings.custom_logo_url?.trim() || null);
-          setRoomBgMap(sanitizeRoomBgMap(settings.room_bg_map));
+          setOwnerBgImage((prev) => settings.owner_bg_image?.trim() || prev);
+          setBrandLogoUrl((prev) => settings.custom_logo_url?.trim() || prev);
+          setRoomBgMap((prev) => {
+            const fromServer = sanitizeRoomBgMap(settings.room_bg_map);
+            return Object.keys(fromServer).length > 0 ? { ...prev, ...fromServer } : prev;
+          });
           if (settings.room_dj_map !== undefined) {
             setRoomDjMap(parseRoomDjMap(settings.room_dj_map));
           }
@@ -5117,6 +5128,7 @@ export default function ChatScreen({
     if (!url) return;
     setOwnerBgImage(url);
     setDesignOwnerBgInput(url);
+    alert("✅ تم رفع الخلفية العامة وتطبيقها. أغلق النافذة لترى النتيجة.");
   };
 
   const handleDesignRoomBgUpload = async (
@@ -5133,6 +5145,7 @@ export default function ChatScreen({
     if (!url) return;
     setRoomBgMap((prev) => ({ ...prev, [activeRoomId]: url }));
     setDesignRoomBgInput(url);
+    alert("✅ تم رفع خلفية الغرفة وتطبيقها. أغلق النافذة لترى النتيجة.");
   };
 
   const handleDesignLogoUpload = async (

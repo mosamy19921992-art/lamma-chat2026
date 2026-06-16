@@ -3586,6 +3586,81 @@ body {
   box-shadow: 0 0 10px rgba(245, 158, 11, 0.22);
 }
 
+/* ── Custom Face engine (Design Studio + المساعد الذكي) ── */
+.lamma-neutral-glass[data-custom-face="on"] {
+  color: var(--face-text, #ffffff);
+  font-family: var(--face-font, "Cairo"), "Cairo", sans-serif;
+}
+
+.lamma-neutral-glass[data-custom-face="on"] .lamma-active-wallpaper {
+  opacity: 0.72 !important;
+}
+
+.lamma-neutral-glass[data-custom-face="on"] aside[data-col="left"],
+.lamma-neutral-glass[data-custom-face="on"] aside[data-col="left"] .lamma-column-shell {
+  background: var(--face-col-left, rgba(14, 18, 24, 0.65)) !important;
+}
+
+.lamma-neutral-glass[data-custom-face="on"] aside[data-col="right"],
+.lamma-neutral-glass[data-custom-face="on"] aside[data-col="right"] .lamma-column-shell {
+  background: var(--face-col-right, rgba(14, 18, 24, 0.65)) !important;
+}
+
+.lamma-neutral-glass[data-custom-face="on"] .lamma-chat-core-shell {
+  background: var(--face-col-center, rgba(10, 14, 20, 0.55)) !important;
+}
+
+.lamma-neutral-glass[data-custom-face="on"] .lamma-side-column .lamma-glass,
+.lamma-neutral-glass[data-custom-face="on"] .lamma-chat-core-shell > .lamma-glass,
+.lamma-neutral-glass[data-custom-face="on"] .lamma-chat-core-shell .lamma-room-header,
+.lamma-neutral-glass[data-custom-face="on"] .lamma-chat-core-shell .lamma-topic-shell {
+  background: rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(16px) saturate(1.05) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.05) !important;
+}
+
+.lamma-neutral-glass[data-custom-face="on"] .lamma-header,
+.lamma-neutral-glass[data-custom-face="on"] .lamma-room-header,
+.lamma-neutral-glass[data-custom-face="on"] .lamma-topic-shell {
+  border-color: rgba(var(--face-frame-r, 214), var(--face-frame-g, 179), var(--face-frame-b, 91), 0.28) !important;
+}
+
+.lamma-neutral-glass[data-custom-face="on"] .lamma-accent-btn,
+.lamma-neutral-glass[data-custom-face="on"] .lamma-tab-soft:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(var(--face-primary-rgb, 212, 166, 58), 0.24),
+    rgba(var(--face-primary-rgb, 212, 166, 58), 0.12)
+  ) !important;
+  border-color: rgba(var(--face-primary-rgb, 212, 166, 58), 0.34) !important;
+  color: var(--face-accent, #f7e7b4) !important;
+}
+
+.lamma-neutral-glass[data-custom-face="on"] .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system) {
+  background: var(--face-other-bg, rgba(22, 18, 14, 0.88)) !important;
+  border: 1.5px solid var(--face-other-border, rgba(218, 165, 32, 0.22)) !important;
+  border-radius: var(--face-bubble-radius, 14px) !important;
+  color: var(--face-text, #f7f3eb) !important;
+}
+
+.lamma-neutral-glass[data-custom-face="on"] .lamma-msg-bubble-own {
+  background: var(--face-own-bg, rgba(218, 165, 32, 0.32)) !important;
+  border: 1.5px solid var(--face-own-border, rgba(255, 215, 0, 0.72)) !important;
+  border-radius: var(--face-bubble-radius, 14px) !important;
+  color: var(--face-text, #ffffff) !important;
+}
+
+.lamma-neutral-glass[data-custom-face="on"] .lamma-chat-input-shell {
+  border-color: rgba(var(--face-frame-r, 214), var(--face-frame-g, 179), var(--face-frame-b, 91), 0.34) !important;
+}
+
+.lamma-neutral-glass[data-custom-face="on"] .lamma-side-column .text-emerald-400,
+.lamma-neutral-glass[data-custom-face="on"] .lamma-side-column .text-green-400,
+.lamma-neutral-glass[data-custom-face="on"] [class*="text-cyan-"],
+.lamma-neutral-glass[data-custom-face="on"] [class*="text-amber-"] {
+  color: var(--face-accent, inherit) !important;
+}
+
 .lamma-neutral-glass[data-custom-face="on"][data-face-style="geometric"] .lamma-glass,
 .lamma-neutral-glass[data-custom-face="on"][data-face-style="geometric"] .lamma-section-card,
 .lamma-neutral-glass[data-custom-face="on"][data-face-style="geometric"] .lamma-admin-card {
