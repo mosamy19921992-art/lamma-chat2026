@@ -1161,12 +1161,17 @@ export default function ChatScreen({
     if (patch.layoutSections) {
       setLeftColumnSectionsPct(patch.layoutSections.left);
       setRightColumnSectionsPct(patch.layoutSections.right);
+      saveChatLayoutPrefs(chatLayoutStorageKey, {
+        left: patch.layoutSections.left,
+        right: patch.layoutSections.right,
+      });
     }
     if (patch.customFacePresetId) {
       const preset = FACE_PRESETS.find((item) => item.id === patch.customFacePresetId);
       if (preset) {
-        saveFace(preset.face);
-        applyFace(preset.face);
+        const nextFace = { ...preset.face, enabled: true };
+        saveFace(nextFace);
+        applyFace(nextFace);
       }
     }
   };
@@ -1187,6 +1192,29 @@ export default function ChatScreen({
       "🤖 مهندس لمة",
     );
     setAssistantProposal(null);
+    alert(`✅ تم تطبيق «${assistantProposal.title}». أغلق النافذة لترى الألوان والخلفيات على الشات.`);
+  };
+
+  const applyAssistantPresetDirect = (preset: DesignAssistantProposal["id"]) => {
+    const context = getDesignAssistantContext();
+    const proposal = buildDesignAssistantProposal(preset, context);
+    const allowed = window.confirm(
+      `تطبيق «${proposal.title}» الآن؟\n\n${proposal.summary}`,
+    );
+    if (!allowed) return;
+
+    captureDesignSnapshot();
+    applyAssistantPatch(proposal.changes);
+    setAssistantAudit(buildDesignAssistantAudit(getDesignAssistantContext()));
+    setAssistantFindings(buildDesignAssistantAudit(getDesignAssistantContext()).findings);
+    setAssistantProposal(null);
+    addSystemActivityLog(
+      "promote",
+      currentUser.nickname,
+      `طبق المالك اقتراح التصميم [${proposal.title}] مباشرة.`,
+      "🤖 مهندس لمة",
+    );
+    alert(`✅ تم تطبيق «${proposal.title}». الألوان والتقسيم يتحدثان فوراً على الشات.`);
   };
 
   const handleRestoreLastDesignSnapshot = () => {
@@ -5044,7 +5072,14 @@ export default function ChatScreen({
       alert("⚠️ رفع ملفات التصميم متاح للمالك بحساب مسجل فقط.");
       return null;
     }
-    const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
+    const extMatch = file.name.match(/(\.[a-z0-9]+)$/i);
+    const ext = extMatch?.[1]?.toLowerCase() || ".bin";
+    const base =
+      file.name
+        .replace(/\.[^.]+$/, "")
+        .replace(/[^a-z0-9]+/gi, "")
+        .slice(0, 32) || `asset_${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
+    const safeName = `${base}${ext}`;
     const objectPath = `${folder}/${Date.now()}_${crypto.randomUUID()}_${safeName}`;
     const { error: uploadError } = await supabase.storage
       .from("design-assets")
@@ -5081,6 +5116,7 @@ export default function ChatScreen({
     const url = await uploadDesignAsset(file, "backgrounds/global");
     if (!url) return;
     setOwnerBgImage(url);
+    setDesignOwnerBgInput(url);
   };
 
   const handleDesignRoomBgUpload = async (
@@ -5096,6 +5132,7 @@ export default function ChatScreen({
     const url = await uploadDesignAsset(file, `backgrounds/rooms/${activeRoomId}`);
     if (!url) return;
     setRoomBgMap((prev) => ({ ...prev, [activeRoomId]: url }));
+    setDesignRoomBgInput(url);
   };
 
   const handleDesignLogoUpload = async (
@@ -5111,6 +5148,7 @@ export default function ChatScreen({
     const url = await uploadDesignAsset(file, "logos");
     if (!url) return;
     setBrandLogoUrl(url);
+    setDesignLogoInput(url);
   };
 
   const handlePmImageUploadChange = async (
@@ -10575,7 +10613,13 @@ export default function ChatScreen({
                     isOwnerRole={isOwnerRole}
                     runAssistantAudit={runAssistantAudit}
                     queueAssistantProposal={queueAssistantProposal}
-                    queueRecommendedAssistantProposal={queueRecommendedAssistantProposal}
+                    applyAssistantPresetDirect={applyAssistantPresetDirect}
+                    queueRecommendedAssistantProposal={() =>
+                      applyAssistantPresetDirect(
+                        buildDesignAssistantAudit(getDesignAssistantContext())
+                          .recommendedPreset,
+                      )
+                    }
                     assistantAudit={assistantAudit}
                     assistantFindings={assistantFindings}
                     assistantProposal={assistantProposal}
@@ -10608,6 +10652,7 @@ export default function ChatScreen({
                     handleSaveDesignPreset={handleSaveDesignPreset}
                     applyDesignPreset={applyDesignPreset}
                     handleDeleteDesignPreset={handleDeleteDesignPreset}
+                    uploadDesignImage={uploadDesignAsset}
                   />
                 )}
                 {activeModal === 'leadership' && leadershipTab === 'stats' && (

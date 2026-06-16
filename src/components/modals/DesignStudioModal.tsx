@@ -34,6 +34,7 @@ import {
 
 interface DesignStudioModalProps {
   isOwnerRole: boolean;
+  uploadDesignImage?: (file: File, folder: string) => Promise<string | null>;
 }
 
 type StudioTab = "presets" | "colors" | "bubbles" | "typography" | "columns" | "glow" | "background";
@@ -116,6 +117,8 @@ function ColumnEditor({
   image,
   onColor,
   onImage,
+  onUpload,
+  uploading,
 }: {
   label: string;
   emoji: string;
@@ -123,7 +126,11 @@ function ColumnEditor({
   image: string;
   onColor: (v: string) => void;
   onImage: (v: string) => void;
+  onUpload?: (file: File) => void;
+  uploading?: boolean;
 }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
   return (
     <div className="p-3 rounded-2xl space-y-3 lamma-admin-card">
       <div className="flex items-center gap-2">
@@ -141,6 +148,29 @@ function ColumnEditor({
           dir="ltr"
           className="flex-1 bg-transparent border-none text-[11px] text-white px-1 focus:outline-none"
         />
+        {onUpload && (
+          <>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) onUpload(file);
+              }}
+              className="hidden"
+            />
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => fileRef.current?.click()}
+              className="px-2 py-1 text-[9px] font-black rounded-lg whitespace-nowrap lamma-tab-soft hover:text-white disabled:opacity-50"
+            >
+              {uploading ? "..." : "رفع"}
+            </button>
+          </>
+        )}
         {image.trim() !== "" && (
           <button
             type="button"
@@ -307,13 +337,15 @@ function LivePreview({ face }: { face: CustomFace }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function DesignStudioModal({ isOwnerRole }: DesignStudioModalProps) {
+export function DesignStudioModal({ isOwnerRole, uploadDesignImage }: DesignStudioModalProps) {
   const [face, setFace] = useState<CustomFace>(() => loadFace());
   const [savedFaces, setSavedFaces] = useState<SavedFace[]>(() => loadSavedFaces());
   const [tab, setTab] = useState<StudioTab>("presets");
   const [faceName, setFaceName] = useState("");
   const [appliedPreset, setAppliedPreset] = useState<string | null>(null);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
+  const appBgUploadRef = useRef<HTMLInputElement>(null);
 
   // Apply + persist live on every change
   useEffect(() => {
@@ -391,6 +423,30 @@ export function DesignStudioModal({ isOwnerRole }: DesignStudioModalProps) {
     };
     reader.readAsText(file);
     e.target.value = "";
+  };
+
+  const handleImageUpload = async (
+    file: File,
+    folder: string,
+    imageKey: keyof Pick<CustomFace, "leftImage" | "centerImage" | "rightImage" | "appBgImage">,
+  ) => {
+    if (!uploadDesignImage) {
+      alert("⚠️ رفع الصور غير متاح حالياً.");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      alert("⚠️ الملف اللي اخترته مش صورة.");
+      return;
+    }
+    setUploadingKey(imageKey);
+    try {
+      const url = await uploadDesignImage(file, folder);
+      if (!url) return;
+      setFace((prev) => ({ ...prev, [imageKey]: url, enabled: true }));
+      setAppliedPreset(null);
+    } finally {
+      setUploadingKey(null);
+    }
   };
 
   if (!isOwnerRole) {
@@ -635,6 +691,8 @@ export function DesignStudioModal({ isOwnerRole }: DesignStudioModalProps) {
             image={face.rightImage}
             onColor={(v) => update("rightColor", v)}
             onImage={(v) => update("rightImage", v)}
+            onUpload={(file) => handleImageUpload(file, "columns/right", "rightImage")}
+            uploading={uploadingKey === "rightImage"}
           />
           <ColumnEditor
             label="العمود الأوسط (الشات)"
@@ -643,6 +701,8 @@ export function DesignStudioModal({ isOwnerRole }: DesignStudioModalProps) {
             image={face.centerImage}
             onColor={(v) => update("centerColor", v)}
             onImage={(v) => update("centerImage", v)}
+            onUpload={(file) => handleImageUpload(file, "columns/center", "centerImage")}
+            uploading={uploadingKey === "centerImage"}
           />
           <ColumnEditor
             label="العمود الأيسر (المتجر والراديو)"
@@ -651,6 +711,8 @@ export function DesignStudioModal({ isOwnerRole }: DesignStudioModalProps) {
             image={face.leftImage}
             onColor={(v) => update("leftColor", v)}
             onImage={(v) => update("leftImage", v)}
+            onUpload={(file) => handleImageUpload(file, "columns/left", "leftImage")}
+            uploading={uploadingKey === "leftImage"}
           />
         </div>
       )}
@@ -706,6 +768,29 @@ export function DesignStudioModal({ isOwnerRole }: DesignStudioModalProps) {
               dir="ltr"
               className="flex-1 bg-transparent border-none text-[11px] text-white px-1 focus:outline-none"
             />
+            {uploadDesignImage && (
+              <>
+                <input
+                  ref={appBgUploadRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) void handleImageUpload(file, "backgrounds/studio", "appBgImage");
+                  }}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  disabled={uploadingKey === "appBgImage"}
+                  onClick={() => appBgUploadRef.current?.click()}
+                  className="px-2 py-1 text-[9px] font-black rounded-lg whitespace-nowrap lamma-tab-soft hover:text-white disabled:opacity-50"
+                >
+                  {uploadingKey === "appBgImage" ? "..." : "رفع"}
+                </button>
+              </>
+            )}
             {face.appBgImage.trim() !== "" && (
               <button
                 type="button"

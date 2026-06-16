@@ -355,7 +355,7 @@ export function buildDesignAssistantProposal(
   if (preset === "premium") {
     return buildProposalMetadata(
       "premium",
-      { brandLogoUrl: sharedLogo },
+      { brandLogoUrl: sharedLogo, customFacePresetId: "gold" },
       context,
       [
         "يوحد الشعار مع المظهر العام ويعطي انطباعًا أفخم.",
@@ -378,7 +378,7 @@ export function buildDesignAssistantProposal(
   if (preset === "calm") {
     return buildProposalMetadata(
       "calm",
-      { roomBgCurrent: null },
+      { roomBgCurrent: null, customFacePresetId: "ocean" },
       context,
       [
         "يقلل الزحام البصري داخل الغرفة الحالية.",
@@ -401,7 +401,7 @@ export function buildDesignAssistantProposal(
   if (preset === "night") {
     return buildProposalMetadata(
       "night",
-      { brandLogoUrl: sharedLogo },
+      { brandLogoUrl: sharedLogo, customFacePresetId: "void" },
       context,
       [
         "يمنح الواجهة حضورًا ليليًا حديثًا وواضحًا.",
