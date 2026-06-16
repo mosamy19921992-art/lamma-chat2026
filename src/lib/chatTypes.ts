@@ -40,6 +40,7 @@ export interface ChatScreenProps {
   currentUser: UserSession;
   onLogout: () => void;
   primaryTheme: "dark" | "amoled";
+  onUserSessionUpdate?: (patch: Partial<UserSession>) => void;
 }
 
 export interface Message {
@@ -91,14 +92,62 @@ export interface PMThreadMessage {
   mediaUrl?: string;
   type?: "text" | "image" | "video" | "audio";
   status?: "sent" | "delivered" | "read";
+  dbId?: string;
 }
 
 export interface MemberCustomPermissions {
+  /** رسائل صوتية في الغرف (مثل واتساب) */
   recordingAllowed: boolean;
+  /** مكالمات صوتية من الخاص */
   callsAllowed: boolean;
+  /** مكالمات فيdeo / الكاميرا من الخاص */
+  videoCallsAllowed: boolean;
+  /** تشغيل الراديو ومكتبة الموسيقى */
   musicRadioAllowed: boolean;
+  /** إنشاء غرف مخصصة */
   roomCreationAllowed: boolean;
+  /** رفع الصور ومشاركة روابط الصور */
+  imagesAllowed: boolean;
+  /** مشاركة يوتيوب / فيديو في الرسائل */
+  youtubeAllowed: boolean;
 }
+
+/** مظهر/تميز يمنحه المالك بدون اشتراك متجر */
+export type CosmeticVipTier = "vip" | "platinum";
+
+export interface MemberCosmeticGrant {
+  vipTier?: CosmeticVipTier | null;
+  frame?: string | null;
+}
+
+export const COSMETIC_FRAME_PRESETS = {
+  fire: "from-red-500 via-orange-500 to-yellow-500",
+  ice: "from-cyan-500 via-indigo-500 to-purple-500",
+  rainbow: "from-pink-500 via-purple-500 to-cyan-500",
+} as const;
+
+/** بث المالك للغرفة — يسمعها كل المتصلين في نفس الغرفة */
+export interface RoomDjState {
+  mode: "music" | "radio";
+  trackId: string;
+  title: string;
+  url: string;
+  isPlaying: boolean;
+  startedAtMs: number;
+  updatedBy: string;
+  updatedAtMs: number;
+}
+
+/** أغنية رفعها المالك من جهازه */
+export interface OwnerMusicTrack {
+  id: string;
+  title: string;
+  url: string;
+  fileName?: string;
+  uploadedAt: string;
+}
+
+export type CosmeticFramePreset = keyof typeof COSMETIC_FRAME_PRESETS;
 
 export interface BanInfo {
   id: string;
@@ -133,12 +182,9 @@ export type ChatTheme =
   | "violet-night";
 
 export type DesignAssistantPatch = {
-  wallTheme?: WallTheme;
   brandLogoUrl?: string | null;
-  glowColor?: string;
   ownerBgImage?: string | null;
   roomBgCurrent?: string | null;
-  chatTheme?: ChatTheme;
 };
 
 export type DesignAssistantProposalId =
@@ -187,12 +233,9 @@ export type DesignAssistantAudit = {
 };
 
 export type DesignAssistantSnapshot = {
-  wallTheme: WallTheme;
   brandLogoUrl: string | null;
-  glowColor: string;
   ownerBgImage: string | null;
   roomBgCurrent: string | null;
-  chatTheme: ChatTheme;
 };
 
 export type DesignPreset = {
@@ -200,12 +243,9 @@ export type DesignPreset = {
   name: string;
   createdAt: string;
   snapshot: {
-    wallTheme: WallTheme;
     brandLogoUrl: string | null;
-    glowColor: string;
     ownerBgImage: string | null;
     roomBgMap: Record<string, string>;
-    chatTheme: ChatTheme;
   };
 };
 

@@ -1,5 +1,14 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { ProductTab, ProductType, UserSession } from "../../lib/chatTypes";
+import {
+  CustomFeature,
+  DEFAULT_PLAN_FEATURES,
+  SubscriptionPlan,
+  fetchCustomFeatures,
+  fetchPaymentInfo,
+  submitOrder,
+  type PaymentInfo,
+} from "../../services/store/subscriptionService";
 
 interface StorePanelModalProps {
   shopTab: string;
@@ -32,6 +41,7 @@ interface StorePanelModalProps {
   dbStatusLogs: string[];
   setDbStatusLogs: React.Dispatch<React.SetStateAction<string[]>>;
   handleAccelerateDays: (days: number) => void;
+  subscriptionPlans: SubscriptionPlan[];
 }
 
 export function StorePanelModal({
@@ -65,8 +75,71 @@ export function StorePanelModal({
   dbStatusLogs,
   setDbStatusLogs,
   handleAccelerateDays,
+  subscriptionPlans,
 }: StorePanelModalProps) {
   const subscriptionStorageKey = `lamma_subscription_${currentUser.uid}`;
+  const isOwner = currentUser.role === "owner";
+
+  useEffect(() => {
+    if (!isOwner && (shopTab === "stats" || shopTab === "maintenance")) {
+      setShopTab("vip");
+    }
+  }, [isOwner, setShopTab, shopTab]);
+
+  // ── Real VIP plan ordering state ──────────────────────────────────────────
+  const [planFeatures, setPlanFeatures] = useState<CustomFeature[]>(DEFAULT_PLAN_FEATURES);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+  const [orderPayMethod, setOrderPayMethod] = useState<"vodafone_cash" | "instapay" | "fawry">("vodafone_cash");
+  const [orderPhone, setOrderPhone] = useState("");
+  const [orderRef, setOrderRef] = useState("");
+  const [orderLoading, setOrderLoading] = useState(false);
+  const [orderDone, setOrderDone] = useState(false);
+  const [payInfo, setPayInfo] = useState<PaymentInfo | null>(null);
+
+  useEffect(() => {
+    fetchCustomFeatures().then(setPlanFeatures);
+  }, []);
+
+  async function loadPayInfo() {
+    if (!payInfo) {
+      const info = await fetchPaymentInfo();
+      setPayInfo(info);
+    }
+  }
+
+  function openOrderForm(plan: SubscriptionPlan) {
+    setSelectedPlan(plan);
+    setOrderPhone("");
+    setOrderRef("");
+    setOrderDone(false);
+    loadPayInfo();
+  }
+
+  async function handleSubmitOrder() {
+    if (!selectedPlan) return;
+    if (!orderPhone.trim() || !orderRef.trim()) {
+      alert("يرجى ملء رقم هاتفك ورقم العملية.");
+      return;
+    }
+    setOrderLoading(true);
+    const { error } = await submitOrder({
+      user_id: currentUser.uid || currentUser.nickname,
+      user_nickname: currentUser.nickname,
+      user_email: currentUser.email || "",
+      plan_id: selectedPlan.id,
+      plan_name: selectedPlan.name,
+      amount: selectedPlan.price,
+      payment_method: orderPayMethod,
+      payment_ref: orderRef.trim(),
+      payment_phone: orderPhone.trim(),
+    });
+    setOrderLoading(false);
+    if (error) {
+      alert("حدث خطأ: " + error);
+      return;
+    }
+    setOrderDone(true);
+  }
 
   return (
     <div className="space-y-4 text-right selection:bg-emerald-500/20 font-sans" dir="rtl">
@@ -74,21 +147,32 @@ export function StorePanelModal({
       <div className="p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none lamma-soft-success">
         <div className="space-y-0.5">
           <div className="flex items-center gap-1.5 justify-end sm:justify-start">
-            <span className="text-sm">💎</span>
+            <span className="text-sm">{isOwner ? "💎" : "🛒"}</span>
             <h4 className="text-white text-xs font-black">
-              المركز الذكي للأتمتة والمتجر التلقائي
+              {isOwner
+                ? "مركز المتجر والأتمتة (للمالك)"
+                : "متجر لمة — VIP والمظهر"}
             </h4>
           </div>
           <p className="text-[9.5px] text-gray-400 font-bold leading-relaxed font-sans mt-0.5">
-            تفعيل فوري لرتب VIP، الأشكال، الألقاب، الأصدقاء الأذكياء، وفحص
-            سلامة وأمان المنصة آلياً بالكامل.
+            {isOwner
+              ? "إدارة الباقات، الأتمتة، الإحصائيات، وصيانة المنصة."
+              : "اشترك في VIP، اختر مظهرك، ألقابك وشاراتك — الدفع يُراجع من المالك."}
           </p>
         </div>
-        <div className="shrink-0 text-left">
-          <span className="text-[8.5px] font-black lamma-role-chip lamma-role-vip px-2.5 py-1 whitespace-nowrap">
-            ● معالج التحقق التلقائي نشط
-          </span>
-        </div>
+        {isOwner ? (
+          <div className="shrink-0 text-left">
+            <span className="text-[8.5px] font-black lamma-role-chip lamma-role-vip px-2.5 py-1 whitespace-nowrap">
+              ● لوحة المالك
+            </span>
+          </div>
+        ) : subscription?.isActive ? (
+          <div className="shrink-0 text-left">
+            <span className="text-[8.5px] font-black lamma-role-chip lamma-role-vip px-2.5 py-1 whitespace-nowrap">
+              ● VIP نشط
+            </span>
+          </div>
+        ) : null}
       </div>
 
       {/* App Tabs Selection Bar */}
@@ -148,6 +232,8 @@ export function StorePanelModal({
         >
           🤝 لقاء الرفاق آلياً
         </button>
+        {isOwner && (
+          <>
         <button
           onClick={() => {
             setShopTab("stats");
@@ -159,7 +245,7 @@ export function StorePanelModal({
               : "lamma-tab-soft text-gray-400 hover:text-white"
           }`}
         >
-          📊 إحصائيات الغرف تلقائياً
+          📊 إحصائيات الغرف
         </button>
         <button
           onClick={() => {
@@ -172,59 +258,189 @@ export function StorePanelModal({
               : "lamma-tab-soft text-gray-400 hover:text-white"
           }`}
         >
-          🔧 الصيانة والتعافي الذاتي
+          🔧 الصيانة والتعافي
         </button>
+          </>
+        )}
       </div>
 
-      {/* TAB CONTENTS - 1. VIP BUNDLES */}
-      {shopTab === "vip" && payStatus !== "loading" && payStatus !== "success" && (
+      {/* TAB CONTENTS - 1. VIP BUNDLES (real plans from DB) */}
+      {shopTab === "vip" && (
         <div className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {storeProducts
-              .filter((p) => p.tab === "vip")
-              .map((p) => (
+
+          {/* Order success */}
+          {orderDone && (
+            <div className="p-4 rounded-2xl lamma-soft-success text-center space-y-2">
+              <div className="text-2xl">🎉</div>
+              <div className="text-white text-xs font-black">تم إرسال طلبك بنجاح!</div>
+              <div className="text-[9px] text-gray-300 leading-relaxed">
+                سيراجع المالك طلبك ويفعّل اشتراكك خلال 24 ساعة.
+                ستصلك رسالة في الشات فور التفعيل.
+              </div>
+              <button
+                onClick={() => { setSelectedPlan(null); setOrderDone(false); }}
+                className="px-4 py-1.5 rounded-xl text-[9px] font-black lamma-section-card text-gray-300 hover:text-white transition-colors"
+              >
+                العودة للمتجر
+              </button>
+            </div>
+          )}
+
+          {/* Order form */}
+          {selectedPlan && !orderDone && (
+            <div className="p-4 rounded-2xl lamma-admin-card space-y-3">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setSelectedPlan(null)}
+                  className="text-[9px] text-gray-400 hover:text-white font-bold"
+                >
+                  ← رجوع
+                </button>
+                <div className="text-right">
+                  <div className="text-white text-xs font-black">{selectedPlan.badge} {selectedPlan.name}</div>
+                  <div className="text-emerald-400 text-[10px] font-bold">{selectedPlan.price} جنيه / {selectedPlan.duration_days} يوم</div>
+                </div>
+              </div>
+
+              {/* Payment method selector */}
+              <div>
+                <div className="text-[9px] text-gray-400 font-bold mb-1">اختر طريقة الدفع:</div>
+                <div className="flex gap-1 flex-wrap">
+                  {(["vodafone_cash", "instapay", "fawry"] as const).map((m) => {
+                    const hasInfo = m === "vodafone_cash"
+                      ? !!payInfo?.vodafone_cash?.number
+                      : m === "instapay"
+                        ? !!payInfo?.instapay?.handle
+                        : !!payInfo?.fawry?.code;
+                    if (!hasInfo && payInfo !== null) return null;
+                    return (
+                      <button
+                        key={m}
+                        onClick={() => setOrderPayMethod(m)}
+                        className={`px-2 py-1 rounded-lg text-[9px] font-bold transition-all ${
+                          orderPayMethod === m ? "lamma-toggle-on" : "lamma-section-card text-gray-400"
+                        }`}
+                      >
+                        {m === "vodafone_cash" ? "📱 فودافون كاش" : m === "instapay" ? "💳 إنستاباي" : "🏪 فوري"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Payment instructions */}
+              {payInfo && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-right space-y-1">
+                  <div className="text-[9px] text-emerald-300 font-black">تعليمات الدفع:</div>
+                  {orderPayMethod === "vodafone_cash" && payInfo.vodafone_cash?.number && (
+                    <div className="text-[10px] text-white font-bold">
+                      حوّل <span className="text-emerald-400">{selectedPlan.price} جنيه</span> على فودافون كاش:
+                      <span className="block text-base font-black text-white mt-0.5">{payInfo.vodafone_cash.number}</span>
+                      {payInfo.vodafone_cash.name && <span className="text-[9px] text-gray-400">باسم: {payInfo.vodafone_cash.name}</span>}
+                    </div>
+                  )}
+                  {orderPayMethod === "instapay" && payInfo.instapay?.handle && (
+                    <div className="text-[10px] text-white font-bold">
+                      حوّل <span className="text-emerald-400">{selectedPlan.price} جنيه</span> على إنستاباي:
+                      <span className="block text-base font-black text-white mt-0.5">{payInfo.instapay.handle}</span>
+                    </div>
+                  )}
+                  {orderPayMethod === "fawry" && payInfo.fawry?.code && (
+                    <div className="text-[10px] text-white font-bold">
+                      ادفع <span className="text-emerald-400">{selectedPlan.price} جنيه</span> عبر فوري:
+                      <span className="block text-base font-black text-white mt-0.5">كود: {payInfo.fawry.code}</span>
+                    </div>
+                  )}
+                  {payInfo.note && (
+                    <div className="text-[9px] text-yellow-300 font-bold mt-1">ملاحظة: {payInfo.note}</div>
+                  )}
+                </div>
+              )}
+
+              {/* Order form fields */}
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[9px] text-gray-400 font-bold">رقم هاتفك (اللي حوّلت منه) *</label>
+                  <input
+                    value={orderPhone}
+                    onChange={(e) => setOrderPhone(e.target.value)}
+                    placeholder="01XXXXXXXXX"
+                    className="w-full mt-0.5 px-2 py-1.5 rounded-lg text-[10px] bg-white/5 text-white border border-white/10 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] text-gray-400 font-bold">رقم العملية / الكود المرجعي *</label>
+                  <input
+                    value={orderRef}
+                    onChange={(e) => setOrderRef(e.target.value)}
+                    placeholder="رقم التحويل من الرسالة"
+                    className="w-full mt-0.5 px-2 py-1.5 rounded-lg text-[10px] bg-white/5 text-white border border-white/10 outline-none"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleSubmitOrder}
+                disabled={orderLoading || !orderPhone.trim() || !orderRef.trim()}
+                className="w-full py-2.5 rounded-xl text-[10px] font-black lamma-toggle-on disabled:opacity-50"
+              >
+                {orderLoading ? "⏳ جاري الإرسال..." : "✅ إرسال الطلب للمالك"}
+              </button>
+            </div>
+          )}
+
+          {/* Plans grid */}
+          {!selectedPlan && !orderDone && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {subscriptionPlans.map((plan) => (
                 <div
-                  key={p.id}
+                  key={plan.id}
                   className="p-4 rounded-2xl flex flex-col justify-between transition-all select-none lamma-admin-card"
                 >
                   <div className="space-y-1.5 text-right">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs lamma-role-chip lamma-role-vip font-extrabold px-1.5 py-0.5 rounded-lg">
-                        30 يوماً
+                      <span className="text-[10px] lamma-role-chip lamma-role-vip font-extrabold px-1.5 py-0.5 rounded-lg">
+                        {plan.duration_days} يوماً
                       </span>
                       <h5 className="font-sans font-black text-white text-xs">
-                        {p.name}
+                        {plan.badge} {plan.name}
                       </h5>
                     </div>
-                    <p className="text-[9px] text-gray-400 font-bold leading-relaxed font-sans mt-0.5">
-                      {p.description}
-                    </p>
+                    {plan.description && (
+                      <p className="text-[9px] text-gray-400 font-bold leading-relaxed">{plan.description}</p>
+                    )}
+                    {plan.features.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {plan.features.map((f) => {
+                          const feat = planFeatures.find((x) => x.key === f);
+                          return feat ? (
+                            <span key={f} className="text-[8px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-bold">
+                              {feat.icon} {feat.label}
+                            </span>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
                     <div className="pt-2 text-emerald-400 text-[10.5px] font-mono leading-none">
                       السعر:{" "}
-                      <span className="text-white text-xs font-black">
-                        {p.price}
-                      </span>
+                      <span className="text-white text-xs font-black">{plan.price} جنيه</span>
                     </div>
                   </div>
                   <button
-                    onClick={() => {
-                      setSelectedProduct(p);
-                      setPayGateway("vodafone");
-                      setPaymentAccountInput("");
-                      setPayStatus("idle");
-                    }}
+                    onClick={() => openOrderForm(plan)}
                     className="w-full mt-4 py-2 text-white font-extrabold text-[10px] rounded-xl transition-all cursor-pointer lamma-feature-primary"
                   >
-                    شراء فوري وتفعيل تلقائي
+                    اشترك الآن
                   </button>
                 </div>
               ))}
-            {storeProducts.filter((p) => p.tab === "vip").length === 0 && (
-              <p className="col-span-2 text-center text-gray-500 text-[10px] font-bold py-6">
-                ⚠️ لا يوجد باقات VIP في المتجر حالياً.
-              </p>
-            )}
-          </div>
+              {subscriptionPlans.length === 0 && (
+                <p className="col-span-2 text-center text-gray-500 text-[10px] font-bold py-6">
+                  ⚠️ لا توجد باقات متاحة حالياً — تواصل مع المالك.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -396,8 +612,8 @@ export function StorePanelModal({
         </div>
       )}
 
-      {/* TAB CONTENTS - 5. AUTOMATED CHARTS & STATISTICS */}
-      {shopTab === "stats" && (
+      {/* TAB CONTENTS - 5. AUTOMATED CHARTS & STATISTICS (owner only) */}
+      {isOwner && shopTab === "stats" && (
         <div className="space-y-3 font-sans">
           <p className="text-[9.5px] text-gray-400 font-bold leading-normal pb-1">
             📊 إحصائيات الغرف اليومية التلقائية المستخرجة آلياً لتقديم إشارات
@@ -509,8 +725,8 @@ export function StorePanelModal({
         </div>
       )}
 
-      {/* TAB CONTENTS - 6. AUTOMATED MAINTENANCE & HEALING */}
-      {shopTab === "maintenance" && (
+      {/* TAB CONTENTS - 6. AUTOMATED MAINTENANCE & HEALING (owner only) */}
+      {isOwner && shopTab === "maintenance" && (
         <div className="space-y-3 font-sans">
           <div className="p-3 rounded-xl flex items-center justify-between gap-3 text-right lamma-soft-danger">
             <div className="space-y-0.5">

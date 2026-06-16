@@ -11,6 +11,15 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 const browserStorage =
   typeof window !== "undefined" ? window.localStorage : undefined;
 
+function safeLocalStorage() {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 if (!isSupabaseConfigured) {
   console.warn(
     "⚠️ Supabase credentials are missing. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment variables.",
@@ -31,13 +40,14 @@ export const supabase = isSupabaseConfigured
 
 export function getClientUid() {
   const key = "lamma_client_uid";
-  let uid = localStorage.getItem(key);
+  const storage = safeLocalStorage();
+  let uid = storage?.getItem(key) ?? null;
   if (!uid) {
     uid =
       typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    localStorage.setItem(key, uid);
+    storage?.setItem(key, uid);
   }
   return uid;
 }
@@ -79,6 +89,8 @@ export interface OwnerSettingsRow {
   room_bg_map?: Record<string, string> | null;
   design_presets?: unknown[] | null;
   chat_theme?: string | null;
+  room_dj_map?: Record<string, unknown> | null;
+  dj_library?: unknown[] | null;
 }
 
 export interface OwnerMemberPermissionRow {
@@ -87,8 +99,19 @@ export interface OwnerMemberPermissionRow {
   updated_by?: string | null;
   recording_allowed?: boolean;
   calls_allowed?: boolean;
+  video_calls_allowed?: boolean;
   music_radio_allowed?: boolean;
   room_creation_allowed?: boolean;
+  images_allowed?: boolean;
+  youtube_allowed?: boolean;
+}
+
+export interface OwnerMemberCosmeticsRow {
+  nickname: string;
+  updated_at?: string;
+  updated_by?: string | null;
+  vip_tier?: "vip" | "platinum" | null;
+  frame?: string | null;
 }
 
 export interface OwnerActivityLogRow {

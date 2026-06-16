@@ -6,8 +6,10 @@ import {
   persistRoomMessage,
 } from "../services/chat/messagesService";
 import { handleRoomChatCommand } from "../services/chat/roomCommandsService";
+import { getYoutubeId, canShareYoutube } from "../lib/chatHelpers";
 import { moderateRoomMessage } from "../services/chat/roomModerationService";
 import { handleViolationEscalation } from "../services/chat/roomViolationService";
+import { checkAnswer, handleGameCommand } from "../services/chat/gamesBot";
 
 interface BotLogEntry {
   id: string;
@@ -15,6 +17,8 @@ interface BotLogEntry {
   text: string;
   severity: "info" | "warn" | "danger";
 }
+
+const VIOLATIONS_STORAGE_KEY = "lamma_violation_counts";
 
 interface UseRoomComposerOptions {
   activeRoomId: string;
@@ -56,6 +60,7 @@ interface UseRoomComposerOptions {
     details: string,
     operatorNickname: string,
   ) => void;
+  canShareYoutubeInMessage: () => boolean;
 }
 
 export function useRoomComposer({
@@ -93,6 +98,7 @@ export function useRoomComposer({
   addBotSystemWarning,
   addLammaBotMessage,
   addSystemActivityLog,
+  canShareYoutubeInMessage,
 }: UseRoomComposerOptions) {
   const handleSendMessage = useCallback(async () => {
     const now = Date.now();
@@ -106,6 +112,17 @@ export function useRoomComposer({
     rateLimitRef.current.push(now);
 
     if (!inputText.trim()) return;
+
+    const trimmedInput = inputText.trim();
+    const hasYoutubeLink =
+      /youtu\.be\/|youtube\.com\//i.test(trimmedInput) ||
+      Boolean(getYoutubeId(trimmedInput));
+    if (hasYoutubeLink && !canShareYoutubeInMessage()) {
+      alert(
+        "🎥 مشاركة روابط يوتيوب غير مفعّلة لحسابك. يمكن للمالك منحها من غرفة القيادة → صلاحيات الأعضاء.",
+      );
+      return;
+    }
 
     if (isPostsRoom && !canPublishPosts) {
       alert(
@@ -141,6 +158,23 @@ export function useRoomComposer({
 
     if (commandHandled) {
       return;
+    }
+
+    // Games Bot — only active in the games room
+    if (activeRoomId === "games") {
+      // 1. Check if it's a game command (/سؤال, /تلميح, etc.)
+      const cmdResult = handleGameCommand(inputText, currentUser.nickname);
+      if (cmdResult) {
+        addLammaBotMessage("games", cmdResult.botMessage);
+        setInputText("");
+        return;
+      }
+      // 2. Check if the message is a correct answer to an active game
+      const ansResult = checkAnswer(inputText, currentUser.nickname);
+      if (ansResult) {
+        // Let the user's message go through normally, then post the win message
+        setTimeout(() => addLammaBotMessage("games", ansResult.botMessage), 400);
+      }
     }
 
     const isMuted = bannedUsersList.some(
@@ -187,6 +221,7 @@ export function useRoomComposer({
       authorName: currentUser.nickname,
       roomName: activeRoomName,
       isBotEnabled,
+      isOwnerOrAdmin,
       antiLinksEnabled: botRuleAntiLinks,
       antiSpamEnabled: botRuleAntiSpam,
       swearFilterEnabled: botRuleSwearFilter,
@@ -225,7 +260,15 @@ export function useRoomComposer({
           ip: myIp,
         },
         onViolationCount: (nextCount) => {
-          setViolationCount((prev) => ({ ...prev, [userNick]: nextCount }));
+          setViolationCount((prev) => {
+            const updated = { ...prev, [userNick]: nextCount };
+            try {
+              localStorage.setItem(VIOLATIONS_STORAGE_KEY, JSON.stringify(updated));
+            } catch {
+              // storage full – ignore
+            }
+            return updated;
+          });
         },
         onBotMessage: addLammaBotMessage,
         onAddMuteBan: (banInfo) => {
@@ -293,6 +336,8 @@ export function useRoomComposer({
         color: currentUser.color,
         isShadowed,
       });
+      const originalInput = inputText;
+
       setRoomMessages((prev) => ({
         ...prev,
         [activeRoomId]: appendRoomMessage(
@@ -300,6 +345,8 @@ export function useRoomComposer({
           newMessage,
         ),
       }));
+      setInputText("");
+      setShowEmojiPicker(false);
 
       try {
         await persistRoomMessage({
@@ -307,8 +354,33 @@ export function useRoomComposer({
           roomId: activeRoomId,
           senderUid,
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error sending to Supabase:", error);
+
+        // Roll back the optimistic message in all cases
+        setRoomMessages((prev) => ({
+          ...prev,
+          [activeRoomId]: (prev[activeRoomId] || []).filter(
+            (m) => m.id !== newMessage.id,
+          ),
+        }));
+
+        // 42501 = RLS policy blocked the insert (server-side moderation)
+        if (error?.code === "42501") {
+          addBotSystemWarning(
+            activeRoomId,
+            "🛡️ رسالتك تم رفضها من السيرفر لأنها تحتوي على رابط أو كلمة محظورة.",
+          );
+          setInputText("");
+          return;
+        }
+
+        // Generic network / server error — give the text back
+        setInputText(originalInput);
+        alert(
+          "❌ تعذر إرسال الرسالة حاليًا. لم يتم حفظها على السيرفر، فتمت إعادتها لك لتجرب الإرسال مرة أخرى.",
+        );
+        return;
       }
     }
 
@@ -355,6 +427,7 @@ export function useRoomComposer({
     setShowEmojiPicker,
     setViolationCount,
     violationCount,
+    canShareYoutubeInMessage,
   ]);
 
   return {

@@ -1,18 +1,11 @@
-import AMLogo from "./AMLogo";
+import { OwnerCrownMark } from "./OwnerPrestige";
 
 interface BossSigilProps {
   size?: number;
   className?: string;
 }
 
-export default function BossSigil({ size = 14, className = "" }: BossSigilProps) {
-  return (
-    <span
-      className={`lamma-boss-sigil ${className}`}
-      style={{ width: size, height: size }}
-      aria-hidden="true"
-    >
-      <AMLogo size={size} variant="circular" glow={false} crownRole="none" />
-    </span>
-  );
+/** @deprecated use OwnerCrownMark — kept for existing imports */
+export default function BossSigil(props: BossSigilProps) {
+  return <OwnerCrownMark {...props} />;
 }

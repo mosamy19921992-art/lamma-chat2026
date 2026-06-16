@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase.ts";
+import { supabase, getClientUid } from "../lib/supabase.ts";
 import { Smartphone, X, Download, Info, Check, Apple, HelpCircle, User, Sparkles } from "lucide-react";
 import {
   getResolvedSupabaseColor,
@@ -169,7 +169,14 @@ export default function LoginScreen(props: LoginScreenProps) {
 
   const handleGuestLogin = () => {
     const nickname = guestNickname.trim() || randomGuestId();
-    onLogin(nickname, "guest", randomColor(), undefined, undefined, "guest");
+    onLogin(
+      nickname,
+      "guest",
+      randomColor(),
+      getClientUid(),
+      undefined,
+      "guest",
+    );
   };
 
   const handleInstallApp = async () => {

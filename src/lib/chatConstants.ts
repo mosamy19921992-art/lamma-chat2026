@@ -9,10 +9,9 @@ export const ROOMS_DEF = [
   { id: "palestine", name: "فلسطين", icon: "🇵🇸", count: 0, category: "social" },
   { id: "posts-feed", name: "المنشورات", icon: "📰", count: 0, category: "community" },
   { id: "fun", name: "فرفشة", icon: "🥳", count: 0, category: "fun" },
-  { id: "games", name: "ألعاب", icon: "🎮", count: 0, category: "fun" },
+  { id: "games", name: "Games 🎮", icon: "🎮", count: 0, category: "fun" },
   { id: "romance", name: "رومانسية", icon: "💖", count: 0, category: "relations" },
-  { id: "admin", name: "الإدارة", icon: "🛡️", count: 0, category: "private" },
-  { id: "owner", name: "المالك", icon: "👑", count: 0, category: "private" },
+  { id: "admin", name: "الإدارة والشكاوى", icon: "🛡️", count: 0, category: "social" },
 ];
 
 export const ROOM_CATEGORIES = [

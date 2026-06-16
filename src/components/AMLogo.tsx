@@ -169,6 +169,29 @@ export default function AMLogo({
             />
           )}
 
+          {/* Owner flame ring — premium halo like store fire frame */}
+          {crownRole === "owner" && (
+            <g className="lamma-amlogo-owner-flames" opacity="0.92">
+              {[0, 72, 144, 216, 288].map((deg) => (
+                <g key={deg} transform={`rotate(${deg} 100 110)`}>
+                  <path
+                    d="M 100 48 C 96 56, 94 62, 100 68 C 106 62, 104 56, 100 48 Z"
+                    fill="url(#crownGold)"
+                    opacity="0.78"
+                    className="animate-pulse"
+                    style={{ animationDuration: `${1.6 + (deg % 3) * 0.2}s` }}
+                  />
+                  <path
+                    d="M 100 48 C 96 56, 94 62, 100 68 C 106 62, 104 56, 100 48 Z"
+                    fill="#ef4444"
+                    opacity="0.22"
+                    filter="url(#neonRingBlur)"
+                  />
+                </g>
+              ))}
+            </g>
+          )}
+
           {/* Premium Golden Crown above the circle (if requested/enabled) */}
           {showCrown && (
             <g transform="translate(10, 5)" className="relative z-30">
@@ -202,10 +225,16 @@ export default function AMLogo({
               cx="100"
               cy="110"
               r="52"
-              stroke={gradientInfo ? `url(#${userFrameGradId})` : "#10b981"}
-              strokeWidth={gradientInfo ? "4.5" : "3.2"}
+              stroke={
+                crownRole === "owner"
+                  ? "url(#crownGold)"
+                  : gradientInfo
+                    ? `url(#${userFrameGradId})`
+                    : "#10b981"
+              }
+              strokeWidth={crownRole === "owner" ? 5 : gradientInfo ? "4.5" : "3.2"}
               strokeOpacity="0.95"
-              className={gradientInfo ? "animate-pulse" : ""}
+              className={gradientInfo || crownRole === "owner" ? "animate-pulse" : ""}
             />
             {/* Inner dashed ring */}
             <circle

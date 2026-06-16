@@ -40,39 +40,55 @@ interface PersistPrivateMessageOptions {
   members: Pick<ChatMember, "id" | "nickname">[];
 }
 
+interface PersistedPrivateMessage {
+  id: string;
+  created_at?: string;
+  text: string;
+}
+
 export async function persistPrivateMessage({
   currentUser,
   targetNickname,
   text,
   members,
-}: PersistPrivateMessageOptions): Promise<void> {
+}: PersistPrivateMessageOptions): Promise<PersistedPrivateMessage> {
   if (
     !supabase ||
     currentUser.authProvider !== "supabase" ||
     !currentUser.uid
   ) {
-    return;
+    throw new Error("الرسائل الخاصة تحتاج حسابًا مسجلًا واتصال Supabase صالحًا.");
   }
 
   const receiver = members.find((member) => member.nickname === targetNickname);
   const receiverUid = receiver && isUuidLike(receiver.id) ? receiver.id : null;
 
   if (!receiverUid) {
-    return;
+    throw new Error("تعذر تحديد الطرف الآخر لهذه الرسالة الخاصة.");
   }
 
-  const { error } = await supabase.from("pm_messages").insert([
-    {
-      sender_uid: currentUser.uid,
-      sender_nickname: currentUser.nickname,
-      receiver_uid: receiverUid,
-      receiver_nickname: targetNickname,
-      text,
-      type: "text",
-    },
-  ]);
+  const { data, error } = await supabase
+    .from("pm_messages")
+    .insert([
+      {
+        sender_uid: currentUser.uid,
+        sender_nickname: currentUser.nickname,
+        receiver_uid: receiverUid,
+        receiver_nickname: targetNickname,
+        text,
+        type: "text",
+      },
+    ])
+    .select("id, created_at, text")
+    .single();
 
   if (error) {
     throw error;
   }
+
+  if (!data) {
+    throw new Error("تعذر تأكيد حفظ الرسالة الخاصة.");
+  }
+
+  return data;
 }

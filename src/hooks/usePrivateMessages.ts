@@ -18,6 +18,14 @@ function formatPmTime(createdAt?: string) {
   });
 }
 
+function hasPmMessageWithDbId(
+  thread: PMThreadMessage[],
+  dbId?: string,
+): boolean {
+  if (!dbId) return false;
+  return thread.some((message) => message.dbId === dbId);
+}
+
 export function usePrivateMessages({
   currentUser,
   isSpyMode,
@@ -114,11 +122,7 @@ export function usePrivateMessages({
               next[otherPerson] = [];
             }
 
-            const exists = next[otherPerson].some(
-              (m) =>
-                (m as any).dbId === sMsg.id ||
-                (m.text === sMsg.text && m.isOwn === isOwn),
-            );
+            const exists = hasPmMessageWithDbId(next[otherPerson], sMsg.id);
 
             if (!exists) {
               next[otherPerson].push({
@@ -127,7 +131,7 @@ export function usePrivateMessages({
                 time: formatPmTime(sMsg.created_at),
                 status: "read",
                 dbId: sMsg.id,
-              } as any);
+              });
             }
           });
           return next;
@@ -170,11 +174,7 @@ export function usePrivateMessages({
 
             setPmThreads((prev) => {
               const currentThread = prev[otherPerson] || [];
-              const exists = currentThread.some(
-                (m) =>
-                  (m as any).dbId === sMsg.id ||
-                  (m.text === sMsg.text && m.isOwn === isSender),
-              );
+              const exists = hasPmMessageWithDbId(currentThread, sMsg.id);
 
               if (exists) return prev;
 
@@ -186,7 +186,7 @@ export function usePrivateMessages({
                   time: formatPmTime(sMsg.created_at),
                   status: "read",
                   dbId: sMsg.id,
-                } as any,
+                },
               ];
 
               return {

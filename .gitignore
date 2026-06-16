@@ -9,3 +9,6 @@ review-screenshots/
 .env*
 !.env.example
 .vercel
+*.bak
+*.old
+*.orig

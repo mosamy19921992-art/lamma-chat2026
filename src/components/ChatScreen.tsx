@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import type { ChatScreenProps } from "../lib/chatTypes";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import type { ChatScreenProps, OwnerMusicTrack, RoomDjState } from "../lib/chatTypes";
+import { ensureFaceApplied } from "../lib/customFace";
 import {
   Send,
   Image,
@@ -12,6 +13,7 @@ import {
   Plus,
   Settings as SettingsIcon,
   LogOut,
+  LogIn,
   ShieldAlert,
   Award,
   Grid,
@@ -38,6 +40,7 @@ import {
   HelpCircle,
   X,
   Download,
+  Upload,
   Share2,
   Shield,
   Bell,
@@ -54,8 +57,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import AMLogo from "./AMLogo.tsx";
-import ThemeSettings from "./pwa/ThemeSettings.tsx";
 import BossSigil from "./BossSigil.tsx";
+import { OwnerAvatarAura } from "./OwnerPrestige.tsx";
 import ShareModal from "./modals/ShareModal.tsx";
 import CreateRoomModal from "./modals/CreateRoomModal.tsx";
 import UserContextPopup from "./modals/UserContextPopup.tsx";
@@ -64,9 +67,23 @@ import { OwnerPanelModal } from "./modals/OwnerPanelModal";
 import { AdminPanelModal } from "./modals/AdminPanelModal";
 import { GuardPanelModal } from "./modals/GuardPanelModal";
 import { StorePanelModal } from "./modals/StorePanelModal";
+import { OwnerStorePanelModal } from "./modals/OwnerStorePanelModal";
 import { DesignCenterModal } from "./modals/DesignCenterModal";
+import {
+  fetchActivePlans,
+  fetchMySubscription,
+  subscribeToMySubscription,
+  subscribeToNewOrders,
+  type SubscriptionPlan,
+} from "../services/store/subscriptionService";
 import { StatsModal } from "./modals/StatsModal";
 import { UserProfileModal } from "./modals/UserProfileModal";
+import { MemberAvatar } from "./MemberAvatar";
+import { isAvatarImageUrl } from "../lib/avatarDisplay";
+import {
+  persistProfileAvatarToMetadata,
+  uploadProfileAvatarFile,
+} from "../services/profile/profileAvatarService";
 import {
   getClientUid,
   supabase,
@@ -75,6 +92,7 @@ import {
   SupabaseMessage,
   type OwnerActivityLogRow,
   type OwnerMemberPermissionRow,
+  type OwnerMemberCosmeticsRow,
   type OwnerSettingsRow,
 } from "../lib/supabase.ts";
 import {
@@ -90,8 +108,8 @@ import {
   type ActivityLog,
   type PMThreadMessage,
   type MemberCustomPermissions,
+  type MemberCosmeticGrant,
   type UserSession,
-  type WallTheme,
   type DesignAssistantPatch,
   type DesignAssistantProposal,
   type DesignAssistantFinding,
@@ -99,7 +117,6 @@ import {
   type DesignAssistantSnapshot,
   type DesignPreset,
   type CustomRoomEntry,
-  type ChatTheme,
   type PMTargetState,
   type ProductType,
 } from "../lib/chatTypes.ts";
@@ -107,13 +124,48 @@ import {
   hexToRgba,
   getRoleFromAuthor,
   getFrameFromAuthor,
+  getPrestigeNameClass,
+  getCrownRoleForDisplay,
+  getStoreVipChip,
+  isOwnerAuthor,
+  hasStorePlatinumDisplay,
+  hasStoreVipDisplay,
+  hasOwnerGrantedCosmetics,
   getYoutubeId,
   getShortenedNickname,
+  canSendImages,
+  canShareYoutube,
+  type StoreCosmeticsSnapshot,
 } from "../lib/chatHelpers.ts";
 import { renderTextMessageWithMedia } from "../lib/chatMessageRender.tsx";
 import { createPortal } from "react-dom";
 import { useChatMessages } from "../hooks/useChatMessages";
 import { usePrivateMessages } from "../hooks/usePrivateMessages";
+import { useWebRTCCalls } from "../hooks/useWebRTCCalls";
+import { useOnlinePresence, type PresenceUpdateEvent } from "../hooks/useOnlinePresence";
+import { useVoiceMessageRecorder } from "../hooks/useVoiceMessageRecorder";
+import { VoiceNoteBubble, VoiceRecorderBar } from "../components/VoiceNoteBubble";
+import { FloatingDropdownPortal } from "../components/FloatingDropdownPortal";
+import { uploadVoiceNoteBlob } from "../services/chat/voiceMessageService";
+import {
+  parseDjLibrary,
+  persistDjLibrary,
+  uploadOwnerMusicFile,
+} from "../services/chat/ownerMusicService";
+import {
+  RADIO_STATIONS,
+  readDjListenPreference,
+  writeDjListenPreference,
+  type RadioStation,
+} from "../lib/djConstants";
+import {
+  applyRoomDjToAudio,
+  parseRoomDjMap,
+  persistRoomDjState,
+} from "../services/chat/roomDjService";
+import { describeMediaError } from "../services/calls/callMediaUtils";
+import { OwnerMemberFeaturesPanel } from "./modals/OwnerMemberFeaturesPanel";
+import { OwnerMemberCosmeticsPanel } from "./modals/OwnerMemberCosmeticsPanel";
 import { useRoomComposer } from "../hooks/useRoomComposer";
 import {
   buildDesignAssistantAudit,
@@ -358,9 +410,61 @@ function sanitizeRoomBgMap(value: unknown): Record<string, string> {
   }, {});
 }
 
+function getSafeStorage(
+  storage: "localStorage" | "sessionStorage",
+): Storage | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window[storage];
+  } catch {
+    return null;
+  }
+}
+
+function readStorageValue(
+  key: string,
+  storage: "localStorage" | "sessionStorage" = "localStorage",
+): string | null {
+  try {
+    return getSafeStorage(storage)?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStorageValue(
+  key: string,
+  value: string,
+  storage: "localStorage" | "sessionStorage" = "localStorage",
+) {
+  try {
+    getSafeStorage(storage)?.setItem(key, value);
+  } catch {
+    // Ignore storage write failures in restricted environments.
+  }
+}
+
+function readJsonStorage<T>(
+  key: string,
+  fallback: T,
+  storage: "localStorage" | "sessionStorage" = "localStorage",
+): T {
+  const raw = readStorageValue(key, storage);
+  if (!raw) return fallback;
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 function PostsFeedRoom({
   posts,
   currentSession,
+  chatMembers,
+  storeSnapshot,
+  cosmeticGrants,
   isCompactView,
   isChatColumnExpanded,
   onOpenProfile,
@@ -369,6 +473,9 @@ function PostsFeedRoom({
 }: {
   posts: Message[];
   currentSession: UserSession;
+  chatMembers: ChatMember[];
+  storeSnapshot: StoreCosmeticsSnapshot;
+  cosmeticGrants: Record<string, MemberCosmeticGrant>;
   isCompactView: boolean;
   isChatColumnExpanded: boolean;
   onOpenProfile: (nickname: string) => void;
@@ -419,14 +526,36 @@ function PostsFeedRoom({
       </div>
 
       {posts.map((msg) => {
-        const role = getRoleFromAuthor(msg.author, currentSession);
-        const cleanName = msg.author
-          .replace(/\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g, "")
-          .trim();
+        const role = getRoleFromAuthor(
+          msg.author,
+          currentSession,
+          chatMembers,
+        );
+        const cleanName = getShortenedNickname(msg.author);
         const nameColor =
           msg.author === currentSession.nickname
             ? currentSession.color
             : msg.color;
+        const storeForAuthor =
+          msg.author === currentSession.nickname ? storeSnapshot : null;
+        const prestigeClass = getPrestigeNameClass(
+          msg.author,
+          currentSession,
+          chatMembers,
+          storeForAuthor,
+          cosmeticGrants,
+        );
+        const isOwnerAuthorRow = isOwnerAuthor(
+          msg.author,
+          currentSession,
+          chatMembers,
+        );
+        const storeVipChip = getStoreVipChip(
+          msg.author,
+          currentSession,
+          storeForAuthor,
+          cosmeticGrants,
+        );
 
         return (
           <article key={msg.id} className="lamma-post-card">
@@ -435,16 +564,26 @@ function PostsFeedRoom({
                 className="flex-shrink-0 cursor-pointer"
                 onClick={() => onOpenProfile(msg.author)}
               >
-                <AMLogo
-                  size={isCompactView ? 26 : 34}
-                  variant="circular"
-                  glow={msg.author === currentSession.nickname}
-                  frame={getFrameFromAuthor(msg.author, currentSession)}
-                  crownRole={(() => {
-                    const r = getRoleFromAuthor(msg.author, currentSession);
-                    return (r === "platinum_vip" ? "vip" : r) as any;
-                  })()}
-                />
+                <OwnerAvatarAura active={isOwnerAuthorRow}>
+                  <AMLogo
+                    size={isCompactView ? 26 : 34}
+                    variant="circular"
+                    glow={msg.author === currentSession.nickname}
+                    frame={getFrameFromAuthor(
+                      msg.author,
+                      currentSession,
+                      chatMembers,
+                      cosmeticGrants,
+                    )}
+                    crownRole={getCrownRoleForDisplay(
+                      msg.author,
+                      currentSession,
+                      chatMembers,
+                      storeForAuthor,
+                      cosmeticGrants,
+                    )}
+                  />
+                </OwnerAvatarAura>
               </div>
 
               <div className="flex-1 min-w-0">
@@ -455,32 +594,32 @@ function PostsFeedRoom({
                   >
                     <div className="lamma-author-line">
                       <span
-                        style={{ color: nameColor }}
-                        className="font-bold text-[12px] lamma-author-name"
+                        style={prestigeClass ? undefined : { color: nameColor }}
+                        className={`font-bold text-[12px] lamma-author-name ${prestigeClass}`}
                       >
                         {cleanName}
                       </span>
-                      {role === "owner" && (
-                        <BossSigil size={13} className="opacity-95" />
+                      {isOwnerAuthorRow && (
+                        <BossSigil size={14} className="opacity-95" />
                       )}
-                      {role === "owner" && (
+                      {isOwnerAuthorRow && (
                         <span className="text-[7px] lamma-role-chip lamma-role-owner">
-                          OWNER
+                          👑 المالك
+                        </span>
+                      )}
+                      {storeVipChip === "platinum" && (
+                        <span className="text-[7px] lamma-role-chip lamma-role-plat">
+                          PLATINUM VIP
+                        </span>
+                      )}
+                      {storeVipChip === "vip" && (
+                        <span className="text-[7px] lamma-role-chip lamma-role-vip">
+                          VIP
                         </span>
                       )}
                       {role === "admin" && (
                         <span className="text-[7px] lamma-role-chip lamma-role-admin">
                           ADMIN
-                        </span>
-                      )}
-                      {role === "vip" && (
-                        <span className="text-[7px] lamma-role-chip lamma-role-vip">
-                          VIP
-                        </span>
-                      )}
-                      {role === "platinum_vip" && (
-                        <span className="text-[7px] lamma-role-chip lamma-role-plat">
-                          PLATINUM VIP
                         </span>
                       )}
                     </div>
@@ -547,13 +686,7 @@ function PostsFeedRoom({
                   )}
 
                   {msg.type === "audio" && msg.mediaUrl && (
-                    <div className="mt-3">
-                      <audio
-                        src={msg.mediaUrl}
-                        controls
-                        className="h-9 max-w-[360px] rounded-xl"
-                      />
-                    </div>
+                    <VoiceNoteBubble src={msg.mediaUrl} />
                   )}
                 </div>
               </div>
@@ -569,6 +702,7 @@ export default function ChatScreen({
   currentUser,
   onLogout,
   primaryTheme,
+  onUserSessionUpdate,
 }: ChatScreenProps) {
   const DEFAULT_AMBIENT_BG: string = "/MAN.png";
   const POSTS_ROOM_ID = "posts-feed";
@@ -625,14 +759,6 @@ export default function ChatScreen({
   const [designLogoInput, setDesignLogoInput] = useState<string>(() =>
     localStorage.getItem("lamma_custom_logo_url") || "",
   );
-  const [glowColor, setGlowColor] = useState<string>(() => {
-    return localStorage.getItem("lamma_glow_color") || "#e4e4e7";
-  });
-  const [wallTheme, setWallTheme] = useState<WallTheme>(() => {
-    const saved = localStorage.getItem("lamma_wall_theme");
-    if (saved === "fire" || saved === "ice" || saved === "violet") return saved;
-    return "fire";
-  });
   const [roomBgMap, setRoomBgMap] = useState<Record<string, string>>(() => {
     const raw = localStorage.getItem("lamma_room_bg_map");
     if (!raw) return {};
@@ -682,28 +808,6 @@ export default function ChatScreen({
   const [isCompactView, setIsCompactView] = useState(false);
   const READING_MODE_STORAGE_KEY = "lamma_reading_mode";
 
-  const CHAT_THEME_STORAGE_KEY = "lamma_chat_theme";
-  const CHAT_THEME_CUSTOMIZED_STORAGE_KEY = "lamma_chat_theme_customized";
-
-  const isChatTheme = (value: string | null): value is ChatTheme =>
-    value === "classic" ||
-    value === "night-paper" ||
-    value === "charcoal-calm" ||
-    value === "olive-ink" ||
-    value === "violet-night";
-
-  const readChatThemeCustomized = () => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem(CHAT_THEME_CUSTOMIZED_STORAGE_KEY) === "true";
-  };
-
-  const readStoredChatTheme = (): ChatTheme => {
-    if (typeof window === "undefined") return "classic";
-    if (!readChatThemeCustomized()) return "classic";
-    const saved = localStorage.getItem(CHAT_THEME_STORAGE_KEY);
-    return isChatTheme(saved) ? saved : "classic";
-  };
-
   const [readingMode, setReadingMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     const urlFlag = new URLSearchParams(window.location.search).get("reading");
@@ -711,14 +815,6 @@ export default function ChatScreen({
     if (urlFlag === "0") return false;
     return localStorage.getItem(READING_MODE_STORAGE_KEY) === "true";
   });
-  const [hasUserChosenChatTheme, setHasUserChosenChatTheme] = useState<boolean>(
-    () => {
-      return readChatThemeCustomized();
-    },
-  );
-  const [chatTheme, setChatTheme] = useState<ChatTheme>(() =>
-    readStoredChatTheme(),
-  );
   const designPresetsStorageKey = userScopedStorageKey("lamma_design_presets");
   const [designPresets, setDesignPresets] = useState<DesignPreset[]>(() => {
     if (typeof window === "undefined") return [];
@@ -743,15 +839,11 @@ export default function ChatScreen({
     useState<DesignAssistantSnapshot | null>(null);
   const applyDesignPreset = (preset: DesignPreset) => {
     const snapshot = preset.snapshot;
-    setWallTheme(snapshot.wallTheme);
     setBrandLogoUrl(snapshot.brandLogoUrl);
     setDesignLogoInput(snapshot.brandLogoUrl || "");
-    setGlowColor(snapshot.glowColor);
     setOwnerBgImage(snapshot.ownerBgImage);
     setDesignOwnerBgInput(snapshot.ownerBgImage || "");
     setRoomBgMap(snapshot.roomBgMap || {});
-    setChatTheme(snapshot.chatTheme);
-    setHasUserChosenChatTheme(true);
   };
   const buildDesignPreset = (name: string): DesignPreset => {
     return {
@@ -759,12 +851,9 @@ export default function ChatScreen({
       name: name.trim().slice(0, 40),
       createdAt: new Date().toISOString(),
       snapshot: {
-        wallTheme,
         brandLogoUrl,
-        glowColor,
         ownerBgImage,
         roomBgMap: { ...roomBgMap },
-        chatTheme,
       },
     };
   };
@@ -780,30 +869,6 @@ export default function ChatScreen({
   };
   const handleDeleteDesignPreset = (id: string) => {
     setDesignPresets((prev) => prev.filter((p) => p.id !== id));
-  };
-  const chatThemeAmbientStyles: Partial<
-    Record<ChatTheme, { imageFilter: string; overlay: string }>
-  > = {
-    "night-paper": {
-      imageFilter: "sepia(0.22) saturate(0.88) brightness(0.84)",
-      overlay:
-        "radial-gradient(900px 540px at 14% 18%, rgba(214, 179, 91, 0.13), transparent 62%), radial-gradient(840px 560px at 84% 76%, rgba(255, 255, 255, 0.03), transparent 64%), linear-gradient(180deg, rgba(10, 11, 12, 0.48) 0%, rgba(8, 9, 10, 0.56) 60%, rgba(6, 7, 8, 0.62) 100%)",
-    },
-    "charcoal-calm": {
-      imageFilter: "grayscale(0.3) saturate(0.72) brightness(0.72)",
-      overlay:
-        "radial-gradient(820px 540px at 18% 22%, rgba(148, 163, 184, 0.1), transparent 64%), radial-gradient(900px 620px at 86% 78%, rgba(56, 189, 248, 0.06), transparent 66%), linear-gradient(180deg, rgba(8, 10, 14, 0.58) 0%, rgba(6, 8, 12, 0.64) 60%, rgba(5, 6, 10, 0.7) 100%)",
-    },
-    "olive-ink": {
-      imageFilter: "grayscale(1) brightness(0.76)",
-      overlay:
-        "radial-gradient(860px 560px at 16% 22%, rgba(255, 255, 255, 0.04), transparent 64%), radial-gradient(900px 620px at 84% 78%, rgba(255, 255, 255, 0.03), transparent 66%), linear-gradient(180deg, rgba(10, 11, 12, 0.56) 0%, rgba(8, 9, 10, 0.62) 60%, rgba(6, 7, 8, 0.68) 100%)",
-    },
-    "violet-night": {
-      imageFilter: "hue-rotate(32deg) saturate(1) brightness(0.76)",
-      overlay:
-        "radial-gradient(900px 560px at 18% 20%, rgba(167, 139, 250, 0.12), transparent 64%), radial-gradient(880px 620px at 86% 78%, rgba(99, 102, 241, 0.08), transparent 66%), linear-gradient(180deg, rgba(10, 8, 16, 0.56) 0%, rgba(8, 7, 14, 0.62) 60%, rgba(6, 6, 12, 0.7) 100%)",
-    },
   };
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [showPmListDropdown, setShowPmListDropdown] = useState(false);
@@ -842,18 +907,15 @@ export default function ChatScreen({
   const isAdminRole = roleLower === "admin";
   const isManagementRole = isOwnerRole || isAdminRole;
   const isPostsRoom = activeRoomId === POSTS_ROOM_ID;
-  const isOwnerRoom = activeRoomId === "owner";
   const isAdminRoom = activeRoomId === "admin";
+  const isGamesRoom = activeRoomId === "games";
   const canPublishPosts = currentUser.authProvider === "supabase";
   const isRegisteredAccount = currentUser.authProvider === "supabase";
   const tempEntryTopicStorageKey = `lamma_temp_entry_topic_${currentUser.uid || currentUser.nickname}`;
   const availableRooms = [...ROOMS_DEF, ...customRooms];
   useEffect(() => {
     const requestedRoomExists = availableRooms.some((room) => room.id === activeRoomId);
-    const isProtectedOwnerRoom = activeRoomId === "owner" && !isOwnerRole;
-    const isProtectedAdminRoom = activeRoomId === "admin" && !isAdminRole && !isOwnerRole;
-
-    if (!requestedRoomExists || isProtectedOwnerRoom || isProtectedAdminRoom) {
+    if (!requestedRoomExists) {
       setActiveRoomId("egypt");
     }
   }, [activeRoomId, availableRooms, isAdminRole, isOwnerRole]);
@@ -865,8 +927,6 @@ export default function ChatScreen({
     window.history.replaceState({}, "", url.toString());
   }, [activeRoomId]);
   const visibleRoomCount = availableRooms.filter((room) => {
-    if (room.id === "owner" && !isOwnerRole) return false;
-    if (room.id === "admin" && !isAdminRole && !isOwnerRole) return false;
     return true;
   }).length;
   const activeRoomBg =
@@ -933,28 +993,14 @@ export default function ChatScreen({
     );
   }, [readingMode]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!hasUserChosenChatTheme) {
-      localStorage.removeItem(CHAT_THEME_STORAGE_KEY);
-      localStorage.removeItem(CHAT_THEME_CUSTOMIZED_STORAGE_KEY);
-      return;
-    }
-    localStorage.setItem(CHAT_THEME_STORAGE_KEY, chatTheme);
-    localStorage.setItem(CHAT_THEME_CUSTOMIZED_STORAGE_KEY, "true");
-  }, [chatTheme, hasUserChosenChatTheme]);
-
   const getDesignAssistantContext = () => ({
     activeRoomId,
     activeRoomName:
       availableRooms.find((room) => room.id === activeRoomId)?.name || activeRoomId,
     totalRooms: availableRooms.length,
     brandLogoUrl,
-    chatTheme,
-    glowColor,
     ownerBgImage,
     roomBgMap,
-    wallTheme,
     defaultAmbientBg: DEFAULT_AMBIENT_BG,
   });
 
@@ -985,20 +1031,15 @@ export default function ChatScreen({
 
   const applyAssistantPatch = (patch: DesignAssistantPatch) => {
     setLastAppliedDesignSnapshot({
-      wallTheme,
       brandLogoUrl,
-      glowColor,
       ownerBgImage,
       roomBgCurrent: roomBgMap[activeRoomId] || null,
-      chatTheme,
     });
 
-    if (patch.wallTheme) setWallTheme(patch.wallTheme);
     if (typeof patch.brandLogoUrl !== "undefined") {
       setBrandLogoUrl(patch.brandLogoUrl);
       setDesignLogoInput(patch.brandLogoUrl || "");
     }
-    if (patch.glowColor) setGlowColor(patch.glowColor);
     if (typeof patch.ownerBgImage !== "undefined") {
       setOwnerBgImage(patch.ownerBgImage);
       setDesignOwnerBgInput(patch.ownerBgImage || "");
@@ -1011,10 +1052,6 @@ export default function ChatScreen({
         return updated;
       });
       setDesignRoomBgInput(patch.roomBgCurrent || "");
-    }
-    if (patch.chatTheme) {
-      setChatTheme(patch.chatTheme);
-      setHasUserChosenChatTheme(true);
     }
   };
 
@@ -1062,11 +1099,8 @@ export default function ChatScreen({
     assistantFindings.length,
     availableRooms,
     brandLogoUrl,
-    chatTheme,
-    glowColor,
     ownerBgImage,
     roomBgMap,
-    wallTheme,
   ]);
 
   const performSearch = async () => {
@@ -1103,18 +1137,15 @@ export default function ChatScreen({
   >(null);
 
   const [leadershipTab, setLeadershipTab] = useState<
-    "quick" | "guard" | "store" | "design" | "stats"
+    "quick" | "features" | "cosmetics" | "guard" | "store" | "design" | "stats" | "owner_store"
   >("quick");
 
   // --- AUTOMATION AND STORE SYSTEM STATES ---
-  const [subscription, setSubscription] = useState<any>(() => {
-    const saved = localStorage.getItem(subscriptionStorageKey);
-    try {
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [subscription, setSubscription] = useState<any>(() =>
+    readJsonStorage(subscriptionStorageKey, null),
+  );
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const hasActiveSubscription =
     subscription?.isActive && subscription?.expiresAt > Date.now();
   const subscriptionVisualRole = hasActiveSubscription
@@ -1128,25 +1159,20 @@ export default function ChatScreen({
       : subscriptionVisualRole || roleLower || "user";
 
   const buildActiveSessionState = (user: UserSession) => {
-    const savedSub = localStorage.getItem(subscriptionStorageKey);
+    const savedSub = readJsonStorage<any>(subscriptionStorageKey, null);
     let initialColor = user.color;
     let initialFrame = "";
     let initialTitle = user.title || "";
     let initialBadge = user.badge || "";
     let initialAvatar = user.avatar || "👤";
 
-    if (savedSub) {
-      try {
-        const sub = JSON.parse(savedSub);
-        if (sub.isActive && sub.expiresAt > Date.now()) {
-          initialColor = sub.color || initialColor;
-          initialFrame = sub.frame || "";
-          initialTitle = sub.title || "";
-          initialBadge = sub.badge || "";
-          initialAvatar = sub.avatar || "👤";
-        }
-      } catch (e) {
-        console.error(e);
+    if (savedSub?.isActive && savedSub.expiresAt > Date.now()) {
+      initialColor = savedSub.color || initialColor;
+      initialFrame = savedSub.frame || "";
+      initialTitle = savedSub.title || "";
+      initialBadge = savedSub.badge || "";
+      if (!isAvatarImageUrl(user.avatar) && savedSub.avatar) {
+        initialAvatar = savedSub.avatar;
       }
     }
 
@@ -1202,7 +1228,14 @@ export default function ChatScreen({
   }>({});
   const [violationCount, setViolationCount] = useState<{
     [nick: string]: number;
-  }>({});
+  }>(() => {
+    try {
+      const stored = localStorage.getItem("lamma_violation_counts");
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
   {
     /* State for Create Room */
   }
@@ -1376,6 +1409,11 @@ export default function ChatScreen({
   const [selectedProfileMember, setSelectedProfileMember] =
     useState<ChatMember | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileAvatarSaving, setProfileAvatarSaving] = useState(false);
+  const [profileAvatarStatus, setProfileAvatarStatus] = useState<string | null>(
+    null,
+  );
+  const profileAvatarInputRef = useRef<HTMLInputElement>(null);
   const [nicknameRequests, setNicknameRequests] = useState<
     NicknameChangeRequestRow[]
   >([]);
@@ -1400,23 +1438,20 @@ export default function ChatScreen({
     useState<ChatMember | null>(null);
 
   // Lists of friends, ignored, and blocked users
-  const [friendsList, setFriendsList] = useState<string[]>(() => {
-    const saved = localStorage.getItem(friendsListStorageKey);
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [ignoredUsers, setIgnoredUsers] = useState<string[]>(() => {
-    const saved = localStorage.getItem(ignoredUsersStorageKey);
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
-    const saved = localStorage.getItem(blockedUsersStorageKey);
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [friendsList, setFriendsList] = useState<string[]>(() =>
+    readJsonStorage<string[]>(friendsListStorageKey, []),
+  );
+  const [ignoredUsers, setIgnoredUsers] = useState<string[]>(() =>
+    readJsonStorage<string[]>(ignoredUsersStorageKey, []),
+  );
+  const [blockedUsers, setBlockedUsers] = useState<string[]>(() =>
+    readJsonStorage<string[]>(blockedUsersStorageKey, []),
+  );
 
   useEffect(() => {
-    localStorage.setItem(friendsListStorageKey, JSON.stringify(friendsList));
-    localStorage.setItem(ignoredUsersStorageKey, JSON.stringify(ignoredUsers));
-    localStorage.setItem(blockedUsersStorageKey, JSON.stringify(blockedUsers));
+    writeStorageValue(friendsListStorageKey, JSON.stringify(friendsList));
+    writeStorageValue(ignoredUsersStorageKey, JSON.stringify(ignoredUsers));
+    writeStorageValue(blockedUsersStorageKey, JSON.stringify(blockedUsers));
   }, [
     blockedUsers,
     blockedUsersStorageKey,
@@ -1732,9 +1767,10 @@ export default function ChatScreen({
       const remainingMs = subscription.expiresAt - now;
       const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
 
-      const savedRemindersStr =
-        localStorage.getItem("lamma_bot_reminders") || "{}";
-      const savedReminders = JSON.parse(savedRemindersStr);
+      const savedReminders = readJsonStorage<Record<string, boolean>>(
+        "lamma_bot_reminders",
+        {},
+      );
 
       if (remainingDays <= 0) {
         // EXPIRED! BOT REMOVES VIP AUTOMATICALLY
@@ -1843,22 +1879,23 @@ export default function ChatScreen({
     localStorage.setItem(spyModeStorageKey, String(isSpyMode));
   }, [isSpyMode, spyModeStorageKey]);
 
-  const normalizeChatMemberRole = (
-    role: string | undefined,
-  ): ChatMember["role"] => {
-    switch (role) {
-      case "guest":
-      case "user":
-      case "vip":
-      case "platinum_vip":
-      case "mod":
-      case "admin":
-      case "owner":
-        return role;
-      default:
-        return currentUser.authProvider === "guest" ? "guest" : "user";
-    }
-  };
+  const normalizeChatMemberRole = useCallback(
+    (role: string | undefined): ChatMember["role"] => {
+      switch (role) {
+        case "guest":
+        case "user":
+        case "vip":
+        case "platinum_vip":
+        case "mod":
+        case "admin":
+        case "owner":
+          return role;
+        default:
+          return currentUser.authProvider === "guest" ? "guest" : "user";
+      }
+    },
+    [currentUser.authProvider],
+  );
 
   const currentDisplayNickname = myActiveSession.nickname || currentUser.nickname;
   const currentDisplayColor = myActiveSession.color || currentUser.color || "#10b981";
@@ -1888,8 +1925,80 @@ export default function ChatScreen({
   const [rawChatMembers, setChatMembers] = useState<ChatMember[]>(() => [
     buildCurrentChatMember(),
   ]);
+  type RoomEntryTicker = {
+    kind: "join" | "leave" | "standby";
+    nickname?: string;
+    onlineCount: number;
+  };
+  const [roomEntryTicker, setRoomEntryTicker] = useState<RoomEntryTicker>({
+    kind: "standby",
+    onlineCount: 1,
+  });
+  const roomEntryTickerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  const showRoomEntryStandby = useCallback((onlineCount: number) => {
+    setRoomEntryTicker({ kind: "standby", onlineCount: Math.max(onlineCount, 1) });
+  }, []);
+
+  const flashRoomEntryEvent = useCallback(
+    (
+      kind: "join" | "leave",
+      nickname: string,
+      onlineCount: number,
+    ) => {
+      if (roomEntryTickerTimerRef.current) {
+        clearTimeout(roomEntryTickerTimerRef.current);
+      }
+      setRoomEntryTicker({
+        kind,
+        nickname,
+        onlineCount: Math.max(onlineCount, 1),
+      });
+      roomEntryTickerTimerRef.current = setTimeout(() => {
+        showRoomEntryStandby(onlineCount);
+        roomEntryTickerTimerRef.current = null;
+      }, 6000);
+    },
+    [showRoomEntryStandby],
+  );
+
+  const handlePresenceUpdate = useCallback(
+    (event: PresenceUpdateEvent) => {
+      if (event.type === "join" && event.nickname) {
+        flashRoomEntryEvent("join", event.nickname, event.onlineCount);
+        return;
+      }
+      if (event.type === "leave" && event.nickname) {
+        flashRoomEntryEvent("leave", event.nickname, event.onlineCount);
+        return;
+      }
+      showRoomEntryStandby(event.onlineCount);
+    },
+    [flashRoomEntryEvent, showRoomEntryStandby],
+  );
 
   useEffect(() => {
+    return () => {
+      if (roomEntryTickerTimerRef.current) {
+        clearTimeout(roomEntryTickerTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (roomEntryTicker.kind !== "standby") return;
+    setRoomEntryTicker((prev) => ({
+      ...prev,
+      onlineCount: Math.max(rawChatMembers.length, 1),
+    }));
+  }, [rawChatMembers.length, roomEntryTicker.kind]);
+
+  useEffect(() => {
+    if (supabase && currentUser.uid && !isGhostMode) {
+      return;
+    }
     const currentMember = buildCurrentChatMember();
     setChatMembers((prev) => {
       const others = prev.filter(
@@ -1909,6 +2018,7 @@ export default function ChatScreen({
     currentUser.role,
     currentUser.title,
     currentUser.uid,
+    isGhostMode,
     myActiveSession.avatar,
     myActiveSession.badge,
     myActiveSession.color,
@@ -1918,6 +2028,19 @@ export default function ChatScreen({
     myFingerprint,
     myIp,
   ]);
+
+  useOnlinePresence({
+    currentUser,
+    displayNickname: currentDisplayNickname,
+    displayAvatar: currentDisplayAvatar,
+    displayColor: currentDisplayColor,
+    isGhostMode,
+    myFingerprint,
+    myBrowserSig,
+    setChatMembers,
+    normalizeRole: normalizeChatMemberRole,
+    onPresenceUpdate: handlePresenceUpdate,
+  });
 
   // Derived chatMembers: hide current user if Ghost Mode is active
   const chatMembers = isGhostMode
@@ -1967,9 +2090,6 @@ export default function ChatScreen({
   const [botRuleSwearFilter, setBotRuleSwearFilter] = useState<boolean>(() => {
     return localStorage.getItem("lamma_bot_rule_swear") !== "false";
   });
-  const [botRuleAutoMod, setBotRuleAutoMod] = useState<boolean>(() => {
-    return localStorage.getItem("lamma_bot_rule_automod") !== "false";
-  });
 
   useEffect(() => {
     localStorage.setItem("lamma_bot_enabled", String(isBotEnabled));
@@ -1983,9 +2103,6 @@ export default function ChatScreen({
   useEffect(() => {
     localStorage.setItem("lamma_bot_rule_swear", String(botRuleSwearFilter));
   }, [botRuleSwearFilter]);
-  useEffect(() => {
-    localStorage.setItem("lamma_bot_rule_automod", String(botRuleAutoMod));
-  }, [botRuleAutoMod]);
 
   // Global Owner Control Center states
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(() => {
@@ -2013,8 +2130,10 @@ export default function ChatScreen({
       return localStorage.getItem("lamma_greetings_enabled") !== "false";
     },
   );
-  const [showThemeSettingsModal, setShowThemeSettingsModal] = useState<boolean>(false);
-
+  const [djLibrary, setDjLibrary] = useState<OwnerMusicTrack[]>([]);
+  const [roomDjMap, setRoomDjMap] = useState<Record<string, RoomDjState>>({});
+  const roomDjMapRef = useRef<Record<string, RoomDjState>>({});
+  roomDjMapRef.current = roomDjMap;
   // Persistent state synchronization loops
   useEffect(() => {
     localStorage.setItem("lamma_maintenance_mode", String(isMaintenanceMode));
@@ -2038,6 +2157,11 @@ export default function ChatScreen({
   useEffect(() => {
     localStorage.setItem("lamma_bot_silent", String(isBotSilent));
   }, [isBotSilent]);
+
+  // Re-apply the owner's saved custom design face after each load.
+  useEffect(() => {
+    ensureFaceApplied();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("lamma_ads_enabled", String(isAdsEnabled));
@@ -2089,123 +2213,7 @@ export default function ChatScreen({
       text: string;
       severity: "info" | "warn" | "danger";
     }[]
-  >([
-    {
-      id: "1",
-      time: "10:30 PM",
-      text: "تم تفعيل بوت الحماية المتقدم Lamma Guard v2.0 بنجاح.",
-      severity: "info",
-    },
-    {
-      id: "2",
-      time: "10:35 PM",
-      text: "فحص جدار الحماية: الشات محمي ومستقر بنسبة 100%.",
-      severity: "info",
-    },
-    {
-      id: "3",
-      time: "10:42 PM",
-      text: "تم حظر محاولة إرسال رابط ملفات مشبوهة من زائر مؤقت.",
-      severity: "danger",
-    },
-    {
-      id: "4",
-      time: "10:50 PM",
-      text: "تنبيه تلقائي: تم كتم عضو مؤقتاً بسبب تكرار الرسائل السريع.",
-      severity: "warn",
-    },
-  ]);
-
-  // High Availability WebRTC Calling System (Automated Fallback)
-  const webRTCServers = [
-    {
-      name: "خادم جوجل الأساسي (Google STUN - سرعة عالية)",
-      url: "stun:stun.l.google.com:19302",
-    },
-    {
-      name: "خادم كلاود فلير الاحتياطي (Cloudflare STUN - موثوقية)",
-      url: "stun:stun.cloudflare.com:3478",
-    },
-  ];
-
-  const [activeCall, setActiveCall] = useState<{
-    target: string;
-    type: "video" | "audio";
-    status: "connecting" | "ringing" | "connected" | "failed" | "ended";
-    serverIndex: number;
-    callDuration: number;
-    isFallback?: boolean;
-  } | null>(null);
-
-  // Call connection simulation with automatic fallback between the top 2 free STUN servers
-  useEffect(() => {
-    let timeout: NodeJS.Timeout;
-    if (activeCall?.status === "connecting") {
-      // Simulate connection attempt on current server
-      timeout = setTimeout(() => {
-        // Randomly simulate server failure on the first server to demonstrate the automatic fallback
-        const shouldFail = Math.random() < 0.35 && activeCall.serverIndex === 0;
-
-        if (shouldFail) {
-          // Switch to secondary server seamlessly
-          setActiveCall((prev) =>
-            prev ? { ...prev, serverIndex: 1, isFallback: true } : null,
-          );
-        } else {
-          setActiveCall((prev) =>
-            prev ? { ...prev, status: "ringing" } : null,
-          );
-        }
-      }, 600); // Super fast 600ms latency simulation
-    } else if (activeCall?.status === "ringing") {
-      timeout = setTimeout(() => {
-        setActiveCall((prev) =>
-          prev ? { ...prev, status: "connected" } : null,
-        );
-      }, 1500);
-    }
-    return () => clearTimeout(timeout);
-  }, [activeCall?.status, activeCall?.serverIndex]);
-
-  // Call duration timer
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (activeCall?.status === "connected") {
-      interval = setInterval(() => {
-        setActiveCall((prev) =>
-          prev ? { ...prev, callDuration: prev.callDuration + 1 } : null,
-        );
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [activeCall?.status]);
-
-  const initiateCall = (target: string, type: "video" | "audio") => {
-    setActiveCall({
-      target,
-      type,
-      status: "connecting",
-      serverIndex: 0,
-      callDuration: 0,
-    });
-  };
-
-  const endCall = () => {
-    if (activeCall) {
-      setActiveCall((prev) => (prev ? { ...prev, status: "ended" } : null));
-      setTimeout(() => {
-        setActiveCall(null);
-      }, 1500);
-    }
-  };
-
-  const formatCallDuration = (seconds: number) => {
-    const m = Math.floor(seconds / 60)
-      .toString()
-      .padStart(2, "0");
-    const s = (seconds % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
-  };
+  >([]);
 
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
@@ -2232,15 +2240,149 @@ export default function ChatScreen({
     );
   }, [memberCustomPermissions]);
 
+  const [memberCosmeticGrants, setMemberCosmeticGrants] = useState<
+    Record<string, MemberCosmeticGrant>
+  >(() => {
+    const saved = localStorage.getItem("lamma_member_cosmetic_grants");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // ignore
+      }
+    }
+    return {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem(
+      "lamma_member_cosmetic_grants",
+      JSON.stringify(memberCosmeticGrants),
+    );
+  }, [memberCosmeticGrants]);
+
+  // WebRTC calls — real peer connection with dual-server auto-failover
+  const resolveMemberUid = useCallback(
+    (nickname: string) => {
+      const member = rawChatMembers.find(
+        (m) => m.nickname.toLowerCase() === nickname.toLowerCase(),
+      );
+      if (!member?.id || !/^[0-9a-f-]{36}$/i.test(member.id)) return null;
+      return member.id;
+    },
+    [rawChatMembers],
+  );
+
+  const canMakeCall = useCallback(
+    (type: "audio" | "video") => {
+      if (currentUser.role === "owner") return true;
+      const perms = memberCustomPermissions[currentUser.nickname];
+      if (type === "video") return !!perms?.videoCallsAllowed;
+      return !!perms?.callsAllowed;
+    },
+    [currentUser.nickname, currentUser.role, memberCustomPermissions],
+  );
+
+  const registeredMemberNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const member of rawChatMembers) {
+      if (
+        member.role !== "guest" &&
+        /^[0-9a-f-]{36}$/i.test(member.id)
+      ) {
+        names.add(member.nickname);
+      }
+    }
+    for (const nickname of Object.keys(memberCustomPermissions)) {
+      names.add(nickname);
+    }
+    for (const nickname of Object.keys(memberCosmeticGrants)) {
+      names.add(nickname);
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b, "ar"));
+  }, [memberCosmeticGrants, memberCustomPermissions, rawChatMembers]);
+
+  const {
+    activeCall,
+    incomingCall,
+    localStream,
+    remoteStream,
+    initiateCall,
+    acceptIncoming,
+    rejectIncoming,
+    endCall,
+  } = useWebRTCCalls({
+    currentUser,
+    resolveUid: resolveMemberUid,
+    canMakeCall,
+  });
+
+  const {
+    isRecording: isVoiceRecording,
+    durationSec: voiceRecordingSec,
+    startRecording: startVoiceRecording,
+    stopRecording: stopVoiceRecording,
+    cancelRecording: cancelVoiceRecording,
+  } = useVoiceMessageRecorder();
+  const [isUploadingVoice, setIsUploadingVoice] = useState(false);
+
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      void localVideoRef.current.play().catch(() => {});
+    }
+  }, [localStream]);
+
+  useEffect(() => {
+    const playRemote = async () => {
+      if (remoteVideoRef.current && remoteStream) {
+        remoteVideoRef.current.srcObject = remoteStream;
+        remoteVideoRef.current.muted = false;
+        try {
+          await remoteVideoRef.current.play();
+        } catch {
+          /* retry after user gesture if needed */
+        }
+      }
+      if (remoteAudioRef.current && remoteStream) {
+        remoteAudioRef.current.srcObject = remoteStream;
+        remoteAudioRef.current.muted = false;
+        try {
+          await remoteAudioRef.current.play();
+        } catch {
+          /* retry after user gesture if needed */
+        }
+      }
+    };
+    void playRemote();
+  }, [remoteStream]);
+
+  const formatCallDuration = (seconds: number) => {
+    const m = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
   const ownerSettingsSyncReadyRef = useRef(false);
   const ownerPermissionsSyncReadyRef = useRef(false);
+  const ownerCosmeticsSyncReadyRef = useRef(false);
+  const ownerPermissionsSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const ownerCosmeticsSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const ownerSettingsSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
-  const ownerPermissionsSyncTimeoutRef =
-    useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const canPersistOwnerSettings = currentUser.role === "owner";
+  const canPersistOwnerSettings = isOwnerRole;
 
   useEffect(() => {
     if (!supabase) return;
@@ -2266,10 +2408,13 @@ export default function ChatScreen({
             setBrandLogoUrl(settings.custom_logo_url);
             setDesignLogoInput(settings.custom_logo_url || '');
           }
-          if (settings.glow_color !== undefined) setGlowColor(settings.glow_color || '#e4e4e7');
-          if (settings.wall_theme !== undefined) setWallTheme(settings.wall_theme as any || 'fire');
           if (settings.room_bg_map !== undefined) setRoomBgMap(settings.room_bg_map || {});
-          if (settings.chat_theme !== undefined) setChatTheme(settings.chat_theme as any || 'classic');
+          if (settings.room_dj_map !== undefined) {
+            setRoomDjMap(parseRoomDjMap(settings.room_dj_map));
+          }
+          if (settings.dj_library !== undefined) {
+            setDjLibrary(parseDjLibrary(settings.dj_library));
+          }
         }
       )
       .subscribe();
@@ -2293,8 +2438,11 @@ export default function ChatScreen({
               [p.nickname]: {
                 recordingAllowed: !!p.recording_allowed,
                 callsAllowed: !!p.calls_allowed,
+                videoCallsAllowed: !!p.video_calls_allowed,
                 musicRadioAllowed: !!p.music_radio_allowed,
                 roomCreationAllowed: !!p.room_creation_allowed,
+                imagesAllowed: !!p.images_allowed,
+                youtubeAllowed: !!p.youtube_allowed,
               }
             }));
           } else if (payload.eventType === 'DELETE') {
@@ -2316,15 +2464,61 @@ export default function ChatScreen({
   }, []);
 
   useEffect(() => {
+    if (!supabase) return;
+    const subscription = supabase
+      .channel("owner_cosmetics_sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "owner_member_cosmetics" },
+        (payload) => {
+          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+            const p = payload.new as OwnerMemberCosmeticsRow;
+            if (!p.nickname?.trim()) return;
+            if (!p.vip_tier && !p.frame) {
+              setMemberCosmeticGrants((prev) => {
+                const next = { ...prev };
+                delete next[p.nickname];
+                return next;
+              });
+              return;
+            }
+            setMemberCosmeticGrants((prev) => ({
+              ...prev,
+              [p.nickname]: {
+                vipTier: p.vip_tier || null,
+                frame: p.frame || null,
+              },
+            }));
+          } else if (payload.eventType === "DELETE") {
+            const p = payload.old as OwnerMemberCosmeticsRow;
+            if (p?.nickname) {
+              setMemberCosmeticGrants((prev) => {
+                const next = { ...prev };
+                delete next[p.nickname];
+                return next;
+              });
+            }
+          }
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     const loadOwnerData = async () => {
       ownerSettingsSyncReadyRef.current = false;
       ownerPermissionsSyncReadyRef.current = false;
+      ownerCosmeticsSyncReadyRef.current = false;
 
       if (!supabase) {
         ownerSettingsSyncReadyRef.current = true;
         ownerPermissionsSyncReadyRef.current = true;
+        ownerCosmeticsSyncReadyRef.current = true;
         return;
       }
 
@@ -2337,6 +2531,9 @@ export default function ChatScreen({
         const permissionsRequest = supabase
           .from("owner_member_permissions")
           .select("*");
+        const cosmeticsRequest = supabase
+          .from("owner_member_cosmetics")
+          .select("*");
         const logsRequest =
           currentUser.role === "owner" || currentUser.role === "admin"
             ? supabase
@@ -2346,10 +2543,11 @@ export default function ChatScreen({
                 .limit(100)
             : Promise.resolve({ data: null, error: null });
 
-        const [settingsResult, permissionsResult, logsResult] =
+        const [settingsResult, permissionsResult, cosmeticsResult, logsResult] =
           await Promise.all([
             settingsRequest,
             permissionsRequest,
+            cosmeticsRequest,
             logsRequest,
           ]);
 
@@ -2376,15 +2574,13 @@ export default function ChatScreen({
           );
           setOwnerBgImage(settings.owner_bg_image?.trim() || null);
           setBrandLogoUrl(settings.custom_logo_url?.trim() || null);
-          setGlowColor(settings.glow_color?.trim() || "#e4e4e7");
-          if (
-            settings.wall_theme === "fire" ||
-            settings.wall_theme === "ice" ||
-            settings.wall_theme === "violet"
-          ) {
-            setWallTheme(settings.wall_theme);
-          }
           setRoomBgMap(sanitizeRoomBgMap(settings.room_bg_map));
+          if (settings.room_dj_map !== undefined) {
+            setRoomDjMap(parseRoomDjMap(settings.room_dj_map));
+          }
+          if (settings.dj_library !== undefined) {
+            setDjLibrary(parseDjLibrary(settings.dj_library));
+          }
           if (Array.isArray((settings as any).design_presets)) {
             setDesignPresets((settings as any).design_presets as DesignPreset[]);
           }
@@ -2398,13 +2594,31 @@ export default function ChatScreen({
             acc[row.nickname] = {
               recordingAllowed: Boolean(row.recording_allowed),
               callsAllowed: Boolean(row.calls_allowed),
+              videoCallsAllowed: Boolean(row.video_calls_allowed),
               musicRadioAllowed: Boolean(row.music_radio_allowed),
               roomCreationAllowed: Boolean(row.room_creation_allowed),
+              imagesAllowed: Boolean(row.images_allowed),
+              youtubeAllowed: Boolean(row.youtube_allowed),
             };
             return acc;
           }, {});
 
           setMemberCustomPermissions(nextPermissions);
+        }
+
+        if (Array.isArray(cosmeticsResult.data)) {
+          const nextCosmetics = (
+            cosmeticsResult.data as OwnerMemberCosmeticsRow[]
+          ).reduce<Record<string, MemberCosmeticGrant>>((acc, row) => {
+            if (!row.nickname?.trim()) return acc;
+            if (!row.vip_tier && !row.frame) return acc;
+            acc[row.nickname] = {
+              vipTier: row.vip_tier || null,
+              frame: row.frame || null,
+            };
+            return acc;
+          }, {});
+          setMemberCosmeticGrants(nextCosmetics);
         }
 
         if (Array.isArray(logsResult.data)) {
@@ -2427,6 +2641,7 @@ export default function ChatScreen({
         if (!cancelled) {
           ownerSettingsSyncReadyRef.current = true;
           ownerPermissionsSyncReadyRef.current = true;
+          ownerCosmeticsSyncReadyRef.current = true;
         }
       }
     };
@@ -2547,14 +2762,6 @@ export default function ChatScreen({
   }, [brandLogoUrl]);
 
   useEffect(() => {
-    localStorage.setItem("lamma_glow_color", glowColor);
-  }, [glowColor]);
-
-  useEffect(() => {
-    localStorage.setItem("lamma_wall_theme", wallTheme);
-  }, [wallTheme]);
-
-  useEffect(() => {
     localStorage.setItem("lamma_room_bg_map", JSON.stringify(roomBgMap));
   }, [roomBgMap]);
 
@@ -2598,11 +2805,10 @@ export default function ChatScreen({
         banned_words: bannedWords,
         owner_bg_image: ownerBgImage,
         custom_logo_url: brandLogoUrl,
-        glow_color: glowColor,
-          wall_theme: wallTheme,
-          chat_theme: chatTheme,
-          room_bg_map: roomBgMap,
+        room_bg_map: roomBgMap,
         design_presets: designPresets,
+        room_dj_map: roomDjMap,
+        dj_library: djLibrary,
       };
 
       const { error } = await supabase
@@ -2628,7 +2834,6 @@ export default function ChatScreen({
     brandLogoUrl,
     canPersistOwnerSettings,
     designPresets,
-    glowColor,
     isAdsEnabled,
     isBotSilent,
     isGhostMode,
@@ -2638,11 +2843,11 @@ export default function ChatScreen({
     isOnlyVIPCanSendImages,
     isSpyMode,
     isWelcomeToastEnabled,
-      ownerBgImage,
-      roomBgMap,
-      wallTheme,
-      chatTheme,
-    ]);
+    ownerBgImage,
+    roomBgMap,
+    roomDjMap,
+    djLibrary,
+  ]);
 
   useEffect(() => {
     if (
@@ -2665,8 +2870,11 @@ export default function ChatScreen({
         updated_by: currentUser.nickname,
         recording_allowed: permissions.recordingAllowed,
         calls_allowed: permissions.callsAllowed,
+        video_calls_allowed: permissions.videoCallsAllowed,
         music_radio_allowed: permissions.musicRadioAllowed,
         room_creation_allowed: permissions.roomCreationAllowed,
+        images_allowed: permissions.imagesAllowed,
+        youtube_allowed: permissions.youtubeAllowed,
       }));
 
       if (rows.length === 0) return;
@@ -2677,6 +2885,11 @@ export default function ChatScreen({
 
       if (error) {
         console.warn("Failed to sync owner member permissions", error);
+        if (isOwnerRole) {
+          alert(
+            `⚠️ تعذر حفظ صلاحيات الأعضاء على السيرفر: ${error.message}\nتأكد أن حسابك مضبوط كـ owner في Supabase (user_roles أو user_metadata.role).`,
+          );
+        }
       }
     }, OWNER_SYNC_DEBOUNCE_MS);
 
@@ -2687,71 +2900,205 @@ export default function ChatScreen({
     };
   }, [canPersistOwnerSettings, currentUser.nickname, memberCustomPermissions]);
 
+  useEffect(() => {
+    if (
+      !ownerCosmeticsSyncReadyRef.current ||
+      !supabase ||
+      !canPersistOwnerSettings
+    ) {
+      return;
+    }
+
+    if (ownerCosmeticsSyncTimeoutRef.current) {
+      clearTimeout(ownerCosmeticsSyncTimeoutRef.current);
+    }
+
+    ownerCosmeticsSyncTimeoutRef.current = setTimeout(async () => {
+      const rows: OwnerMemberCosmeticsRow[] = Object.entries(
+        memberCosmeticGrants,
+      ).map(([nickname, grant]) => ({
+        nickname,
+        updated_by: currentUser.nickname,
+        vip_tier: grant.vipTier || null,
+        frame: grant.frame || null,
+      }));
+
+      const existing = await supabase
+        .from("owner_member_cosmetics")
+        .select("nickname");
+      const keep = new Set(rows.map((r) => r.nickname));
+      const toDelete =
+        existing.data?.filter((r) => r.nickname && !keep.has(r.nickname)) || [];
+
+      for (const row of toDelete) {
+        if (row.nickname) {
+          await supabase
+            .from("owner_member_cosmetics")
+            .delete()
+            .eq("nickname", row.nickname);
+        }
+      }
+
+      if (rows.length === 0) return;
+
+      const { error } = await supabase
+        .from("owner_member_cosmetics")
+        .upsert(rows, { onConflict: "nickname" });
+
+      if (error) {
+        console.warn("Failed to sync owner member cosmetics", error);
+      }
+    }, OWNER_SYNC_DEBOUNCE_MS);
+
+    return () => {
+      if (ownerCosmeticsSyncTimeoutRef.current) {
+        clearTimeout(ownerCosmeticsSyncTimeoutRef.current);
+      }
+    };
+  }, [canPersistOwnerSettings, currentUser.nickname, memberCosmeticGrants]);
+
   // Audio refs and states for separate Radio & Music players
   const radioAudioRef = useRef<HTMLAudioElement | null>(null);
   const musicAudioRef = useRef<HTMLAudioElement | null>(null);
+  const djBroadcastAudioRef = useRef<HTMLAudioElement | null>(null);
+  const musicUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUploadingMusic, setIsUploadingMusic] = useState(false);
 
-  const radioStations = [
-    {
-      id: "quran-cairo",
-      name: "إذاعة القرآن الكريم من القاهرة 🕋",
-      frequency: "98.2 FM",
-      url: "https://live.mp3quran.net:9702/",
-    },
-    {
-      id: "quran-saudi",
-      name: "إذاعة القرآن الكريم من الرياض 🕋",
-      frequency: "100.0 FM",
-      url: "https://live.mp3quran.net:9718/",
-    },
-    {
-      id: "songs2",
-      name: "إذاعة أغاني لمة FM المباشرة 📻",
-      frequency: "100.6 FM",
-      url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
-    },
-    {
-      id: "fairouz",
-      name: "راديو فيروز والزمن الجميل ☕",
-      frequency: "91.2 FM",
-      url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
-    },
-  ];
+  type MusicTrackItem = {
+    id: string;
+    title: string;
+    desc: string;
+    url: string;
+    isUploaded?: boolean;
+  };
 
-  const musicTracks = [
-    {
-      id: "track1",
-      title: "موسيقى ترحيبية كلاسيكية 🌸",
-      desc: "Classic ambient track",
-      url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-    },
-    {
-      id: "track2",
-      title: "موسيقى لمة الحماسية 🔥",
-      desc: "Energy rhythm",
-      url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-    },
-    {
-      id: "track3",
-      title: "طيف التفاؤل والراحة ✨",
-      desc: "Soft relaxation",
-      url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
-    },
-    {
-      id: "track4",
-      title: "عزف عود شرقي أصيل 🌙",
-      desc: "Traditional Oud melody",
-      url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
-    },
-  ];
+  const EMPTY_DJ_TRACK: MusicTrackItem = {
+    id: "empty",
+    title: "لا توجد أغاني بعد",
+    desc: "ارفع أغاني للقائمة",
+    url: "",
+  };
 
-  const [currentRadioStation, setCurrentRadioStation] = useState(
-    radioStations[0],
+  const radioStations = RADIO_STATIONS;
+
+  const djPlaylist = useMemo((): MusicTrackItem[] => {
+    return djLibrary.map((track) => ({
+      id: track.id,
+      title: track.title,
+      desc: "في قائمة DJ",
+      url: track.url,
+      isUploaded: true,
+    }));
+  }, [djLibrary]);
+
+  const [currentRadioStation, setCurrentRadioStation] = useState<RadioStation>(
+    RADIO_STATIONS[0],
   );
   const [isRadioPlaying, setIsRadioPlaying] = useState(false);
 
-  const [currentMusicTrack, setCurrentMusicTrack] = useState(musicTracks[0]);
+  const [currentMusicTrack, setCurrentMusicTrack] =
+    useState<MusicTrackItem>(EMPTY_DJ_TRACK);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [isDjListening, setIsDjListening] = useState(() =>
+    readDjListenPreference(),
+  );
+
+  useEffect(() => {
+    if (djPlaylist.length === 0) {
+      setCurrentMusicTrack(EMPTY_DJ_TRACK);
+      return;
+    }
+    setCurrentMusicTrack((prev) => {
+      const stillExists = djPlaylist.some((track) => track.id === prev.id);
+      return stillExists ? prev : djPlaylist[0];
+    });
+  }, [djPlaylist]);
+
+  const toggleDjListening = useCallback(() => {
+    setIsDjListening((prev) => {
+      const next = !prev;
+      writeDjListenPreference(next);
+      if (!next) {
+        djBroadcastAudioRef.current?.pause();
+      }
+      return next;
+    });
+  }, []);
+
+  const activeRoomDj = roomDjMap[activeRoomId];
+
+  const syncOwnerRoomDj = useCallback(
+    async (track: MusicTrackItem | null, playing: boolean) => {
+      if (!isOwnerRole || !supabase) return;
+      const state: RoomDjState | null =
+        playing && track
+          ? {
+              mode: "music",
+              trackId: track.id,
+              title: track.title,
+              url: track.url,
+              isPlaying: true,
+              startedAtMs: Date.now(),
+              updatedBy: currentUser.nickname,
+              updatedAtMs: Date.now(),
+            }
+          : null;
+      const next = await persistRoomDjState(
+        OWNER_SETTINGS_ROW_ID,
+        activeRoomId,
+        state,
+        roomDjMapRef.current,
+      );
+      setRoomDjMap(next);
+    },
+    [activeRoomId, currentUser.nickname, isOwnerRole],
+  );
+
+  useEffect(() => {
+    if (isOwnerRole) return;
+    const audio = djBroadcastAudioRef.current;
+    if (!audio) return;
+    applyRoomDjToAudio(audio, activeRoomDj, {
+      listenEnabled: isDjListening,
+    });
+  }, [activeRoomDj, activeRoomId, isDjListening, isOwnerRole]);
+
+  useEffect(() => {
+    const stopAllAudio = () => {
+      radioAudioRef.current?.pause();
+      musicAudioRef.current?.pause();
+      djBroadcastAudioRef.current?.pause();
+      setIsRadioPlaying(false);
+      setIsMusicPlaying(false);
+      if (isOwnerRole) {
+        void syncOwnerRoomDj(null, false);
+      }
+    };
+
+    window.addEventListener("pagehide", stopAllAudio);
+    window.addEventListener("beforeunload", stopAllAudio);
+    return () => {
+      window.removeEventListener("pagehide", stopAllAudio);
+      window.removeEventListener("beforeunload", stopAllAudio);
+    };
+  }, [isOwnerRole, syncOwnerRoomDj]);
+
+  const ensureImagesAccess = () => {
+    if (canSendImages(currentUser, memberCustomPermissions, isOnlyVIPCanSendImages))
+      return true;
+    alert(
+      "📸 ميزة رفع الصور غير مفعّلة لحسابك. يمكن للمالك منحها من غرفة القيادة → صلاحيات الأعضاء.",
+    );
+    return false;
+  };
+
+  const ensureYoutubeAccess = () => {
+    if (canShareYoutube(currentUser, memberCustomPermissions)) return true;
+    alert(
+      "🎥 مشاركة يوتيوب/فيديو غير مفعّلة لحسابك. يمكن للمالك منحها من غرفة القيادة → صلاحيات الأعضاء.",
+    );
+    return false;
+  };
 
   const toggleRadioPlay = () => {
     if (!radioAudioRef.current) return;
@@ -2770,7 +3117,7 @@ export default function ChatScreen({
     }
   };
 
-  const handleSelectRadioStation = (station: (typeof radioStations)[0]) => {
+  const handleSelectRadioStation = (station: RadioStation) => {
     setCurrentRadioStation(station);
     setIsRadioPlaying(false);
     if (radioAudioRef.current) {
@@ -2802,10 +3149,16 @@ export default function ChatScreen({
   };
 
   const toggleMusicPlay = () => {
+    if (!isOwnerRole) return;
     if (!musicAudioRef.current) return;
+    if (!currentMusicTrack.url) {
+      alert("ارفع أغنية للقائمة أولاً ثم اخترها.");
+      return;
+    }
     if (isMusicPlaying) {
       musicAudioRef.current.pause();
       setIsMusicPlaying(false);
+      void syncOwnerRoomDj(null, false);
     } else {
       if (isRadioPlaying && radioAudioRef.current) {
         radioAudioRef.current.pause();
@@ -2813,10 +3166,16 @@ export default function ChatScreen({
       }
       musicAudioRef.current.play().catch((err) => console.log(err));
       setIsMusicPlaying(true);
+      void syncOwnerRoomDj(currentMusicTrack, true);
     }
   };
 
-  const handleSelectMusicTrack = (track: (typeof musicTracks)[0]) => {
+  const handleSelectMusicTrack = (
+    track: MusicTrackItem,
+    broadcastForOwner = false,
+  ) => {
+    if (!isOwnerRole && !broadcastForOwner) return;
+    if (!track.url) return;
     setCurrentMusicTrack(track);
     setIsMusicPlaying(false);
     if (musicAudioRef.current) {
@@ -2829,22 +3188,81 @@ export default function ChatScreen({
         }
         musicAudioRef.current
           ?.play()
-          .then(() => setIsMusicPlaying(true))
+          .then(() => {
+            setIsMusicPlaying(true);
+            if (isOwnerRole || broadcastForOwner) {
+              void syncOwnerRoomDj(track, true);
+            }
+          })
           .catch((err) => console.log(err));
       }, 200);
     }
   };
 
+  const handleOwnerMusicUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = "";
+    if (files.length === 0 || !isOwnerRole) return;
+    if (currentUser.authProvider !== "supabase") {
+      alert("📤 رفع الأغاني يحتاج حساب مسجل دخول Supabase.");
+      return;
+    }
+
+    try {
+      setIsUploadingMusic(true);
+      const uploaded: typeof djLibrary = [];
+      for (const file of files) {
+        const { track, error } = await uploadOwnerMusicFile(file);
+        if (error) {
+          alert(`❌ ${error}`);
+          continue;
+        }
+        if (track) uploaded.push(track);
+      }
+
+      if (uploaded.length === 0) return;
+
+      const nextLibrary = [...uploaded, ...djLibrary];
+      setDjLibrary(nextLibrary);
+      const { error: persistError } = await persistDjLibrary(
+        OWNER_SETTINGS_ROW_ID,
+        nextLibrary,
+      );
+      if (persistError) {
+        alert(`❌ ${persistError}`);
+        return;
+      }
+
+      const firstUploaded = uploaded[0];
+      handleSelectMusicTrack(
+        {
+          id: firstUploaded.id,
+          title: firstUploaded.title,
+          desc: "في قائمة DJ",
+          url: firstUploaded.url,
+          isUploaded: true,
+        },
+        true,
+      );
+    } finally {
+      setIsUploadingMusic(false);
+    }
+  };
+
   const nextMusicTrack = () => {
-    const idx = musicTracks.findIndex((t) => t.id === currentMusicTrack.id);
-    const nextIdx = (idx + 1) % musicTracks.length;
-    handleSelectMusicTrack(musicTracks[nextIdx]);
+    if (!isOwnerRole || djPlaylist.length === 0) return;
+    const idx = djPlaylist.findIndex((t) => t.id === currentMusicTrack.id);
+    const nextIdx = (idx + 1) % djPlaylist.length;
+    handleSelectMusicTrack(djPlaylist[nextIdx], true);
   };
 
   const prevMusicTrack = () => {
-    const idx = musicTracks.findIndex((t) => t.id === currentMusicTrack.id);
-    const prevIdx = (idx - 1 + musicTracks.length) % musicTracks.length;
-    handleSelectMusicTrack(musicTracks[prevIdx]);
+    if (!isOwnerRole || djPlaylist.length === 0) return;
+    const idx = djPlaylist.findIndex((t) => t.id === currentMusicTrack.id);
+    const prevIdx = (idx - 1 + djPlaylist.length) % djPlaylist.length;
+    handleSelectMusicTrack(djPlaylist[prevIdx], true);
   };
 
   // Custom dropdowns
@@ -2874,13 +3292,7 @@ export default function ChatScreen({
       read: boolean;
     }[]
   >(() => {
-    try {
-      const raw = localStorage.getItem("lamma_notifications");
-      if (raw) return JSON.parse(raw);
-    } catch (e) {
-      // ignore
-    }
-    return [];
+    return readJsonStorage("lamma_notifications", []);
   });
   // In-app sound for new incoming messages
   const messageAudioCtxRef = useRef<AudioContext | null>(null);
@@ -2937,12 +3349,11 @@ export default function ChatScreen({
   );
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
-  const closeFloatingUi = () => {
-    setShowRoomsLists(false);
-    setShowMembersList(false);
-    setShowFeaturesTray(false);
-    setShowHeaderMenu(false);
-    setShowPmListDropdown(false);
+  const featuresTrayBtnRef = useRef<HTMLButtonElement>(null);
+  const commandsBtnRef = useRef<HTMLButtonElement>(null);
+  const attachmentBtnRef = useRef<HTMLButtonElement>(null);
+
+  const closeAllDropdowns = useCallback(() => {
     setShowAttachmentDropdown(false);
     setShowGamesDropdown(false);
     setShowMusicDropdown(false);
@@ -2952,6 +3363,15 @@ export default function ChatScreen({
     setShowCommandsDropdown(false);
     setShowPrivacyDropdown(false);
     setShowSettingsDropdown(false);
+    setShowFeaturesTray(false);
+    setShowHeaderMenu(false);
+    setShowPmListDropdown(false);
+  }, []);
+
+  const closeFloatingUi = () => {
+    setShowRoomsLists(false);
+    setShowMembersList(false);
+    closeAllDropdowns();
     setIsSidebarOpen(false);
   };
   const hasFloatingDropdownOpen =
@@ -3005,10 +3425,11 @@ export default function ChatScreen({
     setShowUserContextPop(false);
     setShowUserProfileBioPop(false);
     setShowProfileModal(false);
-    closeFloatingUi();
+    closeAllDropdowns();
 
     if (!shouldOpen) return;
-    if (dropdown === "commands" && !isManagementRole) return;
+    if (dropdown === "commands" && !isOwnerRole && !isAdminRole) return;
+    if (dropdown === "privacy" && !isManagementRole) return;
 
     switch (dropdown) {
       case "features":
@@ -3066,6 +3487,9 @@ export default function ChatScreen({
     if (modal === "owner" && !isOwnerRole) return;
     if (modal === "guard" && !isOwnerRole) return;
     if (modal === "admin" && !isManagementRole) return;
+    if (modal === "store" && !isOwnerRole) {
+      setShopTab("vip");
+    }
     setShowAttachmentDropdown(false);
     setShowGamesDropdown(false);
     setShowMusicDropdown(false);
@@ -3098,6 +3522,7 @@ export default function ChatScreen({
         !target.closest(".lamma-sheet-shell") &&
         !target.closest(".lamma-popover-shell") &&
         !target.closest(".lamma-feature-shell") &&
+        !target.closest(".lamma-floating-dropdown") &&
         !target.closest(".lamma-modal-shell") &&
         !target.closest(".lamma-list-panel")
       ) {
@@ -3105,6 +3530,7 @@ export default function ChatScreen({
         setShowGamesDropdown(false);
         setShowAttachmentDropdown(false);
         setShowMusicDropdown(false);
+        setShowRadioDropdown(false);
         setShowEmojiPicker(false);
         setShowFeaturesTray(false);
         setShowCommandsDropdown(false);
@@ -3273,16 +3699,17 @@ export default function ChatScreen({
   };
 
   // Open user profile popover/modal dynamically with full network metadata fingerprinting details
-  const openMemberProfile = (nickname: string) => {
-    if (!nickname) return;
+  const resolveChatMemberByNickname = (nickname: string): ChatMember | null => {
+    if (!nickname) return null;
     if (
       nickname.includes("🛡️") ||
       nickname.includes("الحماية") ||
       nickname.includes("نظام") ||
       nickname.includes("تقرير") ||
       nickname.includes("حارس")
-    )
-      return;
+    ) {
+      return null;
+    }
 
     const cleanName = nickname
       .replace(/\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g, "")
@@ -3291,6 +3718,7 @@ export default function ChatScreen({
     let member = rawChatMembers.find(
       (m) => m.nickname.toLowerCase() === cleanName.toLowerCase(),
     );
+
     if (!member) {
       const isGuest =
         cleanName.startsWith("LammaGuest") ||
@@ -3312,23 +3740,24 @@ export default function ChatScreen({
                 : "user";
 
       member = {
-        id: `umock-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: `offline-${cleanName.toLowerCase().replace(/\s+/g, "-")}`,
         nickname: cleanName,
-        role: derivedRole as any,
+        role: derivedRole as ChatMember["role"],
         color: "#10b981",
         avatar: isGuest ? "👤" : "👨",
-        status: "online",
+        status: "offline",
         email: undefined,
-        fingerprint: `fp-${Math.floor(Math.random() * 9000 + 1000)}-${Math.floor(Math.random() * 9000 + 1000)}`,
-        browserSignature: navigator.userAgent,
-        ip: `197.34.82.${Math.floor(Math.random() * 253 + 2)}`,
-        localStorageId: `local-session-mock-${cleanName}`,
+        fingerprint: "",
+        browserSignature: "",
+        ip: "",
+        localStorageId: `offline-${cleanName}`,
       };
-
-      setChatMembers((prev) => [...prev, member!]);
     }
 
-    // Clear all other active overlays
+    return member;
+  };
+
+  const closeProfileOverlays = () => {
     setActiveModal(null);
     setShowCommandsDropdown(false);
     setShowGamesDropdown(false);
@@ -3336,8 +3765,126 @@ export default function ChatScreen({
     setShowAttachmentDropdown(false);
     setShowNotificationsDropdown(false);
     setShowSearchPop(false);
+    setShowUserContextPop(false);
+    setShowUserProfileBioPop(false);
     setIsPmOpen(false);
+  };
 
+  const openOwnProfileCard = () => {
+    const nickname = myActiveSession.nickname || currentUser.nickname;
+    const base = resolveChatMemberByNickname(nickname);
+    if (!base) return;
+
+    const member: ChatMember = {
+      ...base,
+      id: currentUser.uid || base.id,
+      nickname: myActiveSession.nickname || base.nickname,
+      avatar: myActiveSession.avatar || base.avatar || "👤",
+      role: (currentUser.role as ChatMember["role"]) || base.role,
+      color: myActiveSession.color || base.color,
+      email: currentUser.email || base.email,
+      fingerprint: myFingerprint || base.fingerprint,
+      browserSignature: myBrowserSig || base.browserSignature,
+      ip: myIp || base.ip,
+      status: "online",
+    };
+
+    closeProfileOverlays();
+    setProfileAvatarStatus(null);
+    setSelectedProfileMember(member);
+    setShowProfileModal(true);
+  };
+
+  const applyProfileAvatar = async (avatar: string) => {
+    if (!isRegisteredAccount || !currentUser.uid) {
+      alert("تخصيص صورة البطاقة متاح للحسابات المسجلة فقط.");
+      return;
+    }
+
+    setProfileAvatarSaving(true);
+    setProfileAvatarStatus(null);
+
+    try {
+      const { error } = await persistProfileAvatarToMetadata(avatar);
+      if (error) {
+        setProfileAvatarStatus(`❌ ${error}`);
+        return;
+      }
+
+      setMyActiveSession((prev) => ({ ...prev, avatar }));
+      onUserSessionUpdate?.({ avatar });
+      setSelectedProfileMember((prev) => (prev ? { ...prev, avatar } : prev));
+      setChatMembers((prev) =>
+        prev.map((member) =>
+          member.id === currentUser.uid ||
+          member.nickname === (myActiveSession.nickname || currentUser.nickname)
+            ? { ...member, avatar }
+            : member,
+        ),
+      );
+
+      try {
+        localStorage.setItem(`lamma_profile_avatar_${currentUser.uid}`, avatar);
+      } catch {
+        // ignore storage quota issues
+      }
+
+      setProfileAvatarStatus("✅ تم حفظ صورة البطاقة");
+    } finally {
+      setProfileAvatarSaving(false);
+    }
+  };
+
+  const handleSelectProfileEmoji = async (emoji: string) => {
+    await applyProfileAvatar(emoji);
+  };
+
+  const handleProfileAvatarUploadChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    if (!isRegisteredAccount || !currentUser.uid) {
+      alert("تخصيص صورة البطاقة متاح للحسابات المسجلة فقط.");
+      return;
+    }
+
+    setProfileAvatarSaving(true);
+    setProfileAvatarStatus(null);
+
+    try {
+      const { url, error } = await uploadProfileAvatarFile(
+        file,
+        currentUser.uid,
+      );
+      if (error || !url) {
+        setProfileAvatarStatus(`❌ ${error || "تعذر رفع الصورة."}`);
+        return;
+      }
+
+      await applyProfileAvatar(url);
+    } finally {
+      setProfileAvatarSaving(false);
+    }
+  };
+
+  const openMemberProfile = (nickname: string) => {
+    const member = resolveChatMemberByNickname(nickname);
+    if (!member) return;
+
+    const selfNickname = myActiveSession.nickname || currentUser.nickname;
+    const isSelf =
+      member.nickname.toLowerCase() === selfNickname.toLowerCase() ||
+      nickname.toLowerCase() === selfNickname.toLowerCase();
+
+    if (isSelf) {
+      openOwnProfileCard();
+      return;
+    }
+
+    closeProfileOverlays();
     setSelectedProfileMember(member);
     setUserContextTarget(member);
     setShowUserContextPop(true);
@@ -3440,20 +3987,6 @@ export default function ChatScreen({
     const roleLower = (currentUser?.role || "").toLowerCase();
     const isOwner = roleLower === "owner";
     const isAdmin = roleLower === "admin" || isOwner;
-
-    if (roomId === "owner" && !isOwner) {
-      alert(
-        `⚠️ الغرفة محمية بالكامل: نأسف، هذه هي غرفة المالك الذكية المحصنة بـ 'جدار حماية ناري أمني' لمنع التسلل والتحكم بقوانين الشات. الدخول مسموح فقط لمالك السيرفر الأساسي 👑.`,
-      );
-      return;
-    }
-
-    if (roomId === "admin" && !isAdmin) {
-      alert(
-        `⚠️ الغرفة مغلقة أمنياً: عذراً، غرفة الإدارة العليا محمية ببروتوكولات الأمان. الدخول مخصص فقط للمشرفين وأعضاء الطاقم الإداري والمالك 🛡️.`,
-      );
-      return;
-    }
 
     setActiveRoomId(roomId);
     setShowRoomsLists(false);
@@ -3910,7 +4443,7 @@ export default function ChatScreen({
     });
     const botWarningMsg: Message = {
       id: `guard-${Date.now()}`,
-      author: "🛡️ بوت الحماية الذكي",
+      author: "🔥 LC-Fire",
       text,
       color: "#a3e635",
       isOwn: false,
@@ -3953,37 +4486,65 @@ export default function ChatScreen({
     });
   };
 
+  // ── Load real subscription plans from DB ────────────────────────────────
+  useEffect(() => {
+    fetchActivePlans().then(setSubscriptionPlans);
+  }, []);
+
+  // ── Load user's DB subscription on mount ────────────────────────────────
+  useEffect(() => {
+    const uid = currentUser.uid;
+    if (!uid) return;
+    fetchMySubscription(uid).then((dbSub) => {
+      if (dbSub && dbSub.isActive) {
+        setSubscription((prev: any) => {
+          if (prev?.isActive && prev.expiresAt >= dbSub.expiresAt) return prev;
+          return { isActive: true, expiresAt: dbSub.expiresAt, badge: dbSub.badge, type: "vip" };
+        });
+      }
+    });
+    const unsub = subscribeToMySubscription(uid, (activated) => {
+      setSubscription({ isActive: true, expiresAt: activated.expiresAt, badge: activated.badge, type: "vip" });
+      addLammaBotMessage(activeRoomId, `🎉 تم تفعيل اشتراكك في ${activated.planName} بنجاح! استمتع بمميزاتك 💎`);
+    });
+    return () => { if (unsub && supabase) supabase.removeChannel(unsub as any); };
+  }, [currentUser.uid]);
+
+  // ── Owner: listen for new pending orders (badge notification) ───────────
+  useEffect(() => {
+    if (!isOwnerRole) return;
+    const unsub = subscribeToNewOrders(() => {
+      setPendingOrdersCount((c) => c + 1);
+    });
+    return () => { if (unsub && supabase) supabase.removeChannel(unsub as any); };
+  }, [isOwnerRole]);
+
   const handleAccelerateDays = (days: number) => {
-    const savedSub = localStorage.getItem(subscriptionStorageKey);
-    if (!savedSub) {
+    const sub = readJsonStorage<any>(subscriptionStorageKey, null);
+    if (!sub) {
       alert(
         "❌ لا يوجد اشتراك VIP نشط حالياً لتسريع عجلة الزمن عليه! يرجى شراء باقة VIP أولاً من واجهة المتجر.",
       );
       return;
     }
 
-    try {
-      const sub = JSON.parse(savedSub);
-      if (!sub.isActive) {
-        alert("❌ الاشتراك الحالي معطل أو منتهي بالفعل!");
-        return;
-      }
-
-      // Physically advance time by making expiresAt closer (subtract days)
-      const adjustedSub = {
-        ...sub,
-        expiresAt: sub.expiresAt - days * 24 * 60 * 60 * 1000,
-      };
-      localStorage.setItem(subscriptionStorageKey, JSON.stringify(adjustedSub));
-      setSubscription(adjustedSub);
-
-      addLammaBotMessage(
-        activeRoomId || "room1",
-        `⏳ تم تقديم الوقت بمقدار ${days} أيام على نظام متابعة الاشتراك لأغراض المراجعة.`,
-      );
-    } catch (e) {
-      console.error(e);
+    if (!sub.isActive) {
+      alert("❌ الاشتراك الحالي معطل أو منتهي بالفعل!");
+      return;
     }
+
+    // Physically advance time by making expiresAt closer (subtract days)
+    const adjustedSub = {
+      ...sub,
+      expiresAt: sub.expiresAt - days * 24 * 60 * 60 * 1000,
+    };
+    writeStorageValue(subscriptionStorageKey, JSON.stringify(adjustedSub));
+    setSubscription(adjustedSub);
+
+    addLammaBotMessage(
+      activeRoomId || "room1",
+      `⏳ تم تقديم الوقت بمقدار ${days} أيام على نظام متابعة الاشتراك لأغراض المراجعة.`,
+    );
   };
 
   const { handleSendMessage } = useRoomComposer({
@@ -4021,6 +4582,8 @@ export default function ChatScreen({
     addBotSystemWarning,
     addLammaBotMessage,
     addSystemActivityLog,
+    canShareYoutubeInMessage: () =>
+      canShareYoutube(currentUser, memberCustomPermissions),
   });
 
   const handleSendPM = async () => {
@@ -4038,28 +4601,39 @@ export default function ChatScreen({
     rateLimitRef.current.push(now);
 
     const targetNickname = pmTarget.nickname;
-    const textToSend = pmInputText;
-    const optimisticMessage = createOptimisticPmMessage(textToSend);
-
-    // Optimistically update local UI state (will be merged with realtime database value)
-    setPmThreads((prev) => ({
-      ...prev,
-      [targetNickname]: appendPmThreadMessage(
-        prev[targetNickname] || [],
-        optimisticMessage,
-      ),
-    }));
+    const textToSend = pmInputText.trim();
     setPmInputText("");
 
     try {
-      await persistPrivateMessage({
+      const persistedMessage = await persistPrivateMessage({
         currentUser,
         targetNickname,
         text: textToSend,
         members: rawChatMembers,
       });
+
+      setPmThreads((prev) => ({
+        ...prev,
+        [targetNickname]: appendPmThreadMessage(prev[targetNickname] || [], {
+          ...createOptimisticPmMessage(textToSend),
+          time: persistedMessage.created_at
+            ? new Date(persistedMessage.created_at).toLocaleTimeString("ar-EG", {
+                hour: "numeric",
+                minute: "numeric",
+                hour12: true,
+              })
+            : createOptimisticPmMessage(textToSend).time,
+          dbId: persistedMessage.id,
+        }),
+      }));
     } catch (error) {
       console.error("PM insert error:", error);
+      setPmInputText(textToSend);
+      alert(
+        error instanceof Error
+          ? `❌ تعذر إرسال الرسالة الخاصة: ${error.message}`
+          : "❌ تعذر إرسال الرسالة الخاصة حاليًا. حاول مرة أخرى.",
+      );
     }
   };
 
@@ -4206,6 +4780,7 @@ export default function ChatScreen({
             color: currentUser.color || "#10b981",
             type: finalType,
             media_url: mediaUrl,
+            youtube_id: getYoutubeId(mediaUrl),
             sender_uid: senderUid,
           },
         ])
@@ -4218,6 +4793,8 @@ export default function ChatScreen({
   };
 
   const uploadAndSendImage = async (file: File) => {
+    if (!ensureImagesAccess()) return;
+
     if (!supabase) {
       alert("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.");
       return;
@@ -4388,6 +4965,7 @@ export default function ChatScreen({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    if (!ensureImagesAccess()) return;
     if (!canSendMediaByRate()) {
       alert("⏳ بعت وسائط كتير بسرعة. استنى دقيقة وجرب تاني.");
       return;
@@ -4468,10 +5046,6 @@ export default function ChatScreen({
   ) => {
     const isOwnerOrAdmin =
       currentUser.role === "owner" || currentUser.role === "admin";
-    const isVIP =
-      currentUser.role === "vip" ||
-      currentUser.role === "platinum_vip" ||
-      currentUser.role === "mod";
 
     if (type === "audio") {
       const isOwner = currentUser.role === "owner";
@@ -4479,7 +5053,7 @@ export default function ChatScreen({
         memberCustomPermissions[currentUser.nickname]?.recordingAllowed;
       if (!isOwner && !perm) {
         alert(
-          "⚠️ عذراً: ميزة تسجيل وإرسال الرسائل الصوتية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 🎙️",
+          "⚠️ ميزة الرسائل الصوتية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل 🎙️",
         );
         return;
       }
@@ -4492,9 +5066,20 @@ export default function ChatScreen({
       return;
     }
 
-    if (isOnlyVIPCanSendImages && !isOwnerOrAdmin && !isVIP) {
+    if (
+      (type === "image" || type === "imageUrl") &&
+      !canSendImages(currentUser, memberCustomPermissions, isOnlyVIPCanSendImages)
+    ) {
       alert(
-        "📸 عذراً: لقد قامت الإدارة بتفعيل وضع حصر الوسائط، بحيث لا يمكن إلا للأعضاء أصحاب رتبة VIP أو الإداريين مشاركة الصور والوسائط مجرياً.",
+        "📸 ميزة الصور غير مفعّلة لحسابك. يمكن للمالك منحها من غرفة القيادة → صلاحيات الأعضاء.",
+      );
+      setShowAttachmentDropdown(false);
+      return;
+    }
+
+    if (type === "video" && !canShareYoutube(currentUser, memberCustomPermissions)) {
+      alert(
+        "🎥 مشاركة يوتيوب/فيديو غير مفعّلة لحسابك. يمكن للمالك منحها من غرفة القيادة → صلاحيات الأعضاء.",
       );
       setShowAttachmentDropdown(false);
       return;
@@ -4535,31 +5120,85 @@ export default function ChatScreen({
     }
     if (type === "video") {
       const inputUrl = prompt(
-        "🎥 أدخل رابط مقطع يوتيوب أو فيديو مباشر (MP4, WEBM) لمشاركته:\n(اضغط موافق فارغاً لعرض فيديو افتراضي رائع)",
+        "🎥 أدخل رابط يوتيوب أو فيdeo مباشر (MP4, WEBM):",
       );
       if (inputUrl === null) {
         setShowAttachmentDropdown(false);
         return;
       }
-      mediaUrl =
-        inputUrl.trim() !== ""
-          ? inputUrl.trim()
-          : "https://assets.mixkit.co/videos/preview/mixkit-matrix-style-code-screen-background-simulation-33306-large.mp4";
+      const trimmed = inputUrl.trim();
+      if (!trimmed) {
+        alert("⚠️ يجب إدخال رابط يوتيوب أو فيdeo حقيقي.");
+        setShowAttachmentDropdown(false);
+        return;
+      }
+      mediaUrl = trimmed;
+      setShowAttachmentDropdown(false);
     }
     if (type === "audio") {
-      const inputUrl = prompt(
-        "🎙️ أدخل رابط ملف الصوت المباشر (MP3) لمشاركته:\n(اضغط موافق فارغاً لعرض ملف صوت كلاسيكي تجريبي)",
-      );
-      if (inputUrl === null) {
-        setShowAttachmentDropdown(false);
-        return;
-      }
-      mediaUrl =
-        inputUrl.trim() !== ""
-          ? inputUrl.trim()
-          : "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+      void beginVoiceMessageRecording();
+      setShowAttachmentDropdown(false);
+      return;
     }
     sendMediaMessage(type, mediaUrl);
+  };
+
+  const canSendVoiceMessages = () => {
+    if (currentUser.role === "owner") return true;
+    return !!memberCustomPermissions[currentUser.nickname]?.recordingAllowed;
+  };
+
+  const beginVoiceMessageRecording = async () => {
+    if (!canSendVoiceMessages()) {
+      alert(
+        "⚠️ ميزة الرسائل الصوتية غير مفعلة لحسابك. اطلب التفعيل من المالك 🎙️",
+      );
+      return;
+    }
+    if (currentUser.authProvider !== "supabase" || !currentUser.uid) {
+      alert("🎙️ الرسائل الصوتية متاحة للحسابات المسجلة فقط.");
+      return;
+    }
+    const isOwnerOrAdmin =
+      currentUser.role === "owner" || currentUser.role === "admin";
+    if (isGlobalMicMute && !isOwnerOrAdmin) {
+      alert("🎙️ الميكروفونات مقفلة من قبل المالك حالياً.");
+      return;
+    }
+    if (isVoiceRecording) return;
+    try {
+      await startVoiceRecording();
+    } catch (err) {
+      alert(describeMediaError(err, "audio"));
+    }
+  };
+
+  const sendRecordedVoiceMessage = async () => {
+    if (voiceRecordingSec < 1) {
+      alert("⚠️ سجّل رسالة أطول من ثانية واحدة.");
+      return;
+    }
+    if (!canSendMediaByRate()) {
+      alert("⏳ بعت وسائط كتير بسرعة. استنى دقيقة وجرب تاني.");
+      return;
+    }
+    setIsUploadingVoice(true);
+    try {
+      const blob = await stopVoiceRecording();
+      if (!blob || !currentUser.uid) return;
+      const { url, error } = await uploadVoiceNoteBlob(
+        blob,
+        activeRoomId,
+        currentUser.uid,
+      );
+      if (error || !url) {
+        alert(`❌ فشل رفع الرسالة الصوتية: ${error || "خطأ غير معروف"}`);
+        return;
+      }
+      sendMediaMessage("audio", url);
+    } finally {
+      setIsUploadingVoice(false);
+    }
   };
 
   const formatSecs = (total: number) => {
@@ -4675,10 +5314,8 @@ export default function ChatScreen({
       // is the authoritative visual wrapper for the production chat design.
       className="fixed inset-0 h-screen w-full flex flex-col overflow-hidden font-sans text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app lamma-neutral-glass"
       dir="rtl"
-      data-lamma-wall={wallTheme}
       data-clear-bg={isDefaultAmbientBg ? "true" : "false"}
       data-reading-mode={readingMode ? "true" : "false"}
-      data-chat-theme={chatTheme}
     >
       {activeRoomBg ? (
         <>
@@ -4692,7 +5329,7 @@ export default function ChatScreen({
               filter:
                 activeRoomBg === "/bg.jpg" || activeRoomBg === "/MAN.png"
                   ? "none"
-                  : chatThemeAmbientStyles[chatTheme]?.imageFilter || "none",
+                  : "none",
             }}
           />
           {isDefaultAmbientBg ? (
@@ -4716,8 +5353,7 @@ export default function ChatScreen({
                 background:
                   activeRoomBg === "/bg.jpg" || activeRoomBg === "/MAN.png"
                     ? "transparent"
-                    : chatThemeAmbientStyles[chatTheme]?.overlay ||
-                      "transparent",
+                    : "transparent",
               }}
             />
           ) : null}
@@ -4748,7 +5384,7 @@ export default function ChatScreen({
         style={{
           background: isDefaultAmbientBg
             ? "none"
-            : `radial-gradient(circle at center, ${hexToRgba(glowColor, 0.008)}, transparent 76%)`,
+            : "none",
         }}
       />
 
@@ -4788,46 +5424,59 @@ export default function ChatScreen({
           </div>
           {/* Right side controls (User account & actions - Now in the visual start "اول الصفحة" due to RTL) */}
           <div className="flex items-center gap-2 md:gap-3">
-            {/* User badge */}
-            <div
-              className={`flex items-center gap-2 select-none max-w-[58vw] sm:max-w-none lamma-header-rail lamma-header-user-rail ${
-                isOwnerRole ? "cursor-pointer" : ""
-              }`}
-              onClick={() => {
-                if (!isOwnerRole) return;
-                setLeadershipTab("quick");
-                openModal("leadership");
-              }}
+            {/* User badge — tap to open personal profile card */}
+            <button
+              type="button"
+              onClick={openOwnProfileCard}
+              className="flex items-center gap-2 select-none max-w-[58vw] sm:max-w-none lamma-header-rail lamma-header-user-rail cursor-pointer rounded-2xl hover:bg-white/5 transition-colors text-right"
+              title="بطاقتي الشخصية والإعدادات"
             >
               <div className="relative shrink-0">
+                <OwnerAvatarAura active={isOwnerRole}>
                 <div
                   className={`p-[2px] rounded-full ${
-                    myActiveSession.frame
-                      ? `bg-gradient-to-r ${myActiveSession.frame}`
+                    isOwnerRole || myActiveSession.frame
+                      ? `bg-gradient-to-r ${myActiveSession.frame || "from-red-500 via-orange-500 to-yellow-500"}`
                       : "bg-gradient-to-r from-yellow-500/50 via-orange-500/35 to-yellow-500/50"
                   }`}
                   style={{
-                    boxShadow:
-                      "0 0 18px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.20)",
+                    boxShadow: isOwnerRole
+                      ? "0 0 22px rgba(249, 115, 22, 0.45)"
+                      : "0 0 18px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.20)",
                   }}
                 >
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-[13px] overflow-hidden lamma-admin-card">
-                    {myActiveSession.avatar || "👤"}
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden lamma-admin-card">
+                    <MemberAvatar
+                      avatar={myActiveSession.avatar}
+                      size="sm"
+                      className="w-full h-full"
+                      imageClassName="w-full h-full rounded-full"
+                    />
                   </div>
                 </div>
-                {(myVisualRole === "owner" ||
-                  myVisualRole === "admin" ||
-                  myVisualRole === "vip" ||
-                  myVisualRole === "platinum_vip") && (
+                </OwnerAvatarAura>
+                {(isOwnerRole ||
+                  isAdminRole ||
+                  hasStoreVipDisplay(
+                    myActiveSession.nickname,
+                    myActiveSession,
+                    subscription,
+                    memberCosmeticGrants,
+                  )) && (
                   <div
                     className={`absolute -top-0.5 left-1/2 -translate-x-1/2 lamma-prestige-seal ${
-                      myVisualRole === "admin"
-                        ? "lamma-prestige-admin"
-                        : myVisualRole === "vip"
-                          ? "lamma-prestige-vip"
-                          : myVisualRole === "platinum_vip"
+                      isOwnerRole
+                        ? "lamma-prestige-owner"
+                        : isAdminRole
+                          ? "lamma-prestige-admin"
+                          : hasStorePlatinumDisplay(
+                                myActiveSession.nickname,
+                                myActiveSession,
+                                subscription,
+                                memberCosmeticGrants,
+                              )
                             ? "lamma-prestige-plat"
-                            : "lamma-prestige-owner"
+                            : "lamma-prestige-vip"
                     }`}
                     aria-hidden="true"
                   >
@@ -4837,17 +5486,23 @@ export default function ChatScreen({
               </div>
               <div className="flex flex-col items-start leading-none gap-0.5">
                 <span
-                  className={`text-[11px] font-black flex items-center gap-1 truncate max-w-[45vw] sm:max-w-none ${myVisualRole === "platinum_vip" ? "animate-[pulse_1.5s_infinite] text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400 font-extrabold" : ""}`}
+                  className={`text-[11px] font-black flex items-center gap-1 truncate max-w-[45vw] sm:max-w-none ${getPrestigeNameClass(myActiveSession.nickname, myActiveSession, chatMembers, subscription, memberCosmeticGrants)}`}
                   style={{
                     color:
-                      myVisualRole === "platinum_vip"
+                      isOwnerRole ||
+                      hasStorePlatinumDisplay(
+                        myActiveSession.nickname,
+                        myActiveSession,
+                        subscription,
+                        memberCosmeticGrants,
+                      )
                         ? undefined
                         : myActiveSession.color,
                   }}
                 >
                   {myActiveSession.nickname}
                   {myVisualRole === "owner" && (
-                    <BossSigil size={13} className="opacity-95" />
+                    <BossSigil size={14} className="opacity-95 shrink-0" />
                   )}
                   {activeTempEntryTopic && (
                     <span className="max-w-[120px] truncate rounded-full border border-cyan-400/25 bg-cyan-500/10 px-1.5 py-0.5 text-[7px] text-cyan-200">
@@ -4862,11 +5517,23 @@ export default function ChatScreen({
                 </span>
                 <div className="hidden sm:flex items-center gap-1.5 mt-0.5">
                   <div className="flex items-center gap-1">
-                    {myVisualRole === "platinum_vip" ? (
+                    {hasStorePlatinumDisplay(
+                      myActiveSession.nickname,
+                      myActiveSession,
+                      subscription,
+                      memberCosmeticGrants,
+                    ) ? (
                       <span className="text-[8px] lamma-role-chip lamma-role-plat">
                         PLATINUM VIP
                       </span>
-                    ) : myVisualRole === "vip" ? (
+                    ) : hasStoreVipDisplay(
+                        myActiveSession.nickname,
+                        myActiveSession,
+                        subscription,
+                        memberCosmeticGrants,
+                      ) &&
+                      !isOwnerRole &&
+                      !isAdminRole ? (
                       <span className="text-[8px] lamma-role-chip lamma-role-vip">
                         VIP
                       </span>
@@ -4989,6 +5656,17 @@ export default function ChatScreen({
                           <div className="flex-col flex pt-1 w-full relative z-40">
                             <button
                               onClick={() => {
+                                openOwnProfileCard();
+                                setShowHeaderMenu(false);
+                              }}
+                              className="flex items-center gap-3 px-4 py-2.5 text-cyan-200 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
+                            >
+                              <span className="text-base">👤</span>
+                              <span>بطاقتي الشخصية</span>
+                            </button>
+                            <div className="h-[1px] bg-white/5 my-1" />
+                            <button
+                              onClick={() => {
                                 setIsCompactView(!isCompactView);
                                 setShowHeaderMenu(false);
                               }}
@@ -5051,6 +5729,17 @@ export default function ChatScreen({
                     icon={<SettingsIcon size={14} className="text-gray-400" />}
                   >
                     <div className="flex-col flex pt-1 w-full">
+                      <button
+                        onClick={() => {
+                          openOwnProfileCard();
+                          setShowHeaderMenu(false);
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 text-cyan-200 hover:text-white transition-all text-sm w-full text-right cursor-pointer rounded-xl lamma-list-item"
+                      >
+                        <span className="text-base">👤</span>
+                        <span>بطاقتي الشخصية</span>
+                      </button>
+                      <div className="h-[1px] bg-white/5 my-1" />
                       <button
                         onClick={() => {
                           setIsCompactView(!isCompactView);
@@ -5174,9 +5863,10 @@ export default function ChatScreen({
                                   pmThreads[nickname]?.[
                                     pmThreads[nickname].length - 1
                                   ];
+                                const isSpyThread = nickname.startsWith("🕵️");
                                 const targetUser = chatMembers.find(
                                   (m) => m.nickname === nickname,
-                                ) || { nickname, color: "#a3e635" };
+                                ) || { nickname, color: isSpyThread ? "#a78bfa" : "#a3e635" };
                                 return (
                                   <div
                                     key={nickname}
@@ -5194,13 +5884,14 @@ export default function ChatScreen({
                                       else setIsPmOpen(true);
                                       setShowPmListDropdown(false);
                                     }}
-                                    className="p-2.5 rounded-xl transition-all flex items-center gap-2.5 cursor-pointer relative z-40 lamma-list-item"
+                                    className={`p-2.5 rounded-xl transition-all flex items-center gap-2.5 cursor-pointer relative z-40 lamma-list-item ${isSpyThread ? "border border-purple-500/15 bg-purple-500/5" : ""}`}
                                   >
-                                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 text-xl overflow-hidden shadow-inner relative pointer-events-none">
-                                      <User
-                                        size={16}
-                                        className="text-gray-400"
-                                      />
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xl overflow-hidden shadow-inner relative pointer-events-none ${isSpyThread ? "bg-purple-500/15" : "bg-white/5"}`}>
+                                      {isSpyThread ? (
+                                        <span className="text-[16px]">🕵️</span>
+                                      ) : (
+                                        <User size={16} className="text-gray-400" />
+                                      )}
                                     </div>
                                     <div className="flex-1 min-w-0 pointer-events-none">
                                       <div className="flex items-center justify-between">
@@ -5208,11 +5899,14 @@ export default function ChatScreen({
                                           <h4
                                             className="text-[12px] font-black"
                                             style={{
-                                              color: targetUser.color || "#fff",
+                                              color: isSpyThread ? "#a78bfa" : (targetUser.color || "#fff"),
                                             }}
                                           >
-                                            {nickname}
+                                            {isSpyThread ? nickname.replace("🕵️ ", "") : nickname}
                                           </h4>
+                                          {isSpyThread && (
+                                            <span className="text-[6px] bg-purple-500/20 text-purple-300 px-1 rounded">مراقبة</span>
+                                          )}
                                           {(targetUser as any).role ===
                                             "platinum_vip" && (
                                             <span className="text-[6px] lamma-role-chip lamma-role-plat">
@@ -5566,7 +6260,7 @@ export default function ChatScreen({
                   </MobileBottomSheet>
                 </div>
               </div>
-            </div>
+            </button>
           </div>
 
           {/* Center welcome moved into header wordmark container */}
@@ -5686,6 +6380,7 @@ export default function ChatScreen({
         )}
 
         <aside
+          data-col="left"
           className={`hidden xl:flex xl:order-3 flex-col overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isLeftColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
@@ -5788,59 +6483,84 @@ export default function ChatScreen({
                   </div>
                   <button
                     type="button"
-                    onClick={() => toggleDropdown("radio" as any)}
+                    onClick={toggleRadioPlay}
                     className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
-                    title="فتح الراديو"
+                    title="تشغيل/إيقاف"
                   >
-                    <Play
-                      size={16}
-                      className="text-[color:var(--accent-primary)]"
-                    />
+                    {isRadioPlaying ? (
+                      <Pause
+                        size={16}
+                        className="text-[color:var(--accent-primary)]"
+                      />
+                    ) : (
+                      <Play
+                        size={16}
+                        className="text-[color:var(--accent-primary)]"
+                      />
+                    )}
                   </button>
                 </div>
-                <div className="mt-3 flex-1 min-h-0 overflow-hidden">
-                  <div className="rounded-2xl p-3 h-full flex flex-col justify-between lamma-section-card">
+                <div className="mt-3 flex-1 min-h-0 overflow-y-auto">
+                  <div className="rounded-2xl p-3 h-full flex flex-col gap-2 lamma-section-card">
                     <div className="text-right">
                       <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
-                        الآن على الهواء
+                        {isRadioPlaying ? "🔊 على الهواء" : "⏸ متوقف"}
                       </div>
                       <div className="text-[12px] text-white font-extrabold mt-1 truncate">
-                        أغاني وطرب
+                        {currentRadioStation.name}
                       </div>
                       <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1 truncate">
-                        راديو لمة • جودة HD
+                        {currentRadioStation.frequency}
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center justify-between">
+                    <div className="space-y-1 max-h-28 overflow-y-auto">
+                      {radioStations.map((station) => (
+                        <button
+                          key={station.id}
+                          type="button"
+                          onClick={() => handleSelectRadioStation(station)}
+                          className={`w-full p-1.5 rounded-xl text-[10px] font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item ${
+                            currentRadioStation.id === station.id
+                              ? "bg-green-500/10 border-green-500/20 text-green-300"
+                              : "bg-white/5 border-transparent text-gray-300 hover:bg-white/10"
+                          }`}
+                        >
+                          <span>{station.name}</span>
+                          <span className="text-[8px] text-gray-500">
+                            {station.frequency}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-auto flex items-center justify-center gap-3 pt-1">
                       <button
                         type="button"
-                        onClick={() => toggleDropdown("radio" as any)}
+                        onClick={prevRadioStation}
                         className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
+                        title="السابق"
+                      >
+                        <ChevronRight size={16} className="text-gray-300" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={toggleRadioPlay}
+                        className="p-2.5 rounded-full transition-all cursor-pointer lamma-feature-primary"
                         title="تشغيل/إيقاف"
                       >
-                        <Pause
-                          size={16}
-                          className="text-[color:var(--accent-primary)]"
-                        />
+                        {isRadioPlaying ? (
+                          <Pause size={16} />
+                        ) : (
+                          <Play size={16} className="ml-0.5" />
+                        )}
                       </button>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleDropdown("radio" as any)}
-                          className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
-                          title="السابق"
-                        >
-                          <ChevronRight size={16} className="text-gray-300" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => toggleDropdown("radio" as any)}
-                          className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
-                          title="التالي"
-                        >
-                          <ChevronLeft size={16} className="text-gray-300" />
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={nextRadioStation}
+                        className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
+                        title="التالي"
+                      >
+                        <ChevronLeft size={16} className="text-gray-300" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -5896,37 +6616,171 @@ export default function ChatScreen({
                       size={16}
                       className="text-[color:var(--accent-secondary)]"
                     />
-                    <span className="text-[12px] font-black">موسيقى وغناء</span>
+                    <span className="text-[12px] font-black">DJ الغرفة</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleDropdown("music" as any)}
-                    className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
-                    title="فتح الموسيقى"
-                  >
-                    <Play
-                      size={16}
-                      className="text-[color:var(--accent-primary)]"
-                    />
-                  </button>
-                </div>
-                <div className="mt-3 flex-1 min-h-0">
-                  <div className="rounded-2xl p-3 h-full flex items-center justify-between lamma-section-card">
-                    <div className="text-right">
-                      <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
-                        مكتبة لمة
-                      </div>
-                      <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1 truncate">
-                        اختر تراك وشغّل فورًا
-                      </div>
-                    </div>
+                  {isOwnerRole ? (
                     <button
                       type="button"
-                      onClick={() => toggleDropdown("music" as any)}
-                      className="px-3 py-2 rounded-xl text-[color:var(--accent-primary)] text-[10px] font-black transition-all cursor-pointer lamma-toggle-on"
+                      onClick={toggleMusicPlay}
+                      disabled={!currentMusicTrack.url}
+                      className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action disabled:opacity-40"
+                      title="تشغيل/إيقاف للغرفة"
                     >
-                      فتح
+                      {isMusicPlaying ? (
+                        <Pause
+                          size={16}
+                          className="text-[color:var(--accent-primary)]"
+                        />
+                      ) : (
+                        <Play
+                          size={16}
+                          className="text-[color:var(--accent-primary)]"
+                        />
+                      )}
                     </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={toggleDjListening}
+                      className={`p-2 rounded-xl transition-all cursor-pointer lamma-soft-action ${
+                        isDjListening ? "text-cyan-300" : "text-gray-400"
+                      }`}
+                      title={isDjListening ? "كتم DJ" : "استمع لـ DJ"}
+                    >
+                      {isDjListening ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                    </button>
+                  )}
+                </div>
+                <div className="mt-3 flex-1 min-h-0 overflow-y-auto">
+                  <div className="rounded-2xl p-3 h-full flex flex-col gap-2 lamma-section-card">
+                    {isOwnerRole && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isUploadingMusic}
+                          onClick={() => musicUploadInputRef.current?.click()}
+                          className="w-full py-2 rounded-xl text-[10px] font-black bg-cyan-500/10 text-cyan-200 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+                        >
+                          <Upload size={12} />
+                          {isUploadingMusic ? "جاري الرفع…" : "رفع أغاني للقائمة"}
+                        </button>
+                      </>
+                    )}
+                    {!isOwnerRole && (
+                      <button
+                        type="button"
+                        onClick={toggleDjListening}
+                        className={`w-full py-2 rounded-xl text-[10px] font-black border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          isDjListening
+                            ? "bg-cyan-500/15 text-cyan-200 border-cyan-500/30"
+                            : "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10"
+                        }`}
+                      >
+                        {isDjListening ? (
+                          <>
+                            <Volume2 size={12} /> 🔊 أستمع للـ DJ
+                          </>
+                        ) : (
+                          <>
+                            <VolumeX size={12} /> 🔇 مكتوم — اضغط للاستماع
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {!isOwnerRole && activeRoomDj?.isPlaying && (
+                      <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/20 px-2 py-1.5 text-[9px] text-cyan-200 font-bold truncate">
+                        🎧 المالك يشغّل: {activeRoomDj.title}
+                      </div>
+                    )}
+                    {!isOwnerRole && !activeRoomDj?.isPlaying && (
+                      <div className="rounded-xl bg-white/5 border border-white/10 px-2 py-1.5 text-[9px] text-gray-400 font-bold text-center">
+                        لا يوجد بث DJ حالياً
+                      </div>
+                    )}
+                    <div className="text-right">
+                      <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
+                        {isOwnerRole
+                          ? isMusicPlaying
+                            ? "🔊 بث للغرفة"
+                            : "⏸ متوقف"
+                          : isDjListening
+                            ? activeRoomDj?.isPlaying
+                              ? "🔊 تستمع الآن"
+                              : "🔊 جاهز للاستماع"
+                            : "🔇 DJ مكتوم"}
+                      </div>
+                      <div className="text-[12px] text-white font-extrabold mt-1 truncate">
+                        {isOwnerRole
+                          ? currentMusicTrack.title
+                          : activeRoomDj?.title || "—"}
+                      </div>
+                      <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1 truncate">
+                        {isOwnerRole
+                          ? currentMusicTrack.desc
+                          : isDjListening
+                            ? "اختيارك: استماع"
+                            : "اختيارك: كتم"}
+                      </div>
+                    </div>
+                    {isOwnerRole && (
+                      <>
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {djPlaylist.length === 0 ? (
+                            <p className="text-[9px] text-gray-500 text-center py-2">
+                              ارفع أغاني لتبدأ البث للغرفة
+                            </p>
+                          ) : (
+                            djPlaylist.map((track) => (
+                              <button
+                                key={track.id}
+                                type="button"
+                                onClick={() => handleSelectMusicTrack(track, true)}
+                                className={`w-full p-1.5 rounded-xl text-[10px] font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item ${
+                                  currentMusicTrack.id === track.id
+                                    ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300"
+                                    : "bg-purple-500/10 border-purple-500/20 text-purple-200"
+                                }`}
+                              >
+                                <span className="truncate">{track.title}</span>
+                                <span className="text-[8px] text-gray-500 shrink-0 mr-1">
+                                  {track.desc}
+                                </span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                        <div className="mt-auto flex items-center justify-center gap-3 pt-1">
+                          <button
+                            type="button"
+                            onClick={prevMusicTrack}
+                            disabled={djPlaylist.length === 0}
+                            className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action disabled:opacity-40"
+                          >
+                            <ChevronRight size={16} className="text-gray-300" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={toggleMusicPlay}
+                            disabled={!currentMusicTrack.url}
+                            className="p-2.5 rounded-full transition-all cursor-pointer lamma-feature-primary disabled:opacity-40"
+                          >
+                            {isMusicPlaying ? (
+                              <Pause size={16} />
+                            ) : (
+                              <Play size={16} className="ml-0.5" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={nextMusicTrack}
+                            disabled={djPlaylist.length === 0}
+                            className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action disabled:opacity-40"
+                          >
+                            <ChevronLeft size={16} className="text-gray-300" />
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -5999,15 +6853,7 @@ export default function ChatScreen({
                 )}
 
                 {(() => {
-                  const visibleRooms = ROOMS_DEF.filter((room) => {
-                    if (room.id === "owner" && !isOwnerRole) {
-                      return false;
-                    }
-                    if (room.id === "admin" && !isAdminRole && !isOwnerRole) {
-                      return false;
-                    }
-                    return true;
-                  });
+                  const visibleRooms = ROOMS_DEF;
                   const mergedVisibleRooms = [...visibleRooms, ...customRooms];
 
                   return ROOM_CATEGORIES.map((category) => {
@@ -6081,16 +6927,33 @@ export default function ChatScreen({
                   {orderedChatMembers.map((m, idx, arr) => {
                     const cleanName = getShortenedNickname(m.nickname);
                     const isCurrentUser = m.nickname === myActiveSession.nickname;
-                    const actualRole = getRoleFromAuthor(
+                    const isBasicMember =
+                      m.role === "user" || m.role === "guest";
+                    const isOwnerMember = isOwnerAuthor(
                       m.nickname,
                       myActiveSession,
                       chatMembers,
                     );
-                    const isBasicMember =
-                      m.role === "user" || m.role === "guest";
-                    const isPlatinumVip =
-                      actualRole === "platinum_vip" ||
-                      (isCurrentUser && myVisualRole === "platinum_vip");
+                    const hasStoreCosmetics =
+                      isCurrentUser &&
+                      (hasActiveSubscription || !!myActiveSession.frame);
+                    const hasGrantCosmetics = hasOwnerGrantedCosmetics(
+                      m.nickname,
+                      memberCosmeticGrants,
+                    );
+                    const showStyledAvatar =
+                      !isBasicMember ||
+                      isOwnerMember ||
+                      hasStoreCosmetics ||
+                      hasGrantCosmetics;
+                    const storeForMember = isCurrentUser ? subscription : null;
+                    const prestigeClass = getPrestigeNameClass(
+                      m.nickname,
+                      myActiveSession,
+                      chatMembers,
+                      storeForMember,
+                      memberCosmeticGrants,
+                    );
 
                     return (
                       <div
@@ -6104,36 +6967,54 @@ export default function ChatScreen({
                       >
                         <div className="flex items-center gap-2 overflow-hidden flex-1 text-right">
                           <div className="flex-shrink-0 flex items-center justify-center">
-                            {isBasicMember ? (
-                              <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-white/5 rounded-full border border-white/10 text-[24px]">
-                                {m.avatar}
+                            {!showStyledAvatar ? (
+                              <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-white/5 rounded-full border border-white/10 overflow-hidden">
+                                <MemberAvatar
+                                  avatar={m.avatar}
+                                  size="md"
+                                  className="w-full h-full"
+                                  imageClassName="w-full h-full rounded-full"
+                                />
                               </div>
                             ) : (
+                              <OwnerAvatarAura active={isOwnerMember}>
                               <AMLogo
                                 size={24}
                                 variant="circular"
-                                glow={isCurrentUser}
-                                crownRole={
-                                  (actualRole === "platinum_vip"
-                                    ? "vip"
-                                    : actualRole) as any
-                                }
+                                glow={isCurrentUser || isOwnerMember}
+                                crownRole={getCrownRoleForDisplay(
+                                  m.nickname,
+                                  myActiveSession,
+                                  chatMembers,
+                                  storeForMember,
+                                  memberCosmeticGrants,
+                                )}
                                 frame={getFrameFromAuthor(
                                   m.nickname,
                                   myActiveSession,
                                   chatMembers,
+                                  memberCosmeticGrants,
                                 )}
                               />
+                              </OwnerAvatarAura>
                             )}
                           </div>
                           <div className="flex flex-col truncate">
                             <div className="flex items-center gap-1 flex-wrap">
                               <span
-                                style={{ color: m.color }}
-                                className={`font-bold text-[11px] truncate leading-tight ${isPlatinumVip ? "animate-[pulse_1.5s_infinite] text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400" : ""}`}
+                                style={prestigeClass ? undefined : { color: m.color }}
+                                className={`font-bold text-[11px] truncate leading-tight ${prestigeClass}`}
                               >
                                 {cleanName}
                               </span>
+                              {isOwnerMember && (
+                                <BossSigil size={12} className="opacity-95 shrink-0" />
+                              )}
+                              {isOwnerMember && (
+                                <span className="text-[6px] lamma-role-chip lamma-role-owner shrink-0">
+                                  👑
+                                </span>
+                              )}
                               {isCurrentUser && activeTempEntryTopic && (
                                 <span className="max-w-[110px] truncate rounded-full border border-cyan-400/20 bg-cyan-500/10 px-1.5 py-0.5 text-[7px] text-cyan-200">
                                   {activeTempEntryTopic}
@@ -6165,6 +7046,7 @@ export default function ChatScreen({
 
         {/* ----------------- PANEL 3: MAIN ACTIVE MESSAGE LOG (3rd column / Center) ----------------- */}
         <div
+          data-col="center"
           className={`flex-1 flex flex-col min-w-0 backdrop-blur-xl xl:order-2 lamma-column-frame lamma-chat-core-shell ${
             mobileTab === "chat" ? "flex" : "hidden md:flex"
           } ${isLeftColumnCollapsed ? "xl:border-l xl:border-white/10" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-white/10" : ""} lamma-column-frame`}
@@ -6221,25 +7103,84 @@ export default function ChatScreen({
               </div>
             </div>
 
-            {/* System Actions Side (Left) */}
+            {/* System Actions Side (Left) — join/leave ticker */}
             <div className="w-[116px] sm:w-[148px] md:w-[188px] flex items-center justify-center px-2 py-0 relative overflow-hidden bg-white/[0.015] border-r border-white/5">
-              <div className="flex items-center gap-2">
-                <span className="text-sm flex-shrink-0">📡</span>
-                <div className="flex flex-col text-left mr-1 justify-center">
-                  <span
-                    className="text-[10px] font-bold text-gray-200 truncate max-w-[100px] sm:max-w-[130px] leading-normal"
-                    dir="rtl"
-                  >
-                    جلسة مباشرة
-                  </span>
-                  <span
-                    className="text-[8px] font-black uppercase leading-normal text-emerald-300"
-                    dir="ltr"
-                  >
-                    Live session
-                  </span>
-                </div>
-              </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`${roomEntryTicker.kind}-${roomEntryTicker.nickname || "standby"}`}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-2 w-full min-w-0"
+                >
+                  {roomEntryTicker.kind === "join" ? (
+                    <>
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-400/25">
+                        <LogIn
+                          size={14}
+                          className="text-emerald-300"
+                          strokeWidth={2.4}
+                        />
+                      </span>
+                      <div className="flex flex-col text-left mr-1 justify-center min-w-0">
+                        <span
+                          className="text-[10px] font-black text-emerald-200 truncate max-w-[100px] sm:max-w-[130px] leading-normal"
+                          dir="rtl"
+                        >
+                          {roomEntryTicker.nickname}
+                        </span>
+                        <span
+                          className="text-[8px] font-bold leading-normal text-emerald-300/90"
+                          dir="rtl"
+                        >
+                          دخل الشات ↘
+                        </span>
+                      </div>
+                    </>
+                  ) : roomEntryTicker.kind === "leave" ? (
+                    <>
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-400/20 text-base">
+                        👋
+                      </span>
+                      <div className="flex flex-col text-left mr-1 justify-center min-w-0">
+                        <span
+                          className="text-[10px] font-black text-amber-100 truncate max-w-[100px] sm:max-w-[130px] leading-normal"
+                          dir="rtl"
+                        >
+                          {roomEntryTicker.nickname}
+                        </span>
+                        <span
+                          className="text-[8px] font-bold leading-normal text-amber-200/90"
+                          dir="rtl"
+                        >
+                          غادر الشات
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm flex-shrink-0">📡</span>
+                      <div className="flex flex-col text-left mr-1 justify-center min-w-0">
+                        <span
+                          className="text-[10px] font-bold text-gray-200 truncate max-w-[100px] sm:max-w-[130px] leading-normal"
+                          dir="rtl"
+                        >
+                          {roomEntryTicker.onlineCount > 1
+                            ? `${roomEntryTicker.onlineCount} متصلين`
+                            : "جلسة مباشرة"}
+                        </span>
+                        <span
+                          className="text-[8px] font-black uppercase leading-normal text-emerald-300"
+                          dir="ltr"
+                        >
+                          Live session
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
 
@@ -6251,12 +7192,6 @@ export default function ChatScreen({
             {/* Tabs Container */}
             <div className="flex items-center gap-0.5 overflow-x-auto hide-scrollbar flex-1 h-full items-end pb-0">
               {openRooms
-                .filter((room) => {
-                  if (room.id === "owner" && !isOwnerRole) return false;
-                  if (room.id === "admin" && !isAdminRole && !isOwnerRole)
-                    return false;
-                  return true;
-                })
                 .map((room) => (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8, x: -20 }}
@@ -6333,6 +7268,7 @@ export default function ChatScreen({
                 className={`relative dropdown-container ${isPostsRoom ? "hidden" : ""}`}
               >
                 <button
+                  ref={featuresTrayBtnRef}
                   type="button"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={() => {
@@ -6351,16 +7287,12 @@ export default function ChatScreen({
                   />
                 </button>
 
-                <AnimatePresence>
-                  {showFeaturesTray && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.15 }}
-                      className="hidden md:flex absolute top-full left-0 mt-2 w-[280px] rounded-2xl z-50 overflow-hidden flex flex-col lamma-feature-shell"
-                    >
-                      <div className="flex flex-col gap-3 p-3 select-none">
+                <FloatingDropdownPortal
+                  open={showFeaturesTray}
+                  anchorRef={featuresTrayBtnRef}
+                  className="w-[280px] rounded-2xl overflow-hidden flex flex-col lamma-feature-shell"
+                >
+                  <div className="flex flex-col gap-3 p-3 select-none">
                         {/* Block 1: Gift panel */}
                         <div className="p-2.5 rounded-xl text-right lamma-list-item">
                           <div className="text-[10px] font-black text-green-300 mb-2">
@@ -6468,10 +7400,8 @@ export default function ChatScreen({
                             </button>
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                  </div>
+                </FloatingDropdownPortal>
 
                 <MobileBottomSheet
                   isOpen={showFeaturesTray}
@@ -6594,13 +7524,14 @@ export default function ChatScreen({
                 </MobileBottomSheet>
               </div>
 
+              {isManagementRole && (
               <div
                 className={`relative dropdown-container ${isPostsRoom ? "hidden" : ""}`}
               >
                 <button
                   onClick={() => toggleDropdown("privacy")}
                   className={`p-1 px-1.5 rounded-md hover:bg-white/5 transition-all flex ${showPrivacyDropdown ? "bg-red-500/10 text-[#f43f5e]" : "text-[#f43f5e] hover:text-red-400"}`}
-                  title="خصوصية وأمان"
+                  title="الرقابة والأمان (إدارة)"
                 >
                   <Shield size={14} />
                 </button>
@@ -6620,7 +7551,7 @@ export default function ChatScreen({
                         <div className="flex items-center gap-2">
                           <Shield size={16} className="text-rose-300" />
                           <h3 className="font-black text-white text-xs">
-                            خصوصية وأمان
+                            الرقابة والأمان
                           </h3>
                         </div>
                         <button
@@ -6639,8 +7570,8 @@ export default function ChatScreen({
                         onPointerDownCapture={(e) => e.stopPropagation()}
                       >
                         <p className="text-[10px] text-gray-400 font-bold border-b border-white/5 pb-2">
-                          نحن نهتم بخصوصيتك. يمكنك التحكم في إعدادات الأمان
-                          الخاصة بك هنا.
+                          لوحة إدارية — التحكم في الأمان والخصوصية متاح للمالك
+                          والإدارة فقط.
                         </p>
                         <div className="grid gap-3 select-none">
                           <div className="p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all lamma-admin-card">
@@ -6712,6 +7643,7 @@ export default function ChatScreen({
                   )}
                 </AnimatePresence>
               </div>
+              )}
               <button
                 onClick={() => {
                   const shouldCloseMembers =
@@ -6752,9 +7684,10 @@ export default function ChatScreen({
                 <Users size={14} />
               </button>
 
-              {isManagementRole && (
-                <div className="relative dropdown-container">
+              {(isOwnerRole || isAdminRole) && (
+                <div className="relative dropdown-container z-20">
                   <button
+                    ref={commandsBtnRef}
                     type="button"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
@@ -6769,15 +7702,11 @@ export default function ChatScreen({
                     <Terminal size={14} />
                   </button>
 
-                  <AnimatePresence>
-                    {showCommandsDropdown && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                        transition={{ duration: 0.15 }}
-                        className="hidden md:flex absolute top-full left-0 mt-2 w-[240px] rounded-2xl z-50 flex flex-col pb-1.5 lamma-popover-shell"
-                      >
+                  <FloatingDropdownPortal
+                    open={showCommandsDropdown}
+                    anchorRef={commandsBtnRef}
+                    className="w-[240px] rounded-2xl flex flex-col pb-1.5 lamma-popover-shell"
+                  >
                         <div className="flex items-center justify-between p-2.5 lamma-feature-header">
                           <div className="flex items-center gap-1.5 pointer-events-none">
                             <Terminal size={14} className="text-green-400" />
@@ -6855,9 +7784,7 @@ export default function ChatScreen({
                             <span className="text-[9.5px] text-gray-500">عرض المساعدة والتعليمات</span>
                           </button>
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  </FloatingDropdownPortal>
 
                   <MobileBottomSheet
                     isOpen={showCommandsDropdown}
@@ -7062,153 +7989,115 @@ export default function ChatScreen({
                 </div>
               )}
 
-              {isOwnerRoom && (
-                <div
-                  className="mx-2 mb-3 rounded-[26px] border border-amber-400/15 bg-[linear-gradient(135deg,rgba(28,22,10,0.92),rgba(11,10,9,0.9))] p-4 text-right shadow-[0_18px_60px_rgba(0,0,0,0.28)]"
-                  dir="rtl"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-300">
-                      <Crown size={20} />
+              {isAdminRoom && (
+                <div className="mx-2 mb-3 text-right" dir="rtl">
+                  {/* فريق الإدارة — يظهر للجميع */}
+                  {(() => {
+                    const adminTeam = chatMembers.filter((m: any) =>
+                      ["owner", "admin", "mod"].includes(m.role)
+                    );
+                    if (adminTeam.length === 0) return null;
+                    const roleLabel: Record<string, string> = {
+                      owner: "👑",
+                      admin: "🛡️",
+                      mod: "🔰",
+                    };
+                    return (
+                      <div className="rounded-[20px] border border-cyan-500/15 bg-black/30 p-3 mb-3">
+                        <div className="flex items-center gap-1.5 mb-2 justify-end">
+                          <span className="text-[10px] font-black text-cyan-300">فريق الإدارة المتاح</span>
+                          <Shield size={13} className="text-cyan-400 shrink-0" />
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 justify-end">
+                          {adminTeam.map((m: any) => (
+                            <div
+                              key={m.nickname}
+                              className="flex items-center gap-1 bg-white/5 border border-white/8 rounded-full px-2 py-0.5"
+                            >
+                              <span className="text-[9px] font-bold text-white">{m.nickname}</span>
+                              <span className="text-[10px]">{roleLabel[m.role] || "🛡️"}</span>
+                              {m.status === "online" && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* لوحة الأدمن — تظهر للأدمن والمالك فقط */}
+                  {(isAdminRole || isOwnerRole) && (
+                    <div className="rounded-[26px] border border-cyan-400/15 bg-[linear-gradient(135deg,rgba(7,18,28,0.92),rgba(8,11,16,0.9))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.24)] mb-3">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Shield size={16} className="text-cyan-300 shrink-0" />
+                        <span className="text-xs font-black text-white">لوحة الإدارة السريعة</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-xl border border-white/6 bg-white/5 p-2.5">
+                          <div className="text-[9px] text-gray-400">الكتابة العامة</div>
+                          <div className="mt-0.5 text-[10px] font-black text-white">
+                            {isGlobalMute ? "مقفولة" : "مفتوحة"}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-white/6 bg-white/5 p-2.5">
+                          <div className="text-[9px] text-gray-400">الميكروفونات</div>
+                          <div className="mt-0.5 text-[10px] font-black text-white">
+                            {isGlobalMicMute ? "محظورة" : "مسموح"}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-white/6 bg-white/5 p-2.5">
+                          <div className="text-[9px] text-gray-400">وسائط الشات</div>
+                          <div className="mt-0.5 text-[10px] font-black text-white">
+                            {isOnlyVIPCanSendImages ? "VIP فقط" : "للجميع"}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-white/6 bg-white/5 p-2.5">
+                          <div className="text-[9px] text-gray-400">الشكاوى المستلمة</div>
+                          <div className="mt-0.5 text-[10px] font-black text-white">
+                            {activityLogs.length} إجراء
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openModal("admin")}
+                        className="w-full mt-2 rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-[10px] font-black text-cyan-100 transition-all hover:bg-cyan-500/20"
+                      >
+                        فتح لوحة الإدارة الكاملة
+                      </button>
                     </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-black text-white">
-                        غرفة المالك
-                      </h4>
-                      <p className="mt-1 text-[11px] leading-5 text-gray-300">
-                        مركز الشات الكامل: من هنا تراجع الحماية، التصميم،
-                        الإحصائيات، وسجل النشاط بدل ما تكون الغرفة فاضية.
+                  )}
+                  {/* بنر ترحيبي للأعضاء العاديين */}
+                  {!isAdminRole && !isOwnerRole && (
+                    <div className="rounded-[20px] border border-white/8 bg-white/5 p-4 mb-3">
+                      <div className="flex items-center gap-2 justify-end mb-1">
+                        <span className="text-xs font-black text-white">الإدارة والشكاوى 🛡️</span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 leading-relaxed">
+                        هنا تقدر تتواصل مع الإدارة مباشرة — اكتب شكواك أو استفسارك وسيرد عليك أحد المشرفين.
                       </p>
                     </div>
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
-                      <div className="text-[10px] text-gray-400">الحالة العامة</div>
-                      <div className="mt-1 text-xs font-black text-white">
-                        {isMaintenanceMode ? "وضع الصيانة مفعل" : "الشات يعمل طبيعي"}
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
-                      <div className="text-[10px] text-gray-400">سجل الأنشطة</div>
-                      <div className="mt-1 text-xs font-black text-white">
-                        {activityLogs.length} حدث إداري
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
-                      <div className="text-[10px] text-gray-400">الكلمات المحظورة</div>
-                      <div className="mt-1 text-xs font-black text-white">
-                        {bannedWords.length} كلمة
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
-                      <div className="text-[10px] text-gray-400">المطرودون</div>
-                      <div className="mt-1 text-xs font-black text-white">
-                        {bannedUsersList.length} عضو
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLeadershipTab("quick");
-                        openModal("leadership");
-                      }}
-                      className="rounded-2xl border border-white/8 bg-white/5 px-3 py-2 text-[11px] font-black text-white transition-all hover:bg-white/10"
-                    >
-                      التحكم السريع
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLeadershipTab("guard");
-                        openModal("leadership");
-                      }}
-                      className="rounded-2xl border border-white/8 bg-white/5 px-3 py-2 text-[11px] font-black text-white transition-all hover:bg-white/10"
-                    >
-                      الحماية
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLeadershipTab("design");
-                        openModal("leadership");
-                      }}
-                      className="rounded-2xl border border-white/8 bg-white/5 px-3 py-2 text-[11px] font-black text-white transition-all hover:bg-white/10"
-                    >
-                      التصميم
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLeadershipTab("stats");
-                        openModal("leadership");
-                      }}
-                      className="rounded-2xl border border-white/8 bg-white/5 px-3 py-2 text-[11px] font-black text-white transition-all hover:bg-white/10"
-                    >
-                      الإحصائيات
-                    </button>
-                  </div>
+                  )}
                 </div>
               )}
 
-              {isAdminRoom && (
-                <div
-                  className="mx-2 mb-3 rounded-[26px] border border-cyan-400/15 bg-[linear-gradient(135deg,rgba(7,18,28,0.92),rgba(8,11,16,0.9))] p-4 text-right shadow-[0_18px_60px_rgba(0,0,0,0.24)]"
-                  dir="rtl"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-300">
-                      <Shield size={20} />
+              {/* Games Room Banner */}
+              {isGamesRoom && (
+                <div className="mx-2 mb-3 text-right" dir="rtl">
+                  <div className="rounded-[20px] border border-amber-400/20 bg-gradient-to-br from-black/60 to-amber-900/10 p-4">
+                    <div className="flex items-center gap-2 justify-end mb-2">
+                      <span className="text-sm font-black text-amber-300">🎮 Games Bot — مرحباً بك!</span>
                     </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-black text-white">
-                        غرفة الإدارة
-                      </h4>
-                      <p className="mt-1 text-[11px] leading-5 text-gray-300">
-                        غلاف إداري واضح للمشرفين: متابعة الكتم العام، المايك،
-                        حالة الوسائط، وسجل التصرفات بدل الفراغ الحالي.
-                      </p>
+                    <p className="text-[10px] text-gray-400 leading-relaxed mb-2">
+                      هنا غرفة الألعاب والمسابقات — تنافس مع الجميع في أسئلة المعلومات العامة والألعاب!
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5 text-[9px]">
+                      <div className="bg-white/5 rounded-xl px-2 py-1.5 text-gray-300"><span className="text-amber-300 font-bold">/سؤال</span> — سؤال معلومات عامة</div>
+                      <div className="bg-white/5 rounded-xl px-2 py-1.5 text-gray-300"><span className="text-amber-300 font-bold">/كلمة</span> — لعبة الكلمة المقلوبة</div>
+                      <div className="bg-white/5 rounded-xl px-2 py-1.5 text-gray-300"><span className="text-amber-300 font-bold">/تلميح</span> — تلميح للسؤال</div>
+                      <div className="bg-white/5 rounded-xl px-2 py-1.5 text-gray-300"><span className="text-amber-300 font-bold">/نقاط</span> — لوحة الشرف</div>
                     </div>
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
-                      <div className="text-[10px] text-gray-400">الكتابة العامة</div>
-                      <div className="mt-1 text-xs font-black text-white">
-                        {isGlobalMute ? "مقفولة حاليًا" : "مفتوحة"}
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
-                      <div className="text-[10px] text-gray-400">الميكروفونات</div>
-                      <div className="mt-1 text-xs font-black text-white">
-                        {isGlobalMicMute ? "محظورة" : "مسموح بها"}
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
-                      <div className="text-[10px] text-gray-400">وسائط الشات</div>
-                      <div className="mt-1 text-xs font-black text-white">
-                        {isOnlyVIPCanSendImages ? "VIP فقط" : "متاحة للجميع"}
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-white/6 bg-white/5 p-3">
-                      <div className="text-[10px] text-gray-400">آخر السجلات</div>
-                      <div className="mt-1 text-xs font-black text-white">
-                        {activityLogs.length} إجراء
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3">
-                    <button
-                      type="button"
-                      onClick={() => openModal("admin")}
-                      className="w-full rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-[11px] font-black text-cyan-100 transition-all hover:bg-cyan-500/20"
-                    >
-                      فتح غلاف ولوحة الإدارة
-                    </button>
                   </div>
                 </div>
               )}
@@ -7217,6 +8106,9 @@ export default function ChatScreen({
                 <PostsFeedRoom
                   posts={postsFeedMessages}
                   currentSession={myActiveSession}
+                  chatMembers={chatMembers}
+                  storeSnapshot={subscription}
+                  cosmeticGrants={memberCosmeticGrants}
                   isCompactView={isCompactView}
                   isChatColumnExpanded={isChatColumnExpanded}
                   onOpenProfile={openMemberProfile}
@@ -7224,7 +8116,34 @@ export default function ChatScreen({
                   onDeletePost={deleteMessage}
                 />
               ) : (
-                messages.map((msg, index) => {
+                <>
+                  {activeRoomDj?.isPlaying && (
+                    <div className="mx-2 mb-2 rounded-2xl px-4 py-2.5 bg-gradient-to-r from-cyan-500/15 to-purple-500/15 border border-cyan-500/25 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-cyan-200 text-[11px] font-black min-w-0">
+                        <Music size={14} className="shrink-0" />
+                        <span className="truncate">
+                          {isOwnerRole ? "أنت تشغّل للغرفة:" : "🎧 المالك يشغّل:"}{" "}
+                          {activeRoomDj.title}
+                        </span>
+                      </div>
+                      {!isOwnerRole ? (
+                        <button
+                          type="button"
+                          onClick={toggleDjListening}
+                          className={`shrink-0 px-2.5 py-1 rounded-xl text-[9px] font-black border transition-all ${
+                            isDjListening
+                              ? "bg-cyan-500/20 text-cyan-100 border-cyan-400/30"
+                              : "bg-white/5 text-gray-300 border-white/10"
+                          }`}
+                        >
+                          {isDjListening ? "🔊 استمع" : "🔇 كتم"}
+                        </button>
+                      ) : (
+                        <span className="text-[9px] text-gray-400 shrink-0">بث مباشر</span>
+                      )}
+                    </div>
+                  )}
+                  {messages.map((msg, index) => {
                   const isSystem = msg.type === "system";
                   return (
                     <div
@@ -7238,21 +8157,54 @@ export default function ChatScreen({
                         className="flex-shrink-0 cursor-pointer mt-1 group/author animate-fadeIn"
                         onClick={() => handleInlineMemberTap(msg.author)}
                       >
-                        <AMLogo
-                          size={isCompactView ? 16 : 22}
-                          variant="circular"
-                          glow={msg.author === myActiveSession.nickname}
-                          frame={getFrameFromAuthor(
-                            msg.author,
-                            myActiveSession,
-                          )}
-                          crownRole={(() => {
-                            const r = isSystem
-                              ? "admin"
-                              : getRoleFromAuthor(msg.author, myActiveSession);
-                            return (r === "platinum_vip" ? "vip" : r) as any;
-                          })()}
-                        />
+                        {(() => {
+                          const authorRole = isSystem
+                            ? "admin"
+                            : getRoleFromAuthor(
+                                msg.author,
+                                myActiveSession,
+                                chatMembers,
+                              );
+                          const storeForAuthor =
+                            msg.author === myActiveSession.nickname
+                              ? subscription
+                              : null;
+                          return (
+                            <OwnerAvatarAura
+                              active={isOwnerAuthor(
+                                msg.author,
+                                myActiveSession,
+                                chatMembers,
+                              )}
+                            >
+                              <AMLogo
+                                size={isCompactView ? 16 : 22}
+                                variant="circular"
+                                glow={
+                                  msg.author === myActiveSession.nickname ||
+                                  isOwnerAuthor(
+                                    msg.author,
+                                    myActiveSession,
+                                    chatMembers,
+                                  )
+                                }
+                                frame={getFrameFromAuthor(
+                                  msg.author,
+                                  myActiveSession,
+                                  chatMembers,
+                                  memberCosmeticGrants,
+                                )}
+                                crownRole={getCrownRoleForDisplay(
+                                  msg.author,
+                                  myActiveSession,
+                                  chatMembers,
+                                  storeForAuthor,
+                                  memberCosmeticGrants,
+                                )}
+                              />
+                            </OwnerAvatarAura>
+                          );
+                        })()}
                       </div>
 
                       {/* Author Name and Time Column */}
@@ -7263,18 +8215,44 @@ export default function ChatScreen({
                         {(() => {
                           const role = isSystem
                             ? "admin"
-                            : getRoleFromAuthor(msg.author, myActiveSession);
+                            : getRoleFromAuthor(
+                                msg.author,
+                                myActiveSession,
+                                chatMembers,
+                              );
                           const cleanName = getShortenedNickname(msg.author);
                           const nameColor = isSystem
                             ? "#a3e635"
                             : msg.author === myActiveSession.nickname
                               ? myActiveSession.color
                               : msg.color;
+                          const storeForAuthor =
+                            msg.author === myActiveSession.nickname
+                              ? subscription
+                              : null;
+                          const prestigeClass = getPrestigeNameClass(
+                            msg.author,
+                            myActiveSession,
+                            chatMembers,
+                            storeForAuthor,
+                            memberCosmeticGrants,
+                          );
+                          const storeVipChip = getStoreVipChip(
+                            msg.author,
+                            myActiveSession,
+                            storeForAuthor,
+                            memberCosmeticGrants,
+                          );
+                          const ownerRow = isOwnerAuthor(
+                            msg.author,
+                            myActiveSession,
+                            chatMembers,
+                          );
                           return (
                             <div className="lamma-author-line">
                               <span
-                                style={{ color: nameColor }}
-                                className={`font-bold text-[11px] group-hover/author:underline lamma-author-name ${myActiveSession.nickname === msg.author && myVisualRole === "platinum_vip" ? "animate-[pulse_1.5s_infinite] text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400" : ""}`}
+                                style={prestigeClass ? undefined : { color: nameColor }}
+                                className={`font-bold text-[11px] group-hover/author:underline lamma-author-name ${prestigeClass}`}
                               >
                                 {cleanName}
                               </span>
@@ -7284,8 +8262,8 @@ export default function ChatScreen({
                                     {activeTempEntryTopic}
                                   </span>
                                 )}
-                              {role === "owner" && (
-                                <BossSigil size={12} className="opacity-95" />
+                              {ownerRow && (
+                                <BossSigil size={13} className="opacity-95 shrink-0" />
                               )}
 
                               {/* Dynamically Render Custom Badge and Title */}
@@ -7302,12 +8280,12 @@ export default function ChatScreen({
                                   </span>
                                 )}
 
-                              {role === "platinum_vip" && (
+                              {storeVipChip === "platinum" && (
                                 <span className="text-[7px] lamma-role-chip lamma-role-plat">
                                   PLATINUM VIP
                                 </span>
                               )}
-                              {role === "vip" && (
+                              {storeVipChip === "vip" && (
                                 <span className="text-[7px] lamma-role-chip lamma-role-vip">
                                   VIP
                                 </span>
@@ -7317,9 +8295,9 @@ export default function ChatScreen({
                                   ADMIN
                                 </span>
                               )}
-                              {role === "owner" && (
+                              {ownerRow && (
                                 <span className="text-[7px] lamma-role-chip lamma-role-owner">
-                                  OWNER
+                                  👑 المالك
                                 </span>
                               )}
                             </div>
@@ -7456,8 +8434,8 @@ export default function ChatScreen({
                             <div className="text-right leading-relaxed font-semibold text-[10px] text-gray-200 mt-0.5 select-none font-mono lamma-system-note">
                               <span className="lamma-system-label flex items-center gap-1 mb-0.5 text-[10px]">
                                 🛡️{" "}
-                                {msg.author === "🛡️ بوت الحماية الذكي"
-                                  ? "إشعار حماية تلقائي:"
+                                {msg.author === "🔥 LC-Fire"
+                                  ? "إشعار LC-Fire:"
                                   : "إشعار نظام:"}
                               </span>
                               <div className="whitespace-pre-line text-[10.5px] font-sans text-gray-300 leading-relaxed">
@@ -7511,20 +8489,15 @@ export default function ChatScreen({
                             </div>
                           )}
 
-                          {msg.type === "audio" && (
-                            <div className="mt-2">
-                              <audio
-                                src={msg.mediaUrl}
-                                controls
-                                className="h-8 max-w-[320px] rounded-xl"
-                              />
-                            </div>
+                          {msg.type === "audio" && msg.mediaUrl && (
+                            <VoiceNoteBubble src={msg.mediaUrl} />
                           )}
                         </div>
                       </div>
                     </div>
                   );
-                })
+                })}
+                </>
               )}
 
               {!isPostsRoom && <div ref={messageEndRef} />}
@@ -7595,9 +8568,11 @@ export default function ChatScreen({
               }
             >
               {/* Attachment Dropdown Container */}
-              <div className="relative dropdown-container">
+              <div className="relative dropdown-container z-20">
                 <button
+                  ref={attachmentBtnRef}
                   type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
                   onClick={() => toggleDropdown("attachment")}
                   className={`flex items-center justify-center transition-all lamma-composer-tool ${showAttachmentDropdown ? "bg-green-500/20 text-green-400" : "text-gray-400 hover:text-white lamma-toolbar-btn"}`}
                   title="إرفاق ملف"
@@ -7608,15 +8583,13 @@ export default function ChatScreen({
                   />
                 </button>
 
-                <AnimatePresence>
-                  {showAttachmentDropdown && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute bottom-full right-0 mb-4 rounded-2xl p-2 grid grid-cols-1 gap-1 w-40 z-50 lamma-popover-shell"
-                    >
+                <FloatingDropdownPortal
+                  open={showAttachmentDropdown}
+                  anchorRef={attachmentBtnRef}
+                  align="end"
+                  placement="above"
+                  className="rounded-2xl p-2 grid grid-cols-1 gap-1 w-40 lamma-popover-shell"
+                >
                       <button
                         className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
                         onClick={() => handleSendAttachment("image")}
@@ -7644,9 +8617,7 @@ export default function ChatScreen({
                         </div>
                         <span>مقطع يوتيوب</span>
                       </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                </FloatingDropdownPortal>
               </div>
               <input
                 ref={imageUploadInputRef}
@@ -7656,102 +8627,7 @@ export default function ChatScreen({
                 onChange={handleImageUploadChange}
               />
 
-              {/* Games Dropdown Container */}
-              <div className="relative dropdown-container">
-                <button
-                  type="button"
-                  onClick={() => toggleDropdown("games")}
-                  className={`flex items-center justify-center transition-all lamma-composer-tool ${showGamesDropdown ? "bg-green-500/10 text-white" : "text-gray-400 hover:text-white lamma-toolbar-btn"}`}
-                  title="الألعاب"
-                >
-                  <Trophy size={14} strokeWidth={2.1} />
-                </button>
-
-                <AnimatePresence>
-                  {showGamesDropdown && (
-                    <motion.div
-                      drag
-                      dragConstraints={{
-                        left: -300,
-                        right: 300,
-                        top: -400,
-                        bottom: 200,
-                      }}
-                      dragMomentum={false}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.15 }}
-                      className="fixed bottom-20 left-4 md:left-auto md:right-1/4 w-[280px] sm:w-[320px] rounded-2xl z-[100] flex flex-col lamma-popover-shell"
-                      style={{
-                        resize: "both",
-                        overflow: "hidden",
-                        minWidth: "250px",
-                        minHeight: "250px",
-                        maxWidth: "90vw",
-                        maxHeight: "80vh",
-                      }}
-                    >
-                      <div className="flex items-center justify-between p-3 lamma-feature-header cursor-grab active:cursor-grabbing">
-                        <div className="flex items-center gap-2 pointer-events-none">
-                          <Trophy size={16} className="text-amber-300" />
-                          <h3 className="font-black text-white text-sm">
-                            الألعاب والتحديات
-                          </h3>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowGamesDropdown(false);
-                          }}
-                          className="p-1.5 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer relative z-50 lamma-danger-btn"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-
-                      <div className="p-3 text-right space-y-3">
-                        <p className="text-[11px] text-gray-400 font-bold">
-                          تحدى الأصدقاء واكسب نقاط XP لرفع المستوى.
-                        </p>
-
-                        <div className="grid gap-2.5">
-                          <div className="p-2.5 rounded-xl hover:border-green-400 transition-all cursor-pointer flex items-center gap-2.5 lamma-list-item">
-                            <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-xl">
-                              🧠
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="text-[11px] font-black text-white">
-                                متعة المسابقات (Trivia)
-                              </h4>
-                              <p className="text-[9px] text-gray-400 mt-0.5">
-                                أجب على الأسئلة أسرع من الجميع
-                              </p>
-                            </div>
-                            <button className="px-2.5 py-1.5 text-black text-[9px] font-black rounded-lg lamma-feature-primary">
-                              العب الآن
-                            </button>
-                          </div>
-
-                          <div className="p-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2.5 opacity-60 lamma-list-item">
-                            <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center text-xl">
-                              🧩
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="text-[11px] font-black text-white">
-                                ألغاز الكلمات
-                              </h4>
-                              <p className="text-[9px] text-gray-400 mt-0.5">
-                                اكتشف الكلمة المخفية في الشات (قريباً)
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              {/* Games button removed — games live in the Games room */}
 
               <div className="flex items-center shrink-0 lamma-composer-cluster">
                 <button
@@ -7789,19 +8665,7 @@ export default function ChatScreen({
               >
                 <button
                   type="button"
-                  onClick={() => {
-                    const isOwner = currentUser.role === "owner";
-                    const perm =
-                      memberCustomPermissions[currentUser.nickname]
-                        ?.musicRadioAllowed;
-                    if (!isOwner && !perm) {
-                      alert(
-                        "⚠️ عذراً: ميزة راديو لمة غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📻",
-                      );
-                      return;
-                    }
-                    toggleDropdown("radio");
-                  }}
+                  onClick={() => toggleDropdown("radio")}
                   className={`flex items-center justify-center transition-all lamma-composer-tool ${showRadioDropdown ? "lamma-quiet-power-btn-active text-green-300" : "text-gray-400 hover:text-white lamma-quiet-power-btn"}`}
                   title="راديو لمة"
                 >
@@ -7912,21 +8776,9 @@ export default function ChatScreen({
               >
                 <button
                   type="button"
-                  onClick={() => {
-                    const isOwner = currentUser.role === "owner";
-                    const perm =
-                      memberCustomPermissions[currentUser.nickname]
-                        ?.musicRadioAllowed;
-                    if (!isOwner && !perm) {
-                      alert(
-                        "⚠️ عذراً: ميزة غناء وموسيقى لمة غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 🎵",
-                      );
-                      return;
-                    }
-                    toggleDropdown("music");
-                  }}
+                  onClick={() => toggleDropdown("music")}
                   className={`flex items-center justify-center transition-all lamma-composer-tool ${showMusicDropdown ? "lamma-quiet-power-btn-active text-cyan-300" : "text-gray-400 hover:text-white lamma-quiet-power-btn"}`}
-                  title="موسيقى وغناء"
+                  title="DJ الغرفة"
                 >
                   <Music size={14} />
                 </button>
@@ -7948,7 +8800,7 @@ export default function ChatScreen({
                             className="text-cyan-300"
                           />
                           <h3 className="font-sans font-black text-white text-xs">
-                            مكتبة أغاني وموسيقى لمة
+                            DJ الغرفة
                           </h3>
                         </div>
                         <button
@@ -7959,69 +8811,138 @@ export default function ChatScreen({
                         </button>
                       </div>
                       <div className="p-4 text-center flex flex-col items-center space-y-3">
+                        {isOwnerRole && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={isUploadingMusic}
+                              onClick={() => musicUploadInputRef.current?.click()}
+                              className="w-full py-2.5 rounded-xl text-[11px] font-black bg-gradient-to-r from-cyan-600/30 to-purple-600/30 text-cyan-200 border border-cyan-500/30 hover:border-cyan-400/50 transition-all flex items-center justify-center gap-2"
+                            >
+                              <Upload size={14} />
+                              {isUploadingMusic
+                                ? "جاري رفع الأغاني…"
+                                : "📤 رفع أغاني للقائمة"}
+                            </button>
+                            <p className="text-[9px] text-gray-500 leading-relaxed">
+                              عند التشغيل، من يريد يسمع يفعّل الاستماع — الباقي مكتوم
+                            </p>
+                          </>
+                        )}
+
+                        {!isOwnerRole && (
+                          <button
+                            type="button"
+                            onClick={toggleDjListening}
+                            className={`w-full py-2.5 rounded-xl text-[11px] font-black border transition-all flex items-center justify-center gap-2 ${
+                              isDjListening
+                                ? "bg-cyan-500/15 text-cyan-200 border-cyan-500/30"
+                                : "bg-white/5 text-gray-300 border-white/10"
+                            }`}
+                          >
+                            {isDjListening ? (
+                              <>
+                                <Volume2 size={14} /> 🔊 أستمع للـ DJ
+                              </>
+                            ) : (
+                              <>
+                                <VolumeX size={14} /> 🔇 مكتوم — اضغط للاستماع
+                              </>
+                            )}
+                          </button>
+                        )}
+
+                        {!isOwnerRole && activeRoomDj?.isPlaying && (
+                          <div className="w-full rounded-xl bg-cyan-500/10 border border-cyan-500/20 px-3 py-2 text-[10px] text-cyan-200 font-bold truncate">
+                            🎧 المالك يشغّل: {activeRoomDj.title}
+                          </div>
+                        )}
+
+                        {!isOwnerRole && !activeRoomDj?.isPlaying && (
+                          <div className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-[10px] text-gray-400 font-bold">
+                            لا يوجد بث DJ حالياً
+                          </div>
+                        )}
+
                         <div
-                          className={`w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-500 p-0.5 shadow-[0_0_15px_rgba(6,182,212,0.2)] ${isMusicPlaying ? "animate-[spin_6s_linear_infinite]" : ""}`}
+                          className={`w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-500 p-0.5 shadow-[0_0_15px_rgba(6,182,212,0.2)] ${(isOwnerRole ? isMusicPlaying : isDjListening && activeRoomDj?.isPlaying) ? "animate-[spin_6s_linear_infinite]" : ""}`}
                         >
                           <div className="w-full h-full rounded-full bg-[#0a0f0c] border-[2px] border-black flex items-center justify-center text-lg">
                             <Music size={18} className="text-cyan-300" />
                           </div>
                         </div>
 
-                        {/* Track selector list */}
-                        <div className="w-full space-y-1 text-right">
-                          {musicTracks.map((track) => (
-                            <button
-                              key={track.id}
-                              type="button"
-                              onClick={() => handleSelectMusicTrack(track)}
-                              className={`w-full p-1.5 rounded-xl text-xs font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item ${
-                                currentMusicTrack.id === track.id
-                                  ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300"
-                                  : "bg-white/5 border-transparent text-gray-300"
-                              }`}
-                            >
-                              <span>{track.title}</span>
-                              <span className="text-[9px] text-gray-500">
-                                {track.desc}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
+                        {isOwnerRole && (
+                          <>
+                            <div className="w-full space-y-1 text-right max-h-36 overflow-y-auto">
+                              {djPlaylist.length === 0 ? (
+                                <p className="text-[9px] text-gray-500 text-center py-2">
+                                  ارفع أغاني لتبدأ البث للغرفة
+                                </p>
+                              ) : (
+                                djPlaylist.map((track) => (
+                                  <button
+                                    key={track.id}
+                                    type="button"
+                                    onClick={() => handleSelectMusicTrack(track, true)}
+                                    className={`w-full p-1.5 rounded-xl text-xs font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item ${
+                                      currentMusicTrack.id === track.id
+                                        ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300"
+                                        : "bg-purple-500/10 border-purple-500/20 text-purple-200"
+                                    }`}
+                                  >
+                                    <span className="truncate">{track.title}</span>
+                                    <span className="text-[9px] text-gray-500 shrink-0 mr-1">
+                                      {track.desc}
+                                    </span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
 
-                        {/* Controls */}
-                        <div className="flex items-center justify-center gap-4 text-cyan-300 w-full pt-1">
-                          <button
-                            type="button"
-                            onClick={prevMusicTrack}
-                            className="p-1.5 rounded-full transition-all cursor-pointer lamma-feature-action"
-                          >
-                            <ChevronRight size={18} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={toggleMusicPlay}
-                            className="p-2.5 rounded-full hover:scale-105 transition-all flex items-center justify-center cursor-pointer lamma-feature-primary"
-                          >
-                            {isMusicPlaying ? (
-                              <Pause size={18} />
-                            ) : (
-                              <Play size={18} className="ml-0.5" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={nextMusicTrack}
-                            className="p-1.5 rounded-full transition-all cursor-pointer lamma-feature-action"
-                          >
-                            <ChevronLeft size={18} />
-                          </button>
-                        </div>
+                            <div className="flex items-center justify-center gap-4 text-cyan-300 w-full pt-1">
+                              <button
+                                type="button"
+                                onClick={prevMusicTrack}
+                                disabled={djPlaylist.length === 0}
+                                className="p-1.5 rounded-full transition-all cursor-pointer lamma-feature-action disabled:opacity-40"
+                              >
+                                <ChevronRight size={18} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={toggleMusicPlay}
+                                disabled={!currentMusicTrack.url}
+                                className="p-2.5 rounded-full hover:scale-105 transition-all flex items-center justify-center cursor-pointer lamma-feature-primary disabled:opacity-40"
+                              >
+                                {isMusicPlaying ? (
+                                  <Pause size={18} />
+                                ) : (
+                                  <Play size={18} className="ml-0.5" />
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={nextMusicTrack}
+                                disabled={djPlaylist.length === 0}
+                                className="p-1.5 rounded-full transition-all cursor-pointer lamma-feature-action disabled:opacity-40"
+                              >
+                                <ChevronLeft size={18} />
+                              </button>
+                            </div>
+                          </>
+                        )}
 
-                        {/* Playing status */}
                         <div className="text-[9.5px] font-bold lamma-soft-status">
-                          {isMusicPlaying
-                            ? `جاري الاستماع: ${currentMusicTrack.title} 🔊`
-                            : "المشغل متوقف مؤقتاً"}
+                          {isOwnerRole
+                            ? isMusicPlaying
+                              ? `بث للغرفة: ${currentMusicTrack.title} 🔊`
+                              : "البث متوقف"
+                            : isDjListening
+                              ? activeRoomDj?.isPlaying
+                                ? `تستمع: ${activeRoomDj.title} 🔊`
+                                : "جاهز للاستماع عند بدء البث"
+                              : "DJ مكتوم — اضغط للاستماع"}
                         </div>
                       </div>
                     </motion.div>
@@ -8029,14 +8950,28 @@ export default function ChatScreen({
                 </AnimatePresence>
               </div>
 
-              <button
-                type="button"
-                onClick={() => handleSendAttachment("audio")}
-                className={`items-center justify-center text-gray-400 hover:text-white transition-all lamma-toolbar-btn lamma-composer-tool ${isPostsRoom ? "hidden" : "flex"}`}
-                title="تسجيل صوتي"
-              >
-                <Mic size={14} />
-              </button>
+              <div className="relative">
+                {isVoiceRecording && (
+                  <VoiceRecorderBar
+                    durationSec={voiceRecordingSec}
+                    onCancel={() => cancelVoiceRecording()}
+                    onSend={() => void sendRecordedVoiceMessage()}
+                    isUploading={isUploadingVoice}
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => void beginVoiceMessageRecording()}
+                  className={`items-center justify-center transition-all lamma-toolbar-btn lamma-composer-tool ${isPostsRoom ? "hidden" : "flex"} ${
+                    isVoiceRecording
+                      ? "text-red-400 animate-pulse"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                  title="رسالة صوتية (مثل واتساب)"
+                >
+                  <Mic size={14} />
+                </button>
+              </div>
 
               <div
                 className={`relative dropdown-container ${isPostsRoom ? "hidden" : ""}`}
@@ -8158,6 +9093,19 @@ export default function ChatScreen({
                       <div className="flex flex-col gap-1.5 overflow-y-auto p-2">
                         <button
                           type="button"
+                          title="فتح بطاقتك الشخصية وتعديل الإعدادات"
+                          className="text-right p-1.5 rounded-lg text-xs text-cyan-200 transition-all cursor-pointer flex items-center justify-between lamma-list-item hover:bg-cyan-500/10 border border-cyan-500/15"
+                          onClick={() => {
+                            openOwnProfileCard();
+                            setShowSettingsDropdown(false);
+                          }}
+                        >
+                          <span>بطاقتي الشخصية</span>
+                          <span className="text-sm">👤</span>
+                        </button>
+                        <div className="h-px bg-white/5 my-0.5" />
+                        <button
+                          type="button"
                           title="اختيار لون للنص المحدد"
                           className="text-right p-1.5 rounded-lg text-xs text-gray-200 transition-all cursor-pointer lamma-list-item hover:bg-white/10"
                           onClick={applyComposerColor}
@@ -8197,125 +9145,27 @@ export default function ChatScreen({
                             {readingMode ? "ON" : "OFF"}
                           </span>
                         </button>
-                        <button
-                          className="text-right p-1.5 hover:bg-white/10 rounded-lg text-xs text-white transition-all cursor-pointer flex items-center justify-between lamma-list-item"
-                          onClick={() => {
-                            setShowThemeSettingsModal(true);
-                            setShowSettingsDropdown(false);
-                          }}
-                        >
-                          <span className="flex items-center gap-1.5">
-                            <Palette size={13} className="text-pink-400" />
-                            <span>تخصيص ثيم التطبيق 🎨</span>
-                          </span>
-                        </button>
-                        <button
-                          className={`text-right p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-between lamma-list-item ${
-                            isAdsEnabled
-                              ? "bg-white/10 text-yellow-200 border border-white/10"
-                              : "hover:bg-white/10 text-gray-200"
-                          }`}
-                          onClick={() => {
-                            setIsAdsEnabled(!isAdsEnabled);
-                          }}
-                        >
-                          <span className="flex items-center gap-1.5">
-                            <Sparkles size={13} className="text-yellow-400" />
-                            <span>شريط الإعلانات 📢</span>
-                          </span>
-                          <span className="text-[9px] font-mono">
-                            {isAdsEnabled ? "ON" : "OFF"}
-                          </span>
-                        </button>
-                        <div className="h-px bg-white/5 my-0.5" />
-                        <div className="px-1 text-[10px] text-gray-400 font-bold">
-                          ثيم الشات
-                        </div>
-                        <button
-                          className={`text-right p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-between lamma-list-item ${
-                            chatTheme === "classic"
-                              ? "bg-white/10 text-amber-100 border border-white/10"
-                              : "hover:bg-white/10 text-gray-200"
-                          }`}
-                          onClick={() => {
-                            setChatTheme("classic");
-                            setHasUserChosenChatTheme(true);
-                            setShowSettingsDropdown(false);
-                          }}
-                        >
-                          <span>Classic</span>
-                          <span className="text-[9px] font-mono">
-                            {chatTheme === "classic" ? "ON" : ""}
-                          </span>
-                        </button>
-                        <button
-                          className={`text-right p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-between lamma-list-item ${
-                            chatTheme === "night-paper"
-                              ? "bg-white/10 text-amber-200 border border-white/10"
-                              : "hover:bg-white/10 text-gray-200"
-                          }`}
-                          onClick={() => {
-                            setChatTheme("night-paper");
-                            setHasUserChosenChatTheme(true);
-                            setShowSettingsDropdown(false);
-                          }}
-                        >
-                          <span>Night Paper</span>
-                          <span className="text-[9px] font-mono">
-                            {chatTheme === "night-paper" ? "ON" : ""}
-                          </span>
-                        </button>
-                        <button
-                          className={`text-right p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-between lamma-list-item ${
-                            chatTheme === "charcoal-calm"
-                              ? "bg-white/10 text-slate-200 border border-white/10"
-                              : "hover:bg-white/10 text-gray-200"
-                          }`}
-                          onClick={() => {
-                            setChatTheme("charcoal-calm");
-                            setHasUserChosenChatTheme(true);
-                            setShowSettingsDropdown(false);
-                          }}
-                        >
-                          <span>Charcoal Calm</span>
-                          <span className="text-[9px] font-mono">
-                            {chatTheme === "charcoal-calm" ? "ON" : ""}
-                          </span>
-                        </button>
-                        <button
-                          className={`text-right p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-between lamma-list-item ${
-                            chatTheme === "olive-ink"
-                              ? "bg-white/10 text-emerald-200 border border-white/10"
-                              : "hover:bg-white/10 text-gray-200"
-                          }`}
-                          onClick={() => {
-                            setChatTheme("olive-ink");
-                            setHasUserChosenChatTheme(true);
-                            setShowSettingsDropdown(false);
-                          }}
-                        >
-                          <span>Olive Ink</span>
-                          <span className="text-[9px] font-mono">
-                            {chatTheme === "olive-ink" ? "ON" : ""}
-                          </span>
-                        </button>
-                        <button
-                          className={`text-right p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-between lamma-list-item ${
-                            chatTheme === "violet-night"
-                              ? "bg-white/10 text-violet-200 border border-white/10"
-                              : "hover:bg-white/10 text-gray-200"
-                          }`}
-                          onClick={() => {
-                            setChatTheme("violet-night");
-                            setHasUserChosenChatTheme(true);
-                            setShowSettingsDropdown(false);
-                          }}
-                        >
-                          <span>Violet Night</span>
-                          <span className="text-[9px] font-mono">
-                            {chatTheme === "violet-night" ? "ON" : ""}
-                          </span>
-                        </button>
+                        {/* Ads toggle — owner/admin only */}
+                        {(isOwnerRole || isAdminRole) && (
+                          <button
+                            className={`text-right p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-between lamma-list-item ${
+                              isAdsEnabled
+                                ? "bg-white/10 text-yellow-200 border border-white/10"
+                                : "hover:bg-white/10 text-gray-200"
+                            }`}
+                            onClick={() => {
+                              setIsAdsEnabled(!isAdsEnabled);
+                            }}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Sparkles size={13} className="text-yellow-400" />
+                              <span>شريط الإعلانات 📢</span>
+                            </span>
+                            <span className="text-[9px] font-mono">
+                              {isAdsEnabled ? "ON" : "OFF"}
+                            </span>
+                          </button>
+                        )}
                         <div className="h-px bg-white/5 my-0.5" />
                         <button
                           className="text-right p-1.5 hover:bg-white/10 rounded-lg text-xs text-green-300 transition-all cursor-pointer flex items-center justify-between lamma-list-item"
@@ -8327,20 +9177,26 @@ export default function ChatScreen({
                           <span>رابط الدعوة (Invite Link)</span>
                           <Share2 size={12} />
                         </button>
-                        <div className="h-px bg-white/5 my-0.5" />
-                        <button
-                          className="text-right p-1.5 hover:bg-red-500/20 rounded-lg text-xs text-red-400 transition-all cursor-pointer flex items-center justify-between font-bold lamma-list-item"
-                          onClick={() => {
-                            setRoomMessages((prev) => ({
-                              ...prev,
-                              [activeRoomId]: [],
-                            }));
-                            setShowSettingsDropdown(false);
-                          }}
-                        >
-                          <span>مسح الشات</span>
-                          <X size={12} />
-                        </button>
+                        {/* Clear chat — owner/admin only */}
+                        {(isOwnerRole || isAdminRole) && (
+                          <>
+                            <div className="h-px bg-white/5 my-0.5" />
+                            <button
+                              className="text-right p-1.5 hover:bg-red-500/20 rounded-lg text-xs text-red-400 transition-all cursor-pointer flex items-center justify-between font-bold lamma-list-item"
+                              onClick={() => {
+                                if (!confirm("مسح جميع رسائل الغرفة الحالية؟")) return;
+                                setRoomMessages((prev) => ({
+                                  ...prev,
+                                  [activeRoomId]: [],
+                                }));
+                                setShowSettingsDropdown(false);
+                              }}
+                            >
+                              <span>مسح الشات</span>
+                              <X size={12} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </motion.div>
                   )}
@@ -8363,6 +9219,7 @@ export default function ChatScreen({
         </div>
 
         <aside
+          data-col="right"
           className={`hidden xl:flex xl:order-1 flex-col gap-3 overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isRightColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
@@ -8405,15 +9262,7 @@ export default function ChatScreen({
                   )}
 
                   {(() => {
-                    const visibleRooms = availableRooms.filter((room) => {
-                      if (room.id === "owner" && !isOwnerRole) {
-                        return false;
-                      }
-                      if (room.id === "admin" && !isAdminRole && !isOwnerRole) {
-                        return false;
-                      }
-                      return true;
-                    });
+                    const visibleRooms = availableRooms;
 
                     return ROOM_CATEGORIES.map((category) => {
                       const rooms = visibleRooms.filter(
@@ -8536,16 +9385,33 @@ export default function ChatScreen({
                       const cleanName = getShortenedNickname(m.nickname);
                       const isCurrentUser =
                         m.nickname === myActiveSession.nickname;
-                      const actualRole = getRoleFromAuthor(
+                      const isBasicMember =
+                        m.role === "user" || m.role === "guest";
+                      const isOwnerMember = isOwnerAuthor(
                         m.nickname,
                         myActiveSession,
                         chatMembers,
                       );
-                      const isBasicMember =
-                        m.role === "user" || m.role === "guest";
-                      const isPlatinumVip =
-                        actualRole === "platinum_vip" ||
-                        (isCurrentUser && myVisualRole === "platinum_vip");
+                      const hasStoreCosmetics =
+                        isCurrentUser &&
+                        (hasActiveSubscription || !!myActiveSession.frame);
+                      const hasGrantCosmetics = hasOwnerGrantedCosmetics(
+                        m.nickname,
+                        memberCosmeticGrants,
+                      );
+                      const showStyledAvatar =
+                        !isBasicMember ||
+                        isOwnerMember ||
+                        hasStoreCosmetics ||
+                        hasGrantCosmetics;
+                      const storeForMember = isCurrentUser ? subscription : null;
+                      const prestigeClass = getPrestigeNameClass(
+                        m.nickname,
+                        myActiveSession,
+                        chatMembers,
+                        storeForMember,
+                        memberCosmeticGrants,
+                      );
 
                       return (
                         <div
@@ -8558,37 +9424,50 @@ export default function ChatScreen({
                           className={`p-2 px-2.5 hover:bg-white/5 flex items-center justify-between cursor-pointer transition-all ${idx !== Math.min(orderedChatMembers.length, 24) - 1 ? "border-b border-white/5" : ""}`}
                         >
                           <div className="flex items-center gap-2 overflow-hidden flex-1">
-                            {isBasicMember ? (
-                              <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-white/5 rounded-full border border-white/10 text-[20px]">
-                                {m.avatar}
+                            {!showStyledAvatar ? (
+                              <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-white/5 rounded-full border border-white/10 overflow-hidden">
+                                <MemberAvatar
+                                  avatar={m.avatar}
+                                  size="sm"
+                                  className="w-full h-full"
+                                  imageClassName="w-full h-full rounded-full"
+                                />
                               </div>
                             ) : (
                               <div className="flex-shrink-0 flex items-center justify-center">
+                                <OwnerAvatarAura active={isOwnerMember}>
                                 <AMLogo
                                   size={24}
                                   variant="circular"
-                                  glow={isCurrentUser}
-                                  crownRole={
-                                    (actualRole === "platinum_vip"
-                                      ? "vip"
-                                      : actualRole) as any
-                                  }
+                                  glow={isCurrentUser || isOwnerMember}
+                                  crownRole={getCrownRoleForDisplay(
+                                    m.nickname,
+                                    myActiveSession,
+                                    chatMembers,
+                                    storeForMember,
+                                    memberCosmeticGrants,
+                                  )}
                                   frame={getFrameFromAuthor(
                                     m.nickname,
                                     myActiveSession,
                                     chatMembers,
+                                    memberCosmeticGrants,
                                   )}
                                 />
+                                </OwnerAvatarAura>
                               </div>
                             )}
                             <div className="flex flex-col truncate flex-1">
                               <div className="flex items-center gap-1 flex-wrap">
                                 <span
-                                  style={{ color: m.color }}
-                                  className={`font-bold text-[12px] truncate leading-tight ${isPlatinumVip ? "animate-[pulse_1.5s_infinite] text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400" : ""}`}
+                                  style={prestigeClass ? undefined : { color: m.color }}
+                                  className={`font-bold text-[12px] truncate leading-tight ${prestigeClass}`}
                                 >
                                   {cleanName}
                                 </span>
+                                {isOwnerMember && (
+                                  <BossSigil size={12} className="opacity-95 shrink-0" />
+                                )}
                                 {isCurrentUser && activeTempEntryTopic && (
                                   <span className="max-w-[110px] truncate rounded-full border border-cyan-400/20 bg-cyan-500/10 px-1.5 py-0.5 text-[7px] text-cyan-200">
                                     {activeTempEntryTopic}
@@ -8642,10 +9521,13 @@ export default function ChatScreen({
               {/* Header of private messaging panel matching exactly standard visual style */}
               <div className="p-3.5 flex items-center justify-between cursor-move touching-none lamma-modal-header">
                 <div className="flex items-center gap-2.5 text-right">
-                  <span className="lamma-icon-dot" />
+                  <span className={pmTarget.nickname.startsWith("🕵️") ? "w-2 h-2 rounded-full bg-purple-400 shrink-0" : "lamma-icon-dot"} />
                   <div>
                     <div className="text-xs font-black text-white flex items-center gap-1.5 flex-wrap">
-                      <span>{pmTarget.nickname}</span>
+                      <span>{pmTarget.nickname.startsWith("🕵️") ? pmTarget.nickname.replace("🕵️ ", "") : pmTarget.nickname}</span>
+                      {pmTarget.nickname.startsWith("🕵️") && (
+                        <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full font-bold">مراقَبة</span>
+                      )}
                       {pmTarget.role === "platinum_vip" ? (
                         <span className="text-[8px] lamma-role-chip lamma-role-plat">
                           PLATINUM VIP
@@ -8664,14 +9546,14 @@ export default function ChatScreen({
                         </span>
                       ) : null}
                     </div>
-                    <div className="text-[9px] text-gray-400 font-bold">
-                      متصل الآن
+                    <div className="text-[9px] font-bold" style={{ color: pmTarget.nickname.startsWith("🕵️") ? "#a78bfa" : "#9ca3af" }}>
+                      {pmTarget.nickname.startsWith("🕵️") ? "🔍 محادثة مراقَبة — للمالك فقط" : "متصل الآن"}
                     </div>
                   </div>
                 </div>
 
-                {/* Calling trigger buttons on right of header */}
-                <div className="flex items-center gap-2">
+                {/* Calling trigger buttons on right of header — hidden for spy threads */}
+                <div className="flex items-center gap-2" style={{ display: pmTarget.nickname.startsWith("🕵️") ? "none" : undefined }}>
                   <button
                     type="button"
                     onClick={() => {
@@ -8680,7 +9562,7 @@ export default function ChatScreen({
                         memberCustomPermissions[currentUser.nickname]?.callsAllowed;
                       if (!isOwner && !perm) {
                         alert(
-                          "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
+                          "⚠️ ميزة المكالمات الصوتية غير مفعلة لحسابك من قبل المالك 📞",
                         );
                         return;
                       }
@@ -8706,10 +9588,10 @@ export default function ChatScreen({
                     onClick={() => {
                       const isOwner = currentUser.role === "owner";
                       const perm =
-                        memberCustomPermissions[currentUser.nickname]?.callsAllowed;
+                        memberCustomPermissions[currentUser.nickname]?.videoCallsAllowed;
                       if (!isOwner && !perm) {
                         alert(
-                          "⚠️ عذراً: ميزة المكالمات الصوتية والمرئية غير مفعلة لحسابك من قبل المالك. يمكنك طلب التفعيل من مالك الشات. 📞",
+                          "⚠️ ميزة مكالمات الفيديو/الكاميرا غير مفعلة لحسابك من قبل المالك 📹",
                         );
                         return;
                       }
@@ -8772,14 +9654,35 @@ export default function ChatScreen({
 
               {/* PM conversation log viewport */}
               <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
-                {pmMessages.map((msg, idx) => (
+                {/* Spy mode banner */}
+                {pmTarget.nickname.startsWith("🕵️") && (
+                  <div className="text-center py-2 px-3 bg-purple-500/10 border border-purple-500/20 rounded-xl text-[9px] text-purple-300 font-bold">
+                    🕵️ أنت تشاهد محادثة خاصة بين مستخدمين — وضع المراقبة السرية
+                  </div>
+                )}
+                {pmMessages.map((msg, idx) => {
+                  // For spy threads: detect the two participants from thread key
+                  const spyParts = pmTarget.nickname.startsWith("🕵️")
+                    ? pmTarget.nickname.replace("🕵️ ", "").split(" -> ")
+                    : null;
+                  const msgSenderName = spyParts
+                    ? (msg.isOwn ? spyParts[0] : spyParts[1])
+                    : null;
+                  return (
                   <div
-                    key={idx}
+                    key={msg.dbId || `${msg.time}-${msg.text}-${idx}`}
                     className={`flex flex-col max-w-[85%] ${msg.isOwn ? "mr-auto items-start" : "ml-auto items-end"}`}
                   >
+                    {msgSenderName && (
+                      <span className="text-[8px] text-purple-300 font-bold mb-0.5 px-1">{msgSenderName}</span>
+                    )}
                     <div
                       className={`p-2.5 rounded-2xl text-xs leading-normal ${
-                        msg.isOwn
+                        pmTarget.nickname.startsWith("🕵️")
+                          ? msg.isOwn
+                            ? "bg-blue-500/15 border border-blue-500/20 text-blue-100 rounded-tr-none"
+                            : "bg-rose-500/15 border border-rose-500/20 text-rose-100 rounded-tl-none"
+                          : msg.isOwn
                           ? "bg-white/12 border border-white/10 text-white font-extrabold rounded-tr-none"
                           : "bg-black/40 border border-white/8 text-gray-100 rounded-tl-none"
                       }`}
@@ -8821,36 +9724,47 @@ export default function ChatScreen({
                       )}
                     </div>
                   </div>
-                ))}
-                <AnimatePresence>
-                  {isPmTyping && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 5 }}
-                      className="flex items-center gap-2 mb-2 w-fit"
-                    >
-                      <div className="bg-white/5 px-3 py-1.5 rounded-2xl rounded-tl-none border border-white/10 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"></span>
-                        <span
-                          className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.1s" }}
-                        ></span>
-                        <span
-                          className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.2s" }}
-                        ></span>
-                        <span className="text-[9px] text-gray-400 mr-2">
-                          {pmTarget.nickname} يكتب الان...
-                        </span>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                  );
+                })}
+                {/* Typing indicator — hidden for spy threads */}
+                {!pmTarget.nickname.startsWith("🕵️") && (
+                  <AnimatePresence>
+                    {isPmTyping && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 5 }}
+                        className="flex items-center gap-2 mb-2 w-fit"
+                      >
+                        <div className="bg-white/5 px-3 py-1.5 rounded-2xl rounded-tl-none border border-white/10 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"></span>
+                          <span
+                            className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"
+                            style={{ animationDelay: "0.1s" }}
+                          ></span>
+                          <span
+                            className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"
+                            style={{ animationDelay: "0.2s" }}
+                          ></span>
+                          <span className="text-[9px] text-gray-400 mr-2">
+                            {pmTarget.nickname} يكتب الان...
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                )}
                 <div ref={pmEndRef} />
               </div>
 
-              {/* PM input toolbar container */}
+              {/* PM input toolbar container — replaced by read-only notice for spy threads */}
+              {pmTarget.nickname.startsWith("🕵️") ? (
+                <div className="p-3.5 border-t border-purple-500/15 bg-purple-500/5 text-center">
+                  <p className="text-[10px] text-purple-400 font-bold">
+                    🕵️ وضع المشاهدة فقط — لا يمكن إرسال رسائل في محادثة مراقَبة
+                  </p>
+                </div>
+              ) : (
               <div className="p-3.5 border-t border-green-500/10 bg-black/40 relative">
                 {/* Emoji Picker Popup for PM */}
                 <AnimatePresence>
@@ -8887,6 +9801,7 @@ export default function ChatScreen({
                         className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right"
                         onClick={() => {
                           setShowPmAttachment(false);
+                          if (!ensureImagesAccess()) return;
                           if (isUploadingImage) return;
                           if (currentUser.authProvider !== "supabase") {
                             alert(
@@ -8904,7 +9819,33 @@ export default function ChatScreen({
                       </button>
                       <button
                         className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right"
-                        onClick={() => setShowPmAttachment(false)}
+                        onClick={() => {
+                          setShowPmAttachment(false);
+                          if (!ensureYoutubeAccess()) return;
+                          const inputUrl = prompt(
+                            "🎥 أدخل رابط يوتيوب أو فيdeo:",
+                          );
+                          if (!inputUrl?.trim() || !pmTarget) return;
+                          const timeStr = new Date().toLocaleTimeString("en-US", {
+                            hour: "numeric",
+                            minute: "numeric",
+                            hour12: true,
+                          });
+                          setPmThreads((prev) => ({
+                            ...prev,
+                            [pmTarget.nickname]: [
+                              ...(prev[pmTarget.nickname] || []),
+                              {
+                                text: "",
+                                isOwn: true,
+                                time: timeStr,
+                                mediaUrl: inputUrl.trim(),
+                                type: "video" as const,
+                                status: "delivered" as const,
+                              },
+                            ],
+                          }));
+                        }}
                       >
                         <div className="w-8 h-8 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center">
                           <Tv size={14} />
@@ -8912,8 +9853,13 @@ export default function ChatScreen({
                         <span>يوتيوب</span>
                       </button>
                       <button
-                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right"
-                        onClick={() => setShowPmAttachment(false)}
+                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right opacity-50 cursor-not-allowed"
+                        onClick={() => {
+                          setShowPmAttachment(false);
+                          alert(
+                            "🎬 رفع ملف فيdeo مباشر غير متاح حالياً. استخدم رابط يوتيوب أو MP4.",
+                          );
+                        }}
                       >
                         <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
                           <VideoIcon size={14} />
@@ -8992,6 +9938,7 @@ export default function ChatScreen({
                   onChange={handlePmImageUploadChange}
                 />
               </div>
+              )} {/* end spy thread conditional */}
             </>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
@@ -9078,9 +10025,11 @@ export default function ChatScreen({
                     {activeModal === "admin" &&
                       "لوحة الإدارة الشاملة (Admin Dashboard)"}
                     {activeModal === "guard" &&
-                      "حماة لمة الغالية • Lamma Guard Center"}
+                      "مركز الحماية • LC-Fire 🔥"}
                     {activeModal === "store" &&
-                      "المركز الذكي للأتمتة والمتجر التلقائي"}
+                      (isOwnerRole
+                        ? "مركز المتجر والأتمتة (للمالك)"
+                        : "متجر لمة")}
                   </h3>
                 </div>
                 <button
@@ -9230,6 +10179,34 @@ export default function ChatScreen({
                       </button>
                       <button
                         type="button"
+                        onClick={() => setLeadershipTab("features")}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
+                          leadershipTab === "features"
+                            ? "bg-sky-500/15 text-sky-300 border border-sky-500/25"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          <Mic size={12} />
+                          صلاحيات الأعضاء
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLeadershipTab("cosmetics")}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
+                          leadershipTab === "cosmetics"
+                            ? "bg-amber-500/15 text-amber-300 border border-amber-500/25"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          <Crown size={12} />
+                          منح المظهر
+                        </span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setLeadershipTab("guard")}
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           leadershipTab === "guard"
@@ -9238,8 +10215,7 @@ export default function ChatScreen({
                         }`}
                       >
                         <span className="inline-flex items-center gap-1.5">
-                          <Shield size={12} />
-                          الحماية
+                          🔥 LC-Fire
                         </span>
                       </button>
                       <button
@@ -9272,6 +10248,24 @@ export default function ChatScreen({
                       </button>
                       <button
                         type="button"
+                        onClick={() => { setLeadershipTab("owner_store"); setPendingOrdersCount(0); }}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all relative ${
+                          leadershipTab === "owner_store"
+                            ? "bg-yellow-500/15 text-yellow-300 border border-yellow-500/25"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          🏪 إدارة المتجر
+                        </span>
+                        {pendingOrdersCount > 0 && (
+                          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[8px] font-black flex items-center justify-center">
+                            {pendingOrdersCount}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setLeadershipTab("stats")}
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           leadershipTab === "stats"
@@ -9286,6 +10280,26 @@ export default function ChatScreen({
                       </button>
                     </div>
                   </div>
+                )}
+
+                {activeModal === "leadership" && leadershipTab === "features" && (
+                  <OwnerMemberFeaturesPanel
+                    registeredMemberNames={registeredMemberNames}
+                    memberCustomPermissions={memberCustomPermissions}
+                    setMemberCustomPermissions={setMemberCustomPermissions}
+                    addSystemActivityLog={addSystemActivityLog}
+                    currentUserNickname={currentUser.nickname}
+                  />
+                )}
+
+                {activeModal === "leadership" && leadershipTab === "cosmetics" && (
+                  <OwnerMemberCosmeticsPanel
+                    registeredMemberNames={registeredMemberNames}
+                    memberCosmeticGrants={memberCosmeticGrants}
+                    setMemberCosmeticGrants={setMemberCosmeticGrants}
+                    addSystemActivityLog={addSystemActivityLog}
+                    currentUserNickname={currentUser.nickname}
+                  />
                 )}
 
                 {/* OWNER MODAL CONTENT */}
@@ -9303,6 +10317,12 @@ export default function ChatScreen({
                     setIsGlobalMicMute={setIsGlobalMicMute}
                     isOnlyVIPCanSendImages={isOnlyVIPCanSendImages}
                     setIsOnlyVIPCanSendImages={setIsOnlyVIPCanSendImages}
+                    isAdsEnabled={isAdsEnabled}
+                    setIsAdsEnabled={setIsAdsEnabled}
+                    isGhostMode={isGhostMode}
+                    setIsGhostMode={setIsGhostMode}
+                    isBotSilent={isBotSilent}
+                    setIsBotSilent={setIsBotSilent}
                     bannedWords={bannedWords}
                     setBannedWords={setBannedWords}
                     addSystemActivityLog={addSystemActivityLog}
@@ -9420,6 +10440,7 @@ export default function ChatScreen({
                     dbStatusLogs={dbStatusLogs}
                     setDbStatusLogs={setDbStatusLogs}
                     handleAccelerateDays={handleAccelerateDays}
+                    subscriptionPlans={subscriptionPlans}
                   />
                 )}
                 {activeModal === 'leadership' && leadershipTab === 'design' && (
@@ -9435,24 +10456,12 @@ export default function ChatScreen({
                     setAssistantProposal={setAssistantProposal}
                     lastAppliedDesignSnapshot={lastAppliedDesignSnapshot}
                     handleRestoreLastDesignSnapshot={handleRestoreLastDesignSnapshot}
-                    setWallTheme={setWallTheme}
-                    wallTheme={wallTheme}
-                    designPresetName={designPresetName}
-                    setDesignPresetName={setDesignPresetName}
-                    handleSaveDesignPreset={handleSaveDesignPreset}
-                    designPresets={designPresets}
-                    applyDesignPreset={applyDesignPreset}
-                    handleDeleteDesignPreset={handleDeleteDesignPreset}
                     brandLogoUrl={brandLogoUrl}
                     designLogoUploadRef={designLogoUploadRef}
                     handleDesignLogoUpload={handleDesignLogoUpload}
                     designLogoInput={designLogoInput}
                     setDesignLogoInput={setDesignLogoInput}
                     setBrandLogoUrl={setBrandLogoUrl}
-                    chatTheme={chatTheme}
-                    setChatTheme={setChatTheme}
-                    glowColor={glowColor}
-                    setGlowColor={setGlowColor}
                     activeRoomId={activeRoomId}
                     openRooms={openRooms}
                     designRoomBgUploadRef={designRoomBgUploadRef}
@@ -9477,6 +10486,13 @@ export default function ChatScreen({
                     bannedUsersList={bannedUsersList}
                   />
                 )}
+                {activeModal === 'leadership' && leadershipTab === 'owner_store' && isOwnerRole && (
+                  <OwnerStorePanelModal
+                    ownerNickname={currentUser.nickname}
+                    addLammaBotMessage={addLammaBotMessage}
+                    activeRoomId={activeRoomId}
+                  />
+                )}
               </div>
             </div>
           </motion.div>
@@ -9492,6 +10508,7 @@ export default function ChatScreen({
         myActiveSession={myActiveSession}
         currentUser={currentUser}
         isOwnerRole={isOwnerRole}
+        isRegisteredAccount={isRegisteredAccount}
         tempEntryTopicInput={tempEntryTopicInput}
         setTempEntryTopicInput={setTempEntryTopicInput}
         setTempEntryTopicStatusText={setTempEntryTopicStatusText}
@@ -9508,6 +10525,7 @@ export default function ChatScreen({
         setRoomMessages={setRoomMessages}
         activeRoomId={activeRoomId}
         addSystemActivityLog={addSystemActivityLog}
+        addLammaBotMessage={addLammaBotMessage}
         bannedUsersList={bannedUsersList}
         removeBanEntries={removeBanEntries}
         addBanEntry={addBanEntry}
@@ -9515,6 +10533,13 @@ export default function ChatScreen({
         setChatMembers={setChatMembers}
         memberCustomPermissions={memberCustomPermissions}
         setMemberCustomPermissions={setMemberCustomPermissions}
+        myCustomBio={myCustomBio}
+        setMyCustomBio={setMyCustomBio}
+        handleSelectProfileEmoji={handleSelectProfileEmoji}
+        handleProfileAvatarUploadChange={handleProfileAvatarUploadChange}
+        profileAvatarInputRef={profileAvatarInputRef}
+        profileAvatarSaving={profileAvatarSaving}
+        profileAvatarStatus={profileAvatarStatus}
         />
       </AnimatePresence>
 
@@ -9660,7 +10685,14 @@ export default function ChatScreen({
                               className="flex items-center justify-between p-1.5 rounded-lg text-right text-[10px] transition-all cursor-pointer w-full lamma-list-item"
                             >
                               <div className="flex items-center gap-1.5">
-                                <span>{m.avatar}</span>
+                                <span className="w-5 h-5 flex items-center justify-center overflow-hidden rounded-full shrink-0">
+                                  <MemberAvatar
+                                    avatar={m.avatar}
+                                    size="xs"
+                                    className="w-full h-full"
+                                    imageClassName="w-full h-full rounded-full"
+                                  />
+                                </span>
                                 <span className="text-white font-bold">
                                   {m.nickname}
                                 </span>
@@ -9766,8 +10798,16 @@ export default function ChatScreen({
             setShowUserContextPop(false);
           },
           onViewProfile: (target) => {
-            setUserProfileBioTarget(target);
-            setShowUserProfileBioPop(true);
+            const selfNickname =
+              myActiveSession.nickname || currentUser.nickname;
+            if (
+              target.nickname.toLowerCase() === selfNickname.toLowerCase()
+            ) {
+              openOwnProfileCard();
+            } else {
+              setUserProfileBioTarget(target);
+              setShowUserProfileBioPop(true);
+            }
             setShowUserContextPop(false);
           },
           onToggleFriend: (target) => {
@@ -9894,8 +10934,45 @@ export default function ChatScreen({
         }}
       />
 
-      {/* HA WebRTC Calling UI */}
+      {/* WebRTC Calling UI + incoming call */}
       <AnimatePresence>
+        {incomingCall && !activeCall && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[9998] w-[90vw] max-w-sm rounded-2xl p-4 lamma-call-shell border border-green-500/20 shadow-2xl"
+          >
+            <div className="text-center space-y-3" dir="rtl">
+              <div className="text-3xl animate-pulse">
+                {incomingCall.type === "video" ? "📹" : "📞"}
+              </div>
+              <h3 className="text-sm font-black text-white">
+                مكالمة {incomingCall.type === "video" ? "فيديو" : "صوت"} واردة
+              </h3>
+              <p className="text-xs text-gray-400">
+                من: <span className="text-green-300 font-bold">{incomingCall.fromNickname}</span>
+              </p>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => void acceptIncoming()}
+                  className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-xs font-black"
+                >
+                  ✅ قبول
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void rejectIncoming()}
+                  className="flex-1 py-2.5 rounded-xl bg-red-600/80 hover:bg-red-500 text-white text-xs font-black"
+                >
+                  ❌ رفض
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {activeCall && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -9903,119 +10980,116 @@ export default function ChatScreen({
             exit={{ opacity: 0, scale: 0.95 }}
             className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
           >
-            <div className="rounded-3xl p-6 w-full max-w-sm flex flex-col items-center justify-center space-y-6 lamma-call-shell">
-              {/* Target Avatar / Icon */}
+            <div className="rounded-3xl p-6 w-full max-w-md flex flex-col items-center justify-center space-y-4 lamma-call-shell">
+              {/* Hidden audio element for voice-only calls */}
+              <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
+
+              {/* Video streams when connected */}
+              {activeCall.type === "video" &&
+                (activeCall.status === "connected" ||
+                  activeCall.status === "reconnecting") && (
+                  <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black border border-white/10">
+                    <video
+                      ref={remoteVideoRef}
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                    <video
+                      ref={localVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="absolute bottom-2 right-2 w-24 h-16 rounded-lg object-cover border border-white/20"
+                    />
+                  </div>
+                )}
+
               <div className="relative">
                 <div
-                  className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl shadow-xl ${
+                  className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl shadow-xl ${
                     activeCall.status === "connecting" ||
                     activeCall.status === "ringing"
                       ? "bg-black border-[3px] border-green-500/50 animate-pulse"
                       : activeCall.status === "connected"
                         ? "bg-green-500/20 border-[3px] border-green-500 text-green-400"
-                        : activeCall.status === "ended"
-                          ? "bg-red-500/20 border-[3px] border-red-500 text-red-500"
-                          : "bg-gray-800 border-[3px] border-gray-600"
+                        : activeCall.status === "reconnecting"
+                          ? "bg-yellow-500/20 border-[3px] border-yellow-500 text-yellow-400 animate-pulse"
+                          : activeCall.status === "failed" ||
+                              activeCall.status === "ended"
+                            ? "bg-red-500/20 border-[3px] border-red-500 text-red-500"
+                            : "bg-gray-800 border-[3px] border-gray-600"
                   }`}
                 >
                   {activeCall.type === "video" ? "📹" : "📞"}
                 </div>
-                {/* Fallback ringing ripples */}
-                {(activeCall.status === "connecting" ||
-                  activeCall.status === "ringing") && (
-                  <div className="absolute inset-0 rounded-full animate-ping border border-green-400 opacity-50" />
-                )}
               </div>
 
-              {/* Target Identity */}
               <div className="text-center space-y-1">
-                <h3 className="text-xl font-black text-white">
-                  {activeCall.target}
-                </h3>
-                <p className="text-sm font-bold text-gray-400">
-                  {activeCall.type === "video"
-                    ? "مكالمة فيديو مشفرة"
-                    : "مكالمة صوتية مشفرة"}
+                <h3 className="text-lg font-black text-white">{activeCall.target}</h3>
+                <p className="text-xs font-bold text-gray-400">
+                  {activeCall.type === "video" ? "مكالمة فيديو WebRTC" : "مكالمة صوتية WebRTC"}
                 </p>
               </div>
 
-              {/* Status & Fallback Servers Tracker */}
-              <div className="w-full text-center space-y-3 rounded-xl p-4 lamma-call-status">
-                {activeCall.status === "connecting" && (
-                  <div className="flex flex-col items-center space-y-2">
+              <div className="w-full text-center space-y-2 rounded-xl p-3 lamma-call-status">
+                {(activeCall.status === "connecting" ||
+                  activeCall.status === "ringing") && (
+                  <div className="flex flex-col items-center space-y-1">
                     <span className="text-sm font-bold text-yellow-500 animate-pulse">
-                      جاري تكوين وتشفير الاتصال...
+                      {activeCall.status === "ringing"
+                        ? "جاري الرنين..."
+                        : "جاري الاتصال..."}
                     </span>
                     <span className="text-[10px] font-mono text-gray-400">
-                      محاولة الاتصال عبر:{" "}
-                      {webRTCServers[activeCall.serverIndex].name}
+                      السيرفر: {activeCall.serverName}
                     </span>
-                    {activeCall.isFallback && (
-                      <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full mt-1">
-                        تم التحويل التلقائي للخادم الاحتياطي لتفادي التقطيع 🔄
-                      </span>
-                    )}
                   </div>
                 )}
-                {activeCall.status === "ringing" && (
-                  <div className="flex flex-col items-center space-y-2">
-                    <span className="text-sm font-bold text-green-400 animate-pulse">
-                      جاري الرنين...
+                {activeCall.status === "reconnecting" && (
+                  <div className="flex flex-col items-center space-y-1">
+                    <span className="text-sm font-bold text-yellow-400 animate-pulse">
+                      جاري التبديل للسيرفر الاحتياطي...
                     </span>
-                    <span className="text-[10px] font-mono text-gray-500">
-                      قناة مؤمنة بنجاح عبر:{" "}
-                      {webRTCServers[activeCall.serverIndex].name}
+                    <span className="text-[10px] font-mono text-emerald-400">
+                      🔄 {activeCall.serverName}
                     </span>
-                    {activeCall.isFallback && (
-                      <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full mt-1">
-                        تعمل الآن على الخادم الاحتياطي تلقائياً للسرعة 🚀
-                      </span>
-                    )}
                   </div>
                 )}
                 {activeCall.status === "connected" && (
-                  <div className="flex flex-col items-center space-y-2">
+                  <div className="flex flex-col items-center space-y-1">
                     <span className="text-xl font-mono font-black text-[#a3e635]">
                       {formatCallDuration(activeCall.callDuration)}
                     </span>
-                    <span className="text-[10px] text-green-400/80 bg-green-500/10 px-2 py-1 rounded-md">
-                      الاتصال مستقر وعالي الجودة ⚡
+                    <span className="text-[10px] text-green-400/80">
+                      متصل عبر {activeCall.serverName}
                     </span>
-                    {activeCall.isFallback && (
-                      <span className="text-[9px] font-mono text-emerald-400 rounded-full mt-1">
-                        متصل عبر خادم النسخ الاحتياطي (لا تشتت) 🛡️
-                      </span>
-                    )}
                   </div>
                 )}
+                {activeCall.status === "failed" && (
+                  <span className="text-sm font-bold text-red-400">
+                    فشل الاتصال — تحقق من الشبكة أو صلاحيات المايك
+                  </span>
+                )}
                 {activeCall.status === "ended" && (
-                  <div className="flex flex-col items-center space-y-2">
-                    <span className="text-sm font-bold text-red-500">
-                      انتهت المكالمة
-                    </span>
-                  </div>
+                  <span className="text-sm font-bold text-red-500">انتهت المكالمة</span>
+                )}
+                {activeCall.isFallback && activeCall.status !== "ended" && (
+                  <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                    يعمل على السيرفر الاحتياطي 🛡️
+                  </span>
                 )}
               </div>
 
-              {/* Controls */}
-              <div className="flex items-center gap-4 pt-2">
-                {activeCall.status !== "ended" && (
-                  <>
-                    <button className="w-12 h-12 rounded-full cursor-pointer flex items-center justify-center text-white transition-all text-xl lamma-soft-action">
-                      🎙️
-                    </button>
-                    {activeCall.type === "video" && (
-                      <button className="w-12 h-12 rounded-full cursor-pointer flex items-center justify-center text-white transition-all text-xl lamma-soft-action">
-                        📹
-                      </button>
-                    )}
-                    <button
-                      onClick={endCall}
-                      className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-500 cursor-pointer flex items-center justify-center text-white transition-all text-xl ml-2 shadow-[0_4px_15px_rgba(220,38,38,0.5)]"
-                    >
-                      <Phone size={24} className="rotate-[135deg]" />
-                    </button>
-                  </>
+              <div className="flex items-center gap-4 pt-1">
+                {activeCall.status !== "ended" && activeCall.status !== "failed" && (
+                  <button
+                    type="button"
+                    onClick={endCall}
+                    className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-500 cursor-pointer flex items-center justify-center text-white transition-all shadow-[0_4px_15px_rgba(220,38,38,0.5)]"
+                  >
+                    <Phone size={24} className="rotate-[135deg]" />
+                  </button>
                 )}
               </div>
             </div>
@@ -10029,16 +11103,18 @@ export default function ChatScreen({
         appLink={appLink}
       />
 
-      {showThemeSettingsModal && (
-        <ThemeSettings
-          isOpen={showThemeSettingsModal}
-          onClose={() => setShowThemeSettingsModal(false)}
-        />
-      )}
-
       {/* Real audio elements for Radio and Music streaming/playback */}
       <audio ref={radioAudioRef} src={currentRadioStation.url} preload="none" />
       <audio ref={musicAudioRef} src={currentMusicTrack.url} preload="none" />
+      <audio ref={djBroadcastAudioRef} preload="none" className="hidden" />
+      <input
+        ref={musicUploadInputRef}
+        type="file"
+        accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.webm,.flac"
+        multiple
+        className="hidden"
+        onChange={handleOwnerMusicUpload}
+      />
     </div>
   );
 }

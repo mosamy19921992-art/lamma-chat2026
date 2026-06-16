@@ -1,0 +1,35 @@
+/** Live radio streams — القرآن ونجوم FM فقط */
+export const RADIO_STATIONS = [
+  {
+    id: "quran",
+    name: "إذاعة القرآن الكريم 🕋",
+    frequency: "مباشر",
+    url: "https://backup.qurango.net/radio/tarateel",
+  },
+  {
+    id: "nogoum",
+    name: "نجوم FM 📻",
+    frequency: "100.6 FM",
+    url: "https://n09.radiojar.com/nogoum",
+  },
+] as const;
+
+export type RadioStation = (typeof RADIO_STATIONS)[number];
+
+export const DJ_LISTEN_STORAGE_KEY = "lamma_dj_listen";
+
+export function readDjListenPreference(): boolean {
+  try {
+    return localStorage.getItem(DJ_LISTEN_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function writeDjListenPreference(listening: boolean) {
+  try {
+    localStorage.setItem(DJ_LISTEN_STORAGE_KEY, String(listening));
+  } catch {
+    // ignore quota errors
+  }
+}

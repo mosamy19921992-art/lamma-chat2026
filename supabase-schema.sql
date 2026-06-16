@@ -3,7 +3,46 @@
 
 create extension if not exists pgcrypto;
 
+-- Transitional server-side roles table.
+-- Populate this table for owner/admin accounts and gradually stop relying on auth metadata.
+create table if not exists public.user_roles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  role text not null check (role in ('owner', 'admin', 'mod', 'user')),
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.user_roles enable row level security;
+
+drop policy if exists "Allow users to read their own role" on public.user_roles;
+create policy "Allow users to read their own role" on public.user_roles
+  for select
+  using (auth.uid() = user_id);
+
 -- Helper functions used by multiple RLS policies.
+create or replace function public.current_app_role()
+returns text
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select coalesce(
+    (
+      select ur.role
+      from public.user_roles ur
+      where ur.user_id = auth.uid()
+    ),
+    (
+      select lower(coalesce(raw_user_meta_data->>'role', ''))
+      from auth.users
+      where id = auth.uid()
+    )
+  );
+$$;
+
+revoke all on function public.current_app_role() from public;
+grant execute on function public.current_app_role() to authenticated, anon;
+
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -11,14 +50,7 @@ security definer
 set search_path = public
 stable
 as $$
-  select exists (
-    select 1
-    from auth.users
-    where id = auth.uid()
-    and (
-      raw_user_meta_data->>'role' in ('owner', 'admin', 'Owner', 'Admin', 'المالك', 'أدمن')
-    )
-  );
+  select public.current_app_role() in ('owner', 'admin', 'المالك', 'أدمن');
 $$;
 
 revoke all on function public.is_admin() from public;
@@ -31,14 +63,7 @@ security definer
 set search_path = public
 stable
 as $$
-  select exists (
-    select 1
-    from auth.users
-    where id = auth.uid()
-    and (
-      raw_user_meta_data->>'role' in ('owner', 'Owner', 'malek', 'المالك')
-    )
-  );
+  select public.current_app_role() in ('owner', 'malek', 'المالك');
 $$;
 
 revoke all on function public.is_owner() from public;
@@ -237,7 +262,9 @@ create table if not exists public.owner_settings (
   wall_theme text default 'fire',
   room_bg_map jsonb not null default '{}'::jsonb,
   design_presets jsonb not null default '[]'::jsonb,
-  chat_theme text default 'classic'
+  chat_theme text default 'classic',
+  room_dj_map jsonb not null default '{}'::jsonb,
+  dj_library jsonb not null default '[]'::jsonb
 );
 
 alter table public.owner_settings enable row level security;
@@ -266,7 +293,9 @@ create table if not exists public.owner_member_permissions (
   recording_allowed boolean not null default false,
   calls_allowed boolean not null default false,
   music_radio_allowed boolean not null default false,
-  room_creation_allowed boolean not null default false
+  room_creation_allowed boolean not null default false,
+  images_allowed boolean not null default false,
+  youtube_allowed boolean not null default false
 );
 
 alter table public.owner_member_permissions enable row level security;
@@ -278,6 +307,28 @@ create policy "Owner member permissions readable by all" on public.owner_member_
 
 drop policy if exists "Only owner manages member permissions" on public.owner_member_permissions;
 create policy "Only owner manages member permissions" on public.owner_member_permissions
+  for all
+  using (public.is_owner())
+  with check (public.is_owner());
+
+-- 6b. منح المظهر من المالك (VIP / إطارات بدون متجر)
+create table if not exists public.owner_member_cosmetics (
+  nickname text primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_by text,
+  vip_tier text check (vip_tier is null or vip_tier in ('vip', 'platinum')),
+  frame text
+);
+
+alter table public.owner_member_cosmetics enable row level security;
+
+drop policy if exists "Owner member cosmetics readable by all" on public.owner_member_cosmetics;
+create policy "Owner member cosmetics readable by all" on public.owner_member_cosmetics
+  for select using (true);
+
+drop policy if exists "Only owner manages member cosmetics" on public.owner_member_cosmetics;
+create policy "Only owner manages member cosmetics" on public.owner_member_cosmetics
   for all
   using (public.is_owner())
   with check (public.is_owner());
@@ -307,6 +358,7 @@ create policy "Admins insert owner activity logs" on public.owner_activity_logs
 
 alter publication supabase_realtime add table public.owner_settings;
 alter publication supabase_realtime add table public.owner_member_permissions;
+alter publication supabase_realtime add table public.owner_member_cosmetics;
 alter publication supabase_realtime add table public.owner_activity_logs;
 
 -- 8. طلبات تغيير الاسم بعد التسجيل (تُراجع من المالك فقط)

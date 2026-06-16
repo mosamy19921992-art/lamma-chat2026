@@ -1,9 +1,19 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LinkIcon, Shield, Mic, Phone, Radio, Compass, Lock, Ghost, Trash2 } from 'lucide-react';
+import { X, LinkIcon, Shield, Mic, Phone, Video, Radio, Compass, Lock, Ghost, Trash2, Image, Tv, Upload, Loader2 } from 'lucide-react';
 import { type BanInfo } from "../../lib/chatTypes.ts";
+import { MemberAvatar } from "../MemberAvatar";
+import { PROFILE_AVATAR_EMOJIS } from "../../lib/avatarDisplay";
 
-export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setShowProfileModal, setSelectedProfileMember, myActiveSession, currentUser, isOwnerRole, tempEntryTopicInput, setTempEntryTopicInput, setTempEntryTopicStatusText, tempEntryTopicEnabled, setTempEntryTopicEnabled, handleSaveTempEntryTopic, tempEntryTopicStatusText, nicknameRequestInput, setNicknameRequestInput, nicknameRequestLoading, handleSubmitNicknameChangeRequest, nicknameRequestStatusText, nicknameRequests, setRoomMessages, activeRoomId, addSystemActivityLog, bannedUsersList, removeBanEntries, addBanEntry, chatMembers, setChatMembers, memberCustomPermissions, setMemberCustomPermissions }: any) => {
+export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setShowProfileModal, setSelectedProfileMember, myActiveSession, currentUser, isOwnerRole, isRegisteredAccount, tempEntryTopicInput, setTempEntryTopicInput, setTempEntryTopicStatusText, tempEntryTopicEnabled, setTempEntryTopicEnabled, handleSaveTempEntryTopic, tempEntryTopicStatusText, nicknameRequestInput, setNicknameRequestInput, nicknameRequestLoading, handleSubmitNicknameChangeRequest, nicknameRequestStatusText, nicknameRequests, setRoomMessages, activeRoomId, addSystemActivityLog, addLammaBotMessage, bannedUsersList, removeBanEntries, addBanEntry, chatMembers, setChatMembers, memberCustomPermissions, setMemberCustomPermissions, myCustomBio, setMyCustomBio, handleSelectProfileEmoji, handleProfileAvatarUploadChange, profileAvatarInputRef, profileAvatarSaving, profileAvatarStatus }: any) => {
+  const isOwnProfile =
+    selectedProfileMember?.nickname === myActiveSession.nickname;
+  const isStaffViewer =
+    currentUser.role === "owner" ||
+    currentUser.role === "admin" ||
+    currentUser.role === "mod";
+  const showStaffTools = isStaffViewer && !isOwnProfile;
+
   return (
     <>
         {showProfileModal && selectedProfileMember && (
@@ -33,8 +43,11 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                 <div className="flex items-center gap-2">
                   <span className="text-sm">👤</span>
                   <h3 className="font-sans font-black text-white text-xs">
-                    الملف التعريفي والرقابة الأمنية •{" "}
-                    {selectedProfileMember.nickname}
+                    {isOwnProfile
+                      ? "بطاقتي الشخصية والإعدادات"
+                      : showStaffTools
+                        ? `الملف التعريفي والرقابة • ${selectedProfileMember.nickname}`
+                        : `الملف التعريفي • ${selectedProfileMember.nickname}`}
                   </h3>
                 </div>
                 <button
@@ -52,8 +65,13 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
               <div className="p-5 overflow-y-auto space-y-4 text-right">
                 {/* Visual Avatar Card */}
                 <div className="p-4 rounded-2xl flex items-center gap-3 lamma-section-card">
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl font-bold shrink-0 lamma-quiet-power-btn">
-                    {selectedProfileMember.avatar || "👤"}
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden shrink-0 lamma-quiet-power-btn">
+                    <MemberAvatar
+                      avatar={selectedProfileMember.avatar}
+                      size="lg"
+                      className="w-full h-full"
+                      imageClassName="w-full h-full rounded-2xl"
+                    />
                   </div>
                   <div className="flex-grow space-y-1">
                     <div className="text-sm font-black text-white flex items-center gap-2">
@@ -94,6 +112,82 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                     </div>
                   </div>
                 </div>
+
+                {isOwnProfile && isRegisteredAccount && (
+                  <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                    <div className="flex items-center gap-2 text-[11px] font-black text-emerald-300">
+                      <Image size={13} className="text-emerald-300" />
+                      <span>صورة البطاقة الشخصية</span>
+                    </div>
+                    <p className="text-[10px] text-gray-400 leading-relaxed">
+                      اختر إيموجي أو ارفع صورة حقيقية من جهازك — تظهر في
+                      الهيدر وقائمة الأعضاء.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {PROFILE_AVATAR_EMOJIS.map((emoji) => {
+                        const isActive =
+                          selectedProfileMember.avatar === emoji;
+                        return (
+                          <button
+                            key={emoji}
+                            type="button"
+                            disabled={profileAvatarSaving}
+                            onClick={() => handleSelectProfileEmoji?.(emoji)}
+                            className={`w-9 h-9 rounded-xl text-lg flex items-center justify-center transition-all cursor-pointer border ${
+                              isActive
+                                ? "border-emerald-400/50 bg-emerald-500/15 scale-105"
+                                : "border-white/10 bg-white/5 hover:bg-white/10"
+                            }`}
+                            title={`استخدام ${emoji}`}
+                          >
+                            {emoji}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={profileAvatarInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={handleProfileAvatarUploadChange}
+                      />
+                      <button
+                        type="button"
+                        disabled={profileAvatarSaving}
+                        onClick={() => profileAvatarInputRef?.current?.click()}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[10px] font-black text-emerald-200 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all cursor-pointer disabled:opacity-60"
+                      >
+                        {profileAvatarSaving ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Upload size={14} />
+                        )}
+                        <span>
+                          {profileAvatarSaving
+                            ? "جاري الرفع..."
+                            : "رفع صورة من الجهاز"}
+                        </span>
+                      </button>
+                    </div>
+                    <p className="text-[9px] text-gray-500 font-bold">
+                      JPG / PNG / WebP / GIF — حد أقصى 3MB
+                    </p>
+                    {profileAvatarStatus && (
+                      <div className="text-[10px] text-emerald-300 font-bold">
+                        {profileAvatarStatus}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {isOwnProfile && !isRegisteredAccount && (
+                  <div className="p-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 text-[10px] text-amber-100 leading-relaxed font-bold">
+                    لتخصيص صورة بطاقتك (إيموجي أو صورة حقيقية)، سجّل حساباً
+                    بالإيميل أو Google من شاشة الدخول.
+                  </div>
+                )}
 
                 {selectedProfileMember.nickname === myActiveSession.nickname &&
                   currentUser.authProvider === "supabase" && (
@@ -216,7 +310,30 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                     </div>
                   )}
 
-                {/* Fingerprint Metadata Section */}
+                {isOwnProfile && (
+                  <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                    <div className="text-[11px] font-black text-[#a3e635]">
+                      السيرة الذاتية (Bio)
+                    </div>
+                    <p className="text-[10px] text-gray-400 leading-relaxed">
+                      اكتب نبذة قصيرة عنك تظهر في ملفك الشخصي.
+                    </p>
+                    <textarea
+                      value={myCustomBio || ""}
+                      onChange={(e) => setMyCustomBio?.(e.target.value)}
+                      maxLength={280}
+                      rows={4}
+                      placeholder="مثال: أحب الدردشة الهادئة والموسيقى..."
+                      className="w-full rounded-xl p-2.5 text-xs text-white lamma-input-shell resize-none"
+                    />
+                    <div className="text-[10px] text-gray-500 text-left font-mono">
+                      {(myCustomBio || "").trim().length}/280
+                    </div>
+                  </div>
+                )}
+
+                {/* Fingerprint Metadata Section — staff viewing other members only */}
+                {showStaffTools && (
                 <div className="space-y-1.5">
                   <div className="text-[9px] font-black text-[#a3e635] tracking-wide uppercase">
                     بصمة المعرف الرقمي ومواصفات الاتصال الفني (Device Signature)
@@ -265,8 +382,10 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Administration controls strictly based on current user role */}
+                {showStaffTools && (
                 <div className="space-y-2 select-none">
                   <div className="text-[9px] font-black text-red-500 tracking-wide uppercase">
                     إجراءات الرقابة والإدارة السريعة (Administrative Control
@@ -283,14 +402,14 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                         {/* 1. Warn */}
                         <button
                           onClick={() => {
-                            const textMsg = `🚨 [تنبيه أمني رسمي] من حارس الشات Lamma Guard لـ [${selectedProfileMember.nickname}]: يرجى التقيد بالآداب والأخلاق العامة للشات وعدم الخروج عن إطار الحديث المتزن وإلا سيتم الطرد التلقائي 🛡️.`;
+                            const textMsg = `🔥 [تنبيه أمني رسمي] من LC-Fire لـ [${selectedProfileMember.nickname}]: يرجى التقيد بالآداب والأخلاق العامة للشات وعدم الخروج عن إطار الحديث المتزن وإلا سيتم الطرد التلقائي 🛡️.`;
                             setRoomMessages((prev) => ({
                               ...prev,
                               [activeRoomId]: [
                                 ...(prev[activeRoomId] || []),
                                 {
                                   id: `sys-warn-${Date.now()}`,
-                                  author: "حارس الشات 🛡️",
+                                  author: "LC-Fire 🔥",
                                   text: textMsg,
                                   color: "#f59e0b",
                                   isOwn: false,
@@ -523,6 +642,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                 value={selectedProfileMember.role}
                                 onChange={(e) => {
                                   const targetRole = e.target.value as any;
+                                  const prevRole = selectedProfileMember.role;
                                   setChatMembers((prev) =>
                                     prev.map((m) => {
                                       if (
@@ -539,6 +659,34 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                     selectedProfileMember.nickname,
                                     `تغيير وتعيين رتبة لعضو الشات إلى [${targetRole}]`,
                                   );
+
+                                  // إعلان في غرفة الإدارة عند الترقية
+                                  const isUpgrade =
+                                    ["admin", "mod", "owner"].includes(targetRole) &&
+                                    !["admin", "mod", "owner"].includes(prevRole);
+                                  const isDowngrade =
+                                    ["admin", "mod", "owner"].includes(prevRole) &&
+                                    !["admin", "mod", "owner"].includes(targetRole);
+                                  const roleLabel: Record<string, string> = {
+                                    owner: "👑 مالك",
+                                    admin: "🛡️ أدمن",
+                                    mod: "🔰 مشرف",
+                                    vip: "💎 VIP",
+                                    user: "👤 عضو",
+                                    guest: "👤 زائر",
+                                  };
+                                  if (isUpgrade) {
+                                    addLammaBotMessage(
+                                      "admin",
+                                      `🎉 مرحباً بالعضو [${selectedProfileMember.nickname}] في فريق الإدارة! تمت ترقيته لرتبة ${roleLabel[targetRole] || targetRole} بواسطة ${currentUser.nickname}. أهلاً وسهلاً 🛡️`,
+                                    );
+                                  } else if (isDowngrade) {
+                                    addLammaBotMessage(
+                                      "admin",
+                                      `📋 تم تغيير رتبة [${selectedProfileMember.nickname}] من ${roleLabel[prevRole] || prevRole} إلى ${roleLabel[targetRole] || targetRole} بواسطة ${currentUser.nickname}.`,
+                                    );
+                                  }
+
                                   alert(
                                     `تم تغيير وتحديث صلاحيات العضو إلى [${targetRole}] بنجاح!`,
                                   );
@@ -575,14 +723,14 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                   </span>
                                 </div>
                                 <div className="space-y-2 text-right">
-                                  {/* 1. Audio Recording */}
+                                  {/* 1. Voice messages (WhatsApp-style) */}
                                   <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
                                     <div className="flex items-center gap-1.5">
                                       <Mic
                                         size={14}
                                         className="text-emerald-300"
                                       />
-                                      <span>تسجيل وبث الصوت ميكروفون:</span>
+                                      <span>رسائل صوتية (مثل واتساب):</span>
                                     </div>
                                     <button
                                       type="button"
@@ -598,6 +746,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                               selectedProfileMember.nickname
                                             ] || {
                                               callsAllowed: false,
+                                              videoCallsAllowed: false,
                                               musicRadioAllowed: false,
                                               roomCreationAllowed: false,
                                             }),
@@ -607,7 +756,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                         addSystemActivityLog(
                                           "promote",
                                           selectedProfileMember.nickname,
-                                          `${!currentVal ? "تنشيط" : "إلغاء"} صلاحية التسجيل لـ ${selectedProfileMember.nickname}`,
+                                          `${!currentVal ? "تنشيط" : "إلغاء"} رسائل صوتية لـ ${selectedProfileMember.nickname}`,
                                         );
                                       }}
                                       className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all border ${
@@ -626,16 +775,14 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                     </button>
                                   </div>
 
-                                  {/* 2. Live Calls */}
+                                  {/* 2. Audio calls */}
                                   <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
                                     <div className="flex items-center gap-1.5">
                                       <Phone
                                         size={14}
                                         className="text-sky-300"
                                       />
-                                      <span>
-                                        إجراء المكالمات الهاتفية والمرئية:
-                                      </span>
+                                      <span>مكالمات صوتية:</span>
                                     </div>
                                     <button
                                       type="button"
@@ -651,6 +798,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                               selectedProfileMember.nickname
                                             ] || {
                                               recordingAllowed: false,
+                                              videoCallsAllowed: false,
                                               musicRadioAllowed: false,
                                               roomCreationAllowed: false,
                                             }),
@@ -660,7 +808,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                         addSystemActivityLog(
                                           "promote",
                                           selectedProfileMember.nickname,
-                                          `${!currentVal ? "تنشيط" : "إلغاء"} صلاحية المكالمات لـ ${selectedProfileMember.nickname}`,
+                                          `${!currentVal ? "تنشيط" : "إلغاء"} مكالمات صوتية لـ ${selectedProfileMember.nickname}`,
                                         );
                                       }}
                                       className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all border ${
@@ -679,7 +827,59 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                     </button>
                                   </div>
 
-                                  {/* 3. Music/Radio access */}
+                                  {/* 3. Video / camera calls */}
+                                  <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
+                                    <div className="flex items-center gap-1.5">
+                                      <Video
+                                        size={14}
+                                        className="text-violet-300"
+                                      />
+                                      <span>مكالمات فيdeo / الكاميرا:</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const currentVal =
+                                          memberCustomPermissions[
+                                            selectedProfileMember.nickname
+                                          ]?.videoCallsAllowed || false;
+                                        setMemberCustomPermissions((prev) => ({
+                                          ...prev,
+                                          [selectedProfileMember.nickname]: {
+                                            ...(prev[
+                                              selectedProfileMember.nickname
+                                            ] || {
+                                              recordingAllowed: false,
+                                              callsAllowed: false,
+                                              musicRadioAllowed: false,
+                                              roomCreationAllowed: false,
+                                            }),
+                                            videoCallsAllowed: !currentVal,
+                                          },
+                                        }));
+                                        addSystemActivityLog(
+                                          "promote",
+                                          selectedProfileMember.nickname,
+                                          `${!currentVal ? "تنشيط" : "إلغاء"} مكالمات فيdeo لـ ${selectedProfileMember.nickname}`,
+                                        );
+                                      }}
+                                      className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all border ${
+                                        memberCustomPermissions[
+                                          selectedProfileMember.nickname
+                                        ]?.videoCallsAllowed
+                                          ? "bg-green-500/15 border-green-500/30 text-green-400"
+                                          : "bg-red-500/15 border-red-500/30 text-red-400"
+                                      }`}
+                                    >
+                                      {memberCustomPermissions[
+                                        selectedProfileMember.nickname
+                                      ]?.videoCallsAllowed
+                                        ? "مفعلة بنجاح ✅"
+                                        : "معطلة ❌"}
+                                    </button>
+                                  </div>
+
+                                  {/* 4. Music/Radio access */}
                                   <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
                                     <div className="flex items-center gap-1.5">
                                       <Radio
@@ -732,7 +932,114 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                     </button>
                                   </div>
 
-                                  {/* 4. Room Creation */}
+                                  {/* 4. Image upload */}
+                                  <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
+                                    <div className="flex items-center gap-1.5">
+                                      <Image
+                                        size={14}
+                                        className="text-blue-300"
+                                      />
+                                      <span>رفع الصور ومشاركة روابطها:</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const currentVal =
+                                          memberCustomPermissions[
+                                            selectedProfileMember.nickname
+                                          ]?.imagesAllowed || false;
+                                        setMemberCustomPermissions((prev) => ({
+                                          ...prev,
+                                          [selectedProfileMember.nickname]: {
+                                            ...(prev[
+                                              selectedProfileMember.nickname
+                                            ] || {
+                                              recordingAllowed: false,
+                                              callsAllowed: false,
+                                              videoCallsAllowed: false,
+                                              musicRadioAllowed: false,
+                                              roomCreationAllowed: false,
+                                              imagesAllowed: false,
+                                              youtubeAllowed: false,
+                                            }),
+                                            imagesAllowed: !currentVal,
+                                          },
+                                        }));
+                                        addSystemActivityLog(
+                                          "promote",
+                                          selectedProfileMember.nickname,
+                                          `${!currentVal ? "تنشيط" : "إلغاء"} صلاحية رفع الصور لـ ${selectedProfileMember.nickname}`,
+                                        );
+                                      }}
+                                      className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all border ${
+                                        memberCustomPermissions[
+                                          selectedProfileMember.nickname
+                                        ]?.imagesAllowed
+                                          ? "bg-green-500/15 border-green-500/30 text-green-400"
+                                          : "bg-red-500/15 border-red-500/30 text-red-400"
+                                      }`}
+                                    >
+                                      {memberCustomPermissions[
+                                        selectedProfileMember.nickname
+                                      ]?.imagesAllowed
+                                        ? "مفعلة بنجاح ✅"
+                                        : "معطلة ❌"}
+                                    </button>
+                                  </div>
+
+                                  {/* 5. YouTube / video */}
+                                  <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
+                                    <div className="flex items-center gap-1.5">
+                                      <Tv size={14} className="text-red-300" />
+                                      <span>مشاركة يوتيوب / فيdeo:</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const currentVal =
+                                          memberCustomPermissions[
+                                            selectedProfileMember.nickname
+                                          ]?.youtubeAllowed || false;
+                                        setMemberCustomPermissions((prev) => ({
+                                          ...prev,
+                                          [selectedProfileMember.nickname]: {
+                                            ...(prev[
+                                              selectedProfileMember.nickname
+                                            ] || {
+                                              recordingAllowed: false,
+                                              callsAllowed: false,
+                                              videoCallsAllowed: false,
+                                              musicRadioAllowed: false,
+                                              roomCreationAllowed: false,
+                                              imagesAllowed: false,
+                                              youtubeAllowed: false,
+                                            }),
+                                            youtubeAllowed: !currentVal,
+                                          },
+                                        }));
+                                        addSystemActivityLog(
+                                          "promote",
+                                          selectedProfileMember.nickname,
+                                          `${!currentVal ? "تنشيط" : "إلغاء"} صلاحية يوتيوب/فيديو لـ ${selectedProfileMember.nickname}`,
+                                        );
+                                      }}
+                                      className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all border ${
+                                        memberCustomPermissions[
+                                          selectedProfileMember.nickname
+                                        ]?.youtubeAllowed
+                                          ? "bg-green-500/15 border-green-500/30 text-green-400"
+                                          : "bg-red-500/15 border-red-500/30 text-red-400"
+                                      }`}
+                                    >
+                                      {memberCustomPermissions[
+                                        selectedProfileMember.nickname
+                                      ]?.youtubeAllowed
+                                        ? "مفعلة بنجاح ✅"
+                                        : "معطلة ❌"}
+                                    </button>
+                                  </div>
+
+                                  {/* 6. Room Creation */}
                                   <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
                                     <div className="flex items-center gap-1.5">
                                       <Compass
@@ -944,6 +1251,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                     </div>
                   )}
                 </div>
+                )}
               </div>
             </div>
           </motion.div>

@@ -39,13 +39,28 @@ function buildGuardStatusMessage({
   | "swearFilterEnabled"
   | "bannedWordsCount"
 >): string {
-  return `🤖 تقرير حارس الشات اللاسلكي Lamma Guard:
+  let score = 0;
+  if (isBotEnabled) score += 30;
+  if (antiLinksEnabled) score += 20;
+  if (antiSpamEnabled) score += 15;
+  if (swearFilterEnabled) score += 15;
+  if (bannedWordsCount > 0) score += 20;
+
+  const scoreLabel =
+    score >= 90
+      ? "🟢 ممتاز"
+      : score >= 60
+        ? "🟡 جيد"
+        : score >= 30
+          ? "🟠 ضعيف"
+          : "🔴 معطل";
+
+  return `🔥 تقرير LC-Fire — بوت الحماية:
 - حالة البوت: ${isBotEnabled ? "🟢 نشط ويحمي الغرف" : "🔴 معطل مؤقتاً"}
-- تصفية الروابط: ${antiLinksEnabled ? "✅ مفعّل" : "❌ معطل"}
-- منع المزعجين: ${antiSpamEnabled ? "✅ مفعّل" : "❌ معطل"}
-- تصفية الشتائم: ${swearFilterEnabled ? "✅ مفعّل" : "❌ معطل"}
-- عدد الكلمات المحظورة: ${bannedWordsCount} كلمة.
-- جودة أمان الشات: 100% مستقر ونظيف.`;
+- حجب الروابط: ${antiLinksEnabled ? "✅ مفعّل" : "❌ معطل"}
+- منع السبام: ${antiSpamEnabled ? "✅ مفعّل" : "❌ معطل"}
+- جدار الكلمات: ${swearFilterEnabled ? "✅ مفعّل" : "❌ معطل"} (${bannedWordsCount} كلمة محظورة)
+- درجة أمان الغرفة: ${score}/100 ${scoreLabel}`;
 }
 
 async function runPingCommand(

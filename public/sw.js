@@ -78,9 +78,9 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
 
-  // 1. Supabase realtime / API — Network first, fall back to cache
+  // 1. Supabase realtime / API — always network only to avoid stale or sensitive data
   if (url.host.includes("supabase.co")) {
-    event.respondWith(networkFirst(request, API_CACHE));
+    event.respondWith(networkOnly(request));
     return;
   }
 
@@ -151,6 +151,14 @@ async function networkFirst(request, cacheName) {
   } catch (err) {
     const cached = await cache.match(request);
     if (cached) return cached;
+    return new Response("Offline", { status: 503, statusText: "Offline" });
+  }
+}
+
+async function networkOnly(request) {
+  try {
+    return await fetch(request, { cache: "no-store" });
+  } catch {
     return new Response("Offline", { status: 503, statusText: "Offline" });
   }
 }

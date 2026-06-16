@@ -2916,7 +2916,7 @@ body {
     rgba(15, 11, 20, 0.96) 80%, 
     rgba(14, 11, 7, 0.97) 100%
   ) !important; /* Perfect smokey black backing for ultimate text readability with any wall image */
-  overflow: hidden !important;
+  overflow: visible !important;
   border-bottom: none !important;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6) !important;
 }
@@ -3507,4 +3507,81 @@ body {
 .lamma-feature-shell h3,
 .lamma-feature-shell span {
   text-shadow: 0 1.5px 2px rgba(0, 0, 0, 0.98) !important;
+}
+
+.lamma-neutral-glass .lamma-chat-input-shell,
+.lamma-chat-input-shell {
+  overflow: visible !important;
+}
+
+.lamma-floating-dropdown {
+  pointer-events: auto;
+}
+
+/* ── Owner prestige: fire frame, crown, glowing name ── */
+.lamma-owner-name {
+  background: linear-gradient(
+    90deg,
+    #fde68a 0%,
+    #fbbf24 28%,
+    #fb923c 62%,
+    #fef3c7 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+  filter: drop-shadow(0 0 7px rgba(251, 191, 36, 0.38));
+  animation: lammaOwnerNameGlow 3s ease-in-out infinite;
+}
+
+.lamma-platinum-name {
+  animation: pulse 1.5s infinite;
+  background: linear-gradient(90deg, #facc15, #f472b6, #22d3ee);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+@keyframes lammaOwnerNameGlow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.28));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(249, 115, 22, 0.58));
+  }
+}
+
+.lamma-owner-aura {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+}
+
+.lamma-owner-aura::before {
+  content: "";
+  position: absolute;
+  inset: -38%;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 234, 186, 0.72), rgba(255, 159, 67, 0.28) 42%, rgba(255, 0, 0, 0) 72%),
+    radial-gradient(circle at 65% 60%, rgba(255, 140, 64, 0.68), rgba(255, 0, 0, 0) 70%),
+    conic-gradient(from 210deg, rgba(255, 0, 0, 0) 0 18%, rgba(255, 97, 0, 0.42) 18% 38%, rgba(245, 158, 11, 0.52) 38% 56%, rgba(255, 0, 0, 0) 56% 100%);
+  filter: blur(5px) saturate(1.25);
+  opacity: 0.88;
+  mix-blend-mode: screen;
+  z-index: 0;
+  pointer-events: none;
+  animation: lammaBossFlame 1900ms ease-in-out infinite;
+}
+
+.lamma-owner-aura > * {
+  position: relative;
+  z-index: 1;
+}
+
+.lamma-role-owner {
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.22);
 }

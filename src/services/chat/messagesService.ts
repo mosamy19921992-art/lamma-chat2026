@@ -68,8 +68,12 @@ export async function persistRoomMessage({
   roomId,
   senderUid,
 }: PersistRoomMessageOptions): Promise<void> {
-  if (!supabase || message.type === "shadow_msg") {
+  if (message.type === "shadow_msg") {
     return;
+  }
+
+  if (!supabase) {
+    throw new Error("تعذر إرسال الرسالة لأن اتصال Supabase غير متاح.");
   }
 
   const { error } = await supabase.from("messages").insert([

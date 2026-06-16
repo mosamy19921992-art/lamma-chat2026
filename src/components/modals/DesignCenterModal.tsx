@@ -1,4 +1,5 @@
 import React from 'react';
+import { DesignStudioModal } from './DesignStudioModal';
 
 export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, queueRecommendedAssistantProposal, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, setWallTheme, wallTheme, designPresetName, setDesignPresetName, handleSaveDesignPreset, designPresets, applyDesignPreset, handleDeleteDesignPreset, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, chatTheme, setChatTheme, glowColor, setGlowColor, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage }: any) => {
   return (
@@ -13,6 +14,8 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                         الواجهة.
                       </div>
                     </div>
+
+                    {isOwnerRole && <DesignStudioModal isOwnerRole={isOwnerRole} />}
 
                     {isOwnerRole && (
                       <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
@@ -370,141 +373,6 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                       </div>
                     )}
 
-                    {isOwnerRole && (
-                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                        <div className="text-[11px] text-cyan-300 font-black">
-                          ألوان الجدران
-                        </div>
-                        <div className="text-[10px] text-gray-400 font-bold">
-                          تبديل لون الفواصل والفريم والماسورة داخل الشات
-                          بالكامل.
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setWallTheme("fire");
-                            }}
-                            className={`p-3 rounded-xl border transition-all ${
-                              wallTheme === "fire"
-                                ? "lamma-accent-btn"
-                                : "lamma-tab-soft"
-                            }`}
-                          >
-                            <div className="h-3 rounded-full bg-gradient-to-r from-yellow-500/30 via-orange-500/40 to-yellow-500/30 border border-yellow-500/25" />
-                            <div className="text-[10px] font-black text-yellow-400 mt-2">
-                              ناري
-                            </div>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setWallTheme("ice");
-                            }}
-                            className={`p-3 rounded-xl border transition-all ${
-                              wallTheme === "ice"
-                                ? "lamma-accent-btn"
-                                : "lamma-tab-soft"
-                            }`}
-                          >
-                            <div className="h-3 rounded-full bg-gradient-to-r from-sky-400/25 via-cyan-400/35 to-sky-400/25 border border-sky-400/25" />
-                            <div className="text-[10px] font-black text-sky-300 mt-2">
-                              ثلجي
-                            </div>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setWallTheme("violet");
-                            }}
-                            className={`p-3 rounded-xl border transition-all ${
-                              wallTheme === "violet"
-                                ? "lamma-accent-btn"
-                                : "lamma-tab-soft"
-                            }`}
-                          >
-                            <div className="h-3 rounded-full bg-gradient-to-r from-fuchsia-500/20 via-violet-500/35 to-fuchsia-500/20 border border-violet-500/25" />
-                            <div className="text-[10px] font-black text-violet-300 mt-2">
-                              بنفسجي
-                            </div>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {isOwnerRole && (
-                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                        <div className="text-[11px] text-cyan-300 font-black">
-                          ستايلات محفوظة
-                        </div>
-                        <div className="text-[10px] text-gray-400 font-bold">
-                          احفظ شكل كامل وبدّل بينهم بضغطة.
-                        </div>
-                        <div className="flex gap-2 p-2 rounded-xl lamma-admin-card">
-                          <input
-                            type="text"
-                            value={designPresetName}
-                            onChange={(e) => setDesignPresetName(e.target.value)}
-                            placeholder="اسم الستايل..."
-                            className="flex-1 bg-transparent border-none text-[11px] text-white px-2 focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleSaveDesignPreset}
-                            className="px-3 py-1.5 text-white text-[10px] font-bold rounded-lg transition-all whitespace-nowrap lamma-accent-btn"
-                          >
-                            حفظ
-                          </button>
-                        </div>
-                        {designPresets.length > 0 && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {designPresets.map((preset) => (
-                              <div
-                                key={preset.id}
-                                className="p-3 rounded-2xl space-y-2 lamma-admin-card"
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="text-[11px] text-white font-black">
-                                    {preset.name}
-                                  </div>
-                                  <div className="text-[9px] text-gray-400 font-bold font-mono">
-                                    {new Date(preset.createdAt).toLocaleDateString("ar-EG")}
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const ok = window.confirm(
-                                        `تطبيق ستايل: ${preset.name} ؟`,
-                                      );
-                                      if (!ok) return;
-                                      applyDesignPreset(preset);
-                                    }}
-                                    className="py-2 rounded-xl text-[10px] font-black text-white transition-all lamma-accent-btn"
-                                  >
-                                    تطبيق
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const ok = window.confirm(
-                                        `حذف ستايل: ${preset.name} ؟`,
-                                      );
-                                      if (!ok) return;
-                                      handleDeleteDesignPreset(preset.id);
-                                    }}
-                                    className="py-2 rounded-xl text-[10px] font-black transition-all lamma-danger-btn"
-                                  >
-                                    حذف
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
 
                     <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
                       <div className="text-[11px] text-cyan-300 font-black">
@@ -554,33 +422,6 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                         >
                           تطبيق
                         </button>
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                      <div className="text-[11px] text-cyan-300 font-black">
-                        ألوان الإضاءة
-                      </div>
-                      <div className="flex items-center gap-3 rounded-xl p-3 lamma-admin-card">
-                        <input
-                          type="color"
-                          value={glowColor}
-                          onChange={(e) => {
-                            const next = e.target.value;
-                            setGlowColor(next);
-                          }}
-                          className="w-10 h-10 rounded-lg bg-transparent lamma-input-shell"
-                        />
-                        <input
-                          type="text"
-                          value={glowColor}
-                          onChange={(e) => {
-                            const next = e.target.value;
-                            setGlowColor(next);
-                          }}
-                          className="flex-1 rounded-lg text-[11px] text-white px-2 py-2 focus:outline-none lamma-input-shell"
-                          dir="ltr"
-                        />
                       </div>
                     </div>
 

@@ -4,8 +4,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { useServiceWorker } from './hooks/useServiceWorker';
 import UpdateBanner from './components/pwa/UpdateBanner';
 import OnlineStatus from './components/pwa/OnlineStatus';
-import { useTheme } from './hooks/useTheme';
-import { supabase } from './lib/supabase';
+import { startSilentAutoHeal } from './services/chat/maintenanceBot';
+import { supabase, getClientUid } from './lib/supabase';
 import type { UserSession } from './lib/chatTypes';
 import {
   getResolvedSupabaseColor,
@@ -13,6 +13,7 @@ import {
   hasPlaceholderSupabaseNickname,
   normalizeAuthRole,
 } from './lib/authProfile';
+import { mergeSessionRole } from './services/auth/userRoleService';
 
 // Lazy-load ChatScreen so the LoginScreen (which is the entry surface
 // for guests and unauthenticated users) ships in a smaller initial bundle.
@@ -32,7 +33,7 @@ function readGuestSession(): UserSession | null {
       nickname: parsed.nickname,
       role: 'guest',
       color: parsed.color || 'white',
-      uid: parsed.uid,
+      uid: parsed.uid || getClientUid(),
       email: parsed.email ?? null,
       authProvider: 'guest',
     };
@@ -139,6 +140,14 @@ function sessionToUserSession(supaUser: SupabaseUser): UserSession {
   };
 }
 
+async function hydrateSupabaseUserSession(
+  supaUser: SupabaseUser,
+): Promise<UserSession> {
+  const base = sessionToUserSession(supaUser);
+  const mergedRole = await mergeSessionRole(supaUser.id, base.role as any);
+  return mergedRole === base.role ? base : { ...base, role: mergedRole };
+}
+
 export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
   const [pendingSupabaseUser, setPendingSupabaseUser] = useState<SupabaseUser | null>(null);
@@ -146,9 +155,13 @@ export default function App() {
 
   // PWA: register service worker, expose install/update state.
   const sw = useServiceWorker();
-  // Theme: load + persist the active palette.
-  // (useTheme runs in the background — it sets CSS variables.)
-  useTheme();
+
+  // Silent background auto-heal: quietly fixes corrupted data / full cache
+  // every 5 minutes without touching messages or showing any UI.
+  useEffect(() => {
+    const stop = startSilentAutoHeal(5 * 60 * 1000);
+    return stop;
+  }, []);
 
   useEffect(() => {
     const guestSession = readGuestSession();
@@ -161,7 +174,7 @@ export default function App() {
     }
 
     // 1) محاولة جلب الجلسة الحالية
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         clearGuestSession();
         if (needsProfileNickname(session.user)) {
@@ -170,7 +183,7 @@ export default function App() {
           return;
         }
         setPendingSupabaseUser(null);
-        setUser(sessionToUserSession(session.user));
+        setUser(await hydrateSupabaseUserSession(session.user));
         return;
       }
 
@@ -188,7 +201,7 @@ export default function App() {
     // 2) الاستماع لتغييرات الحالة (تسجيل دخول أو خروج)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         clearGuestSession();
         if (needsProfileNickname(session.user)) {
@@ -197,7 +210,7 @@ export default function App() {
           return;
         }
         setPendingSupabaseUser(null);
-        setUser(sessionToUserSession(session.user));
+        setUser(await hydrateSupabaseUserSession(session.user));
         return;
       }
 
@@ -226,13 +239,17 @@ export default function App() {
     };
 
     if (authProvider === 'guest') {
-      writeGuestSession(nextUser);
+      const guestUid = uid || getClientUid();
+      writeGuestSession({ ...nextUser, uid: guestUid });
+      setUser({ ...nextUser, uid: guestUid });
     } else {
       clearGuestSession();
       setPendingSupabaseUser(null);
     }
 
-    setUser(nextUser);
+    if (authProvider !== 'guest') {
+      setUser(nextUser);
+    }
   };
 
   const handleLogout = () => {
@@ -258,7 +275,14 @@ export default function App() {
           />
         ) : (
           <Suspense fallback={<ChatLoadingScreen />}>
-            <ChatScreen currentUser={user} onLogout={handleLogout} primaryTheme={primaryTheme} />
+            <ChatScreen
+              currentUser={user}
+              onLogout={handleLogout}
+              primaryTheme={primaryTheme}
+              onUserSessionUpdate={(patch) => {
+                setUser((prev) => (prev ? { ...prev, ...patch } : prev));
+              }}
+            />
           </Suspense>
         )}
 

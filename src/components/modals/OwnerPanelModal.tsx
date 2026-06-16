@@ -1,5 +1,5 @@
 import React from "react";
-import { Settings as SettingsIcon, VolumeX } from "lucide-react";
+import { Eye, EyeOff, Settings as SettingsIcon, VolumeX } from "lucide-react";
 
 interface OwnerPanelProps {
   isSpyMode: boolean;
@@ -12,6 +12,12 @@ interface OwnerPanelProps {
   setIsGlobalMicMute: (val: boolean) => void;
   isOnlyVIPCanSendImages: boolean;
   setIsOnlyVIPCanSendImages: (val: boolean) => void;
+  isAdsEnabled: boolean;
+  setIsAdsEnabled: (val: boolean) => void;
+  isGhostMode: boolean;
+  setIsGhostMode: (val: boolean) => void;
+  isBotSilent: boolean;
+  setIsBotSilent: (val: boolean) => void;
   bannedWords: string[];
   setBannedWords: React.Dispatch<React.SetStateAction<string[]>>;
   addSystemActivityLog: (type: any, userNickname: string, details: string, operator?: string) => void;
@@ -31,6 +37,12 @@ export function OwnerPanelModal({
   setIsGlobalMicMute,
   isOnlyVIPCanSendImages,
   setIsOnlyVIPCanSendImages,
+  isAdsEnabled,
+  setIsAdsEnabled,
+  isGhostMode,
+  setIsGhostMode,
+  isBotSilent,
+  setIsBotSilent,
   bannedWords,
   setBannedWords,
   addSystemActivityLog,
@@ -175,6 +187,85 @@ export function OwnerPanelModal({
           </div>
           <p className="text-[10px] text-gray-500">
             قصر ميزة إرسال الصور والفيديوهات على الداعمين والـ VIP.
+          </p>
+        </div>
+
+        {/* Ads Bar */}
+        <div className="p-4 rounded-xl flex flex-col gap-2 lamma-admin-card border border-yellow-500/10">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+              📢 شريط الإعلانات
+            </span>
+            <button
+              onClick={() => {
+                const newVal = !isAdsEnabled;
+                setIsAdsEnabled(newVal);
+                addSystemActivityLog(
+                  "promote",
+                  currentUserNickname,
+                  `قام المالك ${newVal ? "بتفعيل" : "بإخفاء"} شريط الإعلانات.`,
+                );
+              }}
+              className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isAdsEnabled ? "lamma-toggle-on" : "lamma-soft-action text-gray-300"}`}
+            >
+              {isAdsEnabled ? "ظاهر" : "مخفي"}
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-500">
+            إظهار أو إخفاء شريط عروض المتجر أسفل الشات للجميع.
+          </p>
+        </div>
+
+        {/* Ghost Mode */}
+        <div className="p-4 rounded-xl flex flex-col gap-2 lamma-admin-card border border-slate-500/20">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+              {isGhostMode ? <EyeOff size={13} className="text-slate-300" /> : <Eye size={13} className="text-slate-300" />}
+              وضع الشبح (Ghost Mode)
+            </span>
+            <button
+              onClick={() => {
+                const newVal = !isGhostMode;
+                setIsGhostMode(newVal);
+                addSystemActivityLog(
+                  "promote",
+                  currentUserNickname,
+                  `قام المالك ${newVal ? "بتفعيل" : "بإلغاء"} وضع الشبح — اختفاء من قائمة الأعضاء.`,
+                );
+              }}
+              className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isGhostMode ? "bg-slate-500 text-white" : "lamma-soft-action text-gray-300"}`}
+            >
+              {isGhostMode ? "خفي" : "ظاهر"}
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-500">
+            يخفي المالك من قائمة الأعضاء — يبقى متصلاً دون أن يراه أحد.
+          </p>
+        </div>
+
+        {/* Bot Silent */}
+        <div className="p-4 rounded-xl flex flex-col gap-2 lamma-admin-card border border-blue-500/10">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-white">
+              🤫 البوت صامت (Silent Mode)
+            </span>
+            <button
+              onClick={() => {
+                const newVal = !isBotSilent;
+                setIsBotSilent(newVal);
+                addSystemActivityLog(
+                  "promote",
+                  currentUserNickname,
+                  `قام المالك ${newVal ? "بكتم" : "بتفعيل"} رسائل البوتات.`,
+                );
+              }}
+              className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isBotSilent ? "bg-blue-500/70 text-white" : "lamma-soft-action text-gray-300"}`}
+            >
+              {isBotSilent ? "صامت" : "ناشط"}
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-500">
+            إيقاف جميع رسائل البوتات التلقائية بدون تعطيل الحماية نفسها.
           </p>
         </div>
       </div>

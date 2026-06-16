@@ -1,993 +1,611 @@
-# Code Wiki - Lamma Chat
+# Code Wiki
 
-## 1. الهدف من المشروع
+مرجع تقني منظم لمشروع `Lamma Chat | شات لمة`.
 
-`Lamma Chat` هو تطبيق دردشة عربي أحادي الصفحة `SPA` مبني بـ `React` و`TypeScript`
-ويستخدم `Supabase` كمزود رئيسي للمصادقة، قاعدة البيانات، التزامن الفوري
-`Realtime`، ورفع الوسائط. الواجهة موجّهة للأجهزة المحمولة بشكل واضح، مع دعم
-تثبيت التطبيق كتطبيق `PWA`، ونشر مباشر على `Vercel`.
+## 1. نظرة عامة
 
-الخصائص البارزة:
+المشروع عبارة عن تطبيق دردشة عربي أحادي الصفحة `SPA` مبني باستخدام:
 
-- تسجيل دخول كضيف أو بحساب `Supabase`
-- غرف عامة وخاصة ومنشورات ورسائل خاصة
-- رسائل نصية، صور، فيديو، صوت، هدايا، وروابط غنية
-- ثيمات متعددة وتخصيص بصري واسع
-- دعم `PWA` للتثبيت والتحديث والعمل الجزئي دون اتصال
-- أدوات إدارة وإشراف ومتجر واشتراكات
+- `React 19`
+- `TypeScript`
+- `Vite`
+- `Supabase`
+- `Tailwind CSS v4`
+- `Motion`
 
-الملاحظة المعمارية الأهم: أغلب منطق الأعمال الفعلي متمركز داخل
-`src/components/ChatScreen.tsx`، لذلك فهو يمثل قلب التطبيق الحقيقي.
-
----
+الهدف من المشروع هو تقديم منصة دردشة عربية بواجهة غنية، مع غرف عامة، رسائل خاصة، تخصيصات بصرية، إدارة صلاحيات، دعم وسائط، ودعم `PWA`.
 
 ## 2. المعمارية العامة
 
-### 2.1 صورة كبيرة
+المعمارية الحالية تعتمد على واجهة React مع تكامل مباشر مع Supabase، بدون طبقة backend تقليدية كاملة. يوجد فقط endpoint خفيف على Vercel لتمرير إعدادات المصادقة إلى الواجهة.
+
+### 2.1 مخطط معماري مختصر
 
 ```text
-index.html
+Browser
+  -> index.html
   -> src/main.tsx
-      -> App.tsx
-          -> LoginScreen.tsx
-          -> ChatScreen.tsx (lazy-loaded)
-          -> ErrorBoundary
-          -> PWA UI components
-
-Shared runtime services
-  -> hooks/useTheme.ts
-  -> hooks/useServiceWorker.ts
-  -> lib/supabase.ts
-  -> lib/storage.ts
-  -> lib/chatTypes.ts
-  -> lib/chatConstants.ts
-  -> lib/chatHelpers.ts
-  -> lib/chatMessageRender.tsx
-  -> lib/themes.ts
-
-External systems
-  -> Supabase Auth
-  -> Supabase Database
-  -> Supabase Realtime
-  -> Supabase Storage
-  -> Optional Gemini search endpoint
-  -> Vercel hosting / serverless api
+  -> src/App.tsx
+       -> LoginScreen / ChatScreen
+       -> hooks العامة (theme / service worker)
+       -> Supabase Auth Session
+             -> Database
+             -> Realtime
+             -> Storage
+  -> /api/auth-config (Vercel serverless function)
 ```
 
-### 2.2 النمط المعماري
+### 2.2 طبقات المشروع
 
-المشروع يتبع نمطًا مباشرًا بسيطًا بدل طبقات domain/services/repositories:
+- طبقة العرض: `src/components`
+- طبقة تنسيق التطبيق والجلسة: `src/App.tsx`
+- طبقة الهوكس العامة: `src/hooks`
+- طبقة العقود والمساعدات والثوابت: `src/lib`
+- طبقة الملفات الثابتة وPWA: `public`
+- طبقة endpoint السيرفري الخفيف: `api`
+- طبقة البنية البيانية: `supabase-schema.sql` و`supabase-storage.sql`
 
-- طبقة العرض: مكونات React
-- طبقة الحالة: `useState`, `useEffect`, `localStorage`
-- طبقة التكامل الخارجي: استدعاءات `Supabase` مباشرة من الواجهة
-- طبقة المساعدة: أنواع وثوابت ومساعدات صغيرة في `src/lib`
+## 3. مسار التشغيل
 
-هذا يجعل التطوير سريعًا، لكنه يرفع درجة التشابك داخل الملفات الكبيرة خصوصًا
-`ChatScreen.tsx`.
+### 3.1 بدء التطبيق
 
----
+1. المتصفح يحمل `index.html`
+2. الملف `src/main.tsx` ينشئ React root
+3. الملف `src/App.tsx` يقرر هل المستخدم:
+   - ضيف
+   - مستخدم Supabase موثق
+   - أو يحتاج استكمال nickname
+4. عند غياب الجلسة يعرض `LoginScreen`
+5. عند وجود الجلسة يحمّل `ChatScreen` بشكل lazy
 
-## 3. خريطة التشغيل
+### 3.2 إدارة الجلسة
 
-### 3.1 نقطة الدخول
+`App.tsx` يجمع بين نوعين من الجلسات:
 
-- `index.html`
-  - يوفّر العنصر `#root`
-  - يحمّل `src/main.tsx`
+- جلسة ضيف محفوظة في `localStorage`
+- جلسة Supabase يتم استرجاعها من `supabase.auth.getSession()`
 
-- `src/main.tsx`
-  - يركّب تطبيق React
-  - يحمّل `App`
+كما يستمع إلى تغيّر المصادقة عبر `onAuthStateChange` ويحوّل مستخدم Supabase إلى `UserSession` موحد داخل التطبيق.
 
-### 3.2 منسق التطبيق
-
-- `src/App.tsx`
-  - يستعيد جلسة الضيف من `localStorage`
-  - يجلب جلسة `Supabase` الحالية
-  - يستمع لتغيّر المصادقة عبر `onAuthStateChange`
-  - يقرر عرض `LoginScreen` أو `ChatScreen`
-  - يشغل `useTheme()` و`useServiceWorker()`
-  - يلف التطبيق داخل `ErrorBoundary`
-
-### 3.3 مسار الدخول
-
-```text
-User not authenticated
-  -> LoginScreen
-      -> guest login
-      -> email/password login
-      -> registration
-      -> Google OAuth
-  -> onLogin callback
-  -> App stores normalized UserSession
-  -> ChatScreen
-```
-
-### 3.4 مسار الشات
-
-```text
-ChatScreen
-  -> determine current room
-  -> restore local preferences / local caches
-  -> fetch room messages from Supabase
-  -> subscribe to realtime updates
-  -> send text/media/gift/private messages
-  -> update UI state and local storage
-```
-
----
-
-## 4. هيكل المستودع
+## 4. هيكل الملفات
 
 ```text
 api/
   auth-config.js
 
 public/
-  assets/
-  images/
   manifest.json
-  offline.html
-  robots.txt
-  sitemap.xml
   sw.js
+  offline.html
+  login.html
+  images / assets / seo files
 
 src/
+  App.tsx
+  main.tsx
+  index.css
   components/
-    modals/
-    pwa/
-    AMLogo.tsx
-    BossSigil.tsx
     ChatScreen.tsx
-    ErrorBoundary.tsx
     LoginScreen.tsx
     SimpleLoginScreen.tsx
+    ErrorBoundary.tsx
+    AMLogo.tsx
+    BossSigil.tsx
+    modals/
+    pwa/
   hooks/
     useServiceWorker.ts
     useTheme.ts
   lib/
+    supabase.ts
+    chatTypes.ts
     chatConstants.ts
     chatHelpers.ts
     chatMessageRender.tsx
-    chatTypes.ts
-    storage.ts
-    supabase.ts
+    authProfile.ts
     themes.ts
-  App.tsx
-  index.css
-  main.tsx
+    storage.ts
 
 supabase-schema.sql
 supabase-storage.sql
 vercel.json
-package.json
-.env.example
+vite.config.ts
 README.md
-CODE_WIKI.md
 ```
 
-### 4.1 مجلد `src/components`
+## 5. مسؤوليات الموديولات الرئيسية
 
-- `LoginScreen.tsx`
-  - شاشة الدخول المتقدمة
-  - تدعم الضيف، البريد وكلمة المرور، والتسجيل، و`Google OAuth`
+### 5.1 `src/main.tsx`
 
-- `SimpleLoginScreen.tsx`
-  - واجهة دخول مبسطة بغلاف بصري مختلف
-  - يمكنها التحويل لاحقاً إلى `LoginScreen`
+نقطة الدخول الأساسية للتطبيق. مسؤوليته الوحيدة تقريبًا هي تركيب `App` داخل DOM.
 
-- `ChatScreen.tsx`
-  - أكبر ملف في المشروع
-  - يجمع منطق الغرف، الرسائل، الرسائل الخاصة، الرفع، الإشراف، والمتجر
+### 5.2 `src/App.tsx`
 
-- `ErrorBoundary.tsx`
-  - حاجز أخطاء React على مستوى التطبيق
+المكوّن المنسق للتطبيق. مسؤولياته:
 
-- `components/modals/*`
-  - نوافذ منبثقة مثل إنشاء غرفة، مشاركة، بروفايل، وسياق المستخدم
-
-- `components/pwa/*`
-  - عناصر حالة الاتصال، تحديث التطبيق، التثبيت، وإعدادات الثيم
-
-### 4.2 مجلد `src/hooks`
-
-- `useTheme.ts`
-  - يطبق ثيم التطبيق العام عبر متغيرات CSS
-
-- `useServiceWorker.ts`
-  - يسجل `sw.js`
-  - يتابع حالة التثبيت والتحديث والاتصال
-
-### 4.3 مجلد `src/lib`
-
-- `chatTypes.ts`
-  - أنواع العقود الأساسية للواجهة
-
-- `chatConstants.ts`
-  - الغرف الافتراضية، التصنيفات، الهدايا، الإيموجي، وثوابت الواجهة
-
-- `chatHelpers.ts`
-  - دوال مساعدة لتحليل الروابط، الأدوار، والأسماء
-
-- `chatMessageRender.tsx`
-  - يحول نص الرسالة إلى محتوى تفاعلي مع معاينات YouTube/صورة/فيديو
-
-- `storage.ts`
-  - غلاف آمن لـ `localStorage`
-
-- `supabase.ts`
-  - تجهيز عميل `Supabase` والتحقق من الإعدادات
-
-- `themes.ts`
-  - تعريف الثيمات الجاهزة والثيم المخصص
-
-### 4.4 `public`
-
-- `manifest.json`
-  - تعريف `PWA`
-
-- `sw.js`
-  - خدمة التخزين المؤقت والعمل دون اتصال جزئيًا
-
-- `offline.html`
-  - واجهة fallback عند فقدان الاتصال
-
-- `images/*`
-  - الشعارات والخلفيات والصور الثابتة
-
-### 4.5 `api`
-
-- `auth-config.js`
-  - endpoint بسيط يعيد حالة إعداد `Supabase`
-  - يستخدم عند النشر على `Vercel`
-
-### 4.6 ملفات البنية التحتية
-
-- `supabase-schema.sql`
-  - الجداول وسياسات `RLS` و`Realtime`
-
-- `supabase-storage.sql`
-  - إعداد bucket الوسائط وسياسات القراءة/الرفع
-
-- `vercel.json`
-  - رؤوس الأمان والسياسات الخاصة بالنشر
-
----
-
-## 5. الوحدات الرئيسية ومسؤولياتها
-
-## 5.1 `src/App.tsx`
-
-هذا الملف هو منسق دورة حياة التطبيق.
-
-المسؤوليات:
-
-- تحميل الجلسة الحالية
-- التفريق بين جلسة ضيف وجلسة `Supabase`
-- تحويل مستخدم `Supabase` إلى `UserSession`
-- تمرير callbacks الخاصة بالدخول والخروج
-- تشغيل `ErrorBoundary` و`PWA` والثيم
-
-الدوال الأساسية:
-
-- `readGuestSession()`
-  - يقرأ جلسة الضيف من `localStorage`
-
-- `writeGuestSession()`
-  - يحفظ جلسة الضيف
-
-- `clearGuestSession()`
-  - يمسح جلسة الضيف
-
-- `normalizeAuthRole()`
-  - يوحد الأدوار القادمة من metadata
-
-- `getStoredNickname()`
-  - يقرأ `nickname` من metadata
-
-- `needsProfileNickname()`
-  - يحدد هل الحساب يحتاج اسمًا ظاهرًا قبل دخول الشات
-
-- `sessionToUserSession()`
-  - يحول مستخدم `Supabase` إلى `UserSession`
-
-- `handleLogin()`
-  - ينشئ `UserSession` ويخزن جلسة الضيف عند الحاجة
-
-- `handleLogout()`
-  - يمسح الجلسة محليًا ويستدعي `supabase.auth.signOut()`
-
-اعتمادياته المباشرة:
-
-- `LoginScreen`
-- `ChatScreen`
-- `ErrorBoundary`
-- `useServiceWorker`
-- `useTheme`
-- `supabase`
-- `UserSession`
-
-## 5.2 `src/components/LoginScreen.tsx`
-
-طبقة الدخول الرسمية للتطبيق.
-
-المسؤوليات:
-
-- دخول كضيف
-- تسجيل دخول بالبريد وكلمة المرور
-- إنشاء حساب جديد
-- بدء `Google OAuth`
-- استكمال اسم المستخدم بعد أول تسجيل دخول
-- عرض رسائل feedback والحالة
+- قراءة جلسة الضيف من `localStorage`
+- استرجاع جلسة Supabase الحالية
+- متابعة تغيّر حالة المصادقة
+- تحديد ما إذا كان يجب عرض `LoginScreen` أو `ChatScreen`
+- تشغيل `useTheme()` و`useServiceWorker()`
+- عرض بانرات `PWA` مثل `UpdateBanner` و`OnlineStatus`
 
 أهم الدوال:
 
-- `normalizeAuthRole()`
-  - نسخة محلية لتوحيد الدور
+- `readGuestSession()`: قراءة جلسة الضيف المحلية
+- `writeGuestSession()`: حفظ جلسة الضيف
+- `clearGuestSession()`: حذف جلسة الضيف
+- `readDevSession()`: تحميل جلسة تطوير محلية عند العمل على بيئة التطوير
+- `sessionToUserSession()`: توحيد شكل مستخدم Supabase إلى `UserSession`
+- `needsProfileNickname()`: تحديد هل المستخدم يحتاج استكمال nickname
 
-- `getSupabaseRole()`
-  - تقرأ الدور من metadata
+### 5.3 `src/components/LoginScreen.tsx`
 
-- `randomGuestId()`
-  - تولد اسم ضيف افتراضي
+شاشة الدخول الرئيسية.
 
-- `randomColor()`
-  - تعين لونًا افتراضيًا للاسم
+مسؤولياتها:
 
-- `showFeedback()`
-  - تدير التنبيهات المؤقتة
+- دخول الزائر
+- تسجيل الدخول بالبريد وكلمة المرور
+- إنشاء حساب جديد
+- تسجيل الدخول عبر Google OAuth
+- استكمال nickname للحسابات التي تحتاج ذلك
+- عرض رسائل نجاح/فشل للمستخدم
+- دعم تثبيت التطبيق عند توفر `PWA install prompt`
 
-- `handleGuestLogin()`
-  - ينفذ دخول الضيف ويرسل النتيجة إلى `App`
+أهم الدوال:
 
-- `handleGoogleLogin()`
-  - يبدأ تسجيل دخول Google عبر Supabase
+- `getSupabaseRole()`: استخراج الرتبة من بيانات المستخدم
+- `resolveOwnerGhostMode()`: تطبيق حالة ghost mode للمالك
+- `randomGuestId()`: توليد اسم زائر افتراضي
+- `randomColor()`: اختيار لون افتراضي للضيف
+- `handleGoogleLogin()`: بدء Google OAuth
+- `handleLoginSubmit()`: تسجيل الدخول بالبريد
+- `handleRegisterSubmit()`: إنشاء حساب جديد
+- `handleSaveProfileNickname()`: حفظ nickname للحسابات الناقصة
 
-- `handleLoginSubmit()`
-  - يسجل الدخول بالبريد وكلمة المرور
+### 5.4 `src/components/ChatScreen.tsx`
 
-- `handleRegisterSubmit()`
-  - ينشئ حسابًا جديدًا
+هذا هو الموديول المركزي الأكبر والأكثر مسؤولية في المشروع.
 
-- `handleSaveProfileNickname()`
-  - يكمل الملف الشخصي عند غياب `nickname`
+مسؤولياته:
 
-الملاحظة المهمة:
+- إدارة الغرف الحالية والغرفة النشطة
+- تحميل الرسائل من Supabase
+- الاشتراك في Realtime لتحديث الرسائل
+- إرسال الرسائل النصية والوسائط
+- الرسائل الخاصة
+- قوائم الأعضاء والحظر
+- لوحات الإدارة والمالك والحرس
+- مركز التصميم والثيمات والخلفيات
+- الراديو والموسيقى والتسجيل الصوتي
+- المتجر والمنتجات والاشتراكات
 
-- يوجد تكرار جزئي لمنطق `normalizeAuthRole()` بين هذا الملف و`App.tsx`
+أهم الدوال والمساعدات داخل الملف:
 
-## 5.3 `src/components/ChatScreen.tsx`
+- `isUuidLike()`: تمييز ما إذا كانت القيمة تشبه UUID
+- `createBanSignature()`: بناء بصمة فريدة لسجل الحظر
+- `mergeBanLists()`: دمج قوائم المحظورين بدون تكرار
+- `serializeBanRowReason()`: توحيد سبب الحظر عند التخزين
+- `parseBannedUserRow()`: تحويل صف Supabase إلى `BanInfo`
+- `sanitizeRoomBgMap()`: تنظيف تعيين الخلفيات لكل غرفة
 
-هذا الملف هو قلب التطبيق الفعلي، ويجمع كثيرًا من منطق الأعمال.
+ملاحظة مهمة:
 
-المسؤوليات الرئيسية:
+- الملف ضخم جدًا ومتعدد المسؤوليات، وهو أكبر نقطة دين تقني في المشروع.
 
-- إدارة الغرفة الحالية والتنقل بين الغرف
-- تحميل الرسائل العامة من `Supabase`
-- الاشتراك في `Realtime`
-- إرسال الرسائل النصية
-- إرسال الصور والفيديو والصوت
-- إدارة الرسائل الخاصة `PM`
-- إدارة الأعضاء، الحظر، والسياق الإداري
-- إدارة منشورات `posts-feed`
-- إدارة المتجر والاشتراكات والعناصر التجميلية
-- إدارة الثيمات الخاصة بالشات والخلفيات والقراءة
-- إدارة الحالة المحلية وكمية كبيرة من التفضيلات في `localStorage`
+### 5.5 `src/lib/supabase.ts`
 
-وحدات داخلية بارزة:
+هذا الملف هو بوابة Supabase داخل التطبيق.
 
-- `MobileBottomSheet`
-  - عنصر واجهة مساعد للموبايل
+مسؤولياته:
 
-- `PostsFeedRoom`
-  - تمثيل خاص لغرفة المنشورات
+- تهيئة عميل Supabase
+- التحقق من اكتمال متغيرات البيئة
+- ضبط خصائص المصادقة:
+  - `persistSession`
+  - `autoRefreshToken`
+  - `detectSessionInUrl`
+  - `storageKey`
+- تعريف أنواع الصفوف الأساسية القادمة من قاعدة البيانات
 
-دوال ومنطق بارز:
+أهم الدوال والأنواع:
 
-- `handleSwitchRoom()`
-  - يبدل الغرفة الحالية ويضبط الحالة المصاحبة
+- `isSupabaseConfigured`: يحدد هل البيئة جاهزة
+- `supabase`: عميل Supabase أو `null`
+- `getClientUid()`: معرف عميل محلي ثابت
+- `SupabaseMessage`
+- `OwnerSettingsRow`
+- `OwnerMemberPermissionRow`
+- `OwnerActivityLogRow`
+- `BannedUserRow`
+- `NicknameChangeRequestRow`
 
-- `handleSendMessage()`
-  - يعالج الإرسال النصي ويحتوي قيودًا وسياقات متعددة
+### 5.6 `src/lib/authProfile.ts`
 
-- `sendMediaMessage()`
-  - يرسل رسالة وسائط بعد تجهيز بياناتها
+طبقة تطبيع بيانات المستخدم القادمة من Supabase.
 
-- `uploadAndSendImage()`
-  - يرفع الملف إلى `Supabase Storage` ثم ينشئ رسالة
+أهم الدوال:
 
-- `handlePmImageUploadChange()`
-  - يرفع وسائط الرسائل الخاصة
+- `normalizeAuthRole()`: توحيد الرتبة إلى `owner` أو `admin` أو `guard` أو `vip` أو `member`
+- `getResolvedSupabaseNickname()`: استخراج nickname فعلي من metadata أو البريد
+- `getResolvedSupabaseColor()`: استخراج أو توليد لون ثابت للمستخدم
+- `hasPlaceholderSupabaseNickname()`: كشف nicknames الافتراضية غير المناسبة
 
-- `openMemberProfile()`
-  - يفتح سياق/بروفايل العضو
+### 5.7 `src/lib/chatTypes.ts`
 
-- `addSystemActivityLog()`
-  - يضيف سجل نشاط داخلي
+هذا الملف يحتوي العقود المركزية للبيانات.
 
-ملاحظة معمارية:
+من أهم الأنواع:
 
-- الملف ضخم جدًا ومتعدد المسؤوليات، ويمثل أهم نقطة يجب تفكيكها مستقبلاً
+- `UserRole`
+- `UserSession`
+- `ChatMessage`
+- `ChatMember`
+- `BanInfo`
+- `ChatRoom`
+- `PrivateMessage`
+- `ProductItem`
+- `ProductType`
+- `ProductTab`
+- `OwnerActivityLog`
 
-## 5.4 `src/hooks/useTheme.ts`
+أهمية هذا الملف أنه يحدد اللغة المشتركة بين أغلب مكونات التطبيق.
 
-هذا hook مسؤول عن ثيم التطبيق العام.
+### 5.8 `src/lib/chatConstants.ts`
 
-المسؤوليات:
+ملف الثوابت العامة للشات.
 
-- قراءة الثيم من `localStorage`
-- حفظ الثيم بعد تغييره
-- تطبيق متغيرات CSS على `document.documentElement`
-- تحديث `meta[name="theme-color"]`
-- دعم الثيمات الجاهزة والثيمات المخصصة
+من أهم ما يحتويه:
 
-الدوال الأساسية:
+- `ROOMS_DEF`: الغرف الافتراضية
+- `EMOJIS`: قائمة الإيموجي
+- `GIFTS`: الهدايا
+- ثوابت واجهية وتجريبية تستخدم داخل `ChatScreen`
 
+### 5.9 `src/lib/chatHelpers.ts`
+
+أدوات مساعدة عامة للشات.
+
+أهم الدوال:
+
+- `getYoutubeId()`: استخراج معرف فيديو YouTube من الرابط
+- `hexToRgba()`: تحويل لون Hex إلى RGBA
+- `getShortenedNickname()`: تنظيف الاسم المختصر من ألقاب مثل VIP أو Admin
+
+### 5.10 `src/lib/chatMessageRender.tsx`
+
+مسؤول عن تنسيق النصوص والرسائل عند العرض.
+
+أهم دواله:
+
+- `renderInlineFormattedText()`: تنسيق النص إلى أجزاء React
+- `renderTextMessageWithMedia()`: رندر الرسالة مع معاينات الوسائط والروابط
+
+### 5.11 `src/hooks/useTheme.ts`
+
+هوك الثيم الرئيسي.
+
+مسؤولياته:
+
+- تحميل الثيم المحفوظ
+- تطبيع الثيمات القادمة من التخزين
+- تطبيق CSS variables على document root
+- حفظ الثيم الحالي
+- دعم presets وثيمات مخصصة
+
+أهم الدوال:
+
+- `sanitizePalette()`
+- `resolveTheme()`
 - `readSavedTheme()`
 - `applyTheme()`
 - `saveTheme()`
-- `setThemeById()`
-- `applyCustomPalette()`
-- `resetTheme()`
+- `useTheme()`
 
-## 5.5 `src/lib/themes.ts`
+### 5.12 `src/lib/themes.ts`
 
-ملف تعريف نظام الثيم.
+مخزن الثيمات الافتراضية.
 
-يعرف:
+أهم ما يحتويه:
 
-- `ThemePalette`
-- `Theme`
 - `PRESETS`
 - `DEFAULT_THEME`
 - `CUSTOM_THEME_ID`
 - `buildCustomTheme()`
-- `paletteFromHex()`
-- `rgbFromHex()`
 
-الثيم الافتراضي هو `lamma`.
+### 5.13 `src/hooks/useServiceWorker.ts`
 
-## 5.6 `src/hooks/useServiceWorker.ts`
+هوك `PWA` الرئيسي.
 
-المسؤوليات:
+مسؤولياته:
 
-- تسجيل `sw.js`
-- كشف وجود تحديث جديد
-- تمرير callback للتثبيت
-- تتبع حالة الشبكة `online/offline`
-- تنفيذ التحديث عبر `SKIP_WAITING`
+- تسجيل `Service Worker` عند تفعيل `VITE_ENABLE_PWA`
+- تنظيف التسجيلات القديمة والكاشات عند تعطيل `PWA`
+- كشف التحديثات الجديدة
+- كشف حالة الاتصال `online/offline`
+- التعامل مع `beforeinstallprompt`
 
-القيم الأساسية التي يعيدها:
+أهم الدوال:
 
-- `needRefresh`
-- `isInstalled`
-- `installPromptEvent`
-- `isOnline`
-- `promptInstall()`
-- `update()`
+- `clearLammaCaches()`
+- `unregisterAllServiceWorkers()`
+- `useServiceWorker()`
 
-## 5.7 `src/lib/supabase.ts`
+### 5.14 `src/components/pwa/*`
 
-مسؤول عن بوابة التكامل مع `Supabase`.
+مكونات `PWA` المساندة:
 
-المسؤوليات:
+- `UpdateBanner.tsx`: إشعار بوجود تحديث
+- `OnlineStatus.tsx`: عرض حالة الاتصال
+- `InstallPrompt.tsx`: دعوة لتثبيت التطبيق
+- `ThemeFab.tsx`: زر عائم لفتح إعدادات الثيم
+- `ThemeSettings.tsx`: شاشة اختيار وتخصيص الثيم
+
+### 5.15 `src/components/modals/*`
+
+مجموعة مودالات تدعم سلوك الشات والإدارة:
+
+- `CreateRoomModal`: إنشاء غرفة
+- `ShareModal`: مشاركة رابط التطبيق
+- `UserContextPopup`: إجراءات سريعة على عضو
+- `UserProfileBioPopup`: عرض Bio مختصر
+- `UserProfileModal`: ملف العضو وإجراءاته
+- `OwnerPanelModal`: لوحة المالك
+- `AdminPanelModal`: لوحة الأدمن
+- `GuardPanelModal`: لوحة الحرس/الحماية
+- `StorePanelModal`: المتجر
+- `DesignCenterModal`: مركز التصميم
+- `StatsModal`: الإحصاءات
+
+## 6. الملفات الثابتة والبنية التحتية
+
+### 6.1 `api/auth-config.js`
+
+Endpoint خفيف يعمل على Vercel.
+
+وظيفته:
 
 - قراءة `VITE_SUPABASE_URL`
 - قراءة `VITE_SUPABASE_ANON_KEY`
-- إنشاء العميل عند اكتمال الإعدادات
-- التحذير عند نقص الإعدادات
-- توفير `getClientUid()`
-- تعريف `SupabaseMessage`
-
-مهم:
-
-- عند غياب إعدادات `Supabase` يصبح `supabase` مساويًا `null`
-- التطبيق يظل يقلع، لكن بوظائف ناقصة
-
-## 5.8 `src/lib/storage.ts`
-
-غلاف آمن حول `localStorage`.
-
-الدوال:
-
-- `get()`
-- `set()`
-- `getString()`
-- `setString()`
-- `remove()`
-- `update()`
-
-الفائدة:
-
-- يمنع كسر التطبيق عند JSON تالف أو أخطاء quota
-
-## 5.9 `src/lib/chatHelpers.ts`
-
-مساعدات خفيفة قابلة لإعادة الاستخدام.
-
-الدوال:
-
-- `getYoutubeId()`
-  - يستخرج معرف فيديو YouTube من الرابط
-
-- `hexToRgba()`
-  - يحول hex إلى `rgba()`
-
-- `getRoleFromAuthor()`
-  - يحدد الدور من بيانات موثوقة بدل اسم العرض
-
-- `getFrameFromAuthor()`
-  - يعيد إطارًا بصريًا مناسبًا حسب الدور
-
-- `getShortenedNickname()`
-  - يختصر أسماء الضيوف ويزيل الألقاب الزائدة
-
-## 5.10 `src/lib/chatMessageRender.tsx`
-
-المسؤولية:
-
-- تحويل نص الرسالة إلى روابط قابلة للنقر
-- إظهار معاينة YouTube
-- إظهار معاينة صور وفيديوهات مضمنة داخل النص
-
-الدالة الرئيسية:
-
-- `renderTextMessageWithMedia()`
-
-## 5.11 `src/components/ErrorBoundary.tsx`
-
-الكلاس الصريح الأهم في المشروع.
-
-المسؤوليات:
-
-- التقاط أخطاء React غير المعالجة
-- تسجيل الخطأ في الـ console
-- عرض fallback للمستخدم
-- إتاحة إعادة المحاولة أو إعادة تحميل الصفحة
-
-الدوال الأساسية:
-
-- `getDerivedStateFromError()`
-- `componentDidCatch()`
-- `handleReset()`
-- `handleReload()`
-
----
-
-## 6. نماذج البيانات الأساسية
-
-### 6.1 `MemberRole`
-
-القيم المدعومة:
-
-- `guest`
-- `user`
-- `vip`
-- `platinum_vip`
-- `mod`
-- `admin`
-- `owner`
-
-### 6.2 `UserSession`
-
-يمثل المستخدم الحالي داخل التطبيق:
-
-- `nickname`
-- `role`
-- `color`
-- `uid`
-- `email`
-- `authProvider`
-- `frame`
-- `title`
-- `badge`
-- `avatar`
-
-### 6.3 `Message`
-
-يمثل رسالة الواجهة:
-
-- `id`
-- `author`
-- `text`
-- `color`
-- `isOwn`
-- `time`
-- `type`
-- `mediaUrl`
-- `giftIcon`
-- `giftName`
-- `youtubeId`
-- `reactions`
-
-### 6.4 `ChatMember`
-
-يمثل عضوًا ظاهرًا في الغرفة:
-
-- `id`
-- `nickname`
-- `role`
-- `color`
-- `avatar`
-- `status`
-- `badge`
-- `title`
-- `fingerprint`
-- `browserSignature`
-- `localStorageId`
-- `bio`
-
-### 6.5 أنواع أخرى
-
-- `PMThreadMessage`
-- `MemberCustomPermissions`
-- `BanInfo`
-- `ActivityLog`
-- `ChatScreenProps`
-- `ProductTab`
-- `ProductType`
-
----
-
-## 7. التبعيات والعلاقات
-
-### 7.1 شجرة التبعيات الأساسية
-
-```text
-main.tsx
-  -> App.tsx
-      -> LoginScreen.tsx
-      -> ChatScreen.tsx
-      -> ErrorBoundary.tsx
-      -> hooks/useServiceWorker.ts
-      -> hooks/useTheme.ts
-
-ChatScreen.tsx
-  -> lib/chatTypes.ts
-  -> lib/chatConstants.ts
-  -> lib/chatHelpers.ts
-  -> lib/chatMessageRender.tsx
-  -> lib/storage.ts
-  -> lib/supabase.ts
-  -> components/modals/*
-  -> components/pwa/*
-
-LoginScreen.tsx
-  -> lib/supabase.ts
-  -> App.onLogin callback
-```
-
-### 7.2 تدفق المصادقة
-
-```text
-LoginScreen
-  -> supabase.auth.signInWithPassword / signInWithOAuth / signUp
-  -> App.handleLogin
-  -> UserSession
-  -> ChatScreen
-```
-
-### 7.3 تدفق الجلسة
-
-```text
-Guest session
-  -> localStorage
-  -> App.readGuestSession()
-
-Supabase session
-  -> supabase.auth.getSession()
-  -> supabase.auth.onAuthStateChange()
-  -> App.sessionToUserSession()
-```
-
-### 7.4 تدفق الرسائل العامة
-
-```text
-ChatScreen
-  -> fetch messages from Supabase
-  -> subscribe to realtime inserts
-  -> update local room state
-  -> render message list
-```
-
-### 7.5 تدفق الوسائط
-
-```text
-User selects file
-  -> upload to Supabase Storage bucket chat-media
-  -> insert message row with media_url
-  -> realtime propagates the new message
-```
-
-### 7.6 تدفق الثيم
-
-```text
-ThemeSettings / ThemeFab
-  -> useTheme()
-  -> write CSS variables on :root
-  -> components consume variables
-
-ChatScreen
-  -> applies additional in-chat styling layers
-  -> index.css overrides parts of the shell
-```
-
----
-
-## 8. قاعدة البيانات والبنية الخلفية
-
-### 8.1 الجداول الأساسية في `supabase-schema.sql`
-
-- `messages`
-  - المصدر الرئيسي لرسائل الغرف
-  - يضم النص، نوع الرسالة، `media_url`, `gift_*`, `youtube_id`, `reactions`
-
-- `banned_users`
-  - سجل الحظر والكتم والمنع الإداري
-
-- `vip_subscriptions`
-  - تخزين الاشتراكات الفعالة وعناصر مثل `badge` و`avatar`
-
-- `pm_messages`
-  - الرسائل الخاصة الدائمة بين المستخدمين
-
-### 8.2 سياسات الأمان
-
-- `messages`
-  - القراءة متاحة للجميع
-  - الإدخال متاح للمستخدم الموثق أو الضيف مع `sender_uid`
-
-- `banned_users`
-  - الإدخال والحذف مقيدان عبر `is_admin()`
-
-- `vip_subscriptions`
-  - المستخدم يقرأ اشتراكه فقط
-  - الإدارة للأدمن فقط
-
-- `pm_messages`
-  - القراءة للمُرسِل أو المُستقبِل
-  - الإدخال للمُرسِل فقط
-
-### 8.3 التخزين
-
-في `supabase-storage.sql`:
-
-- bucket: `chat-media`
-- القراءة عامة
-- الرفع للمستخدمين الموثقين فقط
-
-### 8.4 الـ realtime
-
-المنشورات المضافة إلى `supabase_realtime`:
+- قراءة `VITE_APP_URL`
+- إرجاع `configured=true/false`
+- منع الكاش لهذه الاستجابة
+
+هذا الملف مهم خصوصًا لصفحة الدخول الثابتة في `public/login.html` و`public/assets/login.js`.
+
+### 6.2 `public/sw.js`
+
+Service Worker فعلي يحتوي:
+
+- إصدار كاش `VERSION`
+- `PRECACHE_URLS`
+- استراتيجيات:
+  - `cacheFirst`
+  - `networkFirst`
+  - `networkOnlyDocument`
+- دعم رسائل مثل `SKIP_WAITING` و`CLEAR_CACHES`
+
+### 6.3 `public/manifest.json`
+
+يعرّف التطبيق كتجربة `PWA`، بما في ذلك:
+
+- الاسم
+- الأيقونات
+- اختصارات الغرف
+- ألوان النظام
+
+### 6.4 `public/login.html`
+
+صفحة دخول HTML مستقلة ما زالت موجودة داخل المشروع. تبدو كواجهة موازية أو legacy login page، بينما نقطة الدخول الأساسية الحالية ما زالت عبر React من `src/main.tsx`.
+
+## 7. العلاقات بين الموديولات
+
+### 7.1 تبعيات منطقية
+
+- `main.tsx` يعتمد على `App.tsx`
+- `App.tsx` يعتمد على:
+  - `LoginScreen.tsx`
+  - `ChatScreen.tsx`
+  - `useTheme.ts`
+  - `useServiceWorker.ts`
+  - `supabase.ts`
+  - `authProfile.ts`
+- `LoginScreen.tsx` يعتمد على:
+  - `supabase.ts`
+  - `authProfile.ts`
+  - أيقونات `lucide-react`
+- `ChatScreen.tsx` يعتمد على:
+  - `chatTypes.ts`
+  - `chatConstants.ts`
+  - `chatHelpers.ts`
+  - `chatMessageRender.tsx`
+  - `supabase.ts`
+  - `modals/*`
+  - بعض مكونات `pwa/*`
+- `useTheme.ts` يعتمد على `themes.ts`
+- `api/auth-config.js` يعتمد على متغيرات البيئة الخاصة بالنشر
+
+### 7.2 التبعيات الخارجية
+
+- `React`: الواجهة وحالة المكونات
+- `Vite`: البناء والتطوير
+- `Supabase`: Auth + DB + Realtime + Storage
+- `Tailwind CSS`: التنسيق
+- `Motion`: الحركات
+- `lucide-react`: الأيقونات
+
+## 8. قاعدة البيانات والتخزين
+
+### 8.1 الجداول الأساسية
+
+بحسب `supabase-schema.sql`، من الجداول المهمة:
 
 - `messages`
 - `banned_users`
 - `vip_subscriptions`
 - `pm_messages`
+- `owner_settings`
+- `owner_member_permissions`
+- `owner_activity_logs`
+- `nickname_change_requests`
 
----
+### 8.2 التخزين
 
-## 9. الواجهات الخارجية
+بحسب `supabase-storage.sql`، يتم استخدام Buckets مثل:
 
-### 9.1 Supabase
+- `chat-media`
+- `design-assets`
 
-الاستخدامات:
+ويتم رفع الوسائط والتصميمات إليها من الواجهة.
 
-- `Auth`
-- `Database`
-- `Realtime`
-- `Storage`
+## 9. إعدادات البناء والنشر
 
-المتغيرات المطلوبة:
+### 9.1 `package.json`
 
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-
-### 9.2 Gemini Search Endpoint
-
-متغير اختياري:
-
-- `VITE_GEMINI_SEARCH_ENDPOINT`
-
-إذا لم يكن موجودًا فميزة البحث الذكي تكون غير مفعلة.
-
-### 9.3 Vercel
-
-الاستخدامات:
-
-- استضافة الواجهة
-- تشغيل `api/auth-config.js`
-- تطبيق رؤوس الأمان في `vercel.json`
-
-### 9.4 PWA
-
-العناصر الأساسية:
-
-- `public/manifest.json`
-- `public/sw.js`
-- `src/hooks/useServiceWorker.ts`
-- `src/components/pwa/*`
-
----
-
-## 10. الثيمات والتصميم
-
-يوجد مستويان للتصميم:
-
-### 10.1 ثيم التطبيق العام
-
-مصدره:
-
-- `useTheme.ts`
-- `themes.ts`
-
-يعتمد على متغيرات مثل:
-
-- `--theme-primary`
-- `--theme-accent`
-- `--theme-bg-1`
-- `--theme-bg-2`
-- `--theme-bg-3`
-- `--theme-text`
-
-### 10.2 ثيم الشات الداخلي
-
-مصدره:
-
-- حالات داخل `ChatScreen.tsx`
-- قواعد كثيرة في `src/index.css`
-
-من أمثلته:
-
-- `data-chat-theme`
-- `data-clear-bg`
-- `data-reading-mode`
-- `lamma-neutral-glass`
-
-الملاحظة المهمة:
-
-- منطق الثيم موزع بين الثيم العام وطبقات CSS داخل الشات، لذلك قد تظهر تداخلات
-  أو سلوك بصري غير متوقع إذا لم تُراجع التغييرات بعناية
-
----
-
-## 11. كيفية تشغيل المشروع
-
-### 11.1 تثبيت الاعتماديات
+الأوامر الأساسية:
 
 ```bash
 npm install
-```
-
-### 11.2 إعداد البيئة
-
-أنشئ ملف `.env.local` أو `.env` بالقيم التالية:
-
-```env
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-VITE_APP_URL=http://localhost:5173
-VITE_GEMINI_SEARCH_ENDPOINT=
-VITE_BRAND_NAME=Lamma Chat
-VITE_BRAND_CREDIT=Your Name
-VITE_LOGIN_HERO_BG=/images/login-hero.jpg
-```
-
-### 11.3 تشغيل التطوير
-
-```bash
 npm run dev
-```
-
-### 11.4 بناء الإنتاج
-
-```bash
 npm run build
-```
-
-### 11.5 معاينة نسخة الإنتاج
-
-```bash
 npm run preview
-```
-
-### 11.6 فحص TypeScript
-
-```bash
 npm run lint
 ```
 
 ملاحظة:
 
-- `lint` هنا ينفذ `tsc --noEmit` وليس ESLint
+- `npm run lint` ينفذ `tsc --noEmit` وليس ESLint
 
----
+### 9.2 `vite.config.ts`
 
-## 12. التحقق العملي من قابلية الإطلاق
+الإعدادات المهمة:
 
-تم تنفيذ الفحص العملي التالي على المستودع:
+- إضافة `react()` و`tailwindcss()`
+- alias باسم `@`
+- تقسيم الحزم يدويًا عبر `manualChunks` لتخفيف الحمل الأولي
 
-### 12.1 ما الذي نجح
+### 9.3 `vercel.json`
 
-- `npm install`
-- `npm run lint`
-- `npm run build`
-- `npm run dev -- --host 127.0.0.1 --port 4173`
+الإعدادات الحالية تشمل:
 
-### 12.2 نتيجة التشغيل
+- `rewrites` لدعم `SPA`
+- رؤوس أمان مثل `CSP`
+- إعدادات خاصة بـ `sw.js` و`manifest.json`
 
-- خادم Vite أقلع بنجاح
-- الصفحة استجابت على `http://127.0.0.1:4173/`
-- الواجهة الأساسية ظهرت في المتصفح
+## 10. متغيرات البيئة
 
-### 12.3 التحذيرات والملاحظات
+المتغيرات الأساسية:
 
-- تحذير متوقع عند غياب إعدادات `Supabase`
-  - التطبيق يقلع لكن بقدرات ناقصة
+```env
+VITE_APP_URL=
+VITE_ENABLE_PWA=false
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+VITE_GEMINI_SEARCH_ENDPOINT=
+VITE_BRAND_NAME=
+VITE_BRAND_CREDIT=
+VITE_LOGIN_HERO_BG=
+```
 
-- ظهرت ملاحظة runtime مرتبطة بالثيمات في الـ console
-  - الرسالة تتعلق باستدعاء `getThemeColors` ومحاولة قراءة قيمة غير معرفة
-  - هذا لا يمنع إقلاع Vite أو البناء، لكنه يشير إلى خلل واجهي يجب مراجعته قبل
-    اعتماد إطلاق إنتاجي كامل
+الأهم تشغيليًا:
 
-- البناء ينجح مع تحذيرين من محسن CSS
-  - التحذيران مرتبطان بمحددات CSS مركبة داخل `index.css`
-  - لا يوقفان عملية البناء حالياً
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_APP_URL`
 
-### 12.4 الحكم النهائي
+## 11. طريقة التشغيل
 
-- المشروع قابل للإقلاع محلياً من ناحية التثبيت والبناء وتشغيل خادم التطوير
-- المشروع غير جاهز كإطلاق إنتاجي كامل بدون:
-  - ضبط متغيرات `Supabase`
-  - مراجعة خطأ runtime المرتبط بالثيمات
-  - تحديث التوثيق والمتغيرات البيئية ليطابقا الكود الفعلي
+### 11.1 محليًا
 
----
+1. ثبّت الاعتماديات:
 
-## 13. المخاطر والديون التقنية
+```bash
+npm install
+```
 
-### 13.1 نقاط القوة
+2. أنشئ `.env` أو `.env.local` بناءً على `.env.example`
 
-- بنية تشغيل واضحة
-- دمج فعلي جيد مع `Supabase`
+3. ضع قيم Supabase:
+
+```env
+VITE_SUPABASE_URL="..."
+VITE_SUPABASE_ANON_KEY="..."
+VITE_APP_URL="http://localhost:5173"
+VITE_ENABLE_PWA="false"
+```
+
+4. شغّل التطبيق:
+
+```bash
+npm run dev
+```
+
+### 11.2 بناء الإنتاج
+
+```bash
+npm run build
+npm run preview
+```
+
+### 11.3 النشر
+
+#### Vercel
+
+- اربط المستودع بـ Vercel
+- اضبط متغيرات البيئة نفسها داخل إعدادات المشروع
+- سيعمل endpoint `/api/auth-config` تلقائيًا
+
+#### Supabase
+
+- أنشئ مشروع Supabase
+- نفّذ `supabase-schema.sql`
+- نفّذ `supabase-storage.sql`
+- انسخ `URL` و`Anon Key` إلى متغيرات البيئة
+
+## 12. نقاط القوة
+
+- بنية تشغيل واضحة نسبيًا
+- تكامل فعلي مع Supabase
 - دعم `PWA`
-- تجربة عربية غنية وتخصيص بصري قوي
+- تخصيص بصري قوي
+- تجربة دخول مرنة بين ضيف ومستخدم موثق
 
-### 13.2 نقاط الضعف
+## 13. نقاط الضعف
 
-- `ChatScreen.tsx` ملف ضخم جدًا ومتعدد المسؤوليات
-- لا توجد اختبارات آلية
-- جزء من التوثيق كان قديمًا وغير مطابق
-- منطق الثيم موزع بين عدة طبقات
+- `ChatScreen.tsx` ضخم جدًا ومتعدد المسؤوليات
+- منطق الأعمال موزع بين الواجهة أكثر من اللازم
+- لا توجد طبقة services/repositories مستقلة
+- لا توجد اختبارات آلية واضحة
+- توجد بقايا بنية legacy مثل `public/login.html`
 
-### 13.3 أولويات التحسين
+## 14. توصيات تحسين
 
-1. تفكيك `ChatScreen.tsx` إلى hooks وخدمات ومكونات فرعية
-2. توحيد منطق الأدوار بين `App.tsx` و`LoginScreen.tsx`
-3. توحيد نظام الثيم لتجنب أخطاء runtime والتداخل البصري
-4. إضافة اختبارات مركزة لمسارات الدخول والإرسال والوسائط
-5. إنشاء طبقة `services` أو `repositories` لتقليل منطق Supabase داخل الواجهة
+1. تفكيك `ChatScreen.tsx` إلى features أو hooks فرعية
+2. استخراج طبقة `services` لتعاملات Supabase
+3. توحيد منطق الدخول بين شاشة React وصفحة `public/login.html`
+4. إضافة اختبارات مركزة لمسارات:
+   - الدخول
+   - إرسال الرسائل
+   - رفع الوسائط
+   - صلاحيات الإدارة
+5. تقليل الاعتماد على الحالة المحلية العملاقة داخل شاشة الشات
 
----
+## 15. مسار قراءة مقترح لمطور جديد
 
-## 14. مسار قراءة مقترح للمطور
+إذا كنت جديدًا على المشروع، ابدأ بهذا الترتيب:
 
-لفهم المشروع بسرعة:
+1. `README.md`
+2. `src/main.tsx`
+3. `src/App.tsx`
+4. `src/lib/supabase.ts`
+5. `src/components/LoginScreen.tsx`
+6. `src/components/ChatScreen.tsx`
+7. `src/lib/chatTypes.ts`
+8. `src/lib/chatConstants.ts`
+9. `src/hooks/useTheme.ts`
+10. `src/hooks/useServiceWorker.ts`
 
-1. ابدأ بـ `src/main.tsx`
-2. اقرأ `src/App.tsx`
-3. اقرأ `src/components/LoginScreen.tsx`
-4. اقرأ `src/components/ChatScreen.tsx` على مراحل
-5. راجع `src/lib/chatTypes.ts`
-6. راجع `src/lib/supabase.ts`
-7. راجع `src/lib/chatHelpers.ts` و`src/lib/chatMessageRender.tsx`
-8. اختم بـ `src/hooks/useTheme.ts`, `src/hooks/useServiceWorker.ts`, و`src/index.css`
+## 16. خلاصة
 
-بهذا الترتيب ستحصل على:
-
-- دورة حياة التطبيق
-- مسار المصادقة
-- منطق الرسائل والوسائط
-- التبعيات الخارجية
-- بنية الثيم والتجربة البصرية
+`Lamma Chat` مشروع واجهة دردشة غني بالخصائص وموجّه للنشر السريع باستخدام `Vercel + Supabase`. المعمارية الحالية عملية وتنجز المطلوب، لكنها تعتمد بشكل كبير على مكونات مركزية ضخمة، خصوصًا `ChatScreen.tsx`. لذلك فالمشروع مناسب حاليًا للتشغيل والتوسع المحدود، لكنه سيستفيد كثيرًا من إعادة تنظيم داخلية تدريجية مع نمو المزايا.

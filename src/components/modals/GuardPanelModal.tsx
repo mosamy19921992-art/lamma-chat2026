@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { MaintenancePanel } from "./MaintenancePanel";
 
 interface GuardPanelModalProps {
   isBotEnabled: boolean;
@@ -33,6 +34,27 @@ export function GuardPanelModal({
   addBotSystemWarning,
   setActiveModal,
 }: GuardPanelModalProps) {
+  const [trackerResult, setTrackerResult] = useState<string | null>(null);
+  const [trackerLoading, setTrackerLoading] = useState(false);
+
+  async function runTrackerCheck() {
+    setTrackerLoading(true);
+    setTrackerResult(null);
+    try {
+      const t0 = performance.now();
+      const resp = await fetch("https://www.google.com/generate_204", {
+        mode: "no-cors",
+        cache: "no-store",
+      });
+      const ms = Math.round(performance.now() - t0);
+      void resp;
+      setTrackerResult(`🟢 الشبكة متصلة — زمن الاستجابة: ${ms}ms`);
+    } catch {
+      setTrackerResult("🔴 تعذر الوصول للشبكة — تحقق من الاتصال.");
+    }
+    setTrackerLoading(false);
+  }
+
   return (
     <div className="space-y-6 select-none" dir="rtl">
       <div className="flex flex-col md:flex-row items-center justify-between p-4 rounded-2xl gap-3 lamma-soft-success">
@@ -43,9 +65,8 @@ export function GuardPanelModal({
               مركز البوتات الذكية الشامل (Bot Control Center)
             </h4>
             <p className="text-[10px] text-gray-400 mt-0.5 leading-relaxed text-right font-sans">
-              يمتلك الشات منظومة 4 بوتات آلية تعمل في الخلفية
-              للحماية، الصيانة، كتابة التقارير الشاملة، ومراقبة
-              تكنولوجيا الاتصال.
+              منظومة بوتات تعمل في الخلفية للحماية والصيانة ومراقبة
+              الشبكة — كلها حقيقية وفاعلة في الغرف العامة فقط.
             </p>
           </div>
         </div>
@@ -70,12 +91,12 @@ export function GuardPanelModal({
           <div className="flex items-center gap-2 mb-1">
             <span className="text-green-400 text-lg">🛡️</span>
             <span className="text-xs font-bold text-white">
-              بوت الحماية المركزي (Lamma Guard)
+              🔥 بوت الحماية المركزي (LC-Fire)
             </span>
           </div>
           <p className="text-[9px] text-gray-400 h-10 leading-relaxed text-right font-sans">
-            يقوم بفلترة الشتائم، منع الروابط الخارجية، وإيقاف
-            الرسائل المكررة (Spam) تلقائياً حمايةً للمجتمع.
+            يحجب الروابط الخارجية، يمنع السبام، وينفذ جدار الكلمات
+            بحجب الرسالة كاملةً — يعمل في الغرف العامة فقط.
           </p>
           <div className="flex flex-wrap gap-1 mt-1">
             <button
@@ -84,7 +105,7 @@ export function GuardPanelModal({
               }
               className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleSwearFilter ? "lamma-toggle-on" : "lamma-toggle-off"}`}
             >
-              تصفية الشتائم {botRuleSwearFilter ? "🟢" : "🔴"}
+              جدار الكلمات {botRuleSwearFilter ? "🟢" : "🔴"}
             </button>
             <button
               onClick={() => setBotRuleAntiSpam(!botRuleAntiSpam)}
@@ -98,7 +119,7 @@ export function GuardPanelModal({
               }
               className={`px-2 py-1 flex-1 text-center rounded text-[9px] transition-all font-bold cursor-pointer ${botRuleAntiLinks ? "lamma-toggle-on" : "lamma-toggle-off"}`}
             >
-              منع الروابط {botRuleAntiLinks ? "🟢" : "🔴"}
+              حجب الروابط {botRuleAntiLinks ? "🟢" : "🔴"}
             </button>
           </div>
         </div>
@@ -112,53 +133,59 @@ export function GuardPanelModal({
             </span>
           </div>
           <p className="text-[9px] text-gray-400 h-10 leading-relaxed text-right font-sans">
-            يولد تقارير حالة الشات عبر الأمر /guard أو /status،
-            ويقوم برصد الخلل وتنبيه الإدارة في حالة الأعطال
-            الحرجة.
+            يفحص اتصال السيرفر والتخزين وسلامة البيانات فعليًا،
+            ويصلح المشاكل تلقائيًا من لوحة الصيانة بالأسفل.
           </p>
           <div className="flex flex-col gap-1 mt-1">
             <div className="px-2 py-1.5 rounded-lg text-[9px] font-bold text-center lamma-section-card text-blue-300">
-              أوامر التقارير: /guard | /status تعمل بكفاءة ✅
+              فحص حقيقي + إصلاح تلقائي ↓ /guard | /status ✅
             </div>
           </div>
         </div>
 
-        {/* Bot 3: Tech Tracker */}
+        {/* Bot 3: Tech Tracker — real network check */}
         <div className="p-3 rounded-xl flex flex-col gap-2 lamma-admin-card">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-purple-400 text-lg">🛰️</span>
             <span className="text-xs font-bold text-white">
-              بوت متابعة التكنولوجيا والشبكات
+              بوت متابعة الشبكة (Network Tracker)
             </span>
           </div>
           <p className="text-[9px] text-gray-400 h-10 leading-relaxed text-right font-sans">
-            يراقب خوادم الـ WebRTC والاتصالات، ويقوم بالتحويل
-            التلقائي (Auto-Fallback) للمسارات البديلة أثناء
-            المكالمات الصوتية والمرئية لتفادي التقطيع.
+            يقيس زمن استجابة الشبكة الفعلي ويكشف انقطاع الاتصال
+            في الوقت الحقيقي.
           </p>
           <div className="flex flex-col gap-1 mt-1">
-            <div className="px-2 py-1.5 rounded-lg text-[9px] font-bold text-center lamma-section-card text-purple-300">
-              خوادم جوجل وكلاودفلير متصلة وتعمل تلقائياً ⚡
-            </div>
+            <button
+              onClick={runTrackerCheck}
+              disabled={trackerLoading}
+              className="px-2 py-1.5 rounded-lg text-[9px] font-bold text-center lamma-section-card text-purple-300 cursor-pointer hover:text-purple-200 transition-colors disabled:opacity-60"
+            >
+              {trackerLoading ? "⏳ جارٍ الفحص..." : "⚡ فحص الشبكة الآن"}
+            </button>
+            {trackerResult && (
+              <div className="px-2 py-1 rounded-lg text-[9px] font-bold text-center lamma-section-card text-lime-300">
+                {trackerResult}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Bot 4: Word Wall Auto-Mod */}
+        {/* Bot 4: Word Wall */}
         <div className="p-3 rounded-xl flex flex-col gap-2 lamma-admin-card">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-red-400 text-lg">🧱</span>
             <span className="text-xs font-bold text-white">
-              بوت الإشراف التلقائي (Word Firewall)
+              جدار الكلمات السيادي (Word Firewall)
             </span>
           </div>
           <p className="text-[9px] text-gray-400 h-10 leading-relaxed text-right font-sans">
-            مرتبط بغرفة تحكم المالك، يقوم بحجب وطرد أي عضو
-            تلقائياً إذا حاول إرسال كلمة موجودة في جدار الحماية
-            السيادي.
+            يحجب أي رسالة تحتوي على كلمة من قائمة المحظورات
+            فوراً — القائمة تُدار من لوحة تحكم المالك.
           </p>
           <div className="flex items-center justify-between mt-1 px-2 py-1.5 rounded-lg lamma-soft-danger">
             <span className="text-[9px] text-red-400 font-bold">
-              حجم القاموس السيادي النشط:
+              كلمات محجوبة:
             </span>
             <span className="text-[10px] text-white font-black bg-red-500/90 px-2 py-0.5 rounded-md">
               {bannedWords.length} كلمة
@@ -166,6 +193,14 @@ export function GuardPanelModal({
           </div>
         </div>
       </div>
+
+      <MaintenancePanel
+        activeRoomId={activeRoomId}
+        setBotLogs={setBotLogs}
+        addBotSystemWarning={addBotSystemWarning}
+      />
+
+      {/* Live security log */}
       <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
         <div className="flex items-center justify-between border-b border-green-500/10 pb-2">
           <div className="flex items-center gap-2">
@@ -197,9 +232,7 @@ export function GuardPanelModal({
               <span className="text-gray-500 shrink-0 font-sans">
                 [{log.time}]
               </span>
-              <span className="flex-grow font-sans">
-                {log.text}
-              </span>
+              <span className="flex-grow font-sans">{log.text}</span>
               <span className="shrink-0 font-black font-sans">
                 {log.severity === "danger"
                   ? "🛑 حجب"
@@ -211,70 +244,39 @@ export function GuardPanelModal({
           ))}
           {botLogs.length === 0 && (
             <div className="p-4 text-center text-gray-500 font-bold select-none w-full">
-              لا توجد محاولات تسلل أو اختراقات مسجلة حالياً. حارس
-              الحماية ساهر لمراقبة الشات.
+              لا توجد محاولات مسجلة حالياً — الحارس ساهر.
             </div>
           )}
         </div>
       </div>
 
-      {/* QUICK ACTION CONTROLS */}
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={() => {
-            const timeStr = new Date().toLocaleTimeString(
-              "en-US",
-              {
-                hour: "numeric",
-                minute: "numeric",
-                hour12: true,
-              },
-            );
-            addBotSystemWarning(
-              activeRoomId,
-              "🚨 نداء بخصوص الحفاظ على هدوء الغرفة من حارس الشات الذكي Lamma Guard: نرجو من الجميع الاهتمام بآداب النقاش، وعدم نشر أي نصوص أو محتويات منافية حفاظا على استقرار الغرفة ومنعا للإقصاء التلقائي 🛡️.",
-            );
-            setBotLogs((prev) => [
-              {
-                id: `${Date.now()}`,
-                time: timeStr,
-                text: "بث الأدمن نداء عام بخصوص أمان واستقرار الشات لجميع الأعضاء.",
-                severity: "info",
-              },
-              ...prev,
-            ]);
-            setActiveModal(null);
-          }}
-          className="py-2.5 rounded-xl text-yellow-300 font-black text-[10px] transition-all flex items-center justify-center gap-1.5 select-none lamma-soft-warn"
-        >
-          🚨 إنذار عام للغرفة
-        </button>
-
-        <button
-          onClick={() => {
-            const timeStr = new Date().toLocaleTimeString(
-              "en-US",
-              {
-                hour: "numeric",
-                minute: "numeric",
-                hour12: true,
-              },
-            );
-            setBotLogs((prev) => [
-              {
-                id: `${Date.now()}`,
-                time: timeStr,
-                text: "اختبار فحص الغرفة التلقائي: تم التحقق بنجاح من جدار الكلمات وسرعة نقل الحزم اللافكرية للغرف بنسب سلامة 100%.",
-                severity: "info",
-              },
-              ...prev,
-            ]);
-          }}
-          className="py-2.5 rounded-xl text-lime-300 font-black text-[10px] transition-all flex items-center justify-center gap-1.5 cursor-pointer lamma-soft-success"
-        >
-          ⚡ محاكاة فحص الغرفة
-        </button>
-      </div>
+      {/* Quick action */}
+      <button
+        onClick={() => {
+          const timeStr = new Date().toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "numeric",
+            hour12: true,
+          });
+          addBotSystemWarning(
+            activeRoomId,
+            "🔥 نداء من LC-Fire: نرجو من الجميع الالتزام بآداب الحوار وعدم نشر روابط أو محتوى مخالف. شكراً 🛡️",
+          );
+          setBotLogs((prev) => [
+            {
+              id: `${Date.now()}`,
+              time: timeStr,
+              text: "بث الأدمن نداء عام بخصوص أمان واستقرار الشات لجميع الأعضاء.",
+              severity: "info",
+            },
+            ...prev,
+          ]);
+          setActiveModal(null);
+        }}
+        className="w-full py-2.5 rounded-xl text-yellow-300 font-black text-[10px] transition-all flex items-center justify-center gap-1.5 select-none lamma-soft-warn"
+      >
+        🚨 إنذار عام للغرفة
+      </button>
     </div>
   );
 }

@@ -1,11 +1,9 @@
 import type {
-  ChatTheme,
   DesignAssistantAudit,
   DesignAssistantFinding,
   DesignAssistantPatch,
   DesignAssistantProposal,
   DesignAssistantProposalId,
-  WallTheme,
 } from "../../lib/chatTypes";
 
 interface DesignAssistantContext {
@@ -13,48 +11,13 @@ interface DesignAssistantContext {
   activeRoomName: string;
   totalRooms: number;
   brandLogoUrl: string | null;
-  chatTheme: ChatTheme;
-  glowColor: string;
   ownerBgImage: string | null;
   roomBgMap: Record<string, string>;
-  wallTheme: WallTheme;
   defaultAmbientBg: string;
 }
 
 function clampScore(value: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, Math.round(value)));
-}
-
-function isValidHexColor(value: string): boolean {
-  return /^#[0-9a-f]{6}$/i.test(value);
-}
-
-function getHexBrightness(value: string): number | null {
-  if (!isValidHexColor(value)) return null;
-  const hex = value.slice(1);
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return (r * 299 + g * 587 + b * 114) / 1000;
-}
-
-function getThemeMood(theme: ChatTheme): "classic" | "calm" | "night" | "premium" {
-  if (theme === "charcoal-calm" || theme === "olive-ink") return "calm";
-  if (theme === "violet-night") return "night";
-  if (theme === "night-paper") return "premium";
-  return "classic";
-}
-
-function getWallThemeSuggestedTheme(wallTheme: WallTheme): ChatTheme {
-  if (wallTheme === "violet") return "violet-night";
-  if (wallTheme === "ice") return "charcoal-calm";
-  return "night-paper";
-}
-
-function getWallThemeSuggestedGlow(wallTheme: WallTheme): string {
-  if (wallTheme === "violet") return "#8b5cf6";
-  if (wallTheme === "ice") return "#93c5fd";
-  return "#d4a63a";
 }
 
 function getRoomCoverageScore(context: DesignAssistantContext): number {
@@ -68,45 +31,22 @@ function getRoomCoverageScore(context: DesignAssistantContext): number {
 
 function getIdentityScore(context: DesignAssistantContext): number {
   let score = 100;
-  if (!context.brandLogoUrl?.trim()) score -= 28;
-  if (!context.ownerBgImage?.trim()) score -= 14;
-  if (context.chatTheme === "classic") score -= 14;
-  if (!isValidHexColor(context.glowColor)) score -= 10;
-  return clampScore(score);
-}
-
-function getReadabilityScore(context: DesignAssistantContext): number {
-  let score = 100;
-  const mood = getThemeMood(context.chatTheme);
-  if (mood === "classic") score -= 18;
-  if (mood === "night") score += 4;
-  if (mood === "calm") score += 6;
-
-  const brightness = getHexBrightness(context.glowColor);
-  if (brightness === null) {
-    score -= 14;
-  } else if (brightness < 35 || brightness > 235) {
-    score -= 12;
-  } else if (brightness >= 70 && brightness <= 200) {
-    score += 2;
-  }
-
-  return clampScore(score);
-}
-
-function getPolishScore(context: DesignAssistantContext): number {
-  let score = 100;
-  const suggestedTheme = getWallThemeSuggestedTheme(context.wallTheme);
-  if (context.chatTheme !== suggestedTheme) score -= 12;
-  if (getThemeMood(context.chatTheme) === "classic") score -= 10;
-  if (!isValidHexColor(context.glowColor)) score -= 10;
+  if (!context.brandLogoUrl?.trim()) score -= 35;
+  if (!context.ownerBgImage?.trim()) score -= 20;
   return clampScore(score);
 }
 
 function getActiveRoomScore(context: DesignAssistantContext): number {
   let score = 100;
-  if (!context.roomBgMap[context.activeRoomId]?.trim()) score -= 24;
-  if (!context.ownerBgImage?.trim()) score -= 8;
+  if (!context.roomBgMap[context.activeRoomId]?.trim()) score -= 30;
+  if (!context.ownerBgImage?.trim()) score -= 10;
+  return clampScore(score);
+}
+
+function getPolishScore(context: DesignAssistantContext): number {
+  let score = 85;
+  if (!context.brandLogoUrl?.trim()) score -= 15;
+  if (!context.roomBgMap[context.activeRoomId]?.trim()) score -= 10;
   return clampScore(score);
 }
 
@@ -115,7 +55,6 @@ export function buildDesignAssistantFindings(
 ): DesignAssistantFinding[] {
   const findings: DesignAssistantFinding[] = [];
   const roomCoverageScore = getRoomCoverageScore(context);
-  const brightness = getHexBrightness(context.glowColor);
 
   if (!context.brandLogoUrl?.trim()) {
     findings.push({
@@ -128,20 +67,6 @@ export function buildDesignAssistantFindings(
       tone: "good",
       title: "هوية الشعار",
       text: "الشعار المخصص ظاهر داخل الشات، وده يثبت الهوية البصرية بشكل ممتاز.",
-    });
-  }
-
-  if (context.chatTheme === "classic") {
-    findings.push({
-      tone: "warn",
-      title: "ثيم تقليدي",
-      text: "ثيم الشات ما زال كلاسيكي؛ الأفضل التحول لثيم أهدى أو أفخم لرفع جودة الواجهة.",
-    });
-  } else {
-    findings.push({
-      tone: "good",
-      title: "ثيم مخصص",
-      text: `الثيم الحالي (${context.chatTheme}) يرفع جودة القراءة ويبعد الشات عن الشكل الافتراضي.`,
     });
   }
 
@@ -173,26 +98,6 @@ export function buildDesignAssistantFindings(
     });
   }
 
-  if (!isValidHexColor(context.glowColor)) {
-    findings.push({
-      tone: "critical",
-      title: "إضاءة غير صالحة",
-      text: "لون الإضاءة الحالي ليس بصيغة HEX سليمة، وده يهدد اتساق الشكل النهائي.",
-    });
-  } else if (brightness !== null && (brightness < 35 || brightness > 235)) {
-    findings.push({
-      tone: "warn",
-      title: "إضاءة حادة",
-      text: `لون الإضاءة الحالي (${context.glowColor}) صالح تقنيًا لكنه حاد بصريًا ويحتاج توازنًا أفضل.`,
-    });
-  } else {
-    findings.push({
-      tone: "good",
-      title: "إضاءة متوازنة",
-      text: `لون الإضاءة الحالي (${context.glowColor}) متوازن ويمكن البناء عليه في المقترحات القادمة.`,
-    });
-  }
-
   if (roomCoverageScore < 55) {
     findings.push({
       tone: "warn",
@@ -212,13 +117,11 @@ export function buildDesignAssistantFindings(
 
 function getRecommendedProposalId(
   identityScore: number,
-  readabilityScore: number,
   roomScore: number,
   polishScore: number,
 ): DesignAssistantProposalId {
-  if (identityScore <= 68) return "identity-refresh";
+  if (identityScore <= 65) return "identity-refresh";
   if (roomScore <= 70) return "immersive";
-  if (readabilityScore <= 72) return "calm";
   if (polishScore <= 74) return "premium";
   return "room-focus";
 }
@@ -228,24 +131,19 @@ export function buildDesignAssistantAudit(
 ): DesignAssistantAudit {
   const findings = buildDesignAssistantFindings(context);
   const identityScore = getIdentityScore(context);
-  const readabilityScore = getReadabilityScore(context);
+  const readabilityScore = 80;
   const roomScore = getActiveRoomScore(context);
   const polishScore = getPolishScore(context);
   const score = clampScore(
-    identityScore * 0.3 +
-      readabilityScore * 0.25 +
+    identityScore * 0.35 +
+      readabilityScore * 0.2 +
       roomScore * 0.25 +
       polishScore * 0.2,
     48,
     100,
   );
 
-  const recommendedPreset = getRecommendedProposalId(
-    identityScore,
-    readabilityScore,
-    roomScore,
-    polishScore,
-  );
+  const recommendedPreset = getRecommendedProposalId(identityScore, roomScore, polishScore);
 
   const highlights: string[] = [];
   if (identityScore < 75) {
@@ -254,11 +152,8 @@ export function buildDesignAssistantAudit(
   if (roomScore < 75) {
     highlights.push(`الغرفة الحالية (${context.activeRoomName}) تحتاج بصمة بصرية أوضح.`);
   }
-  if (readabilityScore < 75) {
-    highlights.push("التجربة البصرية الحالية تحتاج هدوءًا أعلى لتسهيل القراءة الطويلة.");
-  }
   if (polishScore < 75) {
-    highlights.push("هناك تضارب بسيط بين الثيم، الجدران، والإضاءة ويمكن ضبطه بسهولة.");
+    highlights.push("يمكن رفع مستوى الصقل عن طريق تنسيق الشعار مع الخلفيات.");
   }
   if (highlights.length === 0) {
     highlights.push("الشكل الحالي قوي، وأفضل خطوة الآن هي تحسين ذكي موجه للغرفة المفتوحة.");
@@ -268,14 +163,8 @@ export function buildDesignAssistantAudit(
   if (!context.brandLogoUrl?.trim()) {
     quickWins.push("فعّل شعارًا مخصصًا داخل الشات لتثبيت الهوية فورًا.");
   }
-  if (context.chatTheme === "classic") {
-    quickWins.push("غيّر ثيم الشات من الكلاسيكي إلى ثيم أحدث مثل Night Paper أو Charcoal Calm.");
-  }
   if (!context.roomBgMap[context.activeRoomId]?.trim()) {
     quickWins.push(`أضف خلفية خاصة لغرفة ${context.activeRoomName} حتى تحس إن لها شخصية مستقلة.`);
-  }
-  if (!isValidHexColor(context.glowColor)) {
-    quickWins.push("اضبط لون الإضاءة إلى HEX صالح وواضح قبل أي تحسينات أخرى.");
   }
   if (quickWins.length === 0) {
     quickWins.push("ابدأ باقتراح ذكي ثم راجع النتيجة المتوقعة قبل التطبيق.");
@@ -331,18 +220,11 @@ function applyPatchToContext(
 
   return {
     ...context,
-    wallTheme: patch.wallTheme ?? context.wallTheme,
     brandLogoUrl:
-      typeof patch.brandLogoUrl === "undefined"
-        ? context.brandLogoUrl
-        : patch.brandLogoUrl,
-    glowColor: patch.glowColor ?? context.glowColor,
+      typeof patch.brandLogoUrl === "undefined" ? context.brandLogoUrl : patch.brandLogoUrl,
     ownerBgImage:
-      typeof patch.ownerBgImage === "undefined"
-        ? context.ownerBgImage
-        : patch.ownerBgImage,
+      typeof patch.ownerBgImage === "undefined" ? context.ownerBgImage : patch.ownerBgImage,
     roomBgMap: nextRoomBgMap,
-    chatTheme: patch.chatTheme ?? context.chatTheme,
   };
 }
 
@@ -395,8 +277,6 @@ export function buildDesignAssistantProposal(
   context: DesignAssistantContext,
 ): DesignAssistantProposal {
   const sharedLogo = context.brandLogoUrl?.trim() || "/images/lamma-logo-nice.png";
-  const suggestedTheme = getWallThemeSuggestedTheme(context.wallTheme);
-  const suggestedGlow = getWallThemeSuggestedGlow(context.wallTheme);
   const sharedRoomBg =
     context.roomBgMap[context.activeRoomId]?.trim() ||
     context.ownerBgImage?.trim() ||
@@ -405,29 +285,22 @@ export function buildDesignAssistantProposal(
   if (preset === "premium") {
     return buildProposalMetadata(
       "premium",
-      {
-        wallTheme: "fire",
-        glowColor: "#d4a63a",
-        brandLogoUrl: sharedLogo,
-        chatTheme: "night-paper",
-      },
+      { brandLogoUrl: sharedLogo },
       context,
       [
         "يوحد الشعار مع المظهر العام ويعطي انطباعًا أفخم.",
-        "يعتمد على إضاءة ذهبية أهدأ من اللمعان الحاد.",
-        "يرفع مستوى التناسق بين الجدران والثيم العام.",
+        "يرفع مستوى التناسق البصري العام.",
       ],
       "الستايل الفاخر",
-      "يطور الشات إلى طابع ذهبي هادئ مع حضور أقوى للهوية البصرية.",
+      "يطور الشات إلى طابع أكثر احترافية مع حضور أقوى للهوية البصرية.",
       "الفخامة والهوية",
       "متوسط",
       92,
       "الشكل الحالي جيد لكنه ما زال يفتقد الإحساس الفاخر الواضح داخل الواجهة.",
-      "واجهة أفخم بإضاءة ذهبية هادئة وثيم أكثر احترافية مع حضور أقوى للهوية.",
+      "واجهة أفخم مع حضور أقوى للهوية.",
       [
         "فعّل الشعار الموحد في الهيدر.",
-        "حوّل الجدران إلى النمط الناري الناعم.",
-        "طبّق ثيم Night Paper ثم راقب التناسق العام.",
+        "راجع الخلفيات العامة للغرف.",
       ],
     );
   }
@@ -435,29 +308,22 @@ export function buildDesignAssistantProposal(
   if (preset === "calm") {
     return buildProposalMetadata(
       "calm",
-      {
-        wallTheme: "ice",
-        glowColor: "#93c5fd",
-        chatTheme: "charcoal-calm",
-        roomBgCurrent: null,
-      },
+      { roomBgCurrent: null },
       context,
       [
-        "يقلل الزحام اللوني داخل الغرفة الحالية.",
+        "يقلل الزحام البصري داخل الغرفة الحالية.",
         "يمنح القراءة الطويلة راحة أعلى وهدوءًا بصريًا.",
-        "يحافظ على هوية واضحة لكن بأقل تشويش ممكن.",
       ],
       "الستايل الهادئ",
       "يهدئ المشهد ويجعل القراءة أسهل، خصوصًا في الجلسات الطويلة.",
       "الراحة والوضوح",
       "خفيف",
-      90,
+      88,
       "الواجهة الحالية قد تبدو مزدحمة بصريًا أو مرهقة في الجلسات الطويلة.",
       "واجهة هادئة ومريحة للعين مع قراءة أوضح وتشتت أقل.",
       [
-        "خفف الإضاءة إلى درجة باردة متوازنة.",
-        "استبدل الثيم الحالي بـ Charcoal Calm.",
         "قلل تخصيصات الغرفة الحالية إذا كانت تشتت النظر.",
+        "استخدم استوديو التصميم لاختيار سمة هادئة.",
       ],
     );
   }
@@ -465,29 +331,22 @@ export function buildDesignAssistantProposal(
   if (preset === "night") {
     return buildProposalMetadata(
       "night",
-      {
-        wallTheme: "violet",
-        glowColor: "#8b5cf6",
-        chatTheme: "violet-night",
-        brandLogoUrl: sharedLogo,
-      },
+      { brandLogoUrl: sharedLogo },
       context,
       [
         "يمنح الواجهة حضورًا ليليًا حديثًا وواضحًا.",
-        "يوائم بين الجدران البنفسجية والثيم الليلي مباشرة.",
         "يحافظ على الشعار ظاهرًا لضمان ثبات الهوية.",
       ],
       "الستايل الليلي",
-      "يحوّل الشات إلى شخصية ليلية أقوى مع لمعة بنفسجية متوازنة.",
+      "يحوّل الشات إلى شخصية ليلية أقوى.",
       "الهوية الليلية",
       "متوسط",
-      88,
-      "التصميم الحالي لا يقدم شخصية ليلية واضحة رغم قابلية الشات لهذا الاتجاه.",
-      "واجهة ليلية عصرية بإضاءة بنفسجية متناسقة وهوية أعمق.",
+      87,
+      "التصميم الحالي لا يقدم شخصية ليلية واضحة.",
+      "واجهة ليلية عصرية وهوية أعمق.",
       [
-        "اختر جدران بنفسجية لتحديد المزاج العام.",
-        "طبّق Violet Night كقاعدة للواجهة.",
-        "ثبّت لون اللمعة البنفسجي ليحافظ على التماسك.",
+        "استخدم استوديو التصميم لاختيار السمة الليلية.",
+        "ثبّت الشعار ليحافظ على التماسك.",
       ],
     );
   }
@@ -498,26 +357,22 @@ export function buildDesignAssistantProposal(
       {
         brandLogoUrl: sharedLogo,
         ownerBgImage: context.ownerBgImage?.trim() || context.defaultAmbientBg,
-        glowColor: suggestedGlow,
-        chatTheme: context.chatTheme === "classic" ? "olive-ink" : context.chatTheme,
       },
       context,
       [
         "يوحد الشعار والخلفية العامة لتقوية البراند.",
-        "ينقل الثيم من الكلاسيكي إلى شكل أحدث إن لزم.",
         "يحافظ على معظم المشهد الحالي بدون تغييرات عنيفة.",
       ],
       "تحديث الهوية",
       "يعالج أسرع نقاط الضعف المتعلقة بالشعار والخلفية العامة وتناسق الهوية.",
       "البراند والاتساق",
       "متوسط",
-      94,
+      93,
       "الهوية الحالية متفرقة أو غير ظاهرة بشكل كفاية بين الشعار والخلفيات.",
       "هوية موحدة وأسهل في التذكر بوجود شعار ثابت وخلفية عامة متناسقة.",
       [
         "ثبت الشعار المخصص داخل الشات أولاً.",
         "أضف أو أكد الخلفية العامة الأساسية.",
-        "اضبط الثيم والإضاءة بحيث يدعموا البراند بدل ما يتعارضوا معه.",
       ],
     );
   }
@@ -525,56 +380,43 @@ export function buildDesignAssistantProposal(
   if (preset === "immersive") {
     return buildProposalMetadata(
       "immersive",
-      {
-        roomBgCurrent: sharedRoomBg,
-        chatTheme: suggestedTheme,
-        glowColor: suggestedGlow,
-        brandLogoUrl: sharedLogo,
-      },
+      { roomBgCurrent: sharedRoomBg, brandLogoUrl: sharedLogo },
       context,
       [
         `يمنح غرفة ${context.activeRoomName} حضورًا بصريًا مستقلاً.`,
-        "يضبط الثيم والإضاءة حسب حالة الجدران الحالية.",
         "يرفع الإحساس بالغمر من دون تغيير قاسٍ لباقي المشروع.",
       ],
       "وضع الغمر",
       "يركز على الغرفة الحالية ويمنحها بصمة أقوى وأكثر حضورًا.",
       "تجربة الغرفة",
       "قوي",
-      89,
+      88,
       "الغرفة الحالية لا تعطي إحساسًا كافيًا بأنها مساحة مستقلة ذات طابع خاص.",
       "غرفة بحضور بصري واضح يشعر العضو فورًا أنه دخل مساحة مختلفة ومميزة.",
       [
         `خصص خلفية صريحة لغرفة ${context.activeRoomName}.`,
-        "طابق الثيم مع لون الجدران الحالي.",
-        "اضبط الإضاءة والشعار بحيث يخدموا الغرفة المفتوحة لا باقي المشهد فقط.",
+        "ثبّت الشعار بحيث يخدم الغرفة المفتوحة.",
       ],
     );
   }
 
   return buildProposalMetadata(
     "room-focus",
-    {
-      chatTheme: suggestedTheme,
-      glowColor: suggestedGlow,
-      brandLogoUrl: sharedLogo,
-    },
+    { brandLogoUrl: sharedLogo },
     context,
     [
       `يركز على الغرفة الحالية (${context.activeRoomName}) بدل تعديل عام غير موجه.`,
-      "يضبط الإضاءة والثيم حسب لون الجدران الحالي.",
       "يحافظ على الشعار حاضرًا داخل الهيدر لضمان ثبات الهوية.",
     ],
     `اقتراح مخصص لغرفة ${context.activeRoomName}`,
     "يضبط الشكل الحالي بما يناسب الغرفة المفتوحة الآن دون قلب المشهد كله.",
     "الغرفة الحالية",
     "خفيف",
-    91,
+    90,
     "المشهد الحالي مقبول، لكنه يحتاج ضبطًا موجهًا للغرفة المفتوحة فقط.",
     "تحسين دقيق وسريع يرفع جودة الغرفة الحالية من غير تغييرات واسعة على المشروع كله.",
     [
       `راجع احتياج غرفة ${context.activeRoomName} الفعلي أولاً.`,
-      "طبّق الثيم والإضاءة المقترحين.",
       "افحص النتيجة ثم احفظها كستايل لو عجبتك.",
     ],
   );

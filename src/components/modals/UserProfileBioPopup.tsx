@@ -7,6 +7,7 @@ import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import type { ChatMember } from "../../lib/chatTypes";
+import { MemberAvatar } from "../MemberAvatar";
 
 const ROLE_BADGE: Record<string, { label: string; className: string }> = {
   platinum_vip: {
@@ -135,8 +136,13 @@ export function UserProfileBioPopup({
           >
             {/* Visual card */}
             <div className="p-3 rounded-2xl flex flex-col items-center text-center gap-2 select-none shrink-0 lamma-section-card">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl font-bold lamma-quiet-power-btn">
-                {target.avatar || "👤"}
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden lamma-quiet-power-btn">
+                <MemberAvatar
+                  avatar={target.avatar}
+                  size="lg"
+                  className="w-full h-full"
+                  imageClassName="w-full h-full rounded-2xl"
+                />
               </div>
               <div>
                 <div className="text-xs font-black text-white">

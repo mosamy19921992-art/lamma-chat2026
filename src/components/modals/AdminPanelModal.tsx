@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityLog, BanInfo, ChatMember, ProductTab, ProductType, UserSession } from "../../lib/chatTypes";
 
 interface AdminPanelModalProps {
@@ -99,6 +99,15 @@ export function AdminPanelModal({
   editingProduct,
   setEditingProduct,
 }: AdminPanelModalProps) {
+  const [ping, setPing] = useState<string>("جاري القياس...");
+
+  useEffect(() => {
+    const start = Date.now();
+    fetch("https://www.google.com/generate_204", { mode: "no-cors", cache: "no-store" })
+      .then(() => setPing(`${Date.now() - start} ms ✅`))
+      .catch(() => setPing("تعذر القياس ⚠️"));
+  }, []);
+
   return (
     <div className="space-y-5 select-none" dir="rtl">
       {/* Tabs triggers */}
@@ -155,7 +164,7 @@ export function AdminPanelModal({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
             <div className="p-2.5 bg-black/40 rounded-xl border border-emerald-500/10 text-center">
               <div className="text-sm font-black text-emerald-400">
-                {chatMembers.filter((m) => m.status === "online").length + 85}
+                {chatMembers.filter((m) => m.status === "online").length}
               </div>
               <div className="text-[8.5px] text-gray-400 font-extrabold">
                 المتواجدين الآن
@@ -166,10 +175,11 @@ export function AdminPanelModal({
                 {chatMembers.filter(
                   (m) =>
                     m.role === "vip" ||
+                    m.role === "platinum_vip" ||
                     m.role === "owner" ||
                     m.role === "admin" ||
                     m.role === "mod",
-                ).length + 12}
+                ).length}
               </div>
               <div className="text-[8.5px] text-gray-400 font-extrabold">
                 الرتب والـ VIP النشط
@@ -184,11 +194,11 @@ export function AdminPanelModal({
               </div>
             </div>
             <div className="p-2.5 bg-black/40 rounded-xl border border-cyan-500/10 text-center">
-              <div className="text-sm font-black text-cyan-300">
-                ممتازة
+              <div className="text-sm font-black text-cyan-300 text-[11px]">
+                {ping}
               </div>
               <div className="text-[8.5px] text-gray-400 font-extrabold">
-                استجابة السيرفر
+                زمن استجابة السيرفر
               </div>
             </div>
           </div>

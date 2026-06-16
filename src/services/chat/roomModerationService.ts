@@ -16,6 +16,7 @@ interface ModerateRoomMessageOptions {
   authorName: string;
   roomName: string;
   isBotEnabled: boolean;
+  isOwnerOrAdmin: boolean;
   antiLinksEnabled: boolean;
   antiSpamEnabled: boolean;
   swearFilterEnabled: boolean;
@@ -27,110 +28,86 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// Only match actual URLs, not random words containing .com etc.
+const URL_PATTERN =
+  /https?:\/\/[^\s]+|www\.[a-z0-9\-]+\.[a-z]{2,}([^\s]*)?|\b[a-z0-9\-]+\.(com|net|org|io|co|app|live|tk|cc|ru|to|link|site|gg|me|tv)(\b|\/)/i;
+
 export function moderateRoomMessage({
   text,
   authorName,
   roomName,
   isBotEnabled,
+  isOwnerOrAdmin,
   antiLinksEnabled,
   antiSpamEnabled,
   swearFilterEnabled,
   bannedWords,
   currentMessages,
 }: ModerateRoomMessageOptions): RoomModerationResult {
-  let isBlocked = false;
-  let isCensored = false;
-  let cleanText = text;
-  let warningMessage: string | null = null;
-  let logMsg: string | null = null;
-  let logSeverity: ModerationLogSeverity = "info";
+  const blank: RoomModerationResult = {
+    isBlocked: false,
+    isCensored: false,
+    cleanText: text,
+    warningMessage: null,
+    logMsg: null,
+    logSeverity: "info",
+  };
 
-  if (!isBotEnabled) {
+  // Owners and admins are always exempt from bot moderation
+  if (!isBotEnabled || isOwnerOrAdmin) return blank;
+
+  // ── Anti-links ──────────────────────────────────────────────────────────────
+  if (antiLinksEnabled && URL_PATTERN.test(text)) {
     return {
-      isBlocked,
-      isCensored,
-      cleanText,
-      warningMessage,
-      logMsg,
-      logSeverity,
-    };
-  }
-
-  if (
-    antiLinksEnabled &&
-    (text.includes("http://") ||
-      text.includes("https://") ||
-      text.includes("www.") ||
-      text.includes(".com") ||
-      text.includes(".net"))
-  ) {
-    isBlocked = true;
-    warningMessage = `⚠️ تم حجب رسالة العضو (${authorName}) لأنها تحتوي على رابط خارجي غير مسموح به.`;
-    logMsg = `محاولة نشر رابط خارجي مشبوه من [${authorName}] في غرفة [${roomName}] تم حظرها تلقائياً.`;
-    logSeverity = "danger";
-
-    return {
-      isBlocked,
-      isCensored,
+      isBlocked: true,
+      isCensored: false,
       cleanText: "",
-      warningMessage,
-      logMsg,
-      logSeverity,
+      warningMessage: `🔥 LC-Fire: تم حجب رسالة العضو (${authorName}) لأنها تحتوي على رابط خارجي.`,
+      logMsg: `محاولة نشر رابط خارجي من [${authorName}] في غرفة [${roomName}] — تم الحجب تلقائياً.`,
+      logSeverity: "danger",
     };
   }
 
-  const lastUserMsg =
-    currentMessages.length > 0 ? currentMessages[currentMessages.length - 1] : null;
+  // ── Anti-spam (consecutive duplicates) ──────────────────────────────────────
+  const lastMsg = currentMessages.length
+    ? currentMessages[currentMessages.length - 1]
+    : null;
 
   if (
     antiSpamEnabled &&
-    lastUserMsg &&
-    lastUserMsg.author === authorName &&
-    lastUserMsg.text === text &&
-    lastUserMsg.type === "text"
+    lastMsg &&
+    lastMsg.author === authorName &&
+    lastMsg.text === text &&
+    lastMsg.type === "text"
   ) {
-    isBlocked = true;
-    warningMessage = `⚠️ يرجى عدم تكرار نفس الرسالة بسرعة يا (${authorName}).`;
-    logMsg = `رصد محاولة تكرار رسالة متطابقة (Spam) من [${authorName}] وتم حجبها لمنع الإزعاج.`;
-    logSeverity = "warn";
-
     return {
-      isBlocked,
-      isCensored,
+      isBlocked: true,
+      isCensored: false,
       cleanText: "",
-      warningMessage,
-      logMsg,
-      logSeverity,
+      warningMessage: `⚠️ يرجى عدم تكرار نفس الرسالة يا (${authorName}).`,
+      logMsg: `تكرار رسالة متطابقة (Spam) من [${authorName}] — تم الحجب.`,
+      logSeverity: "warn",
     };
   }
 
-  if (swearFilterEnabled) {
-    let foundViolation = false;
+  // ── Word Firewall (block any message containing a banned word) ───────────────
+  if (swearFilterEnabled && bannedWords.length > 0) {
+    const lowerText = text.toLowerCase();
+    const hitWord = bannedWords.find(
+      (w) => w && lowerText.includes(w.toLowerCase()),
+    );
 
-    bannedWords.forEach((word) => {
-      if (!word || !text.toLowerCase().includes(word.toLowerCase())) {
-        return;
-      }
-
-      foundViolation = true;
-      const stars = "*".repeat(word.length);
-      cleanText = cleanText.replace(new RegExp(escapeRegExp(word), "gi"), stars);
-    });
-
-    if (foundViolation) {
-      isCensored = true;
-      warningMessage = `🛡️ تمت مراجعة رسالة العضو (${authorName}) وإخفاء بعض الألفاظ غير المناسبة تلقائياً.`;
-      logMsg = `مخالفة فلترة الكلام: تم العثور على ألفاظ منافية لآداب الشات في رسالة [${authorName}] وعُدلت تلقائياً.`;
-      logSeverity = "warn";
+    if (hitWord) {
+      return {
+        isBlocked: true,
+        isCensored: false,
+        cleanText: "",
+        warningMessage: `🔥 LC-Fire: تم حجب رسالة العضو (${authorName}) لاحتوائها على كلمة محظورة.`,
+        logMsg: `جدار الكلمات: كلمة محظورة وُجدت في رسالة [${authorName}] — الرسالة محجوبة تلقائياً.`,
+        logSeverity: "danger",
+      };
     }
   }
 
-  return {
-    isBlocked,
-    isCensored,
-    cleanText,
-    warningMessage,
-    logMsg,
-    logSeverity,
-  };
+  return blank;
 }

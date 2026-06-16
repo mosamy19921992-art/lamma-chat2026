@@ -9,6 +9,7 @@ import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import type { ChatMember } from "../../lib/chatTypes";
+import { MemberAvatar } from "../MemberAvatar";
 
 export interface UserContextHandlers {
   /** Send a private message to the target user. */
@@ -73,7 +74,14 @@ export function UserContextPopup({
           {/* Header */}
           <div className="flex items-center justify-between p-3 select-none lamma-modal-header">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs">{target.avatar}</span>
+              <span className="w-6 h-6 flex items-center justify-center overflow-hidden rounded-full shrink-0">
+                <MemberAvatar
+                  avatar={target.avatar}
+                  size="xs"
+                  className="w-full h-full"
+                  imageClassName="w-full h-full rounded-full"
+                />
+              </span>
               <h3 className="font-black text-white text-[11px] truncate max-w-[140px]">
                 خيارات العضو {target.nickname}
               </h3>
