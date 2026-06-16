@@ -3,7 +3,6 @@ import { OWNER_ID_CARD_IMAGE } from "../lib/ownerIdentity";
 
 export interface OwnerIdCardProps {
   nickname: string;
-  email?: string | null;
   tagline?: string;
   compact?: boolean;
   className?: string;
@@ -12,7 +11,6 @@ export interface OwnerIdCardProps {
 /** Full BOSS owner identification card with live member details overlaid. */
 export function OwnerIdCard({
   nickname,
-  email,
   tagline = "غرفة القيادة • LAMMA CHAT",
   compact = false,
   className = "",
@@ -32,11 +30,6 @@ export function OwnerIdCard({
         <div className="owner-id-card__identity">
           <div className="owner-id-card__nickname">{nickname}</div>
           <div className="owner-id-card__role">BOSS • OWNER • المالك</div>
-          {email ? (
-            <div className="owner-id-card__email" dir="ltr">
-              {email}
-            </div>
-          ) : null}
           {tagline ? <div className="owner-id-card__tagline">{tagline}</div> : null}
         </div>
       </div>

@@ -72,7 +72,6 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                   <div className="space-y-3">
                     <OwnerIdCard
                       nickname={selectedProfileMember.nickname}
-                      email={selectedProfileMember.email || currentUser.email}
                       tagline={
                         isOwnProfile
                           ? "غرفة القيادة • بطاقتي الرسمية"

@@ -59,7 +59,7 @@ import { motion, AnimatePresence, useDragControls } from "motion/react";
 import AMLogo from "./AMLogo.tsx";
 import BossSigil from "./BossSigil.tsx";
 import { OwnerAvatarAura } from "./OwnerPrestige.tsx";
-import { resolveOwnerDisplayAvatar } from "../lib/ownerIdentity";
+import { OWNER_ID_CARD_IMAGE } from "../lib/ownerIdentity";
 import ShareModal from "./modals/ShareModal.tsx";
 import CreateRoomModal from "./modals/CreateRoomModal.tsx";
 import UserContextPopup from "./modals/UserContextPopup.tsx";
@@ -5719,26 +5719,22 @@ export default function ChatScreen({
               title="بطاقتي الشخصية والإعدادات"
             >
               <div className="relative shrink-0">
-                <OwnerAvatarAura active={isOwnerRole}>
+                {!isOwnerRole && (
+                <OwnerAvatarAura active={false}>
                 <div
                   className={`p-[2px] rounded-full ${
-                    isOwnerRole || myActiveSession.frame
-                      ? `bg-gradient-to-r ${myActiveSession.frame || "from-red-500 via-orange-500 to-yellow-500"}`
+                    myActiveSession.frame
+                      ? `bg-gradient-to-r ${myActiveSession.frame}`
                       : "bg-gradient-to-r from-yellow-500/50 via-orange-500/35 to-yellow-500/50"
                   }`}
                   style={{
-                    boxShadow: isOwnerRole
-                      ? "0 0 22px rgba(249, 115, 22, 0.45)"
-                      : "0 0 18px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.20)",
+                    boxShadow:
+                      "0 0 18px rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.20)",
                   }}
                 >
                   <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden lamma-admin-card">
                     <MemberAvatar
-                      avatar={
-                        isOwnerRole
-                          ? resolveOwnerDisplayAvatar(myActiveSession.avatar)
-                          : myActiveSession.avatar
-                      }
+                      avatar={myActiveSession.avatar}
                       size="sm"
                       className="w-full h-full"
                       imageClassName="w-full h-full rounded-full object-cover"
@@ -5746,6 +5742,22 @@ export default function ChatScreen({
                   </div>
                 </div>
                 </OwnerAvatarAura>
+                )}
+                {isOwnerRole && (
+                  <div
+                    className="p-[2px] rounded-full bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500"
+                    style={{ boxShadow: "0 0 22px rgba(249, 115, 22, 0.45)" }}
+                  >
+                    <div className="w-7 h-7 rounded-full overflow-hidden lamma-admin-card">
+                      <img
+                        src={OWNER_ID_CARD_IMAGE}
+                        alt={myActiveSession.nickname}
+                        className="w-full h-full object-cover"
+                        draggable={false}
+                      />
+                    </div>
+                  </div>
+                )}
                 {!isOwnerRole &&
                 (isAdminRole ||
                   hasStoreVipDisplay(
@@ -5790,6 +5802,9 @@ export default function ChatScreen({
                   }}
                 >
                   {myActiveSession.nickname}
+                  {isOwnerRole && (
+                    <BossSigil size={14} className="opacity-95 shrink-0" />
+                  )}
                   {activeTempEntryTopic && (
                     <span className="max-w-[120px] truncate rounded-full border border-cyan-400/25 bg-cyan-500/10 px-1.5 py-0.5 text-[7px] text-cyan-200">
                       {activeTempEntryTopic}

@@ -7,6 +7,6 @@ export function isOwnerChatRole(role?: string | null): boolean {
 
 export function resolveOwnerDisplayAvatar(avatar?: string | null): string {
   const value = (avatar || "").trim();
-  if (!value || value === "👤") return OWNER_ID_CARD_IMAGE;
-  return value;
+  if (/^https?:\/\//i.test(value) || value.startsWith("/")) return value;
+  return OWNER_ID_CARD_IMAGE;
 }
