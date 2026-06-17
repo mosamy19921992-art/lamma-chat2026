@@ -2144,6 +2144,7 @@ export default function ChatScreen({
   ]);
 
   useOnlinePresence({
+    roomId: activeRoomId,
     currentUser,
     displayNickname: currentDisplayNickname,
     displayAvatar: currentDisplayAvatar,
@@ -2509,8 +2510,12 @@ export default function ChatScreen({
         { event: 'UPDATE', schema: 'public', table: 'owner_settings', filter: 'id=eq.global' },
         (payload) => {
           const settings = payload.new;
-          if (settings.ghost_mode !== undefined) setIsGhostMode(!!settings.ghost_mode);
-          if (settings.spy_mode !== undefined) setIsSpyMode(!!settings.spy_mode);
+          if (settings.ghost_mode !== undefined && isCurrentUserOwner) {
+            setIsGhostMode(!!settings.ghost_mode);
+          }
+          if (settings.spy_mode !== undefined && isCurrentUserOwner) {
+            setIsSpyMode(!!settings.spy_mode);
+          }
           if (settings.maintenance_mode !== undefined) setIsMaintenanceMode(!!settings.maintenance_mode);
           if (settings.global_mute !== undefined) setIsGlobalMute(!!settings.global_mute);
           if (settings.global_mic_mute !== undefined) setIsGlobalMicMute(!!settings.global_mic_mute);
@@ -2684,8 +2689,10 @@ export default function ChatScreen({
 
         if (settingsResult.data) {
           const settings = settingsResult.data;
-          setIsGhostMode(Boolean(settings.ghost_mode));
-          setIsSpyMode(Boolean(settings.spy_mode));
+          if (isCurrentUserOwner) {
+            setIsGhostMode(Boolean(settings.ghost_mode));
+            setIsSpyMode(Boolean(settings.spy_mode));
+          }
           setIsMaintenanceMode(Boolean(settings.maintenance_mode));
           setIsGlobalMute(Boolean(settings.global_mute));
           setIsGlobalMicMute(Boolean(settings.global_mic_mute));

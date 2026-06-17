@@ -20,7 +20,13 @@ export interface PresenceUpdateEvent {
   onlineCount: number;
 }
 
+/** Shared Realtime channel name — all clients in the same room must use the same string. */
+export function presenceChannelName(roomId: string) {
+  return `lamma_presence_${roomId || "egypt"}`;
+}
+
 interface UseOnlinePresenceOptions {
+  roomId: string;
   currentUser: UserSession;
   displayNickname: string;
   displayAvatar: string;
@@ -53,6 +59,7 @@ function presenceToMember(
 
 /** Sync online members via Supabase Realtime Presence (registered + guest sessions). */
 export function useOnlinePresence({
+  roomId,
   currentUser,
   displayNickname,
   displayAvatar,
@@ -65,11 +72,12 @@ export function useOnlinePresence({
   onPresenceUpdate,
 }: UseOnlinePresenceOptions) {
   useEffect(() => {
-    if (!supabase || !currentUser.uid || isGhostMode) {
+    if (!supabase || !currentUser.uid || isGhostMode || !roomId) {
       return;
     }
 
     const myUid = currentUser.uid;
+    const channelName = presenceChannelName(roomId);
     let lastEvent: PresenceUpdateEvent["type"] = "sync";
     let activeChannel: ReturnType<typeof supabase.channel> | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -78,7 +86,7 @@ export function useOnlinePresence({
     const attach = () => {
       if (stopped || !supabase) return;
 
-      const channel = supabase.channel(`lamma_online_presence_${Date.now()}`, {
+      const channel = supabase.channel(channelName, {
         config: { presence: { key: myUid } },
       });
       activeChannel = channel;
@@ -211,6 +219,7 @@ export function useOnlinePresence({
       }
     };
   }, [
+    roomId,
     currentUser.authProvider,
     currentUser.email,
     currentUser.role,
