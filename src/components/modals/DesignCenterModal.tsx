@@ -1,10 +1,11 @@
 import React, { useRef, useState } from 'react';
 import { DesignStudioModal } from './DesignStudioModal';
-import { applyFace, loadFace, saveFace } from '../../lib/customFace';
+import { DesignTemplateGallery } from './DesignTemplateGallery';
+import { applyFace, loadFace, saveFace, FACE_PRESETS } from '../../lib/customFace';
 
 type DesignSection = "uploads" | "studio" | "assistant";
 
-export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, applyAssistantPresetDirect, queueRecommendedAssistantProposal, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, uploadDesignImage }: any) => {
+export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, applyAssistantPresetDirect, queueRecommendedAssistantProposal, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset }: any) => {
   const [section, setSection] = useState<DesignSection>("uploads");
   const [columnUploading, setColumnUploading] = useState<string | null>(null);
   const rightColUploadRef = useRef<HTMLInputElement>(null);
@@ -37,6 +38,18 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     } finally {
       setColumnUploading(null);
     }
+  };
+
+  const handleApplyFacePreset = (presetId: string) => {
+    const preset = FACE_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    const allowed = window.confirm(
+      `تطبيق سمة «${preset.name}» على الشات الآن؟\n\nستتغير الألوان والفقاعات والوجه الزجاجي فوراً.`,
+    );
+    if (!allowed) return;
+    saveFace(preset.face);
+    applyFace(preset.face);
+    alert(`✅ تم تطبيق سمة «${preset.name}».`);
   };
 
   return (
@@ -282,59 +295,101 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                     )}
 
                     {section === "assistant" && isOwnerRole && (
-                      <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <div className="text-[11px] text-emerald-300 font-black">
-                              🤖 المساعد الذكي الآمن
+                      <div className="space-y-4">
+                        <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <div className="text-[11px] text-emerald-300 font-black">
+                                🤖 المساعد الذكي — معرض التصاميم
+                              </div>
+                              <div className="text-[10px] text-gray-400 font-bold mt-1">
+                                بطاقات زجاجية جاهزة — اختار تصميم وطبّقه كمالك بضغطة واحدة.
+                              </div>
                             </div>
-                            <div className="text-[10px] text-gray-400 font-bold mt-1">
-                              اضغط أي اقتراح لتطبيقه فوراً بعد التأكيد — الألوان والتقسيم يتغيران مباشرة.
-                            </div>
+                            <span className="px-2 py-1 rounded-full text-[9px] font-black bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shrink-0">
+                              Safe Mode
+                            </span>
                           </div>
-                          <span className="px-2 py-1 rounded-full text-[9px] font-black bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                            Safe Mode
-                          </span>
-                        </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                          {([
-                            ["audit", "فحص الشات", runAssistantAudit],
-                            ["smart", "اقتراح ذكي", queueRecommendedAssistantProposal],
-                            ["geometric", "وجه هندسي", () => applyAssistantPresetDirect("geometric")],
-                            ["layout-balance", "توازن التقسيم", () => applyAssistantPresetDirect("layout-balance")],
-                            ["layout-chat-focus", "تركيز الشات", () => applyAssistantPresetDirect("layout-chat-focus")],
-                            ["premium", "اقتراح فاخر", () => applyAssistantPresetDirect("premium")],
-                            ["calm", "اقتراح هادئ", () => applyAssistantPresetDirect("calm")],
-                            ["night", "اقتراح ليلي", () => applyAssistantPresetDirect("night")],
-                            ["room-focus", "اقتراح للغرفة", () => applyAssistantPresetDirect("room-focus")],
-                            ["identity-refresh", "تحديث الهوية", () => applyAssistantPresetDirect("identity-refresh")],
-                            ["immersive", "وضع الغمر", () => applyAssistantPresetDirect("immersive")],
-                          ] as const).map(([key, label, action]) => (
+                          <div className="flex flex-wrap gap-2">
                             <button
-                              key={key}
                               type="button"
-                              onClick={action}
+                              onClick={runAssistantAudit}
                               onPointerDown={stopDrag}
-                              className={`py-2 rounded-xl text-[10px] font-black transition-all cursor-pointer ${
-                                key === "smart"
-                                  ? "text-white lamma-accent-btn"
-                                  : "lamma-tab-soft hover:text-white"
-                              }`}
+                              className="px-4 py-2 rounded-xl text-[10px] font-black lamma-tab-soft hover:text-white"
                             >
-                              {label}
+                              🔍 فحص الشات
                             </button>
-                          ))}
+                            <button
+                              type="button"
+                              onClick={queueRecommendedAssistantProposal}
+                              onPointerDown={stopDrag}
+                              className="px-4 py-2 rounded-xl text-[10px] font-black lamma-accent-btn text-white"
+                            >
+                              ✨ اقتراح ذكي
+                            </button>
+                            {lastAppliedDesignSnapshot && (
+                              <button
+                                type="button"
+                                onClick={handleRestoreLastDesignSnapshot}
+                                onPointerDown={stopDrag}
+                                className="px-4 py-2 rounded-xl text-[10px] font-black lamma-danger-btn"
+                              >
+                                ↩️ تراجع
+                              </button>
+                            )}
+                          </div>
+
+                          {assistantAudit && (
+                            <div className="rounded-2xl p-3 lamma-admin-card">
+                              <div className="text-[10px] text-gray-400 font-black">تقييم المظهر</div>
+                              <div className="text-2xl font-black text-emerald-300 mt-1">
+                                {assistantAudit.score}/100
+                              </div>
+                              <div className="text-[10px] text-gray-300 font-bold mt-1">
+                                {assistantAudit.verdict}
+                              </div>
+                            </div>
+                          )}
                         </div>
 
-                        {assistantAudit && (
-                          <div className="rounded-2xl p-3 lamma-admin-card">
-                            <div className="text-[10px] text-gray-400 font-black">تقييم المظهر</div>
-                            <div className="text-2xl font-black text-emerald-300 mt-1">
-                              {assistantAudit.score}/100
+                        <DesignTemplateGallery
+                          onApplyTemplate={applyAssistantPresetDirect}
+                          onApplyFacePreset={handleApplyFacePreset}
+                          recommendedPresetId={assistantAudit?.recommendedPreset}
+                          designPresets={designPresets}
+                          designPresetName={designPresetName}
+                          setDesignPresetName={setDesignPresetName}
+                          handleSaveDesignPreset={handleSaveDesignPreset}
+                          applyDesignPreset={applyDesignPreset}
+                          handleDeleteDesignPreset={handleDeleteDesignPreset}
+                        />
+
+                        {assistantProposal && (
+                          <div className="p-4 rounded-2xl space-y-3 lamma-section-card border border-cyan-500/20">
+                            <div className="text-[11px] font-black text-cyan-300">
+                              📋 مقترح قيد المراجعة: {assistantProposal.title}
                             </div>
-                            <div className="text-[10px] text-gray-300 font-bold mt-1">
-                              {assistantAudit.verdict}
+                            <div className="text-[10px] text-gray-400 font-bold">
+                              {assistantProposal.summary}
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={handleApplyAssistantProposal}
+                                onPointerDown={stopDrag}
+                                className="flex-1 py-2.5 rounded-xl text-[10px] font-black lamma-accent-btn"
+                              >
+                                ✅ تطبيق المقترح
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setAssistantProposal(null)}
+                                onPointerDown={stopDrag}
+                                className="px-4 py-2.5 rounded-xl text-[10px] font-black lamma-tab-soft"
+                              >
+                                إلغاء
+                              </button>
                             </div>
                           </div>
                         )}
