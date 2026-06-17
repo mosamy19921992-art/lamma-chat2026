@@ -171,6 +171,8 @@ body {
 .panel[data-view="main"] .brandLogo {
   width: min(235px, 66vw);
   margin: 0;
+  filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.62));
+  transform: scaleY(1.05);
   transform-origin: center top;
   animation: goldGlowPulse 4s ease-in-out infinite;
 }

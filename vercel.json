@@ -1,4 +1,9 @@
 {
+  "build": {
+    "env": {
+      "VITE_ENABLE_PWA": "true"
+    }
+  },
   "rewrites": [
     {
       "source": "/sitemap.xml",

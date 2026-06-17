@@ -8,9 +8,10 @@
 //   - update: tells the SW to skip waiting
 //   - installPromptEvent: the native beforeinstallprompt event, if any
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 
-const ENABLE_PWA = import.meta.env.VITE_ENABLE_PWA === "true";
+export const PWA_ENABLED = import.meta.env.VITE_ENABLE_PWA === "true";
+const ENABLE_PWA = PWA_ENABLED;
 const CACHE_PREFIXES = ["lamma-"];
 
 interface ServiceWorkerState {
@@ -18,8 +19,9 @@ interface ServiceWorkerState {
   offlineReady: boolean;
   installPromptEvent: any | null;
   isInstalled: boolean;
+  isPwaEnabled: boolean;
   update: () => Promise<void>;
-  promptInstall: () => Promise<void>;
+  promptInstall: () => Promise<boolean>;
   isOnline: boolean;
 }
 
@@ -43,6 +45,7 @@ export function useServiceWorker(): ServiceWorkerState {
   const [needRefresh, setNeedRefresh] = useState(false);
   const [offlineReady, setOfflineReady] = useState(false);
   const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
+  const installPromptRef = useRef<any | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== "undefined" ? navigator.onLine : true,
@@ -107,6 +110,7 @@ export function useServiceWorker(): ServiceWorkerState {
         if (mounted) {
           setNeedRefresh(false);
           setOfflineReady(false);
+          installPromptRef.current = null;
           setInstallPromptEvent(null);
           setIsInstalled(false);
         }
@@ -139,10 +143,12 @@ export function useServiceWorker(): ServiceWorkerState {
     // Listen for the native install prompt only when PWA mode is enabled.
     const handleBeforeInstallPrompt = (event: any) => {
       event.preventDefault();
+      installPromptRef.current = event;
       setInstallPromptEvent(event);
     };
     const handleAppInstalled = () => {
       updateInstalledState();
+      installPromptRef.current = null;
       setInstallPromptEvent(null);
     };
     const handleControllerChange = () => {
@@ -179,25 +185,41 @@ export function useServiceWorker(): ServiceWorkerState {
   }, []);
 
   const promptInstall = useCallback(async () => {
-    if (!installPromptEvent) return;
-    installPromptEvent.prompt();
+    const waitForPrompt = async (timeoutMs: number) => {
+      const started = Date.now();
+      while (Date.now() - started < timeoutMs) {
+        const event = installPromptRef.current;
+        if (event) return event;
+        await new Promise((resolve) => window.setTimeout(resolve, 120));
+      }
+      return installPromptRef.current;
+    };
+
+    const event = installPromptRef.current ?? (await waitForPrompt(3200));
+    if (!event) return false;
+
+    event.prompt();
     try {
-      const choice = await installPromptEvent.userChoice;
+      const choice = await event.userChoice;
       if (choice.outcome === "accepted") {
         setIsInstalled(true);
+        return true;
       }
     } catch (err) {
       console.warn("[Install] prompt failed:", err);
     } finally {
+      installPromptRef.current = null;
       setInstallPromptEvent(null);
     }
-  }, [installPromptEvent]);
+    return false;
+  }, []);
 
   return {
     needRefresh,
     offlineReady,
     installPromptEvent,
     isInstalled,
+    isPwaEnabled: ENABLE_PWA,
     update,
     promptInstall,
     isOnline,

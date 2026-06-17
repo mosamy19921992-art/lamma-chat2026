@@ -22,7 +22,7 @@ interface LoginScreenProps {
   setPrimaryTheme: (theme: "dark" | "amoled") => void;
   canInstallApp?: boolean;
   isInstalledApp?: boolean;
-  onInstallApp?: () => Promise<void>;
+  onInstallApp?: () => Promise<boolean | void>;
   pendingSupabaseUser?: any | null;
   inviteOnlyMode?: boolean;
   hasInviteAccess?: boolean;
@@ -99,7 +99,8 @@ function EnvelopeIcon() {
 }
 
 export default function LoginScreen(props: LoginScreenProps) {
-  const { onLogin, canInstallApp, onInstallApp, pendingSupabaseUser, inviteOnlyMode = false, hasInviteAccess = false } = props;
+  const { onLogin, isInstalledApp, onInstallApp, pendingSupabaseUser, inviteOnlyMode = false, hasInviteAccess = false } = props;
+  const pwaEnabled = import.meta.env.VITE_ENABLE_PWA === "true";
   const guestLoginAllowed = !inviteOnlyMode || hasInviteAccess;
   const brandName = import.meta.env.VITE_BRAND_NAME || "Lamma Chat";
   const brandCredit = import.meta.env.VITE_BRAND_CREDIT || "MR / Mohamed Samy";
@@ -130,6 +131,10 @@ export default function LoginScreen(props: LoginScreenProps) {
   const [installingApp, setInstallingApp] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [activeGuideTab, setActiveGuideTab] = useState<"ios" | "android">("ios");
+
+  useEffect(() => {
+    setActiveGuideTab(isIosDevice() ? "ios" : "android");
+  }, []);
 
   useEffect(() => {
     if (!message) return;
@@ -191,14 +196,27 @@ export default function LoginScreen(props: LoginScreenProps) {
     );
   };
 
-  const handleInstallApp = async () => {
-    if (!canInstallApp || !onInstallApp) return;
-    setInstallingApp(true);
-    try {
-      await onInstallApp();
-    } finally {
-      setInstallingApp(false);
+  const handleInstallClick = async () => {
+    if (isInstalledApp) return;
+
+    if (pwaEnabled && !isIosDevice() && onInstallApp) {
+      setInstallingApp(true);
+      try {
+        const installed = await onInstallApp();
+        if (installed) {
+          showFeedback(
+            "تم تثبيت التطبيق بنجاح — افتحه من الشاشة الرئيسية 🎉",
+            "success",
+          );
+          return;
+        }
+      } finally {
+        setInstallingApp(false);
+      }
     }
+
+    setActiveGuideTab(isIosDevice() ? "ios" : "android");
+    setShowInstallGuide(true);
   };
 
   const handleGoogleLogin = async () => {
@@ -488,7 +506,7 @@ export default function LoginScreen(props: LoginScreenProps) {
                   onError={(e) => {
                     const img = e.currentTarget;
                     img.onerror = null;
-                    img.src = "/images/lamma-logo.png";
+                    img.src = "/images/lamma-wordmark.svg";
                   }}
                 />
               </span>
@@ -531,15 +549,9 @@ export default function LoginScreen(props: LoginScreenProps) {
                   <button
                     type="button"
                     className="installAppBtn"
-                    onClick={() => {
-                      if (canInstallApp) {
-                        handleInstallApp();
-                      } else {
-                        setShowInstallGuide(true);
-                      }
-                    }}
-                    disabled={installingApp}
-                    aria-label="تحميل تطبيق الموبايل"
+                    onClick={handleInstallClick}
+                    disabled={installingApp || isInstalledApp}
+                    aria-label={isInstalledApp ? "التطبيق مثبّت" : "تحميل تطبيق الموبايل"}
                   >
                     <span className="installAppIcon" aria-hidden="true">
                       <svg
@@ -571,7 +583,11 @@ export default function LoginScreen(props: LoginScreenProps) {
                       </svg>
                     </span>
                     <span className="installAppText">
-                      {installingApp ? "جاري التحميل..." : "تحميل تطبيق الموبايل 📱"}
+                      {isInstalledApp
+                        ? "التطبيق مثبّت ✓"
+                        : installingApp
+                          ? "جاري التحميل..."
+                          : "تحميل تطبيق الموبايل 📱"}
                     </span>
                   </button>
                 </div>
@@ -1131,6 +1147,14 @@ export default function LoginScreen(props: LoginScreenProps) {
         </div>
       ) : null}
     </main>
+  );
+}
+
+function isIosDevice() {
+  if (typeof navigator === "undefined") return false;
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
   );
 }
 
