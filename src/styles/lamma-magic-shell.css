@@ -1,0 +1,402 @@
+/* ── Lamma Magic App Shell ──
+   Cool aurora + frosted glass chrome on mobile.
+   Warm gold chat interior stays inside message area. */
+
+@keyframes lammaAuroraDrift {
+  0% {
+    opacity: 0.78;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06) translate3d(-1.5%, -1%, 0);
+  }
+  100% {
+    opacity: 0.82;
+    transform: scale(1.03) translate3d(1%, 1.5%, 0);
+  }
+}
+
+@keyframes lammaShellShimmer {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes lammaTabGlow {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.26),
+      0 4px 18px rgba(45, 212, 191, 0.18);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.34),
+      0 6px 24px rgba(110, 231, 183, 0.32);
+  }
+}
+
+@media (max-width: 767px) {
+  /* ── Chat app root: aurora backdrop ── */
+  .lamma-neutral-glass[data-app-shell="aurora"] {
+    --shell-mint: #6ee7b7;
+    --shell-sky: #7dd3fc;
+    --shell-violet: #c4b5fd;
+    --shell-gold: #f7e7b4;
+    --shell-frost-border: rgba(167, 243, 208, 0.28);
+    --shell-frost-soft: rgba(196, 181, 253, 0.18);
+    --frost-blur: 38px;
+    --frost-border: rgba(167, 243, 208, 0.26);
+    --frost-border-soft: rgba(196, 181, 253, 0.16);
+    --frost-highlight: rgba(255, 255, 255, 0.28);
+    background-color: #060a12;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"]::after {
+    content: "";
+    position: fixed;
+    inset: -25%;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 22% 12%, rgba(45, 212, 191, 0.34), transparent 44%),
+      radial-gradient(circle at 82% 18%, rgba(167, 139, 250, 0.28), transparent 42%),
+      radial-gradient(circle at 48% 92%, rgba(214, 179, 91, 0.16), transparent 48%),
+      radial-gradient(circle at 8% 72%, rgba(56, 189, 248, 0.14), transparent 40%);
+    filter: blur(48px) saturate(1.35);
+    animation: lammaAuroraDrift 22s ease-in-out infinite alternate;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-active-wallpaper::after {
+    background: linear-gradient(
+      180deg,
+      rgba(6, 10, 18, 0.35) 0%,
+      rgba(17, 14, 10, 0.28) 55%,
+      rgba(6, 10, 18, 0.42) 100%
+    ) !important;
+    -webkit-backdrop-filter: blur(4px) saturate(1.15) !important;
+    backdrop-filter: blur(4px) saturate(1.15) !important;
+  }
+
+  /* ── SHELL: header / tabs / composer (cool magic frost) ── */
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-header {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(110, 231, 183, 0.07) 100%
+    ) !important;
+    -webkit-backdrop-filter: blur(34px) saturate(1.55) !important;
+    backdrop-filter: blur(34px) saturate(1.55) !important;
+    border-bottom: 1px solid var(--shell-frost-border) !important;
+    box-shadow:
+      0 10px 32px rgba(45, 212, 191, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-header-wordmark {
+    background: linear-gradient(90deg, var(--shell-sky), var(--shell-mint), var(--shell-violet));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent !important;
+    filter: drop-shadow(0 0 12px rgba(110, 231, 183, 0.35));
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-room-header,
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-topic-shell,
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-frost-ticker {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.11),
+      rgba(167, 139, 250, 0.08)
+    ) !important;
+    -webkit-backdrop-filter: blur(30px) saturate(1.45) !important;
+    backdrop-filter: blur(30px) saturate(1.45) !important;
+    border-color: var(--shell-frost-soft) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 4px 20px rgba(139, 92, 246, 0.08) !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-mobile-tabs {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.13) 0%,
+      rgba(45, 212, 191, 0.06) 100%
+    ) !important;
+    -webkit-backdrop-filter: blur(36px) saturate(1.55) !important;
+    backdrop-filter: blur(36px) saturate(1.55) !important;
+    border-bottom: 1px solid var(--shell-frost-border) !important;
+    box-shadow:
+      0 12px 36px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-mobile-tab-btn-active {
+    color: var(--shell-mint) !important;
+    background: linear-gradient(
+      145deg,
+      rgba(110, 231, 183, 0.22),
+      rgba(255, 255, 255, 0.1)
+    ) !important;
+    border: 1px solid rgba(110, 231, 183, 0.38) !important;
+    animation: lammaTabGlow 3s ease-in-out infinite;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-ios-tab-icon {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border: 1px solid rgba(167, 243, 208, 0.22) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-mobile-tab-btn-active .lamma-ios-tab-icon {
+    background: rgba(110, 231, 183, 0.22) !important;
+    border-color: rgba(110, 231, 183, 0.45) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      0 4px 16px rgba(45, 212, 191, 0.25) !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-chat-input-shell {
+    background: linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.13) 0%,
+      rgba(139, 92, 246, 0.08) 100%
+    ) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(1.55) !important;
+    backdrop-filter: blur(40px) saturate(1.55) !important;
+    border: 1px solid var(--shell-frost-border) !important;
+    box-shadow:
+      0 -12px 40px rgba(45, 212, 191, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-composer-field,
+  .lamma-neutral-glass[data-app-shell="aurora"] input[type="text"],
+  .lamma-neutral-glass[data-app-shell="aurora"] textarea {
+    background: rgba(255, 255, 255, 0.07) !important;
+    border: 1px solid rgba(196, 181, 253, 0.2) !important;
+    color: #f0fdfa !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-mobile-sidebar-shell {
+    background: rgba(8, 12, 22, 0.52) !important;
+    -webkit-backdrop-filter: blur(44px) saturate(1.55) !important;
+    backdrop-filter: blur(44px) saturate(1.55) !important;
+    border-left: 1px solid var(--shell-frost-border) !important;
+    box-shadow: -8px 0 40px rgba(139, 92, 246, 0.12) !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-glass,
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-list-panel,
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-list-item {
+    background: linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.09),
+      rgba(45, 212, 191, 0.05)
+    ) !important;
+    border-color: var(--shell-frost-soft) !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-popover-shell,
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-modal-shell {
+    background: rgba(10, 16, 28, 0.62) !important;
+    border: 1px solid var(--shell-frost-border) !important;
+    box-shadow:
+      0 24px 64px rgba(0, 0, 0, 0.4),
+      0 0 40px rgba(45, 212, 191, 0.1) !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-welcome-card {
+    background: linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.14),
+      rgba(167, 139, 250, 0.1)
+    ) !important;
+    border: 1px solid var(--shell-frost-border) !important;
+    box-shadow:
+      0 20px 50px rgba(0, 0, 0, 0.35),
+      0 0 32px rgba(110, 231, 183, 0.15) !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-header-mini-btn.lamma-quiet-power-btn-active,
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-toolbar-btn.text-green-300 {
+    color: var(--shell-mint) !important;
+    text-shadow: 0 0 12px rgba(110, 231, 183, 0.45);
+  }
+
+  /* ── CHAT INTERIOR: warm golden bubbles (different from shell) ── */
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-chat-core-shell {
+    position: relative;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-chat-core-shell::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(
+      ellipse 120% 80% at 50% 100%,
+      rgba(214, 179, 91, 0.1),
+      transparent 62%
+    );
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system) {
+    background: linear-gradient(
+      145deg,
+      rgba(214, 179, 91, 0.16) 0%,
+      rgba(17, 14, 10, 0.78) 100%
+    ) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(1.2) !important;
+    backdrop-filter: blur(18px) saturate(1.2) !important;
+    border: 1px solid rgba(214, 179, 91, 0.28) !important;
+    color: #f5efe0 !important;
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.22),
+      inset 0 1px 0 rgba(247, 231, 180, 0.12) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-msg-bubble-own {
+    background: linear-gradient(
+      135deg,
+      rgba(214, 179, 91, 0.34) 0%,
+      rgba(16, 185, 129, 0.22) 55%,
+      rgba(247, 231, 180, 0.14) 100%
+    ) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(1.3) !important;
+    backdrop-filter: blur(20px) saturate(1.3) !important;
+    border: 1px solid rgba(247, 231, 180, 0.38) !important;
+    color: #fffbeb !important;
+    box-shadow:
+      0 8px 26px rgba(214, 179, 91, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-msg-bubble-system {
+    background: rgba(214, 179, 91, 0.08) !important;
+    border: 1px dashed rgba(247, 231, 180, 0.32) !important;
+    color: #fde68a !important;
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-msg-meta {
+    color: rgba(247, 231, 180, 0.72) !important;
+  }
+
+  /* ── Login / boot screens: same magic world ── */
+  .lamma-magic-login-shell {
+    background:
+      radial-gradient(ellipse 100% 70% at 50% -15%, rgba(45, 212, 191, 0.22), transparent 58%),
+      radial-gradient(ellipse 80% 55% at 100% 35%, rgba(167, 139, 250, 0.2), transparent 52%),
+      radial-gradient(ellipse 90% 65% at 0% 75%, rgba(214, 179, 91, 0.14), transparent 50%),
+      url("/images/login-hero.jpg") center / cover no-repeat,
+      linear-gradient(168deg, #060a12 0%, #0a1628 100%) !important;
+  }
+
+  .lamma-magic-login-shell::before {
+    background: linear-gradient(
+      180deg,
+      rgba(6, 10, 18, 0.2) 0%,
+      rgba(6, 10, 18, 0.45) 100%
+    ) !important;
+  }
+
+  .lamma-magic-login-shell .panel[data-view="main"] {
+    background: linear-gradient(
+      155deg,
+      rgba(255, 255, 255, 0.17) 0%,
+      rgba(110, 231, 183, 0.09) 32%,
+      rgba(167, 139, 250, 0.07) 68%,
+      rgba(6, 10, 18, 0.58) 100%
+    ) !important;
+    -webkit-backdrop-filter: blur(42px) saturate(1.55);
+    backdrop-filter: blur(42px) saturate(1.55);
+    border: 1px solid rgba(167, 243, 208, 0.28) !important;
+    box-shadow:
+      0 28px 72px rgba(0, 0, 0, 0.48),
+      0 0 56px rgba(45, 212, 191, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+  }
+
+  .lamma-magic-login-shell .tagline {
+    color: #ecfdf5 !important;
+    text-shadow: 0 0 20px rgba(110, 231, 183, 0.35);
+  }
+
+  .lamma-magic-login-shell .tagline2 {
+    color: rgba(196, 181, 253, 0.88) !important;
+  }
+
+  .lamma-magic-login-shell .installAppBtn {
+    background: linear-gradient(
+      135deg,
+      rgba(110, 231, 183, 0.22) 0%,
+      rgba(167, 139, 250, 0.16) 100%
+    ) !important;
+    border: 1px solid rgba(167, 243, 208, 0.35) !important;
+    color: #ecfdf5 !important;
+    box-shadow:
+      0 8px 28px rgba(45, 212, 191, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  }
+
+  .lamma-magic-login-shell .installAppBtn:hover:not(:disabled) {
+    border-color: rgba(110, 231, 183, 0.55) !important;
+    box-shadow:
+      0 12px 36px rgba(45, 212, 191, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+  }
+
+  .lamma-magic-fallback-shell {
+    background:
+      radial-gradient(circle at 30% 20%, rgba(45, 212, 191, 0.2), transparent 45%),
+      radial-gradient(circle at 75% 70%, rgba(167, 139, 250, 0.18), transparent 42%),
+      linear-gradient(168deg, #060a12, #0c1624) !important;
+  }
+
+  .lamma-magic-fallback-shell .lamma-fallback-card {
+    background: linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.14),
+      rgba(110, 231, 183, 0.08)
+    ) !important;
+    -webkit-backdrop-filter: blur(36px) saturate(1.5);
+    backdrop-filter: blur(36px) saturate(1.5);
+    border: 1px solid rgba(167, 243, 208, 0.28) !important;
+    box-shadow:
+      0 24px 56px rgba(0, 0, 0, 0.4),
+      0 0 40px rgba(45, 212, 191, 0.12) !important;
+  }
+
+  .lamma-magic-fallback-shell .lamma-loading-orb {
+    border-color: rgba(110, 231, 183, 0.25) !important;
+    border-top-color: var(--shell-mint, #6ee7b7) !important;
+    box-shadow: 0 0 24px rgba(110, 231, 183, 0.35);
+  }
+
+  .lamma-magic-fallback-shell .lamma-loading-greeting {
+    color: #ecfdf5 !important;
+    text-shadow: 0 0 16px rgba(110, 231, 183, 0.4);
+  }
+}
+
+/* PWA standalone: slightly stronger aurora on any width phone */
+@media (display-mode: standalone) and (max-width: 767px) {
+  .lamma-neutral-glass[data-app-shell="aurora"]::after {
+    filter: blur(52px) saturate(1.5);
+    opacity: 1;
+  }
+
+  .lamma-magic-login-shell .panel[data-view="main"] {
+    box-shadow:
+      0 32px 80px rgba(0, 0, 0, 0.52),
+      0 0 64px rgba(45, 212, 191, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+  }
+}

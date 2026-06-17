@@ -59,7 +59,7 @@ import { motion, AnimatePresence, useDragControls } from "motion/react";
 import AMLogo from "./AMLogo.tsx";
 import BossSigil from "./BossSigil.tsx";
 import { OwnerAvatarAura } from "./OwnerPrestige.tsx";
-import { OWNER_ID_CARD_IMAGE, isOwnerChatRole, resolveOwnerDisplayAvatar } from "../lib/ownerIdentity";
+import { OWNER_ID_CARD_IMAGE, isOwnerChatRole, resolveOwnerDisplayAvatar, OWNER_DISPLAY_BADGE } from "../lib/ownerIdentity";
 import ShareModal from "./modals/ShareModal.tsx";
 import CreateRoomModal from "./modals/CreateRoomModal.tsx";
 import UserContextPopup from "./modals/UserContextPopup.tsx";
@@ -121,6 +121,8 @@ import {
   type PMTargetState,
   type ProductType,
 } from "../lib/chatTypes.ts";
+import { WelcomeMoment, type WelcomeMode } from "./WelcomeMoment";
+import { MemberPrestigeBadges } from "./MemberPrestigeBadges";
 import {
   hexToRgba,
   getRoleFromAuthor,
@@ -622,8 +624,8 @@ function PostsFeedRoom({
                         <BossSigil size={14} className="opacity-95" />
                       )}
                       {isOwnerAuthorRow && (
-                        <span className="text-[7px] lamma-role-chip lamma-role-owner">
-                          👑 المالك
+                        <span className="text-[7px] lamma-role-chip lamma-role-owner lamma-boss-badge">
+                          👑 {OWNER_DISPLAY_BADGE}
                         </span>
                       )}
                       {storeVipChip === "platinum" && (
@@ -2044,12 +2046,22 @@ export default function ChatScreen({
     kind: "standby",
     onlineCount: 1,
   });
+  const [welcomeMode, setWelcomeMode] = useState<WelcomeMode | null>(null);
   const roomEntryTickerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
 
+  useEffect(() => {
+    if (sessionStorage.getItem("lamma_welcome_v1")) return;
+    sessionStorage.setItem("lamma_welcome_v1", "1");
+    setWelcomeMode({ kind: "session", visible: true });
+  }, []);
+
   const showRoomEntryStandby = useCallback((onlineCount: number) => {
-    setRoomEntryTicker({ kind: "standby", onlineCount: Math.max(onlineCount, 1) });
+    setRoomEntryTicker({
+      kind: "standby",
+      onlineCount: Math.max(onlineCount, 1),
+    });
   }, []);
 
   const flashRoomEntryEvent = useCallback(
@@ -2071,7 +2083,10 @@ export default function ChatScreen({
         onlineCount: Math.max(onlineCount, 1),
       });
       roomEntryTickerTimerRef.current = setTimeout(() => {
-        showRoomEntryStandby(onlineCount);
+        setRoomEntryTicker({
+          kind: "standby",
+          onlineCount: Math.max(onlineCount, 1),
+        });
         roomEntryTickerTimerRef.current = null;
       }, 6000);
     },
@@ -2088,9 +2103,22 @@ export default function ChatScreen({
         flashRoomEntryEvent("leave", event.nickname, event.onlineCount);
         return;
       }
-      showRoomEntryStandby(event.onlineCount);
+      if (event.type === "sync") {
+        setRoomEntryTicker((prev) => {
+          if (prev.kind === "join" || prev.kind === "leave") {
+            return {
+              ...prev,
+              onlineCount: Math.max(event.onlineCount, 1),
+            };
+          }
+          return {
+            kind: "standby",
+            onlineCount: Math.max(event.onlineCount, 1),
+          };
+        });
+      }
     },
-    [flashRoomEntryEvent, showRoomEntryStandby],
+    [flashRoomEntryEvent],
   );
 
   useEffect(() => {
@@ -5640,9 +5668,18 @@ export default function ChatScreen({
       // is the authoritative visual wrapper for the production chat design.
       className="fixed inset-0 h-screen w-full flex flex-col overflow-hidden font-sans text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app lamma-neutral-glass"
       dir="rtl"
+      data-frost-mobile="true"
+      data-app-shell="aurora"
       data-clear-bg={isDefaultAmbientBg ? "true" : "false"}
       data-reading-mode={readingMode ? "true" : "false"}
     >
+      <WelcomeMoment
+        user={myActiveSession}
+        mode={welcomeMode}
+        onDismiss={() => setWelcomeMode(null)}
+        subscription={subscription}
+        grants={memberCosmeticGrants}
+      />
       {activeRoomBg ? (
         <>
           <div
@@ -5855,8 +5892,8 @@ export default function ChatScreen({
                     </span>
                   )}
                 </span>
-                <div className="hidden sm:flex items-center gap-1.5 mt-0.5">
-                  <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="flex items-center gap-1 flex-wrap">
                     {hasStorePlatinumDisplay(
                       myActiveSession.nickname,
                       myActiveSession,
@@ -6263,8 +6300,8 @@ export default function ChatScreen({
                                           )}
                                           {(targetUser as any).role ===
                                             "owner" && (
-                                            <span className="text-[6px] lamma-role-chip lamma-role-owner">
-                                              OWNER
+                                            <span className="text-[6px] lamma-role-chip lamma-role-owner lamma-boss-badge">
+                                              {OWNER_DISPLAY_BADGE}
                                             </span>
                                           )}
                                         </div>
@@ -6361,8 +6398,8 @@ export default function ChatScreen({
                                       </span>
                                     )}
                                     {(targetUser as any).role === "owner" && (
-                                      <span className="text-[6px] lamma-role-chip lamma-role-owner">
-                                        OWNER
+                                      <span className="text-[6px] lamma-role-chip lamma-role-owner lamma-boss-badge">
+                                        {OWNER_DISPLAY_BADGE}
                                       </span>
                                     )}
                                   </div>
@@ -6661,17 +6698,16 @@ export default function ChatScreen({
 
       {/* Mobile panel toggler header bar (Visible only on compact screens) */}
       {!isZenMode && (
-        <div className="md:hidden grid grid-cols-3 text-[10px] font-black text-center select-none z-10 relative shrink-0 tracking-wider overflow-hidden lamma-mobile-tabs">
-          <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#040605] to-transparent pointer-events-none" />
-          <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#040605] to-transparent pointer-events-none" />
+        <div className="md:hidden grid grid-cols-3 text-[10px] font-black text-center select-none z-10 relative shrink-0 tracking-wider overflow-hidden lamma-mobile-tabs lamma-frost-glass">
           <button
             onClick={() => {
               setMobileTab("chat");
               setIsSidebarOpen(false);
             }}
-            className={`py-2.5 flex items-center justify-center gap-1.5 transition-all lamma-mobile-tab-btn ${mobileTab === "chat" ? "lamma-mobile-tab-btn-active" : "text-gray-400"}`}
+            className={`py-2.5 flex flex-col items-center justify-center gap-1 transition-all lamma-mobile-tab-btn ${mobileTab === "chat" ? "lamma-mobile-tab-btn-active" : "text-gray-400"}`}
           >
-            <Flame size={13} strokeWidth={2.2} /> العام
+            <span className="lamma-ios-tab-icon"><Flame size={15} strokeWidth={2.2} /></span>
+            <span className="text-[9px]">العام</span>
           </button>
           <button
             onClick={() => {
@@ -6679,21 +6715,25 @@ export default function ChatScreen({
               setActiveSidebarTab("members");
               setIsSidebarOpen(true);
             }}
-            className={`py-2.5 flex items-center justify-center gap-1.5 transition-all lamma-mobile-tab-btn ${mobileTab === "members" ? "lamma-mobile-tab-btn-active" : "text-gray-400"}`}
+            className={`py-2.5 flex flex-col items-center justify-center gap-1 transition-all lamma-mobile-tab-btn ${mobileTab === "members" ? "lamma-mobile-tab-btn-active" : "text-gray-400"}`}
           >
-            <Users size={13} strokeWidth={2.2} /> المتصلين
+            <span className="lamma-ios-tab-icon"><Users size={15} strokeWidth={2.2} /></span>
+            <span className="text-[9px]">المتصلين</span>
           </button>
           <button
             onClick={() => {
               setMobileTab("private");
               setIsSidebarOpen(false);
             }}
-            className={`py-2.5 relative flex items-center justify-center gap-1.5 transition-all lamma-mobile-tab-btn ${mobileTab === "private" ? "lamma-mobile-tab-btn-active" : "text-gray-400"}`}
+            className={`py-2.5 relative flex flex-col items-center justify-center gap-1 transition-all lamma-mobile-tab-btn ${mobileTab === "private" ? "lamma-mobile-tab-btn-active" : "text-gray-400"}`}
           >
-            <MessageCircle size={13} strokeWidth={2.2} /> الخاص
-            {Object.keys(pmThreads).length > 0 && (
-              <span className="absolute top-[8px] right-[25%] w-2.5 h-2.5 rounded-full bg-red-500/90 border border-black" />
-            )}
+            <span className="lamma-ios-tab-icon relative">
+              <MessageCircle size={15} strokeWidth={2.2} />
+              {Object.keys(pmThreads).length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 border border-black/80" />
+              )}
+            </span>
+            <span className="text-[9px]">الخاص</span>
           </button>
         </div>
       )}
@@ -7373,17 +7413,20 @@ export default function ChatScreen({
                               {isOwnerMember && (
                                 <BossSigil size={12} className="opacity-95 shrink-0" />
                               )}
-                              {isOwnerMember && (
-                                <span className="text-[6px] lamma-role-chip lamma-role-owner shrink-0">
-                                  👑
-                                </span>
-                              )}
                               {isCurrentUser && activeTempEntryTopic && (
                                 <span className="max-w-[110px] truncate rounded-full border border-cyan-400/20 bg-cyan-500/10 px-1.5 py-0.5 text-[7px] text-cyan-200">
                                   {activeTempEntryTopic}
                                 </span>
                               )}
                             </div>
+                            <MemberPrestigeBadges
+                              member={m}
+                              currentUser={myActiveSession}
+                              chatMembers={chatMembers}
+                              subscription={subscription}
+                              memberCosmeticGrants={memberCosmeticGrants}
+                              highlightYou
+                            />
                           </div>
                         </div>
                         <span className="lamma-icon-dot shrink-0 ml-1.5" />
@@ -7467,7 +7510,7 @@ export default function ChatScreen({
             </div>
 
             {/* System Actions Side (Left) — join/leave ticker */}
-            <div className="w-[116px] sm:w-[148px] md:w-[188px] flex items-center justify-center px-2 py-0 relative overflow-hidden bg-white/[0.015] border-r border-white/5">
+            <div className="w-[116px] sm:w-[148px] md:w-[188px] flex items-center justify-center px-2 py-0 relative overflow-hidden lamma-frost-ticker border-r border-white/10">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`${roomEntryTicker.kind}-${roomEntryTicker.nickname || "standby"}`}
@@ -7495,9 +7538,9 @@ export default function ChatScreen({
                         </span>
                         <span
                           className="text-[8px] font-bold leading-normal text-emerald-300/90"
-                          dir="rtl"
+                          dir="ltr"
                         >
-                          انضم للغرفة
+                          joined the room
                         </span>
                       </div>
                     </>
@@ -7519,9 +7562,9 @@ export default function ChatScreen({
                         </span>
                         <span
                           className="text-[8px] font-bold leading-normal text-gray-400/90"
-                          dir="rtl"
+                          dir="ltr"
                         >
-                          غادر الغرفة
+                          left the room
                         </span>
                       </div>
                     </>
@@ -8542,8 +8585,8 @@ export default function ChatScreen({
                                 </span>
                               )}
                               {ownerRow && (
-                                <span className="text-[7px] lamma-role-chip lamma-role-owner">
-                                  👑 المالك
+                                <span className="text-[7px] lamma-role-chip lamma-role-owner lamma-boss-badge">
+                                  👑 {OWNER_DISPLAY_BADGE}
                                 </span>
                               )}
                             </div>
@@ -9698,6 +9741,15 @@ export default function ChatScreen({
                                   </span>
                                 )}
                               </div>
+                              <MemberPrestigeBadges
+                                member={m}
+                                currentUser={myActiveSession}
+                                chatMembers={chatMembers}
+                                subscription={subscription}
+                                memberCosmeticGrants={memberCosmeticGrants}
+                                size="sm"
+                                highlightYou
+                              />
                             </div>
                           </div>
                           <span className="lamma-icon-dot shrink-0 ml-1.5" />
@@ -9761,8 +9813,8 @@ export default function ChatScreen({
                           VIP
                         </span>
                       ) : pmTarget.role === "owner" ? (
-                        <span className="text-[8px] lamma-role-chip lamma-role-owner">
-                          OWNER
+                        <span className="text-[8px] lamma-role-chip lamma-role-owner lamma-boss-badge">
+                          👑 {OWNER_DISPLAY_BADGE}
                         </span>
                       ) : pmTarget.role === "admin" ? (
                         <span className="text-[8px] lamma-role-chip lamma-role-admin">

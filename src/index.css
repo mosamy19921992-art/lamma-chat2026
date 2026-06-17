@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;800;900&family=Tajawal:wght@400;700;900&family=Space+Grotesk:wght@400;600;700&display=swap');
 @import "./components/login-screen-legacy.css";
+@import "./styles/lamma-magic-shell.css";
 @import "tailwindcss";
 
 @theme {
@@ -21,6 +22,15 @@
   --glass-bg: rgba(14, 18, 22, 0.68);
   --glass-border: rgba(255, 255, 255, 0.08);
   --glow-color: rgba(255, 255, 255, 0.06);
+  /* Frosted glass tokens — primary mobile app look */
+  --frost-bg: rgba(255, 255, 255, 0.1);
+  --frost-bg-soft: rgba(255, 255, 255, 0.06);
+  --frost-border: rgba(255, 255, 255, 0.2);
+  --frost-border-soft: rgba(255, 255, 255, 0.12);
+  --frost-blur: 28px;
+  --frost-saturate: 1.35;
+  --frost-highlight: rgba(255, 255, 255, 0.24);
+  --frost-shadow: rgba(0, 0, 0, 0.28);
   --lamma-wall-r: 214;
   --lamma-wall-g: 219;
   --lamma-wall-b: 225;
@@ -719,10 +729,17 @@ body {
 }
 
 .lamma-mobile-tabs {
-  background:
-    linear-gradient(180deg, rgba(4, 6, 5, 0.96), rgba(4, 6, 5, 0.9));
-  border-bottom: 1px solid rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.08);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.04)
+  );
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  backdrop-filter: blur(22px) saturate(1.3);
+  border-bottom: 1px solid var(--frost-border-soft);
+  box-shadow:
+    0 10px 28px var(--frost-shadow),
+    inset 0 1px 0 var(--frost-highlight);
 }
 
 .lamma-mobile-tab-btn {
@@ -736,8 +753,15 @@ body {
 
 .lamma-mobile-tab-btn-active {
   color: rgb(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b));
-  background: rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.05);
-  box-shadow: inset 0 -3px 0 rgba(var(--lamma-wall-r), var(--lamma-wall-g), var(--lamma-wall-b), 0.9);
+  background: rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  margin: 4px 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 4px 14px rgba(0, 0, 0, 0.12);
 }
 
 .lamma-msg-meta {
@@ -3760,4 +3784,343 @@ body {
   font-weight: 800;
   color: rgba(255, 230, 180, 0.78);
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+}
+
+/* ── Welcome moment & member prestige ── */
+.lamma-welcome-overlay {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(16, 185, 129, 0.14), rgba(0, 0, 0, 0.72) 68%),
+    rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+.lamma-welcome-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.75rem 1.5rem 1.5rem;
+  border-radius: 1.75rem;
+  max-width: min(92vw, 320px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(
+    165deg,
+    rgba(15, 23, 42, 0.94) 0%,
+    rgba(6, 78, 59, 0.35) 100%
+  );
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 0 40px rgba(16, 185, 129, 0.12);
+}
+
+.lamma-welcome-owner {
+  border-color: rgba(251, 191, 36, 0.35);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 0 48px rgba(251, 191, 36, 0.22);
+}
+
+.lamma-welcome-platinum {
+  border-color: rgba(244, 114, 182, 0.3);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 0 44px rgba(244, 114, 182, 0.18);
+}
+
+.lamma-welcome-vip {
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.lamma-welcome-sparkle {
+  color: #6ee7b7;
+  margin-bottom: 0.65rem;
+  filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.55));
+  animation: lammaWelcomeSparkle 2.4s ease-in-out infinite;
+}
+
+.lamma-welcome-title {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #ecfdf5;
+  line-height: 1.35;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.65);
+}
+
+.lamma-welcome-subtitle {
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(167, 243, 208, 0.92);
+  line-height: 1.55;
+}
+
+.lamma-room-welcome-toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  color: #d1fae5;
+  background: rgba(6, 78, 59, 0.88);
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+}
+
+.lamma-you-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.4rem;
+  border-radius: 9999px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+  animation: lammaYouPulse 2.2s ease-in-out infinite;
+}
+
+.lamma-list-item:has(.lamma-you-chip) {
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(52, 211, 153, 0.12);
+}
+
+.lamma-loading-greeting {
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: #ecfdf5;
+  line-height: 1.4;
+}
+
+.lamma-loading-role {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-top: 0.15rem;
+}
+
+@keyframes lammaWelcomeSparkle {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.08) rotate(8deg);
+    opacity: 1;
+  }
+}
+
+.lamma-boss-badge {
+  font-family: "Space Grotesk", "Cairo", sans-serif !important;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 900 !important;
+  background: linear-gradient(
+    135deg,
+    rgba(180, 83, 9, 0.55) 0%,
+    rgba(251, 191, 36, 0.22) 48%,
+    rgba(254, 243, 199, 0.12) 100%
+  ) !important;
+  border: 1px solid rgba(251, 191, 36, 0.55) !important;
+  box-shadow:
+    0 0 14px rgba(251, 191, 36, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.45);
+}
+
+@keyframes lammaYouPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+  }
+}
+
+/* ── Frosted glass utility (iOS-style) ── */
+.lamma-frost-glass {
+  position: relative;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.07) 42%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  -webkit-backdrop-filter: blur(var(--frost-blur)) saturate(var(--frost-saturate));
+  backdrop-filter: blur(var(--frost-blur)) saturate(var(--frost-saturate));
+  border: 1px solid var(--frost-border);
+  box-shadow:
+    0 8px 32px var(--frost-shadow),
+    inset 0 1px 0 var(--frost-highlight),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.lamma-frost-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 38%);
+  pointer-events: none;
+}
+
+/* ── Mobile-first frosted glass app shell ── */
+@media (max-width: 767px) {
+  .lamma-neutral-glass[data-frost-mobile="true"] {
+    --frost-blur: 34px;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-active-wallpaper::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 12, 18, 0.22);
+    -webkit-backdrop-filter: blur(3px) saturate(1.1);
+    backdrop-filter: blur(3px) saturate(1.1);
+    pointer-events: none;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-header {
+    background: rgba(255, 255, 255, 0.07) !important;
+    -webkit-backdrop-filter: blur(30px) saturate(1.35) !important;
+    backdrop-filter: blur(30px) saturate(1.35) !important;
+    border-bottom: 1px solid var(--frost-border-soft) !important;
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 var(--frost-highlight) !important;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-room-header,
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-topic-shell,
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-frost-ticker {
+    background: rgba(255, 255, 255, 0.08) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(1.32) !important;
+    backdrop-filter: blur(28px) saturate(1.32) !important;
+    border-color: var(--frost-border-soft) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-mobile-tabs {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    -webkit-backdrop-filter: blur(32px) saturate(1.4) !important;
+    backdrop-filter: blur(32px) saturate(1.4) !important;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system) {
+    background: rgba(255, 255, 255, 0.09) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.25) !important;
+    backdrop-filter: blur(22px) saturate(1.25) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    color: #f8fafc !important;
+    box-shadow:
+      0 6px 20px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45) !important;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-msg-bubble-own {
+    background: linear-gradient(
+      135deg,
+      rgba(16, 185, 129, 0.28) 0%,
+      rgba(255, 255, 255, 0.12) 100%
+    ) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.35) !important;
+    backdrop-filter: blur(22px) saturate(1.35) !important;
+    border: 1px solid rgba(110, 231, 183, 0.38) !important;
+    box-shadow:
+      0 6px 22px rgba(16, 185, 129, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-msg-bubble-system {
+    background: rgba(255, 255, 255, 0.06) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(1.2) !important;
+    backdrop-filter: blur(18px) saturate(1.2) !important;
+    border: 1px dashed rgba(255, 255, 255, 0.22) !important;
+    color: #d1fae5 !important;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-chat-input-shell {
+    background: rgba(255, 255, 255, 0.1) !important;
+    -webkit-backdrop-filter: blur(36px) saturate(1.4) !important;
+    backdrop-filter: blur(36px) saturate(1.4) !important;
+    border: 1px solid var(--frost-border) !important;
+    box-shadow:
+      0 -10px 36px rgba(0, 0, 0, 0.22),
+      inset 0 1px 0 var(--frost-highlight) !important;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-composer-field,
+  .lamma-neutral-glass[data-frost-mobile="true"] input[type="text"],
+  .lamma-neutral-glass[data-frost-mobile="true"] textarea {
+    background: rgba(255, 255, 255, 0.06) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    color: #f8fafc !important;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-mobile-sidebar-shell {
+    background: rgba(10, 14, 20, 0.38) !important;
+    -webkit-backdrop-filter: blur(42px) saturate(1.45) !important;
+    backdrop-filter: blur(42px) saturate(1.45) !important;
+    border-left: 1px solid var(--frost-border-soft) !important;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-glass,
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-list-panel,
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-list-item {
+    background: rgba(255, 255, 255, 0.07) !important;
+    -webkit-backdrop-filter: blur(26px) saturate(1.3) !important;
+    backdrop-filter: blur(26px) saturate(1.3) !important;
+    border-color: var(--frost-border-soft) !important;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-popover-shell,
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-modal-shell {
+    background: rgba(18, 24, 32, 0.55) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(1.4) !important;
+    backdrop-filter: blur(40px) saturate(1.4) !important;
+    border: 1px solid var(--frost-border) !important;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"][data-clear-bg="true"] .lamma-chat-core-shell {
+    background: rgba(255, 255, 255, 0.03) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(1.15) !important;
+    backdrop-filter: blur(10px) saturate(1.15) !important;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-welcome-card {
+    -webkit-backdrop-filter: blur(40px) saturate(1.4) !important;
+    backdrop-filter: blur(40px) saturate(1.4) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid var(--frost-border) !important;
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-ios-tab-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.1);
+    -webkit-backdrop-filter: blur(14px) saturate(1.25);
+    backdrop-filter: blur(14px) saturate(1.25);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  .lamma-neutral-glass[data-frost-mobile="true"] .lamma-mobile-tab-btn-active .lamma-ios-tab-icon {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(110, 231, 183, 0.35);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.24),
+      0 4px 14px rgba(16, 185, 129, 0.15);
+  }
 }

@@ -1,6 +1,9 @@
 /** Official owner identification card artwork (BOSS). */
 export const OWNER_ID_CARD_IMAGE = "/images/owner-boss-id-card.png";
 
+/** English prestige label shown on owner badges in chat UI. */
+export const OWNER_DISPLAY_BADGE = "BOSS";
+
 export function isOwnerChatRole(role?: string | null): boolean {
   return (role || "").toLowerCase() === "owner";
 }

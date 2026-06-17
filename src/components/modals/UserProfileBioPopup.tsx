@@ -17,8 +17,8 @@ const ROLE_BADGE: Record<string, { label: string; className: string }> = {
     className: "lamma-role-chip lamma-role-plat",
   },
   owner: {
-    label: "OWNER",
-    className: "lamma-role-chip lamma-role-owner",
+    label: "BOSS",
+    className: "lamma-role-chip lamma-role-owner lamma-boss-badge",
   },
   admin: {
     label: "ADMIN",
@@ -161,6 +161,16 @@ export function UserProfileBioPopup({
                 >
                   {getRoleBadge(target.role).label}
                 </div>
+                {(target.badge || target.title) && (
+                  <div className="flex items-center gap-1 mt-1.5 flex-wrap justify-center">
+                    {target.badge && (
+                      <span className="text-[8px] lamma-badge-chip">{target.badge}</span>
+                    )}
+                    {target.title && (
+                      <span className="text-[8px] lamma-title-chip">[{target.title}]</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             )}

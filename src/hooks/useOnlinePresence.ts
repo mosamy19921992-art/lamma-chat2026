@@ -92,6 +92,11 @@ export function useOnlinePresence({
       });
       activeChannel = channel;
 
+      let prevMembersByUid = new Map<string, string>();
+      let isInitialPresenceSync = true;
+      let lastTickerFlash: { type: "join" | "leave"; nick: string; at: number } | null =
+        null;
+
       const emitUpdate = (
         type: PresenceUpdateEvent["type"],
         nickname?: string,
@@ -109,9 +114,20 @@ export function useOnlinePresence({
         });
       };
 
-      const syncFromPresence = (
-        eventType: PresenceUpdateEvent["type"] = "sync",
-      ) => {
+      const flashTicker = (type: "join" | "leave", nickname: string) => {
+        const now = Date.now();
+        if (
+          lastTickerFlash?.type === type &&
+          lastTickerFlash.nick === nickname &&
+          now - lastTickerFlash.at < 2500
+        ) {
+          return;
+        }
+        lastTickerFlash = { type, nick: nickname, at: now };
+        emitUpdate(type, nickname);
+      };
+
+      const syncFromPresence = () => {
         const state = channel.presenceState<PresenceMeta>();
         const byUid = new Map<string, ChatMember>();
 
@@ -144,40 +160,49 @@ export function useOnlinePresence({
         }
 
         const nextMembers = Array.from(byUid.values());
+        const nextMembersByUid = new Map(
+          nextMembers.map((member) => [member.id, member.nickname]),
+        );
+
         if (syncTimer) {
           clearTimeout(syncTimer);
         }
         syncTimer = setTimeout(() => {
+          if (!isInitialPresenceSync) {
+            for (const [uid, nickname] of nextMembersByUid) {
+              if (!prevMembersByUid.has(uid) && uid !== myUid) {
+                flashTicker("join", nickname);
+              }
+            }
+            for (const [uid, nickname] of prevMembersByUid) {
+              if (!nextMembersByUid.has(uid) && uid !== myUid) {
+                flashTicker("leave", nickname);
+              }
+            }
+          } else {
+            isInitialPresenceSync = false;
+          }
+
+          prevMembersByUid = nextMembersByUid;
           setChatMembers(nextMembers);
-          emitUpdate(eventType);
+          emitUpdate("sync");
         }, 180);
       };
 
       channel
-        .on("presence", { event: "sync" }, () => syncFromPresence("sync"))
+        .on("presence", { event: "sync" }, () => syncFromPresence())
         .on("presence", { event: "join" }, ({ newPresences }) => {
           const joined = (newPresences as unknown as PresenceMeta[])[0];
-          syncFromPresence("join");
+          syncFromPresence();
           if (joined?.nickname && joined.uid !== myUid) {
-            onPresenceUpdate?.({
-              type: "join",
-              nickname: joined.nickname,
-              onlineCount: Object.keys(channel.presenceState()).length,
-            });
+            flashTicker("join", joined.nickname);
           }
         })
         .on("presence", { event: "leave" }, ({ leftPresences }) => {
           const left = (leftPresences as unknown as PresenceMeta[])[0];
-          syncFromPresence("leave");
+          syncFromPresence();
           if (left?.nickname && left.uid !== myUid) {
-            onPresenceUpdate?.({
-              type: "leave",
-              nickname: left.nickname,
-              onlineCount: Math.max(
-                Object.keys(channel.presenceState()).length,
-                1,
-              ),
-            });
+            flashTicker("leave", left.nickname);
           }
         })
         .subscribe(async (status, err) => {
@@ -194,7 +219,7 @@ export function useOnlinePresence({
               browserSignature: myBrowserSig,
               authProvider: currentUser.authProvider,
             } satisfies PresenceMeta);
-            syncFromPresence("sync");
+            syncFromPresence();
             return;
           }
 

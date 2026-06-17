@@ -491,7 +491,7 @@ export default function LoginScreen(props: LoginScreenProps) {
   };
 
   return (
-    <main className="page legacyLoginRoot" dir="rtl">
+    <main className="page legacyLoginRoot lamma-magic-login-shell" dir="rtl">
       <section className="card" aria-label="تسجيل الدخول">
         <div className="panel" id="panel" data-view={view}>
           <div className="view view--main">

@@ -17,6 +17,7 @@ import {
   hasPlaceholderSupabaseNickname,
   normalizeAuthRole,
 } from './lib/authProfile';
+import { isOwnerChatRole, OWNER_DISPLAY_BADGE } from './lib/ownerIdentity';
 import { mergeSessionRole } from './services/auth/userRoleService';
 import { ensureFreshAppBuild } from './lib/appCache';
 
@@ -391,7 +392,7 @@ export default function App() {
             hasInviteAccess={hasInviteAccess}
           />
         ) : (
-          <Suspense fallback={<ChatLoadingScreen />}>
+          <Suspense fallback={<ChatLoadingScreen user={user} />}>
             <ChatScreen
               currentUser={user}
               onLogout={handleLogout}
@@ -417,7 +418,7 @@ export default function App() {
 
 function AuthBootScreen() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center lamma-fallback-shell">
+    <div className="min-h-screen w-full flex items-center justify-center lamma-fallback-shell lamma-magic-fallback-shell">
       <div className="flex flex-col items-center gap-3 px-5 py-6 rounded-3xl lamma-fallback-card max-w-sm text-center">
         <div className="w-12 h-12 rounded-full animate-spin lamma-loading-orb" />
         <p className="text-xs text-gray-300 font-bold">جاري التحقق من جلسة الدخول...</p>
@@ -426,8 +427,19 @@ function AuthBootScreen() {
   );
 }
 
-function ChatLoadingScreen() {
+function ChatLoadingScreen({ user }: { user?: UserSession | null }) {
   const [timedOut, setTimedOut] = useState(false);
+
+  const roleLabel =
+    isOwnerChatRole(user?.role)
+      ? `👑 ${OWNER_DISPLAY_BADGE}`
+      : user?.role === "admin"
+        ? "ADMIN"
+        : user?.role === "vip" || user?.role === "platinum_vip"
+          ? "VIP"
+          : user?.role === "guest"
+            ? "زائر"
+            : "عضو";
 
   useEffect(() => {
     const timer = window.setTimeout(() => setTimedOut(true), 12000);
@@ -450,9 +462,15 @@ function ChatLoadingScreen() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center lamma-fallback-shell">
+    <div className="min-h-screen w-full flex items-center justify-center lamma-fallback-shell lamma-magic-fallback-shell">
       <div className="flex flex-col items-center gap-3 px-5 py-6 rounded-3xl lamma-fallback-card max-w-sm text-center">
         <div className="w-12 h-12 rounded-full animate-spin lamma-loading-orb" />
+        {user?.nickname ? (
+          <>
+            <p className="lamma-loading-greeting">أهلاً {user.nickname} ✨</p>
+            <p className="lamma-loading-role">{roleLabel}</p>
+          </>
+        ) : null}
         <p className="text-xs text-gray-300 font-bold">جاري تجهيز شات لمة...</p>
         <p className="text-[10px] text-gray-500 font-semibold">ثواني بسيطة ونكمل السهرة</p>
         {timedOut && (
