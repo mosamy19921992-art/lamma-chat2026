@@ -108,6 +108,10 @@ export default function LoginScreen(props: LoginScreenProps) {
   const guestLoginAllowed = !inviteOnlyMode || hasInviteAccess;
   const brandName = import.meta.env.VITE_BRAND_NAME || "Lamma Chat";
   const brandCredit = import.meta.env.VITE_BRAND_CREDIT || "MR / Mohamed Samy";
+  const loginHeroBg = import.meta.env.VITE_LOGIN_HERO_BG || "/images/login-hero.jpg";
+  const loginHeroStyle = {
+    "--lamma-login-hero": `url("${loginHeroBg}")`,
+  } as React.CSSProperties;
 
   const [view, setView] = useState<ViewMode>("main");
   const [emailOpen, setEmailOpen] = useState(false);
@@ -498,6 +502,7 @@ export default function LoginScreen(props: LoginScreenProps) {
     <main
       className={`page legacyLoginRoot${isMobileAppShell ? " lamma-magic-login-shell" : ""}`}
       dir="rtl"
+      style={loginHeroStyle}
     >
       <section className="card" aria-label="تسجيل الدخول">
         <div className="panel" id="panel" data-view={view}>
@@ -506,7 +511,7 @@ export default function LoginScreen(props: LoginScreenProps) {
               <span className="brandLogoWrap">
                 <img
                   className="brandLogo"
-                  src="/images/lamma-app-icon-512.png"
+                  src="/images/lamma-logo-nice.png"
                   alt={brandName}
                   loading="eager"
                   decoding="async"
