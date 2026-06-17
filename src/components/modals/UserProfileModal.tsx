@@ -7,7 +7,7 @@ import { PROFILE_AVATAR_EMOJIS } from "../../lib/avatarDisplay";
 import { OwnerIdCard } from "../OwnerIdCard";
 import { isOwnerChatRole } from "../../lib/ownerIdentity";
 
-export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setShowProfileModal, setSelectedProfileMember, myActiveSession, currentUser, isOwnerRole, isRegisteredAccount, tempEntryTopicInput, setTempEntryTopicInput, setTempEntryTopicStatusText, tempEntryTopicEnabled, setTempEntryTopicEnabled, handleSaveTempEntryTopic, tempEntryTopicStatusText, nicknameRequestInput, setNicknameRequestInput, nicknameRequestLoading, handleSubmitNicknameChangeRequest, nicknameRequestStatusText, nicknameRequests, setRoomMessages, activeRoomId, addSystemActivityLog, addLammaBotMessage, bannedUsersList, removeBanEntries, addBanEntry, chatMembers, setChatMembers, memberCustomPermissions, setMemberCustomPermissions, myCustomBio, setMyCustomBio, handleSelectProfileEmoji, handleProfileAvatarUploadChange, profileAvatarInputRef, profileAvatarSaving, profileAvatarStatus }: any) => {
+export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setShowProfileModal, setSelectedProfileMember, myActiveSession, currentUser, isOwnerRole, isRegisteredAccount, tempEntryTopicInput, setTempEntryTopicInput, setTempEntryTopicStatusText, tempEntryTopicEnabled, setTempEntryTopicEnabled, handleSaveTempEntryTopic, tempEntryTopicStatusText, nicknameRequestInput, setNicknameRequestInput, nicknameRequestLoading, handleSubmitNicknameChangeRequest, nicknameRequestStatusText, nicknameRequests, setRoomMessages, activeRoomId, addSystemActivityLog, addLammaBotMessage, bannedUsersList, removeBanEntries, addBanEntry, chatMembers, setChatMembers, memberCustomPermissions, setMemberCustomPermissions, myCustomBio, setMyCustomBio, handleSelectProfileEmoji, handleProfileAvatarUploadChange, profileAvatarInputRef, profileAvatarSaving, profileAvatarStatus, onSendPrivateMessage }: any) => {
   const isOwnProfile =
     selectedProfileMember?.nickname === myActiveSession.nickname;
   const isStaffViewer =
@@ -83,6 +83,15 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                         هذه بطاقتك التعريفية الرسمية كمالك — تظهر لكل الأعضاء
                         عند فتح ملفك.
                       </p>
+                    )}
+                    {!isOwnProfile && onSendPrivateMessage && (
+                      <button
+                        type="button"
+                        onClick={() => onSendPrivateMessage(selectedProfileMember)}
+                        className="w-full flex items-center justify-center gap-1.5 p-2.5 rounded-xl text-center text-[10px] font-black transition-all cursor-pointer lamma-accent-btn"
+                      >
+                        💬 محادثة خاصة مع المالك
+                      </button>
                     )}
                   </div>
                 ) : (

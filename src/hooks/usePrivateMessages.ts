@@ -66,7 +66,7 @@ export function usePrivateMessages({
   // Typing indicator removed — was a fake timer, not real remote typing signal
 
   useEffect(() => {
-    if (!supabase || currentUser.authProvider !== "supabase" || !currentUser.uid) {
+    if (!supabase || !currentUser.uid) {
       return;
     }
 

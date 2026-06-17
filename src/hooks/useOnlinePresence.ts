@@ -81,6 +81,7 @@ export function useOnlinePresence({
     let lastEvent: PresenceUpdateEvent["type"] = "sync";
     let activeChannel: ReturnType<typeof supabase.channel> | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let syncTimer: ReturnType<typeof setTimeout> | null = null;
     let stopped = false;
 
     const attach = () => {
@@ -142,8 +143,14 @@ export function useOnlinePresence({
           });
         }
 
-        setChatMembers(Array.from(byUid.values()));
-        emitUpdate(eventType);
+        const nextMembers = Array.from(byUid.values());
+        if (syncTimer) {
+          clearTimeout(syncTimer);
+        }
+        syncTimer = setTimeout(() => {
+          setChatMembers(nextMembers);
+          emitUpdate(eventType);
+        }, 180);
       };
 
       channel
@@ -212,6 +219,9 @@ export function useOnlinePresence({
       stopped = true;
       if (retryTimer) {
         clearTimeout(retryTimer);
+      }
+      if (syncTimer) {
+        clearTimeout(syncTimer);
       }
       if (activeChannel) {
         void activeChannel.untrack();

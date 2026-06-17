@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import type { ChatMember } from "../../lib/chatTypes";
 import { MemberAvatar } from "../MemberAvatar";
+import { OwnerIdCard } from "../OwnerIdCard";
+import { isOwnerChatRole } from "../../lib/ownerIdentity";
 
 const ROLE_BADGE: Record<string, { label: string; className: string }> = {
   platinum_vip: {
@@ -135,6 +137,12 @@ export function UserProfileBioPopup({
             onPointerDownCapture={(e) => e.stopPropagation()}
           >
             {/* Visual card */}
+            {isOwnerChatRole(target.role) ? (
+              <OwnerIdCard
+                nickname={target.nickname}
+                tagline="مالك المنصة • LAMMA CHAT"
+              />
+            ) : (
             <div className="p-3 rounded-2xl flex flex-col items-center text-center gap-2 select-none shrink-0 lamma-section-card">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden lamma-quiet-power-btn">
                 <MemberAvatar
@@ -155,6 +163,7 @@ export function UserProfileBioPopup({
                 </div>
               </div>
             </div>
+            )}
 
             {/* Bio area */}
             <div className="space-y-1">

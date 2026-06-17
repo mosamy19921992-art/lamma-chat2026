@@ -46,25 +46,29 @@ interface PersistedPrivateMessage {
   text: string;
 }
 
+function createLocalPrivateMessage(text: string): PersistedPrivateMessage {
+  return {
+    id: `local-pm-${crypto.randomUUID()}`,
+    created_at: new Date().toISOString(),
+    text,
+  };
+}
+
 export async function persistPrivateMessage({
   currentUser,
   targetNickname,
   text,
   members,
 }: PersistPrivateMessageOptions): Promise<PersistedPrivateMessage> {
-  if (
-    !supabase ||
-    currentUser.authProvider !== "supabase" ||
-    !currentUser.uid
-  ) {
-    throw new Error("الرسائل الخاصة تحتاج حسابًا مسجلًا واتصال Supabase صالحًا.");
+  if (!currentUser.uid) {
+    throw new Error("تعذر إرسال الرسالة الخاصة بدون معرف جلسة.");
   }
 
   const receiver = members.find((member) => member.nickname === targetNickname);
   const receiverUid = receiver && isUuidLike(receiver.id) ? receiver.id : null;
 
-  if (!receiverUid) {
-    throw new Error("تعذر تحديد الطرف الآخر لهذه الرسالة الخاصة.");
+  if (!supabase) {
+    return createLocalPrivateMessage(text);
   }
 
   const { data, error } = await supabase
@@ -83,6 +87,12 @@ export async function persistPrivateMessage({
     .single();
 
   if (error) {
+    if (currentUser.authProvider === "guest") {
+      return createLocalPrivateMessage(text);
+    }
+    if (!receiverUid) {
+      throw new Error("تعذر تحديد الطرف الآخر لهذه الرسالة الخاصة.");
+    }
     throw error;
   }
 

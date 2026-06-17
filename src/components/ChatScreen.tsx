@@ -59,7 +59,7 @@ import { motion, AnimatePresence, useDragControls } from "motion/react";
 import AMLogo from "./AMLogo.tsx";
 import BossSigil from "./BossSigil.tsx";
 import { OwnerAvatarAura } from "./OwnerPrestige.tsx";
-import { OWNER_ID_CARD_IMAGE } from "../lib/ownerIdentity";
+import { OWNER_ID_CARD_IMAGE, isOwnerChatRole, resolveOwnerDisplayAvatar } from "../lib/ownerIdentity";
 import ShareModal from "./modals/ShareModal.tsx";
 import CreateRoomModal from "./modals/CreateRoomModal.tsx";
 import UserContextPopup from "./modals/UserContextPopup.tsx";
@@ -3881,6 +3881,15 @@ export default function ChatScreen({
       (m) => m.nickname.toLowerCase() === cleanName.toLowerCase(),
     );
 
+    if (member && isOwnerAuthor(member.nickname, myActiveSession, rawChatMembers)) {
+      member = {
+        ...member,
+        role: "owner",
+        avatar: resolveOwnerDisplayAvatar(member.avatar),
+        status: member.status === "offline" ? "online" : member.status,
+      };
+    }
+
     if (!member) {
       const isGuest =
         cleanName.startsWith("LammaGuest") ||
@@ -3888,14 +3897,43 @@ export default function ChatScreen({
         cleanName.startsWith("LC_Guest") ||
         cleanName.includes("زائر") ||
         cleanName.includes("Guest");
-      const derivedRole = isGuest ? "guest" : "user";
+      const isOwner =
+        isOwnerAuthor(cleanName, myActiveSession, rawChatMembers) ||
+        rawChatMembers.some(
+          (m) =>
+            m.role === "owner" &&
+            m.nickname.toLowerCase() === cleanName.toLowerCase(),
+        );
+      const roleFromAuthor = getRoleFromAuthor(
+        cleanName,
+        myActiveSession,
+        rawChatMembers,
+      );
+      let derivedRole: ChatMember["role"] = isGuest ? "guest" : "user";
+      if (isOwner || roleFromAuthor === "owner") derivedRole = "owner";
+      else if (roleFromAuthor === "admin") derivedRole = "admin";
+      else if (roleFromAuthor === "platinum_vip") derivedRole = "platinum_vip";
+      else if (roleFromAuthor === "vip") derivedRole = "vip";
+      else {
+        const modMember = rawChatMembers.find(
+          (m) =>
+            m.nickname.toLowerCase() === cleanName.toLowerCase() &&
+            m.role === "mod",
+        );
+        if (modMember) derivedRole = "mod";
+      }
 
       member = {
         id: `offline-${cleanName.toLowerCase().replace(/\s+/g, "-")}`,
         nickname: cleanName,
-        role: derivedRole as ChatMember["role"],
-        color: "#10b981",
-        avatar: isGuest ? "👤" : "👨",
+        role: derivedRole,
+        color: derivedRole === "owner" ? "#f59e0b" : "#10b981",
+        avatar:
+          derivedRole === "owner"
+            ? resolveOwnerDisplayAvatar(null)
+            : isGuest
+              ? "👤"
+              : "👨",
         status: "offline",
         email: undefined,
         fingerprint: "",
@@ -4036,18 +4074,18 @@ export default function ChatScreen({
     }
 
     closeProfileOverlays();
-    setSelectedProfileMember(member);
-    setUserContextTarget(member);
-    setShowUserContextPop(true);
+
+    if (isOwnerChatRole(member.role)) {
+      setSelectedProfileMember(member);
+      setShowProfileModal(true);
+      return;
+    }
+
+    setUserProfileBioTarget(member);
+    setShowUserProfileBioPop(true);
   };
 
   const startPrivateChatWithMember = (nickname: string) => {
-    if (currentUser.authProvider === "guest") {
-      alert(
-        "💌 الرسائل الخاصة متاحة للمسجلين فقط.\n\nسجّل حساباً مجاناً عبر البريد أو Google للاستمتاع بالرسائل الخاصة.",
-      );
-      return;
-    }
     const member = resolveChatMemberByNickname(nickname);
     if (!member) return;
     setPmTarget({
@@ -4782,12 +4820,6 @@ export default function ChatScreen({
 
   const handleSendPM = async () => {
     if (!pmTarget || !pmInputText.trim()) return;
-
-    if (currentUser.authProvider === "guest") {
-      alert("💌 الرسائل الخاصة للمسجلين فقط.\n\nسجّل حساباً مجاناً عبر البريد أو Google للاستمتاع بالرسائل الخاصة.");
-      setPmInputText("");
-      return;
-    }
 
     // Rate limiting: max 3 messages per second
     const now = Date.now();
@@ -10089,9 +10121,8 @@ export default function ChatScreen({
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleSendPM();
                     }}
-                    placeholder={currentUser.authProvider === "guest" ? "الرسائل الخاصة للمسجلين فقط..." : "اكتب على راحتك..."}
-                    disabled={currentUser.authProvider === "guest"}
-                    className={`flex-1 bg-transparent border-none text-right font-semibold text-[11px] focus:ring-0 focus:outline-none ${currentUser.authProvider === "guest" ? "text-gray-500 cursor-not-allowed" : "text-white"}`}
+                    placeholder="اكتب على راحتك..."
+                    className="flex-1 bg-transparent border-none text-right font-semibold text-[11px] focus:ring-0 focus:outline-none text-white"
                   />
 
                   <button
@@ -10749,6 +10780,11 @@ export default function ChatScreen({
         profileAvatarInputRef={profileAvatarInputRef}
         profileAvatarSaving={profileAvatarSaving}
         profileAvatarStatus={profileAvatarStatus}
+        onSendPrivateMessage={(member: ChatMember) => {
+          startPrivateChatWithMember(member.nickname);
+          setShowProfileModal(false);
+          setSelectedProfileMember(null);
+        }}
         />
       </AnimatePresence>
 
@@ -10982,11 +11018,6 @@ export default function ChatScreen({
         blockedUsers={blockedUsers}
         handlers={{
           onSendPM: (target) => {
-            if (currentUser.authProvider === "guest") {
-              alert("💌 الرسائل الخاصة متاحة للمسجلين فقط.\n\nسجّل حساباً مجاناً عبر البريد أو Google للاستمتاع بالرسائل الخاصة.");
-              setShowUserContextPop(false);
-              return;
-            }
             setPmTarget({
               nickname: target.nickname,
               role: normalizePmRole(target.role),
@@ -11018,6 +11049,9 @@ export default function ChatScreen({
               target.nickname.toLowerCase() === selfNickname.toLowerCase()
             ) {
               openOwnProfileCard();
+            } else if (isOwnerChatRole(target.role)) {
+              setSelectedProfileMember(target);
+              setShowProfileModal(true);
             } else {
               setUserProfileBioTarget(target);
               setShowUserProfileBioPop(true);
