@@ -1,16 +1,13 @@
-# robots.txt for Lamma Chat
+# robots.txt — شات لمة | Lamma Chat
 # https://lamma-arabic-chat-room.vercel.app
 
 User-agent: *
 Allow: /
 
-# Sitemap location
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /images/
+
 Sitemap: https://lamma-arabic-chat-room.vercel.app/sitemap.xml
-
-# Disallow private/admin areas (if any)
-Disallow: /admin
-Disallow: /private
-Disallow: /api/internal
-
-# Crawl rate (optional)
-Crawl-delay: 1
