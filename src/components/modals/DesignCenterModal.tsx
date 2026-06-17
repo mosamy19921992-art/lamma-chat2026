@@ -2,11 +2,20 @@ import React, { useRef, useState } from 'react';
 import { DesignStudioModal } from './DesignStudioModal';
 import { DesignTemplateGallery } from './DesignTemplateGallery';
 import { applyFace, loadFace, saveFace, FACE_PRESETS } from '../../lib/customFace';
+import {
+  applyGlassForm,
+  loadGlassFormId,
+  GLASS_FORM_PRESETS,
+  type GlassFormId,
+} from '../../services/design/glassTransparencyService';
 
 type DesignSection = "uploads" | "studio" | "assistant";
 
 export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, applyAssistantPresetDirect, queueRecommendedAssistantProposal, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset }: any) => {
   const [section, setSection] = useState<DesignSection>("uploads");
+  const [activeGlassFormId, setActiveGlassFormId] = useState<GlassFormId | null>(
+    () => loadGlassFormId(),
+  );
   const [columnUploading, setColumnUploading] = useState<string | null>(null);
   const rightColUploadRef = useRef<HTMLInputElement>(null);
   const centerColUploadRef = useRef<HTMLInputElement>(null);
@@ -50,6 +59,27 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     saveFace(preset.face);
     applyFace(preset.face);
     alert(`✅ تم تطبيق سمة «${preset.name}».`);
+  };
+
+  const handleApplyGlassForm = (formId: GlassFormId) => {
+    const preset = GLASS_FORM_PRESETS.find((p) => p.id === formId);
+    const label = preset?.title ?? formId;
+    const allowed = window.confirm(
+      `تطبيق فورم الشفافية «${label}» على الشات؟\n\nهيتغير blur وشفافية اللوحات والفورمات فوراً.`,
+    );
+    if (!allowed) return;
+    if (applyGlassForm(formId)) {
+      setActiveGlassFormId(formId);
+      alert(`✅ تم تطبيق فورم «${label}».`);
+    } else {
+      alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
+    }
+  };
+
+  const handleResetGlassForm = () => {
+    applyGlassForm(null);
+    setActiveGlassFormId(null);
+    alert("✅ رجّعنا فورم الشفافية للوضع الافتراضي.");
   };
 
   return (
@@ -356,6 +386,9 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                         <DesignTemplateGallery
                           onApplyTemplate={applyAssistantPresetDirect}
                           onApplyFacePreset={handleApplyFacePreset}
+                          onApplyGlassForm={handleApplyGlassForm}
+                          onResetGlassForm={handleResetGlassForm}
+                          activeGlassFormId={activeGlassFormId}
                           recommendedPresetId={assistantAudit?.recommendedPreset}
                           designPresets={designPresets}
                           designPresetName={designPresetName}

@@ -6,10 +6,17 @@ import {
   GLASS_FACE_TEMPLATE_META,
   READY_DESIGN_TEMPLATES,
 } from "../../services/design/designReadyTemplates";
+import {
+  GLASS_FORM_PRESETS,
+  type GlassFormId,
+} from "../../services/design/glassTransparencyService";
 
 interface DesignTemplateGalleryProps {
   onApplyTemplate: (id: DesignAssistantProposalId) => void;
   onApplyFacePreset: (presetId: string) => void;
+  onApplyGlassForm: (id: GlassFormId) => void;
+  onResetGlassForm?: () => void;
+  activeGlassFormId?: GlassFormId | null;
   recommendedPresetId?: DesignAssistantProposalId;
   designPresets?: DesignPreset[];
   applyDesignPreset?: (preset: DesignPreset) => void;
@@ -93,9 +100,86 @@ function GlassDesignCard({
   );
 }
 
+function GlassFormCard({
+  emoji,
+  title,
+  subtitle,
+  blurLabel,
+  previewBackdrop,
+  previewPanelBg,
+  previewPanelBlur,
+  previewPanelBorder,
+  isActive,
+  onClick,
+}: {
+  emoji: string;
+  title: string;
+  subtitle: string;
+  blurLabel: string;
+  previewBackdrop: string;
+  previewPanelBg: string;
+  previewPanelBlur: string;
+  previewPanelBorder: string;
+  isActive?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-2xl border text-right transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 ${
+        isActive
+          ? "border-cyan-400/60 ring-1 ring-cyan-400/35 shadow-[0_8px_28px_rgba(34,211,238,0.18)]"
+          : "border-white/10 hover:border-cyan-400/40"
+      }`}
+    >
+      <div
+        className="relative h-[80px] w-full overflow-hidden flex items-center justify-center p-3"
+        style={{ background: previewBackdrop }}
+      >
+        <div
+          className="w-full h-full rounded-xl border shadow-lg"
+          style={{
+            background: previewPanelBg,
+            backdropFilter: previewPanelBlur,
+            WebkitBackdropFilter: previewPanelBlur,
+            borderColor: previewPanelBorder,
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 24px rgba(0,0,0,0.25)",
+          }}
+        >
+          <div className="p-2 space-y-1.5 opacity-90">
+            <div className="h-1.5 w-2/3 rounded-full bg-white/35" />
+            <div className="h-1.5 w-full rounded-full bg-white/18" />
+            <div className="h-1.5 w-4/5 rounded-full bg-white/12" />
+          </div>
+        </div>
+        <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md text-[7px] font-black bg-black/50 text-cyan-200 border border-white/10">
+          blur {blurLabel}
+        </span>
+        {isActive && (
+          <span className="absolute top-2 left-2 w-4 h-4 rounded-full bg-cyan-400 flex items-center justify-center">
+            <Check size={9} className="text-black" />
+          </span>
+        )}
+      </div>
+      <div className="p-3 bg-white/[0.06] backdrop-blur-xl border-t border-white/8">
+        <div className="text-[11px] font-black text-white leading-tight">
+          {emoji} {title}
+        </div>
+        <div className="text-[9px] text-gray-400 font-bold mt-1 leading-relaxed line-clamp-2">
+          {subtitle}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export function DesignTemplateGallery({
   onApplyTemplate,
   onApplyFacePreset,
+  onApplyGlassForm,
+  onResetGlassForm,
+  activeGlassFormId = null,
   recommendedPresetId,
   designPresets = [],
   applyDesignPreset,
@@ -131,6 +215,45 @@ export function DesignTemplateGallery({
               tags={template.tags}
               isRecommended={recommendedPresetId === template.id}
               onClick={() => onApplyTemplate(template.id)}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="text-[11px] font-black text-violet-300">
+            🧊 فورمات الشفافية (Glass Forms)
+          </div>
+          {onResetGlassForm && activeGlassFormId && (
+            <button
+              type="button"
+              onClick={onResetGlassForm}
+              onPointerDown={stopDrag}
+              className="px-2.5 py-1 rounded-lg text-[9px] font-black lamma-tab-soft hover:text-white"
+            >
+              ↩ افتراضي
+            </button>
+          )}
+        </div>
+        <div className="text-[9px] text-gray-500 font-bold mb-2 leading-relaxed">
+          اختار شكل الفورم الزجاجي — blur وشفافية اللوحات والرسائل (زي مواقع
+          Glassmorphism).
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+          {GLASS_FORM_PRESETS.map((form) => (
+            <GlassFormCard
+              key={form.id}
+              emoji={form.emoji}
+              title={form.title}
+              subtitle={form.subtitle}
+              blurLabel={form.blurLabel}
+              previewBackdrop={form.previewBackdrop}
+              previewPanelBg={form.previewPanelBg}
+              previewPanelBlur={form.previewPanelBlur}
+              previewPanelBorder={form.previewPanelBorder}
+              isActive={activeGlassFormId === form.id}
+              onClick={() => onApplyGlassForm(form.id)}
             />
           ))}
         </div>

@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;800;900&family=Tajawal:wght@400;700;900&family=Space+Grotesk:wght@400;600;700&display=swap');
 @import "./components/login-screen-legacy.css";
 @import "./styles/lamma-magic-shell.css";
+@import "./styles/glass-forms.css";
 @import "tailwindcss";
 
 @theme {

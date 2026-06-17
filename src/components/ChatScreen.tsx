@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { ChatScreenProps, OwnerMusicTrack, RoomDjState } from "../lib/chatTypes";
 import { ensureFaceApplied } from "../lib/customFace";
+import { ensureGlassFormApplied } from "../services/design/glassTransparencyService";
 import {
   Send,
   Image,
@@ -2318,9 +2319,10 @@ export default function ChatScreen({
     localStorage.setItem("lamma_bot_silent", String(isBotSilent));
   }, [isBotSilent]);
 
-  // Re-apply the owner's saved custom design face after each load.
+  // Re-apply the owner's saved custom design face + glass form after each load.
   useEffect(() => {
     ensureFaceApplied();
+    ensureGlassFormApplied();
   }, []);
 
   useEffect(() => {
