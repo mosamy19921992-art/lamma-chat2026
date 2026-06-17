@@ -134,6 +134,7 @@
     box-shadow:
       0 12px 36px rgba(0, 0, 0, 0.2),
       inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .lamma-neutral-glass[data-app-shell="aurora"] .lamma-mobile-tab-btn-active {
@@ -173,6 +174,7 @@
     box-shadow:
       0 -12px 40px rgba(45, 212, 191, 0.1),
       inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
   }
 
   .lamma-neutral-glass[data-app-shell="aurora"] .lamma-composer-field,
@@ -295,7 +297,6 @@
       radial-gradient(ellipse 100% 70% at 50% -15%, rgba(45, 212, 191, 0.22), transparent 58%),
       radial-gradient(ellipse 80% 55% at 100% 35%, rgba(167, 139, 250, 0.2), transparent 52%),
       radial-gradient(ellipse 90% 65% at 0% 75%, rgba(214, 179, 91, 0.14), transparent 50%),
-      url("/images/login-hero.jpg") center / cover no-repeat,
       linear-gradient(168deg, #060a12 0%, #0a1628 100%) !important;
   }
 

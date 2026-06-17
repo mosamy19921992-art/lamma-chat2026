@@ -100,8 +100,10 @@ function EnvelopeIcon() {
 }
 
 export default function LoginScreen(props: LoginScreenProps) {
-  const { onLogin, isInstalledApp, onInstallApp, pendingSupabaseUser, inviteOnlyMode = false, hasInviteAccess = false } = props;
+  const { onLogin, canInstallApp, isInstalledApp, onInstallApp, pendingSupabaseUser, inviteOnlyMode = false, hasInviteAccess = false } = props;
   const pwaEnabled = import.meta.env.VITE_ENABLE_PWA === "true";
+  const showInstallButton =
+    pwaEnabled && (isInstalledApp || canInstallApp || isIosDevice());
   const isMobileAppShell = useIsMobileViewport();
   const guestLoginAllowed = !inviteOnlyMode || hasInviteAccess;
   const brandName = import.meta.env.VITE_BRAND_NAME || "Lamma Chat";
@@ -504,7 +506,7 @@ export default function LoginScreen(props: LoginScreenProps) {
               <span className="brandLogoWrap">
                 <img
                   className="brandLogo"
-                  src="/images/lamma-logo-nice.png"
+                  src="/images/lamma-app-icon-512.png"
                   alt={brandName}
                   loading="eager"
                   decoding="async"
@@ -551,6 +553,7 @@ export default function LoginScreen(props: LoginScreenProps) {
                 <div>© 2026 Lamma Chat. جميع الحقوق محفوظة — توثيق وهوية خاصة:</div>
                 <div className="idCard">By MR / Mohamed Samy</div>
                 <div className="installRow">
+                  {showInstallButton ? (
                   <button
                     type="button"
                     className="installAppBtn"
@@ -595,6 +598,7 @@ export default function LoginScreen(props: LoginScreenProps) {
                           : "تحميل تطبيق الموبايل 📱"}
                     </span>
                   </button>
+                  ) : null}
                 </div>
               </footer>
 

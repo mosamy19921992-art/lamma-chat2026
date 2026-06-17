@@ -88,7 +88,7 @@
           "url": "https://lamma-arabic-chat-room.vercel.app/",
           "logo": {
             "@type": "ImageObject",
-            "url": "https://lamma-arabic-chat-room.vercel.app/images/lamma-logo-nice.png"
+            "url": "https://lamma-arabic-chat-room.vercel.app/images/lamma-app-icon-512.png"
           }
         },
         {
@@ -174,24 +174,6 @@
       </main>
     </noscript>
     <div id="root"></div>
-    <script>
-      (function () {
-        if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function (regs) {
-            regs.forEach(function (reg) {
-              reg.unregister();
-            });
-          });
-        }
-        if ("caches" in window) {
-          caches.keys().then(function (keys) {
-            keys.forEach(function (key) {
-              if (key.indexOf("lamma-") === 0) caches.delete(key);
-            });
-          });
-        }
-      })();
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

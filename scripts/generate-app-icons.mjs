@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
-const source = path.join(root, "public/images/lamma-logo-nice.png");
+const source = path.join(root, "public/images/lamma-app-icon-1024.png");
 const outDir = path.join(root, "public/images");
 
 const BG = { r: 11, g: 18, b: 24, alpha: 1 }; // #0b1218

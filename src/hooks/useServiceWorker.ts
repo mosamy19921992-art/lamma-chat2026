@@ -112,7 +112,7 @@ export function useServiceWorker(): ServiceWorkerState {
           setOfflineReady(false);
           installPromptRef.current = null;
           setInstallPromptEvent(null);
-          setIsInstalled(false);
+          updateInstalledState();
         }
       }
     };

@@ -2,6 +2,25 @@
 
 مرجع تقني منظم لمشروع `Lamma Chat | شات لمة`.
 
+## تحديثات 2026 (اقرأ أولاً)
+
+هذا الملف فيه أقسام قديمة. **المصادر الأحدث:**
+
+| الموضوع | المصدر الصحيح |
+|---|---|
+| Production URL | `https://lamma-arabic-chat-room.vercel.app` |
+| Cloud Agents / env | `AGENTS.md`, `.cursor/environment.json` |
+| تشغيل محلي | `README.md`, `.env.example` |
+| قواعد AI | `.cursor/rules/lamma-project.mdc` |
+
+**تغييرات معمارية منذ كتابة الأقسام القديمة:**
+
+- الثيم: `useTheme.ts` و `themes.ts` **اتمسحوا** — الثيم الآن inline في `App.tsx` (`primaryTheme`: dark \| amoled)
+- طبقة `src/services/` **موجودة** (18 ملف: chat, calls, auth, store, profile, design)
+- PWA: `UpdateBanner`, `OnlineStatus`, `InstallPrompt` فقط — لا `ThemeFab` ولا `ThemeSettings`
+- `api/sitemap.js` موجود للـ SEO
+- `supabase-production-hardening.sql` + `scripts/apply-production-setup.mjs` للإنتاج
+
 ## 1. نظرة عامة
 
 المشروع عبارة عن تطبيق دردشة عربي أحادي الصفحة `SPA` مبني باستخدام:
@@ -27,7 +46,8 @@ Browser
   -> src/main.tsx
   -> src/App.tsx
        -> LoginScreen / ChatScreen
-       -> hooks العامة (theme / service worker)
+       -> hooks العامة (service worker)
+       -> src/services/* (chat, calls, auth, store)
        -> Supabase Auth Session
              -> Database
              -> Realtime
@@ -42,7 +62,8 @@ Browser
 - طبقة الهوكس العامة: `src/hooks`
 - طبقة العقود والمساعدات والثوابت: `src/lib`
 - طبقة الملفات الثابتة وPWA: `public`
-- طبقة endpoint السيرفري الخفيف: `api`
+- طبقة منطق الأعمال: `src/services`
+- طبقة endpoint السيرفري الخفيف: `api` (`auth-config.js`, `sitemap.js`)
 - طبقة البنية البيانية: `supabase-schema.sql` و`supabase-storage.sql`
 
 ## 3. مسار التشغيل
@@ -95,7 +116,11 @@ src/
     pwa/
   hooks/
     useServiceWorker.ts
-    useTheme.ts
+    useChatMessages.ts
+    useWebRTCCalls.ts
+    (and others)
+  services/
+    chat/ calls/ auth/ store/ profile/ design/
   lib/
     supabase.ts
     chatTypes.ts
@@ -103,7 +128,6 @@ src/
     chatHelpers.ts
     chatMessageRender.tsx
     authProfile.ts
-    themes.ts
     storage.ts
 
 supabase-schema.sql
@@ -127,7 +151,7 @@ README.md
 - استرجاع جلسة Supabase الحالية
 - متابعة تغيّر حالة المصادقة
 - تحديد ما إذا كان يجب عرض `LoginScreen` أو `ChatScreen`
-- تشغيل `useTheme()` و`useServiceWorker()`
+- تشغيل `useServiceWorker()` وإدارة `primaryTheme` (dark / amoled)
 - عرض بانرات `PWA` مثل `UpdateBanner` و`OnlineStatus`
 
 أهم الدوال:
@@ -282,39 +306,11 @@ README.md
 - `renderInlineFormattedText()`: تنسيق النص إلى أجزاء React
 - `renderTextMessageWithMedia()`: رندر الرسالة مع معاينات الوسائط والروابط
 
-### 5.11 `src/hooks/useTheme.ts`
+### 5.11 الثيم (محدّث)
 
-هوك الثيم الرئيسي.
+> **ملاحظة:** `useTheme.ts` و `themes.ts` لم يعودا موجودين. الثيم يُدار من `App.tsx` عبر `primaryTheme` (dark \| amoled) و CSS variables في `src/index.css`.
 
-مسؤولياته:
-
-- تحميل الثيم المحفوظ
-- تطبيع الثيمات القادمة من التخزين
-- تطبيق CSS variables على document root
-- حفظ الثيم الحالي
-- دعم presets وثيمات مخصصة
-
-أهم الدوال:
-
-- `sanitizePalette()`
-- `resolveTheme()`
-- `readSavedTheme()`
-- `applyTheme()`
-- `saveTheme()`
-- `useTheme()`
-
-### 5.12 `src/lib/themes.ts`
-
-مخزن الثيمات الافتراضية.
-
-أهم ما يحتويه:
-
-- `PRESETS`
-- `DEFAULT_THEME`
-- `CUSTOM_THEME_ID`
-- `buildCustomTheme()`
-
-### 5.13 `src/hooks/useServiceWorker.ts`
+### 5.12 `src/hooks/useServiceWorker.ts`
 
 هوك `PWA` الرئيسي.
 
@@ -332,15 +328,13 @@ README.md
 - `unregisterAllServiceWorkers()`
 - `useServiceWorker()`
 
-### 5.14 `src/components/pwa/*`
+### 5.13 `src/components/pwa/*`
 
 مكونات `PWA` المساندة:
 
 - `UpdateBanner.tsx`: إشعار بوجود تحديث
 - `OnlineStatus.tsx`: عرض حالة الاتصال
 - `InstallPrompt.tsx`: دعوة لتثبيت التطبيق
-- `ThemeFab.tsx`: زر عائم لفتح إعدادات الثيم
-- `ThemeSettings.tsx`: شاشة اختيار وتخصيص الثيم
 
 ### 5.15 `src/components/modals/*`
 
@@ -575,14 +569,14 @@ npm run preview
 
 - `ChatScreen.tsx` ضخم جدًا ومتعدد المسؤوليات
 - منطق الأعمال موزع بين الواجهة أكثر من اللازم
-- لا توجد طبقة services/repositories مستقلة
+- `ChatScreen.tsx` لا يزال ضخماً رغم وجود `src/services/` جزئياً
 - لا توجد اختبارات آلية واضحة
 - توجد بقايا بنية legacy مثل `public/login.html`
 
 ## 14. توصيات تحسين
 
 1. تفكيك `ChatScreen.tsx` إلى features أو hooks فرعية
-2. استخراج طبقة `services` لتعاملات Supabase
+2. مواصلة استخراج منطق من `ChatScreen.tsx` إلى `src/services/`
 3. توحيد منطق الدخول بين شاشة React وصفحة `public/login.html`
 4. إضافة اختبارات مركزة لمسارات:
    - الدخول
@@ -603,8 +597,9 @@ npm run preview
 6. `src/components/ChatScreen.tsx`
 7. `src/lib/chatTypes.ts`
 8. `src/lib/chatConstants.ts`
-9. `src/hooks/useTheme.ts`
+9. `src/services/chat/messagesService.ts`
 10. `src/hooks/useServiceWorker.ts`
+11. `AGENTS.md`
 
 ## 16. خلاصة
 

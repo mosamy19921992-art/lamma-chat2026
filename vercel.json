@@ -10,7 +10,7 @@
       "destination": "/api/sitemap"
     },
     {
-      "source": "/((?!api/|assets/|images/|manifest.json|sw.js|offline.html|favicon.ico|robots.txt|sitemap.xml).*)",
+      "source": "/((?!api/|assets/|images/|manifest.json|sw.js|offline.html|favicon.ico|robots.txt|sitemap.xml|google40244b5fc70bba5c.html).*)",
       "destination": "/index.html"
     }
   ],

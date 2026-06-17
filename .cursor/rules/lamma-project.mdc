@@ -1,0 +1,38 @@
+---
+description: قواعد مشروع شات لمة — المصدر الرسمي للـ AI والـ Cloud Agents
+alwaysApply: true
+---
+
+# Lamma Arabic Chat Room
+
+## المشروع الصحيح
+- المجلد: `lamma-arabic-chat-room`
+- الموقع المنشور: https://lamma-arabic-chat-room.vercel.app
+- GitHub remote: `mosamy19921992-art/lamma-chat2026` (اسم الريبو القديم — لا تخلطه مع URL النشر)
+- لا تستخدم `lamma-chat2026.vercel.app` — الرابط ده 404
+
+## سلوك الـ AI
+- لا تضف ميزات جديدة بدون إذن صريح من المستخدم
+- مهمة واحدة في كل مرة — لا refactor واسع من غير طلب
+- بعد كل تعديل: `npm run build` ثم أبلغ النتيجة
+- لا commit ولا push إلا إذا طلب المستخدم
+
+## ممنوع تغييره بدون إذن
+- الهوية: الشعار، الفافيكون، ألوان العلامة في `src/index.css`
+- `src/lib/*` و `src/hooks/*` إلا بموافقة
+
+## أولويات الإصلاح
+1. استقرار الموبايل/PWA وشريط الكتابة
+2. أمان Supabase (`supabase-production-hardening.sql`)
+3. تقسيم `ChatScreen.tsx` تدريجياً — ليس دفعة واحدة
+
+## أوامر المشروع
+- Install: `npm install`
+- Dev: `npm run dev`
+- Build: `npm run build`
+- Lint: `npm run lint` (tsc --noEmit)
+- Deploy: `npx vercel --prod --yes`
+
+## لهجة المستخدم
+- عامية مصرية في الشرح
+- ناقش قبل التنفيذ الكبير

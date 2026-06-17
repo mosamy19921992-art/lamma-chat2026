@@ -1,0 +1,10 @@
+{
+  "install": "npm install",
+  "start": "npm run lint",
+  "terminals": [
+    {
+      "name": "vite",
+      "command": "npm run dev -- --host 0.0.0.0 --port 5173"
+    }
+  ]
+}

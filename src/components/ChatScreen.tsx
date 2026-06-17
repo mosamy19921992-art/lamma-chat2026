@@ -146,6 +146,8 @@ import { usePrivateMessages } from "../hooks/usePrivateMessages";
 import { useWebRTCCalls } from "../hooks/useWebRTCCalls";
 import { useOnlinePresence, type PresenceUpdateEvent } from "../hooks/useOnlinePresence";
 import { useIsMobileViewport } from "../hooks/useIsMobileViewport";
+import { useVisualViewportOffset } from "../hooks/useVisualViewportOffset";
+import { useDeepLinkParams } from "../hooks/useDeepLinkParams";
 import { useVoiceMessageRecorder } from "../hooks/useVoiceMessageRecorder";
 import { VoiceNoteBubble, VoiceRecorderBar } from "../components/VoiceNoteBubble";
 import { FloatingDropdownPortal } from "../components/FloatingDropdownPortal";
@@ -742,7 +744,7 @@ function PostsFeedRoom({
 export default function ChatScreen({
   currentUser,
   onLogout,
-  primaryTheme,
+  primaryTheme: _primaryTheme,
   onUserSessionUpdate,
   inviteOnlyMode: inviteOnlyModeProp = false,
   hasInviteAccess = false,
@@ -2067,6 +2069,7 @@ export default function ChatScreen({
     onlineCount: 1,
   });
   const isMobileAppShell = useIsMobileViewport();
+  const keyboardOffset = useVisualViewportOffset(isMobileAppShell);
   const roomEntryTickerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -3475,6 +3478,14 @@ export default function ChatScreen({
   const [showAttachmentDropdown, setShowAttachmentDropdown] = useState(false);
   const [showMusicDropdown, setShowMusicDropdown] = useState(false);
   const [showRadioDropdown, setShowRadioDropdown] = useState(false);
+  const openRadioFromDeepLink = useCallback(() => setShowRadioDropdown(true), []);
+  const applySharedTextFromDeepLink = useCallback((text: string) => {
+    setInputText(text);
+  }, []);
+  useDeepLinkParams({
+    onOpenRadio: openRadioFromDeepLink,
+    onSharedText: applySharedTextFromDeepLink,
+  });
   const [showCommandsDropdown, setShowCommandsDropdown] = useState(false);
   const [showPrivacyDropdown, setShowPrivacyDropdown] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
@@ -3827,6 +3838,24 @@ export default function ChatScreen({
             mergeBanLists(prev, [
               parseBannedUserRow(payload.new as BannedUserRow),
             ]),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "banned_users",
+        },
+        (payload) => {
+          if (isCancelled) return;
+          const updated = parseBannedUserRow(payload.new as BannedUserRow);
+          setBannedUsersList((prev) =>
+            mergeBanLists(
+              prev.filter((ban) => ban.id !== updated.id),
+              [updated],
+            ),
           );
         },
       )
@@ -4513,7 +4542,8 @@ export default function ChatScreen({
   const messageEndRef = useRef<HTMLDivElement>(null);
   const feedViewportRef = useRef<HTMLDivElement>(null);
   const pmEndRef = useRef<HTMLDivElement>(null);
-  const rateLimitRef = useRef<number[]>([]);
+  const roomRateLimitRef = useRef<number[]>([]);
+  const pmRateLimitRef = useRef<number[]>([]);
 
   const updateComposerText = (
     transform: (
@@ -4765,7 +4795,7 @@ export default function ChatScreen({
       addLammaBotMessage(activeRoomId, `🎉 تم تفعيل اشتراكك في ${activated.planName} بنجاح! استمتع بمميزاتك 💎`);
     });
     return () => { if (unsub && supabase) supabase.removeChannel(unsub as any); };
-  }, [currentUser.uid]);
+  }, [activeRoomId, currentUser.uid, addLammaBotMessage]);
 
   // ── Owner: listen for new pending orders (badge notification) ───────────
   useEffect(() => {
@@ -4826,7 +4856,7 @@ export default function ChatScreen({
     myIp,
     senderUid,
     ownerSettingsRowId: OWNER_SETTINGS_ROW_ID,
-    rateLimitRef,
+    rateLimitRef: roomRateLimitRef,
     setInputText,
     setShowEmojiPicker,
     setRoomMessages,
@@ -4863,16 +4893,16 @@ export default function ChatScreen({
   const handleSendPM = async () => {
     if (!pmTarget || !pmInputText.trim()) return;
 
-    // Rate limiting: max 3 messages per second
+    // Rate limiting: max 3 PM messages per second (separate from room chat)
     const now = Date.now();
-    rateLimitRef.current = rateLimitRef.current.filter((t) => now - t < 1000);
-    if (rateLimitRef.current.length >= 3) {
+    pmRateLimitRef.current = pmRateLimitRef.current.filter((t) => now - t < 1000);
+    if (pmRateLimitRef.current.length >= 3) {
       alert(
         "⚠️ الرجاء الانتظار، لا يمكنك إرسال أكثر من 3 رسائل في الثانية الواحدة لحماية الشات من الإزعاج!",
       );
       return;
     }
-    rateLimitRef.current.push(now);
+    pmRateLimitRef.current.push(now);
 
     const targetNickname = pmTarget.nickname;
     const textToSend = pmInputText.trim();
@@ -4984,43 +5014,12 @@ export default function ChatScreen({
     }
   };
 
-  const sendMediaMessage = (
+  const sendMediaMessage = async (
     type: "image" | "imageUrl" | "video" | "audio",
     mediaUrl: string,
   ) => {
     const finalType: "image" | "video" | "audio" =
       type === "imageUrl" ? "image" : type;
-    const timeStr = new Date().toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "numeric",
-      hour12: true,
-    });
-
-    if (false) {
-      const localMsg: Message = {
-        id: "local-media-" + Date.now(),
-        author: currentUser.nickname,
-        text: "",
-        color: currentUser.color || "#10b981",
-        isOwn: true,
-        time: new Date().toLocaleTimeString("ar-EG", {
-          hour: "numeric",
-          minute: "numeric",
-          hour12: true,
-        }),
-        type: finalType,
-        mediaUrl: mediaUrl,
-      };
-
-      setRoomMessages((prev) => {
-        const currentMsgs = prev[activeRoomId] || [];
-        return {
-          ...prev,
-          [activeRoomId]: [...currentMsgs, localMsg],
-        };
-      });
-      return;
-    }
 
     const newUuid = crypto.randomUUID();
     const newMessage: Message = {
@@ -5037,34 +5036,47 @@ export default function ChatScreen({
       type: finalType,
       mediaUrl: mediaUrl,
     };
-    const updatedMessages = [...(roomMessages[activeRoomId] || []), newMessage];
+
     setRoomMessages((prev) => ({
       ...prev,
-      [activeRoomId]: updatedMessages,
+      [activeRoomId]: [...(prev[activeRoomId] || []), newMessage],
     }));
+    setShowAttachmentDropdown(false);
 
-    if (supabase) {
-      supabase
-        .from("messages")
-        .insert([
-          {
-            id: newUuid,
-            room_id: activeRoomId,
-            author: currentUser.nickname,
-            text: "",
-            color: currentUser.color || "#10b981",
-            type: finalType,
-            media_url: mediaUrl,
-            youtube_id: getYoutubeId(mediaUrl),
-            sender_uid: senderUid,
-          },
-        ])
-        .then(({ error }) => {
-          if (error) console.error("Error sending media to Supabase:", error);
-        });
+    if (!supabase) {
+      setRoomMessages((prev) => ({
+        ...prev,
+        [activeRoomId]: (prev[activeRoomId] || []).filter((m) => m.id !== newUuid),
+      }));
+      alert("❌ تعذر إرسال الملف — اتصال Supabase غير متاح.");
+      return;
     }
 
-    setShowAttachmentDropdown(false);
+    try {
+      const { error } = await supabase.from("messages").insert([
+        {
+          id: newUuid,
+          room_id: activeRoomId,
+          author: currentUser.nickname,
+          text: "",
+          color: currentUser.color || "#10b981",
+          type: finalType,
+          media_url: mediaUrl,
+          youtube_id: getYoutubeId(mediaUrl),
+          sender_uid: senderUid,
+        },
+      ]);
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error sending media to Supabase:", error);
+      setRoomMessages((prev) => ({
+        ...prev,
+        [activeRoomId]: (prev[activeRoomId] || []).filter((m) => m.id !== newUuid),
+      }));
+      alert(
+        "❌ تعذر إرسال الملف حاليًا. لم يتم حفظه على السيرفر — جرّب مرة أخرى.",
+      );
+    }
   };
 
   const uploadAndSendImage = async (file: File) => {
@@ -5680,7 +5692,7 @@ export default function ChatScreen({
     <div
       // Keep the current shipped chat skin stable. The neutral glass layer
       // is the authoritative visual wrapper for the production chat design.
-      className="fixed inset-0 h-screen w-full flex flex-col overflow-hidden font-sans text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app lamma-neutral-glass"
+      className="fixed inset-0 h-[100dvh] min-h-[100dvh] w-full flex flex-col overflow-hidden font-sans text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app lamma-neutral-glass"
       dir="rtl"
       data-app-shell={isMobileAppShell ? "aurora" : undefined}
       data-clear-bg={isDefaultAmbientBg ? "true" : "false"}
@@ -8850,6 +8862,9 @@ export default function ChatScreen({
                   ? undefined
                   : {
                       marginBottom: "-1px",
+                      ...(isMobileAppShell && keyboardOffset > 0
+                        ? { transform: `translateY(-${keyboardOffset}px)` }
+                        : {}),
                     }
               }
             >

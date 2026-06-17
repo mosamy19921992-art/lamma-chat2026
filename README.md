@@ -4,6 +4,8 @@
 للمصادقة، قاعدة البيانات، الرسائل الفورية، ورفع الوسائط. المشروع مهيأ كذلك للعمل
 كتطبيق `PWA` وللنشر على `Vercel`.
 
+**Production:** https://lamma-arabic-chat-room.vercel.app
+
 ## التقنيات الأساسية
 
 - `React 19`
@@ -17,7 +19,7 @@
 
 ### المتطلبات
 
-- `Node.js`
+- `Node.js` 20+
 - `npm`
 
 ### 1. تثبيت الاعتماديات
@@ -28,10 +30,10 @@ npm install
 
 ### 2. إعداد متغيرات البيئة
 
-أنشئ ملف `.env.local` أو `.env` اعتماداً على `.env.example`، وأضف القيم التالية:
+انسخ `.env.example` إلى `.env.local` وأضف القيم:
 
 ```env
-VITE_SUPABASE_URL="YOUR_SUPABASE_URL"
+VITE_SUPABASE_URL="https://YOUR_PROJECT_REF.supabase.co"
 VITE_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
 VITE_APP_URL="http://localhost:5173"
 VITE_ENABLE_PWA="false"
@@ -43,18 +45,21 @@ VITE_LOGIN_HERO_BG="/images/login-hero.jpg"
 
 ملاحظات:
 
-- `VITE_SUPABASE_URL` و`VITE_SUPABASE_ANON_KEY` مطلوبان لتشغيل المصادقة والرسائل
-  والوسائط بشكل كامل.
-- `VITE_ENABLE_PWA` معطّل افتراضياً لتجنب مشاكل الكاش القديمة بعد إعادة النشر.
-  فعّله فقط إذا كنت تحتاج تثبيت التطبيق والعمل دون اتصال.
+- `VITE_SUPABASE_URL` و`VITE_SUPABASE_ANON_KEY` مطلوبان للمصادقة والرسائل والوسائط.
+- على **Vercel** ضع نفس المتغيرات + `VITE_APP_URL=https://lamma-arabic-chat-room.vercel.app`.
+- `VITE_ENABLE_PWA` معطّل محلياً؛ الإنتاج يفعّله `vercel.json` تلقائياً.
 - `VITE_GEMINI_SEARCH_ENDPOINT` اختياري.
-- المشروع لا يعتمد حالياً على `GEMINI_API_KEY` كمتطلب أساسي للتشغيل المحلي.
+- WebRTC TURN اختياري — انظر `.env.example`.
 
 ### 3. تشغيل بيئة التطوير
 
 ```bash
 npm run dev
 ```
+
+يفتح على `http://localhost:5173` (أو المنفذ التالي لو 5173 مشغول).
+
+> مسارات `api/*` لا تعمل مع Vite dev — تحتاج Vercel. التطبيق في `src/` يقرأ env مباشرة.
 
 ### 4. بناء نسخة الإنتاج
 
@@ -74,41 +79,59 @@ npm run preview
 npm run lint
 ```
 
-ملاحظة: أمر `lint` هنا ينفذ `tsc --noEmit`، وليس `ESLint`.
+ملاحظة: `lint` = `tsc --noEmit`، وليس ESLint.
+
+## Cursor Cloud Agents
+
+- إعداد البيئة: `.cursor/environment.json`
+- دليل الـ AI: `AGENTS.md`
+- قواعد المشروع: `.cursor/rules/lamma-project.mdc`
+- Secrets: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_APP_URL`
 
 ## هيكل المشروع
 
 ```text
-api/                 دوال سيرفر بسيطة مخصصة للنشر
-public/              ملفات ثابتة وملفات PWA
+api/                 دوال Vercel (auth-config, sitemap)
+public/              ملفات ثابتة و PWA
+scripts/             إعداد production (Supabase hardening)
 src/
   components/        شاشات ومكونات الواجهة
-  hooks/             hooks عامة مثل الثيم و service worker
-  lib/               أنواع وثوابت ومساعدات وتكامل Supabase
+  hooks/             React hooks
+  lib/               أنواع، ثوابت، Supabase client
+  services/          منطق الأعمال (chat, calls, auth, store)
   App.tsx            منسق التطبيق والجلسة
   main.tsx           نقطة الدخول
-supabase-schema.sql  جداول وسياسات قاعدة البيانات
-supabase-storage.sql إعداد bucket الوسائط
-vercel.json          إعدادات النشر والرؤوس الأمنية
+supabase-schema.sql          جداول وسياسات
+supabase-storage.sql         bucket الوسائط
+supabase-production-hardening.sql  RLS إضافي
+vercel.json                  إعدادات النشر
+AGENTS.md                    دليل AI agents
 ```
 
 ## مراجع مهمة
 
-- التوثيق المعماري الكامل: `CODE_WIKI.md`
-- تعريف قاعدة البيانات: `supabase-schema.sql`
-- مثال البيئة: `.env.example`
+- `AGENTS.md` — دليل Cloud Agents والـ env
+- `CODE_WIKI.md` — معمارية (راجع «تحديثات 2026»)
+- `supabase-schema.sql` — قاعدة البيانات
+- `.env.example` — قالب البيئة
 
-## حالة التشغيل الحالية
+## النشر
 
-تم التحقق عملياً من التالي داخل هذا المستودع:
+```bash
+npx vercel --prod --yes
+```
 
-- `npm install` يعمل بنجاح
-- `npm run lint` ينجح
-- `npm run build` ينجح
-- `npm run dev` يقلع محلياً
+أو setup Supabase كامل:
 
-لكن توجد ملاحظتان مهمتان قبل الاعتماد على إطلاق كامل للإنتاج:
+```bash
+SUPABASE_ACCESS_TOKEN=... node scripts/apply-production-setup.mjs
+```
 
-- بدون ضبط متغيرات `Supabase` سيعمل التطبيق بوضع ناقص الوظائف فقط
-- ظهرت ملاحظة runtime مرتبطة بالثيمات في المتصفح أثناء فحص الإقلاع، لذلك يفضّل
-  مراجعة منطق الثيمات قبل اعتماد الإطلاق النهائي
+## حالة التشغيل
+
+- `npm install` ✓
+- `npm run lint` ✓
+- `npm run build` ✓
+- `npm run dev` ✓
+
+بدون Supabase env vars التطبيق يقلع بوضع محدود (بدون auth/شات كامل).

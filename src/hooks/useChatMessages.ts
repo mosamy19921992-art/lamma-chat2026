@@ -241,7 +241,7 @@ export function useChatMessages({
 
   const allMessages = useMemo(() => {
     return (roomMessages[activeRoomId] || []).filter((msg) => {
-      if ((msg as Message & { isShadowMsg?: boolean }).isShadowMsg) {
+      if (msg.type === "shadow_msg") {
         return msg.author === currentUserNickname;
       }
 

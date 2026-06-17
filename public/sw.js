@@ -9,17 +9,14 @@ const VERSION = "lamma-v1.0.22";
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const IMAGE_CACHE = `${VERSION}-images`;
-const API_CACHE = `${VERSION}-api`;
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE_URLS = [
   "/manifest.json",
   "/images/lamma-search-icon.svg",
-  "/images/lamma-logo-nice.png",
   "/images/lamma-app-icon-192.png",
   "/images/lamma-app-icon-512.png",
   "/images/lamma-wordmark.svg",
-  "/images/login-hero-1.jpg",
   OFFLINE_URL,
 ];
 

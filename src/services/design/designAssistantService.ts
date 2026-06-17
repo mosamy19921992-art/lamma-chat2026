@@ -346,7 +346,7 @@ export function buildDesignAssistantProposal(
   preset: DesignAssistantProposalId,
   context: DesignAssistantContext,
 ): DesignAssistantProposal {
-  const sharedLogo = context.brandLogoUrl?.trim() || "/images/lamma-logo-nice.png";
+  const sharedLogo = context.brandLogoUrl?.trim() || "/images/lamma-app-icon-512.png";
   const sharedRoomBg =
     context.roomBgMap[context.activeRoomId]?.trim() ||
     context.ownerBgImage?.trim() ||

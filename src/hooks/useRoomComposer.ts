@@ -307,54 +307,31 @@ export function useRoomComposer({
         ban.type === "shadow",
     );
 
-    if (false) {
-      const localMsg: Message = {
-        id: "local-" + Date.now(),
-        author: userNick,
-        text: cleanText,
-        color: currentUser.color || "#10b981",
-        isOwn: true,
-        time: new Date().toLocaleTimeString("ar-EG", {
-          hour: "numeric",
-          minute: "numeric",
-          hour12: true,
-        }),
-        type: "text",
-      };
+    const newMessage = createOutgoingRoomMessage({
+      author: userNick,
+      text: cleanText,
+      color: currentUser.color,
+      isShadowed,
+    });
+    const originalInput = inputText;
 
-      setRoomMessages((prev) => {
-        const currentMsgs = prev[activeRoomId] || [];
-        return {
-          ...prev,
-          [activeRoomId]: [...currentMsgs, localMsg],
-        };
+    setRoomMessages((prev) => ({
+      ...prev,
+      [activeRoomId]: appendRoomMessage(
+        prev[activeRoomId] || [],
+        newMessage,
+      ),
+    }));
+    setInputText("");
+    setShowEmojiPicker(false);
+
+    try {
+      await persistRoomMessage({
+        message: newMessage,
+        roomId: activeRoomId,
+        senderUid,
       });
-    } else {
-      const newMessage = createOutgoingRoomMessage({
-        author: userNick,
-        text: cleanText,
-        color: currentUser.color,
-        isShadowed,
-      });
-      const originalInput = inputText;
-
-      setRoomMessages((prev) => ({
-        ...prev,
-        [activeRoomId]: appendRoomMessage(
-          prev[activeRoomId] || [],
-          newMessage,
-        ),
-      }));
-      setInputText("");
-      setShowEmojiPicker(false);
-
-      try {
-        await persistRoomMessage({
-          message: newMessage,
-          roomId: activeRoomId,
-          senderUid,
-        });
-      } catch (error: any) {
+    } catch (error: any) {
         console.error("Error sending to Supabase:", error);
 
         // Roll back the optimistic message in all cases
@@ -382,16 +359,12 @@ export function useRoomComposer({
         );
         return;
       }
-    }
 
     if (isCensored && warningMessage) {
       setTimeout(() => {
         addBotSystemWarning(activeRoomId, warningMessage);
       }, 600);
     }
-
-    setInputText("");
-    setShowEmojiPicker(false);
   }, [
     activeRoomId,
     activeRoomName,
