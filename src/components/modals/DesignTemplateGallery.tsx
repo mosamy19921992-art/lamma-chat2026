@@ -1,22 +1,38 @@
 import React from "react";
 import { Check, Sparkles } from "lucide-react";
 import type { DesignAssistantProposalId, DesignPreset } from "../../lib/chatTypes";
-import { FACE_PRESETS } from "../../lib/customFace";
+import { FACE_PRESETS, getFacePresetLabel } from "../../lib/customFace";
 import {
   GLASS_FACE_TEMPLATE_META,
   READY_DESIGN_TEMPLATES,
 } from "../../services/design/designReadyTemplates";
 import {
   GLASS_FORM_PRESETS,
+  getGlassFormLabel,
   type GlassFormId,
 } from "../../services/design/glassTransparencyService";
+import {
+  DesignPreviewBar,
+  type DesignPreviewKind,
+} from "./DesignGlassPreviewBar";
 
 interface DesignTemplateGalleryProps {
-  onApplyTemplate: (id: DesignAssistantProposalId) => void;
-  onApplyFacePreset: (presetId: string) => void;
-  onApplyGlassForm: (id: GlassFormId) => void;
+  onPreviewTemplate: (id: DesignAssistantProposalId) => void;
+  onPreviewFacePreset: (presetId: string) => void;
+  onPreviewGlassForm: (id: GlassFormId) => void;
+  onCommitPreview: () => void;
+  onCancelPreview: () => void;
+  onGlassTintChange: (hex: string) => void;
   onResetGlassForm?: () => void;
+  previewKind?: DesignPreviewKind | null;
   activeGlassFormId?: GlassFormId | null;
+  pendingGlassFormId?: GlassFormId | null;
+  glassTintColor?: string;
+  pendingFacePresetId?: string | null;
+  activeFacePresetId?: string | null;
+  pendingTemplateId?: DesignAssistantProposalId | null;
+  activeTemplateId?: DesignAssistantProposalId | null;
+  pendingTemplateSummary?: string;
   recommendedPresetId?: DesignAssistantProposalId;
   designPresets?: DesignPreset[];
   applyDesignPreset?: (preset: DesignPreset) => void;
@@ -34,6 +50,8 @@ function GlassDesignCard({
   badge,
   tags,
   isRecommended,
+  isActive,
+  isPending,
   onClick,
 }: {
   emoji: string;
@@ -43,13 +61,21 @@ function GlassDesignCard({
   badge?: string;
   tags?: string[];
   isRecommended?: boolean;
+  isActive?: boolean;
+  isPending?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group relative overflow-hidden rounded-2xl border border-white/10 text-right transition-all duration-200 hover:border-emerald-400/45 hover:shadow-[0_8px_32px_rgba(45,212,191,0.15)] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+      className={`group relative overflow-hidden rounded-2xl border text-right transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 ${
+        isPending
+          ? "border-amber-400/65 ring-2 ring-amber-400/40 shadow-[0_8px_28px_rgba(251,191,36,0.2)]"
+          : isActive
+            ? "border-emerald-400/55 ring-1 ring-emerald-400/35"
+            : "border-white/10 hover:border-emerald-400/45 hover:shadow-[0_8px_32px_rgba(45,212,191,0.15)]"
+      }`}
     >
       <div
         className="relative h-[72px] w-full overflow-hidden"
@@ -68,6 +94,16 @@ function GlassDesignCard({
             {badge}
           </span>
         )}
+        {isPending && (
+          <span className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded-md text-[7px] font-black bg-amber-500/90 text-black">
+            معاينة
+          </span>
+        )}
+        {isActive && !isPending && (
+          <span className="absolute bottom-2 left-2 w-4 h-4 rounded-full bg-emerald-400 flex items-center justify-center">
+            <Check size={9} className="text-black" />
+          </span>
+        )}
       </div>
       <div className="p-3 bg-white/[0.06] backdrop-blur-xl border-t border-white/8">
         <div className="flex items-start justify-between gap-2">
@@ -80,7 +116,7 @@ function GlassDesignCard({
             </div>
           </div>
           <span className="shrink-0 text-[8px] font-black text-emerald-300/80 opacity-0 group-hover:opacity-100 transition-opacity">
-            تطبيق ←
+            معاينة ←
           </span>
         </div>
         {tags && tags.length > 0 && (
@@ -110,6 +146,7 @@ function GlassFormCard({
   previewPanelBlur,
   previewPanelBorder,
   isActive,
+  isPending,
   onClick,
 }: {
   emoji: string;
@@ -121,6 +158,7 @@ function GlassFormCard({
   previewPanelBlur: string;
   previewPanelBorder: string;
   isActive?: boolean;
+  isPending?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -128,9 +166,11 @@ function GlassFormCard({
       type="button"
       onClick={onClick}
       className={`group relative overflow-hidden rounded-2xl border text-right transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 ${
-        isActive
-          ? "border-cyan-400/60 ring-1 ring-cyan-400/35 shadow-[0_8px_28px_rgba(34,211,238,0.18)]"
-          : "border-white/10 hover:border-cyan-400/40"
+        isPending
+          ? "border-amber-400/65 ring-2 ring-amber-400/40 shadow-[0_8px_28px_rgba(251,191,36,0.2)]"
+          : isActive
+            ? "border-cyan-400/60 ring-1 ring-cyan-400/35 shadow-[0_8px_28px_rgba(34,211,238,0.18)]"
+            : "border-white/10 hover:border-cyan-400/40"
       }`}
     >
       <div
@@ -156,7 +196,12 @@ function GlassFormCard({
         <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md text-[7px] font-black bg-black/50 text-cyan-200 border border-white/10">
           blur {blurLabel}
         </span>
-        {isActive && (
+        {isPending && (
+          <span className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded-md text-[7px] font-black bg-amber-500/90 text-black">
+            معاينة
+          </span>
+        )}
+        {isActive && !isPending && (
           <span className="absolute top-2 left-2 w-4 h-4 rounded-full bg-cyan-400 flex items-center justify-center">
             <Check size={9} className="text-black" />
           </span>
@@ -174,12 +219,42 @@ function GlassFormCard({
   );
 }
 
+function getPreviewBarLabel(
+  previewKind: DesignPreviewKind | null | undefined,
+  pendingGlassFormId: GlassFormId | null | undefined,
+  pendingFacePresetId: string | null | undefined,
+  pendingTemplateId: DesignAssistantProposalId | null | undefined,
+): string {
+  if (previewKind === "glass" && pendingGlassFormId) {
+    return getGlassFormLabel(pendingGlassFormId);
+  }
+  if (previewKind === "face" && pendingFacePresetId) {
+    return getFacePresetLabel(pendingFacePresetId);
+  }
+  if (previewKind === "template" && pendingTemplateId) {
+    const template = READY_DESIGN_TEMPLATES.find((t) => t.id === pendingTemplateId);
+    return template ? `${template.emoji} ${template.title}` : pendingTemplateId;
+  }
+  return "تصميم";
+}
+
 export function DesignTemplateGallery({
-  onApplyTemplate,
-  onApplyFacePreset,
-  onApplyGlassForm,
+  onPreviewTemplate,
+  onPreviewFacePreset,
+  onPreviewGlassForm,
+  onCommitPreview,
+  onCancelPreview,
+  onGlassTintChange,
   onResetGlassForm,
+  previewKind = null,
   activeGlassFormId = null,
+  pendingGlassFormId = null,
+  glassTintColor = "#6ee7b7",
+  pendingFacePresetId = null,
+  activeFacePresetId = null,
+  pendingTemplateId = null,
+  activeTemplateId = null,
+  pendingTemplateSummary = "",
   recommendedPresetId,
   designPresets = [],
   applyDesignPreset,
@@ -189,15 +264,39 @@ export function DesignTemplateGallery({
   handleSaveDesignPreset,
 }: DesignTemplateGalleryProps) {
   const stopDrag = (event: React.PointerEvent) => event.stopPropagation();
+  const isPreviewing = previewKind !== null;
 
   return (
     <div className="space-y-4">
       <div className="rounded-2xl p-3 lamma-admin-card border border-emerald-500/15">
         <div className="text-[10px] text-gray-300 font-bold leading-relaxed">
-          اختار بطاقة جاهزة — كل بطاقة تطبّق ألوان وتقسيم وخلفيات بضغطة واحدة
-          (بعد تأكيدك).
+          اضغط على أي بطاقة للمعاينة الحية على الشات — شوف النتيجة ورا المودال،
+          اختار لون البطاقة (للفورمات)، ثم «تطبيق نهائي» أو «إلغاء».
         </div>
       </div>
+
+      {isPreviewing && previewKind && (
+        <DesignPreviewBar
+          kind={previewKind}
+          label={getPreviewBarLabel(
+            previewKind,
+            pendingGlassFormId,
+            pendingFacePresetId,
+            pendingTemplateId,
+          )}
+          detail={
+            previewKind === "template" && pendingTemplateSummary
+              ? pendingTemplateSummary
+              : previewKind === "glass"
+                ? "اختار لون البطاقة ثم اضغط تطبيق نهائي"
+                : undefined
+          }
+          tintHex={glassTintColor}
+          onTintChange={previewKind === "glass" ? onGlassTintChange : undefined}
+          onCommit={onCommitPreview}
+          onCancel={onCancelPreview}
+        />
+      )}
 
       <div>
         <div className="text-[11px] font-black text-emerald-300 mb-2">
@@ -214,7 +313,9 @@ export function DesignTemplateGallery({
               badge={template.impact}
               tags={template.tags}
               isRecommended={recommendedPresetId === template.id}
-              onClick={() => onApplyTemplate(template.id)}
+              isActive={activeTemplateId === template.id && previewKind !== "template"}
+              isPending={pendingTemplateId === template.id && previewKind === "template"}
+              onClick={() => onPreviewTemplate(template.id)}
             />
           ))}
         </div>
@@ -236,10 +337,6 @@ export function DesignTemplateGallery({
             </button>
           )}
         </div>
-        <div className="text-[9px] text-gray-500 font-bold mb-2 leading-relaxed">
-          اختار شكل الفورم الزجاجي — blur وشفافية اللوحات والرسائل (زي مواقع
-          Glassmorphism).
-        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
           {GLASS_FORM_PRESETS.map((form) => (
             <GlassFormCard
@@ -252,8 +349,9 @@ export function DesignTemplateGallery({
               previewPanelBg={form.previewPanelBg}
               previewPanelBlur={form.previewPanelBlur}
               previewPanelBorder={form.previewPanelBorder}
-              isActive={activeGlassFormId === form.id}
-              onClick={() => onApplyGlassForm(form.id)}
+              isActive={activeGlassFormId === form.id && previewKind !== "glass"}
+              isPending={pendingGlassFormId === form.id && previewKind === "glass"}
+              onClick={() => onPreviewGlassForm(form.id)}
             />
           ))}
         </div>
@@ -276,7 +374,9 @@ export function DesignTemplateGallery({
                 title={preset.name}
                 subtitle={meta.subtitle}
                 previewGradient={meta.previewGradient}
-                onClick={() => onApplyFacePreset(preset.id)}
+                isActive={activeFacePresetId === preset.id && previewKind !== "face"}
+                isPending={pendingFacePresetId === preset.id && previewKind === "face"}
+                onClick={() => onPreviewFacePreset(preset.id)}
               />
             );
           })}

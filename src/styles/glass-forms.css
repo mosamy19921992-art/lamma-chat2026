@@ -125,15 +125,23 @@
 .lamma-neutral-glass[data-glass-form] .lamma-modal-shell,
 .lamma-neutral-glass[data-glass-form] .lamma-modal-header {
   background:
-    radial-gradient(circle at 16% 10%, transparent, transparent),
-    radial-gradient(circle at 84% 0%, transparent, transparent),
+    radial-gradient(
+      circle at 16% 10%,
+      rgba(var(--gf-custom-rgb, 110, 231, 183), 0.16),
+      transparent 58%
+    ),
+    radial-gradient(
+      circle at 84% 0%,
+      rgba(var(--gf-custom-rgb, 110, 231, 183), 0.09),
+      transparent 52%
+    ),
     linear-gradient(
       180deg,
       rgba(255, 255, 255, var(--gf-top)),
       rgba(255, 255, 255, var(--gf-mid)) 22%,
       rgba(12, 16, 22, var(--gf-bottom)) 100%
     ) !important;
-  border-color: rgba(255, 255, 255, var(--gf-border)) !important;
+  border-color: rgba(var(--gf-custom-rgb, 110, 231, 183), calc(var(--gf-border) * 0.45 + 0.18)) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, var(--gf-sheen)),
     inset 0 -1px 0 rgba(255, 255, 255, calc(var(--gf-sheen) * 0.28)),
@@ -168,4 +176,34 @@
 
 .lamma-neutral-glass[data-glass-form="solid-focus"] .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system) {
   background: rgba(14, 18, 24, 0.78) !important;
+}
+
+.lamma-neutral-glass[data-design-preview="true"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  box-shadow: inset 0 0 0 2px rgba(var(--gf-custom-rgb, 110, 231, 183), 0.45);
+  animation: gf-preview-pulse 2s ease-in-out infinite;
+}
+
+.lamma-neutral-glass[data-glass-preview="true"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  box-shadow: inset 0 0 0 2px rgba(var(--gf-custom-rgb, 110, 231, 183), 0.45);
+  animation: gf-preview-pulse 2s ease-in-out infinite;
+}
+
+@keyframes gf-preview-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 2px rgba(var(--gf-custom-rgb, 110, 231, 183), 0.35);
+  }
+  50% {
+    box-shadow: inset 0 0 0 3px rgba(var(--gf-custom-rgb, 110, 231, 183), 0.55);
+  }
 }

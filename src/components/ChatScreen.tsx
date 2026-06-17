@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import type { ChatScreenProps, OwnerMusicTrack, RoomDjState } from "../lib/chatTypes";
 import { ensureFaceApplied } from "../lib/customFace";
 import { ensureGlassFormApplied } from "../services/design/glassTransparencyService";
+import { setDesignPreviewActive } from "../services/design/designPreviewDom";
 import {
   Send,
   Image,
@@ -927,6 +928,15 @@ export default function ChatScreen({
   const [lastAppliedDesignSnapshot, setLastAppliedDesignSnapshot] =
     useState<DesignAssistantSnapshot | null>(null);
   const lastAppliedFaceRef = useRef<CustomFace | null>(null);
+  const designPreviewSnapshotRef = useRef<{
+    brandLogoUrl: string | null;
+    ownerBgImage: string | null;
+    roomBgMap: Record<string, string>;
+    activeRoomId: string;
+    leftColumnSectionsPct: ChatLayoutPrefs["left"];
+    rightColumnSectionsPct: ChatLayoutPrefs["right"];
+    face: CustomFace;
+  } | null>(null);
   const applyDesignPreset = (preset: DesignPreset) => {
     const snapshot = preset.snapshot;
     setBrandLogoUrl(snapshot.brandLogoUrl);
@@ -1166,7 +1176,13 @@ export default function ChatScreen({
     });
   };
 
-  const applyAssistantPatch = (patch: DesignAssistantPatch) => {
+  const applyAssistantPatch = (
+    patch: DesignAssistantPatch,
+    options?: { persistFace?: boolean; persistLayout?: boolean },
+  ) => {
+    const persistFace = options?.persistFace !== false;
+    const persistLayout = options?.persistLayout !== false;
+
     if (typeof patch.brandLogoUrl !== "undefined") {
       setBrandLogoUrl(patch.brandLogoUrl);
       setDesignLogoInput(patch.brandLogoUrl || "");
@@ -1187,19 +1203,100 @@ export default function ChatScreen({
     if (patch.layoutSections) {
       setLeftColumnSectionsPct(patch.layoutSections.left);
       setRightColumnSectionsPct(patch.layoutSections.right);
-      saveChatLayoutPrefs(chatLayoutStorageKey, {
-        left: patch.layoutSections.left,
-        right: patch.layoutSections.right,
-      });
+      if (persistLayout) {
+        saveChatLayoutPrefs(chatLayoutStorageKey, {
+          left: patch.layoutSections.left,
+          right: patch.layoutSections.right,
+        });
+      }
     }
     if (patch.customFacePresetId) {
       const preset = FACE_PRESETS.find((item) => item.id === patch.customFacePresetId);
       if (preset) {
         const nextFace = { ...preset.face, enabled: true };
-        saveFace(nextFace);
+        if (persistFace) saveFace(nextFace);
         applyFace(nextFace);
       }
     }
+  };
+
+  const previewAssistantPreset = (preset: DesignAssistantProposal["id"]) => {
+    if (!designPreviewSnapshotRef.current) {
+      designPreviewSnapshotRef.current = {
+        brandLogoUrl,
+        ownerBgImage,
+        roomBgMap: { ...roomBgMap },
+        activeRoomId,
+        leftColumnSectionsPct,
+        rightColumnSectionsPct,
+        face: loadFace(),
+      };
+      setDesignPreviewActive(true);
+    }
+    const context = getDesignAssistantContext();
+    const proposal = buildDesignAssistantProposal(preset, context);
+    applyAssistantPatch(proposal.changes, {
+      persistFace: false,
+      persistLayout: false,
+    });
+    return {
+      id: preset,
+      title: proposal.title,
+      summary: proposal.summary,
+    };
+  };
+
+  const previewRecommendedAssistantTemplate = () => {
+    const context = getDesignAssistantContext();
+    const audit = buildDesignAssistantAudit(context);
+    setAssistantAudit(audit);
+    setAssistantFindings(audit.findings);
+    return previewAssistantPreset(audit.recommendedPreset);
+  };
+
+  const commitAssistantPreset = (preset: DesignAssistantProposal["id"]) => {
+    const context = getDesignAssistantContext();
+    const proposal = buildDesignAssistantProposal(preset, context);
+    captureDesignSnapshot();
+    applyAssistantPatch(proposal.changes);
+    designPreviewSnapshotRef.current = null;
+    setDesignPreviewActive(false);
+    setAssistantAudit(buildDesignAssistantAudit(getDesignAssistantContext()));
+    setAssistantFindings(
+      buildDesignAssistantAudit(getDesignAssistantContext()).findings,
+    );
+    setAssistantProposal(null);
+    addSystemActivityLog(
+      "promote",
+      currentUser.nickname,
+      `طبق المالك اقتراح التصميم [${proposal.title}] بعد المعاينة.`,
+      "🤖 مهندس لمة",
+    );
+    return proposal.title;
+  };
+
+  const cancelAssistantPreview = () => {
+    const snap = designPreviewSnapshotRef.current;
+    if (!snap) {
+      setDesignPreviewActive(false);
+      return;
+    }
+    setBrandLogoUrl(snap.brandLogoUrl);
+    setDesignLogoInput(snap.brandLogoUrl || "");
+    setOwnerBgImage(snap.ownerBgImage);
+    setDesignOwnerBgInput(snap.ownerBgImage || "");
+    setRoomBgMap(snap.roomBgMap);
+    setDesignRoomBgInput(snap.roomBgMap[snap.activeRoomId] || "");
+    setLeftColumnSectionsPct(snap.leftColumnSectionsPct);
+    setRightColumnSectionsPct(snap.rightColumnSectionsPct);
+    saveChatLayoutPrefs(chatLayoutStorageKey, {
+      left: snap.leftColumnSectionsPct,
+      right: snap.rightColumnSectionsPct,
+    });
+    saveFace(snap.face);
+    applyFace(snap.face);
+    designPreviewSnapshotRef.current = null;
+    setDesignPreviewActive(false);
   };
 
   const handleApplyAssistantProposal = () => {
@@ -1219,28 +1316,6 @@ export default function ChatScreen({
     );
     setAssistantProposal(null);
     alert(`✅ تم تطبيق «${assistantProposal.title}». أغلق النافذة لترى الألوان والخلفيات على الشات.`);
-  };
-
-  const applyAssistantPresetDirect = (preset: DesignAssistantProposal["id"]) => {
-    const context = getDesignAssistantContext();
-    const proposal = buildDesignAssistantProposal(preset, context);
-    const allowed = window.confirm(
-      `تطبيق «${proposal.title}» الآن؟\n\n${proposal.summary}`,
-    );
-    if (!allowed) return;
-
-    captureDesignSnapshot();
-    applyAssistantPatch(proposal.changes);
-    setAssistantAudit(buildDesignAssistantAudit(getDesignAssistantContext()));
-    setAssistantFindings(buildDesignAssistantAudit(getDesignAssistantContext()).findings);
-    setAssistantProposal(null);
-    addSystemActivityLog(
-      "promote",
-      currentUser.nickname,
-      `طبق المالك اقتراح التصميم [${proposal.title}] مباشرة.`,
-      "🤖 مهندس لمة",
-    );
-    alert(`✅ تم تطبيق «${proposal.title}». الألوان والتقسيم يتحدثان فوراً على الشات.`);
   };
 
   const handleRestoreLastDesignSnapshot = () => {
@@ -10771,13 +10846,10 @@ export default function ChatScreen({
                     isOwnerRole={isOwnerRole}
                     runAssistantAudit={runAssistantAudit}
                     queueAssistantProposal={queueAssistantProposal}
-                    applyAssistantPresetDirect={applyAssistantPresetDirect}
-                    queueRecommendedAssistantProposal={() =>
-                      applyAssistantPresetDirect(
-                        buildDesignAssistantAudit(getDesignAssistantContext())
-                          .recommendedPreset,
-                      )
-                    }
+                    previewAssistantPreset={previewAssistantPreset}
+                    commitAssistantPreset={commitAssistantPreset}
+                    cancelAssistantPreview={cancelAssistantPreview}
+                    previewRecommendedAssistantTemplate={previewRecommendedAssistantTemplate}
                     assistantAudit={assistantAudit}
                     assistantFindings={assistantFindings}
                     assistantProposal={assistantProposal}

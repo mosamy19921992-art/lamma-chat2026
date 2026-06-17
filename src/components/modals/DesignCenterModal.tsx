@@ -1,21 +1,38 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { DesignStudioModal } from './DesignStudioModal';
 import { DesignTemplateGallery } from './DesignTemplateGallery';
-import { applyFace, loadFace, saveFace, FACE_PRESETS } from '../../lib/customFace';
+import { applyFace, loadFace, saveFace, FACE_PRESETS, cancelFacePreview, commitFacePreset, getFacePresetLabel, previewFacePreset } from '../../lib/customFace';
+import type { DesignAssistantProposalId } from '../../lib/chatTypes';
+import { setDesignPreviewActive } from '../../services/design/designPreviewDom';
 import {
   applyGlassForm,
+  cancelGlassPreview,
+  commitGlassForm,
   loadGlassFormId,
+  loadGlassFormTint,
+  previewGlassForm,
   GLASS_FORM_PRESETS,
   type GlassFormId,
 } from '../../services/design/glassTransparencyService';
 
 type DesignSection = "uploads" | "studio" | "assistant";
 
-export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, applyAssistantPresetDirect, queueRecommendedAssistantProposal, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset }: any) => {
+export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset }: any) => {
+  type PreviewKind = "glass" | "face" | "template" | null;
+
   const [section, setSection] = useState<DesignSection>("uploads");
+  const [previewKind, setPreviewKind] = useState<PreviewKind>(null);
   const [activeGlassFormId, setActiveGlassFormId] = useState<GlassFormId | null>(
     () => loadGlassFormId(),
   );
+  const [pendingGlassFormId, setPendingGlassFormId] = useState<GlassFormId | null>(null);
+  const [isGlassPreviewing, setIsGlassPreviewing] = useState(false);
+  const [glassTintColor, setGlassTintColor] = useState(() => loadGlassFormTint());
+  const [pendingFacePresetId, setPendingFacePresetId] = useState<string | null>(null);
+  const [activeFacePresetId, setActiveFacePresetId] = useState<string | null>(null);
+  const [pendingTemplateId, setPendingTemplateId] = useState<DesignAssistantProposalId | null>(null);
+  const [pendingTemplateSummary, setPendingTemplateSummary] = useState("");
+  const [activeTemplateId, setActiveTemplateId] = useState<DesignAssistantProposalId | null>(null);
   const [columnUploading, setColumnUploading] = useState<string | null>(null);
   const rightColUploadRef = useRef<HTMLInputElement>(null);
   const centerColUploadRef = useRef<HTMLInputElement>(null);
@@ -49,38 +66,139 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     }
   };
 
-  const handleApplyFacePreset = (presetId: string) => {
-    const preset = FACE_PRESETS.find((p) => p.id === presetId);
-    if (!preset) return;
-    const allowed = window.confirm(
-      `تطبيق سمة «${preset.name}» على الشات الآن؟\n\nستتغير الألوان والفقاعات والوجه الزجاجي فوراً.`,
-    );
-    if (!allowed) return;
-    saveFace(preset.face);
-    applyFace(preset.face);
-    alert(`✅ تم تطبيق سمة «${preset.name}».`);
+  const cancelAllPreviews = () => {
+    if (previewKind === "glass" || isGlassPreviewing) {
+      cancelGlassPreview();
+      setIsGlassPreviewing(false);
+      setPendingGlassFormId(null);
+      setActiveGlassFormId(loadGlassFormId());
+      setGlassTintColor(loadGlassFormTint());
+    }
+    if (previewKind === "face") {
+      cancelFacePreview();
+      setPendingFacePresetId(null);
+    }
+    if (previewKind === "template") {
+      cancelAssistantPreview?.();
+      setPendingTemplateId(null);
+      setPendingTemplateSummary("");
+    }
+    setPreviewKind(null);
+    setDesignPreviewActive(false);
   };
 
-  const handleApplyGlassForm = (formId: GlassFormId) => {
-    const preset = GLASS_FORM_PRESETS.find((p) => p.id === formId);
-    const label = preset?.title ?? formId;
-    const allowed = window.confirm(
-      `تطبيق فورم الشفافية «${label}» على الشات؟\n\nهيتغير blur وشفافية اللوحات والفورمات فوراً.`,
-    );
-    if (!allowed) return;
-    if (applyGlassForm(formId)) {
-      setActiveGlassFormId(formId);
-      alert(`✅ تم تطبيق فورم «${label}».`);
+  const handlePreviewGlassForm = (formId: GlassFormId) => {
+    cancelAllPreviews();
+    setPreviewKind("glass");
+    setPendingGlassFormId(formId);
+    setIsGlassPreviewing(true);
+    previewGlassForm(formId, glassTintColor);
+  };
+
+  const handleGlassTintChange = (hex: string) => {
+    setGlassTintColor(hex);
+    if (pendingGlassFormId) {
+      previewGlassForm(pendingGlassFormId, hex);
+    }
+  };
+
+  const handleCommitGlassForm = () => {
+    if (!pendingGlassFormId) return;
+    const preset = GLASS_FORM_PRESETS.find((p) => p.id === pendingGlassFormId);
+    const label = preset?.title ?? pendingGlassFormId;
+    if (commitGlassForm(pendingGlassFormId, glassTintColor)) {
+      setActiveGlassFormId(pendingGlassFormId);
+      setIsGlassPreviewing(false);
+      setPendingGlassFormId(null);
+      setPreviewKind(null);
+      alert(`✅ تم تطبيق فورم «${label}» بلون البطاقة اللي اخترته.`);
     } else {
       alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
     }
   };
 
+  const handleCancelGlassPreview = () => {
+    cancelAllPreviews();
+  };
+
+  const handlePreviewFacePreset = (presetId: string) => {
+    cancelAllPreviews();
+    if (previewFacePreset(presetId)) {
+      setPreviewKind("face");
+      setPendingFacePresetId(presetId);
+      setDesignPreviewActive(true);
+    }
+  };
+
+  const handleCommitFacePreset = () => {
+    if (!pendingFacePresetId) return;
+    const label = getFacePresetLabel(pendingFacePresetId);
+    if (commitFacePreset(pendingFacePresetId)) {
+      setActiveFacePresetId(pendingFacePresetId);
+      setPendingFacePresetId(null);
+      setPreviewKind(null);
+      setDesignPreviewActive(false);
+      alert(`✅ تم تطبيق سمة «${label}».`);
+    }
+  };
+
+  const handlePreviewTemplate = (templateId: DesignAssistantProposalId) => {
+    cancelAllPreviews();
+    const info = previewAssistantPreset?.(templateId);
+    if (!info) return;
+    setPreviewKind("template");
+    setPendingTemplateId(info.id);
+    setPendingTemplateSummary(info.summary);
+  };
+
+  const handleCommitTemplate = () => {
+    if (!pendingTemplateId) return;
+    const title = commitAssistantPreset?.(pendingTemplateId);
+    if (title) {
+      setActiveTemplateId(pendingTemplateId);
+      setPendingTemplateId(null);
+      setPendingTemplateSummary("");
+      setPreviewKind(null);
+      alert(`✅ تم تطبيق «${title}».`);
+    }
+  };
+
+  const handleSmartRecommendPreview = () => {
+    cancelAllPreviews();
+    const info = previewRecommendedAssistantTemplate?.();
+    if (!info) return;
+    setPreviewKind("template");
+    setPendingTemplateId(info.id);
+    setPendingTemplateSummary(info.summary);
+  };
+
+  const handleCancelPreview = () => {
+    cancelAllPreviews();
+  };
+
+  const handleCommitPreview = () => {
+    if (previewKind === "glass") handleCommitGlassForm();
+    else if (previewKind === "face") handleCommitFacePreset();
+    else if (previewKind === "template") handleCommitTemplate();
+  };
+
   const handleResetGlassForm = () => {
+    if (previewKind === "glass") {
+      cancelAllPreviews();
+    }
     applyGlassForm(null);
     setActiveGlassFormId(null);
     alert("✅ رجّعنا فورم الشفافية للوضع الافتراضي.");
   };
+
+  useEffect(() => {
+    return () => {
+      cancelGlassPreview();
+      cancelFacePreview();
+      cancelAssistantPreview?.();
+      setDesignPreviewActive(false);
+    };
+  }, []);
 
   return (
     <>
@@ -352,7 +470,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                             </button>
                             <button
                               type="button"
-                              onClick={queueRecommendedAssistantProposal}
+                              onClick={handleSmartRecommendPreview}
                               onPointerDown={stopDrag}
                               className="px-4 py-2 rounded-xl text-[10px] font-black lamma-accent-btn text-white"
                             >
@@ -384,11 +502,22 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                         </div>
 
                         <DesignTemplateGallery
-                          onApplyTemplate={applyAssistantPresetDirect}
-                          onApplyFacePreset={handleApplyFacePreset}
-                          onApplyGlassForm={handleApplyGlassForm}
+                          onPreviewTemplate={handlePreviewTemplate}
+                          onPreviewFacePreset={handlePreviewFacePreset}
+                          onPreviewGlassForm={handlePreviewGlassForm}
+                          onCommitPreview={handleCommitPreview}
+                          onCancelPreview={handleCancelPreview}
+                          onGlassTintChange={handleGlassTintChange}
                           onResetGlassForm={handleResetGlassForm}
+                          previewKind={previewKind}
                           activeGlassFormId={activeGlassFormId}
+                          pendingGlassFormId={pendingGlassFormId}
+                          glassTintColor={glassTintColor}
+                          pendingFacePresetId={pendingFacePresetId}
+                          activeFacePresetId={activeFacePresetId}
+                          pendingTemplateId={pendingTemplateId}
+                          activeTemplateId={activeTemplateId}
+                          pendingTemplateSummary={pendingTemplateSummary}
                           recommendedPresetId={assistantAudit?.recommendedPreset}
                           designPresets={designPresets}
                           designPresetName={designPresetName}

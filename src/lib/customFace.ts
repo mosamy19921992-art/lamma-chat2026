@@ -433,3 +433,40 @@ export function ensureFaceApplied(attempt = 0): void {
     window.requestAnimationFrame(() => ensureFaceApplied(attempt + 1));
   }
 }
+
+// ─── Live preview (no save until commit) ─────────────────────────────────────
+
+let facePreviewSnapshot: CustomFace | null = null;
+
+export function previewFacePreset(presetId: string): boolean {
+  const preset = FACE_PRESETS.find((p) => p.id === presetId);
+  if (!preset) return false;
+  if (!facePreviewSnapshot) {
+    facePreviewSnapshot = loadFace();
+  }
+  return applyFace({ ...preset.face, enabled: true });
+}
+
+export function commitFacePreset(presetId: string): boolean {
+  const preset = FACE_PRESETS.find((p) => p.id === presetId);
+  if (!preset) return false;
+  const nextFace = { ...preset.face, enabled: true };
+  saveFace(nextFace);
+  applyFace(nextFace);
+  facePreviewSnapshot = null;
+  return true;
+}
+
+export function cancelFacePreview(): boolean {
+  const restore = facePreviewSnapshot ?? loadFace();
+  facePreviewSnapshot = null;
+  return applyFace(restore);
+}
+
+export function isFacePreviewActive(): boolean {
+  return facePreviewSnapshot !== null;
+}
+
+export function getFacePresetLabel(presetId: string): string {
+  return FACE_PRESETS.find((p) => p.id === presetId)?.name ?? presetId;
+}

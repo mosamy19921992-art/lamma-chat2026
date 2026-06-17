@@ -14,7 +14,6 @@ export interface GlassFormPreset {
   subtitle: string;
   emoji: string;
   blurLabel: string;
-  /** Inline preview for the gallery card (mini frosted form). */
   previewPanelBg: string;
   previewPanelBlur: string;
   previewPanelBorder: string;
@@ -72,7 +71,8 @@ export const GLASS_FORM_PRESETS: GlassFormPreset[] = [
     subtitle: "لمعة عالية وحواف بارزة",
     emoji: "✨",
     blurLabel: "36px",
-    previewPanelBg: "linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.06))",
+    previewPanelBg:
+      "linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.06))",
     previewPanelBlur: "blur(16px)",
     previewPanelBorder: "rgba(255,255,255,0.38)",
     previewBackdrop: "linear-gradient(145deg, #1a1208, #d4a63a)",
@@ -112,17 +112,90 @@ export const GLASS_FORM_PRESETS: GlassFormPreset[] = [
   },
 ];
 
-const STORAGE_KEY = "lamma_glass_form";
+export const GLASS_TINT_SWATCHES = [
+  "#6ee7b7",
+  "#38bdf8",
+  "#a78bfa",
+  "#f472b6",
+  "#fbbf24",
+  "#f87171",
+  "#94a3b8",
+  "#ffffff",
+] as const;
+
+export const DEFAULT_GLASS_TINT = "#6ee7b7";
+
+import { setDesignPreviewActive } from "./designPreviewDom";
+
+const FORM_STORAGE_KEY = "lamma_glass_form";
+const TINT_STORAGE_KEY = "lamma_glass_form_tint";
+
+export interface GlassFormSavedState {
+  formId: GlassFormId | null;
+  tintHex: string;
+}
+
+let previewSnapshot: GlassFormSavedState | null = null;
 
 function getChatRoot(): HTMLElement | null {
   if (typeof document === "undefined") return null;
   return document.querySelector(".lamma-neutral-glass");
 }
 
+function hexToRgbTriplet(hex: string): string {
+  const normalized = hex.replace("#", "").trim();
+  if (normalized.length !== 6) return "110, 231, 183";
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return "110, 231, 183";
+  return `${r}, ${g}, ${b}`;
+}
+
+function applyGlassFormToDom(
+  id: GlassFormId | null,
+  tintHex: string,
+  isPreview: boolean,
+): boolean {
+  const root = getChatRoot();
+  if (!root) return false;
+
+  if (!id) {
+    delete root.dataset.glassForm;
+    delete root.dataset.glassPreview;
+    root.style.removeProperty("--gf-custom-rgb");
+    root.style.removeProperty("--gf-accent");
+    if (!isPreview) setDesignPreviewActive(false);
+  } else {
+    root.dataset.glassForm = id;
+    root.dataset.glassPreview = isPreview ? "true" : "false";
+    root.style.setProperty("--gf-custom-rgb", hexToRgbTriplet(tintHex));
+    root.style.setProperty("--gf-accent", tintHex);
+    if (isPreview) setDesignPreviewActive(true);
+    else {
+      delete root.dataset.glassPreview;
+      setDesignPreviewActive(false);
+    }
+  }
+
+  return true;
+}
+
+export function loadGlassFormTint(): string {
+  if (typeof window === "undefined") return DEFAULT_GLASS_TINT;
+  try {
+    const raw = localStorage.getItem(TINT_STORAGE_KEY);
+    if (raw && /^#[0-9a-fA-F]{6}$/.test(raw)) return raw;
+  } catch {
+    // ignore
+  }
+  return DEFAULT_GLASS_TINT;
+}
+
 export function loadGlassFormId(): GlassFormId | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(FORM_STORAGE_KEY);
     if (!raw) return null;
     if (GLASS_FORM_PRESETS.some((p) => p.id === raw)) {
       return raw as GlassFormId;
@@ -133,34 +206,81 @@ export function loadGlassFormId(): GlassFormId | null {
   return null;
 }
 
-export function applyGlassForm(id: GlassFormId | null): boolean {
-  const root = getChatRoot();
-  if (!root) return false;
+export function loadGlassFormState(): GlassFormSavedState {
+  return {
+    formId: loadGlassFormId(),
+    tintHex: loadGlassFormTint(),
+  };
+}
 
-  if (!id) {
-    delete root.dataset.glassForm;
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // ignore
+function persistGlassFormState(state: GlassFormSavedState): void {
+  try {
+    if (state.formId) {
+      localStorage.setItem(FORM_STORAGE_KEY, state.formId);
+    } else {
+      localStorage.removeItem(FORM_STORAGE_KEY);
     }
-  } else {
-    root.dataset.glassForm = id;
-    try {
-      localStorage.setItem(STORAGE_KEY, id);
-    } catch {
-      // ignore
-    }
+    localStorage.setItem(TINT_STORAGE_KEY, state.tintHex);
+  } catch {
+    // ignore
   }
+}
 
+/** Live preview on chat — does not save until commit. */
+export function previewGlassForm(id: GlassFormId, tintHex: string): boolean {
+  if (!previewSnapshot) {
+    previewSnapshot = loadGlassFormState();
+  }
+  return applyGlassFormToDom(id, tintHex, true);
+}
+
+/** Save and keep the previewed glass form + tint. */
+export function commitGlassForm(id: GlassFormId, tintHex: string): boolean {
+  const ok = applyGlassFormToDom(id, tintHex, false);
+  if (!ok) return false;
+  persistGlassFormState({ formId: id, tintHex });
+  previewSnapshot = null;
   return true;
 }
 
-/** Re-apply saved glass form after chat mount (retries until root exists). */
+/** Revert chat to last saved state before preview. */
+export function cancelGlassPreview(): boolean {
+  const restore = previewSnapshot ?? loadGlassFormState();
+  previewSnapshot = null;
+  if (!restore.formId) {
+    const root = getChatRoot();
+    if (root) {
+      delete root.dataset.glassForm;
+      delete root.dataset.glassPreview;
+      root.style.removeProperty("--gf-custom-rgb");
+      root.style.removeProperty("--gf-accent");
+    }
+    return true;
+  }
+  return applyGlassFormToDom(restore.formId, restore.tintHex, false);
+}
+
+export function applyGlassForm(id: GlassFormId | null): boolean {
+  previewSnapshot = null;
+  if (!id) {
+    persistGlassFormState({ formId: null, tintHex: loadGlassFormTint() });
+    const root = getChatRoot();
+    if (!root) return false;
+    delete root.dataset.glassForm;
+    delete root.dataset.glassPreview;
+    root.style.removeProperty("--gf-custom-rgb");
+    root.style.removeProperty("--gf-accent");
+    return true;
+  }
+  return commitGlassForm(id, loadGlassFormTint());
+}
+
 export function ensureGlassFormApplied(attempt = 0): void {
   if (typeof window === "undefined") return;
-  const id = loadGlassFormId();
-  const ok = applyGlassForm(id);
+  const state = loadGlassFormState();
+  const ok = state.formId
+    ? applyGlassFormToDom(state.formId, state.tintHex, false)
+    : applyGlassForm(null);
   if (!ok && attempt < 24) {
     window.requestAnimationFrame(() => ensureGlassFormApplied(attempt + 1));
   }
@@ -169,4 +289,8 @@ export function ensureGlassFormApplied(attempt = 0): void {
 export function getGlassFormLabel(id: GlassFormId | null): string {
   if (!id) return "افتراضي";
   return GLASS_FORM_PRESETS.find((p) => p.id === id)?.title ?? id;
+}
+
+export function isGlassPreviewActive(): boolean {
+  return previewSnapshot !== null;
 }
