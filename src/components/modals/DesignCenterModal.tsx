@@ -14,11 +14,21 @@ import {
   GLASS_FORM_PRESETS,
   type GlassFormId,
 } from '../../services/design/glassTransparencyService';
+import {
+  cancelColumnCardPreview,
+  commitColumnCardStyle,
+  loadColumnCardStyleId,
+  loadColumnCardTint,
+  previewColumnCardStyle,
+  COLUMN_CARD_STYLE_PRESETS,
+  getColumnCardStyleLabel,
+  type ColumnCardStyleId,
+} from '../../services/design/columnCardStyleService';
 
 type DesignSection = "uploads" | "studio" | "assistant";
 
 export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset }: any) => {
-  type PreviewKind = "glass" | "face" | "template" | null;
+  type PreviewKind = "glass" | "face" | "template" | "column" | null;
 
   const [section, setSection] = useState<DesignSection>("uploads");
   const [previewKind, setPreviewKind] = useState<PreviewKind>(null);
@@ -33,6 +43,11 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
   const [pendingTemplateId, setPendingTemplateId] = useState<DesignAssistantProposalId | null>(null);
   const [pendingTemplateSummary, setPendingTemplateSummary] = useState("");
   const [activeTemplateId, setActiveTemplateId] = useState<DesignAssistantProposalId | null>(null);
+  const [pendingColumnStyleId, setPendingColumnStyleId] = useState<ColumnCardStyleId | null>(null);
+  const [activeColumnStyleId, setActiveColumnStyleId] = useState<ColumnCardStyleId | null>(
+    () => loadColumnCardStyleId(),
+  );
+  const [columnTintColor, setColumnTintColor] = useState(() => loadColumnCardTint());
   const [columnUploading, setColumnUploading] = useState<string | null>(null);
   const rightColUploadRef = useRef<HTMLInputElement>(null);
   const centerColUploadRef = useRef<HTMLInputElement>(null);
@@ -83,6 +98,12 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
       setPendingTemplateId(null);
       setPendingTemplateSummary("");
     }
+    if (previewKind === "column") {
+      cancelColumnCardPreview();
+      setPendingColumnStyleId(null);
+      setActiveColumnStyleId(loadColumnCardStyleId());
+      setColumnTintColor(loadColumnCardTint());
+    }
     setPreviewKind(null);
     setDesignPreviewActive(false);
   };
@@ -99,6 +120,35 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     setGlassTintColor(hex);
     if (pendingGlassFormId) {
       previewGlassForm(pendingGlassFormId, hex);
+    }
+  };
+
+  const handleColumnTintChange = (hex: string) => {
+    setColumnTintColor(hex);
+    if (pendingColumnStyleId) {
+      previewColumnCardStyle(pendingColumnStyleId, hex);
+    }
+  };
+
+  const handlePreviewColumnStyle = (styleId: ColumnCardStyleId) => {
+    cancelAllPreviews();
+    setPreviewKind("column");
+    setPendingColumnStyleId(styleId);
+    previewColumnCardStyle(styleId, columnTintColor);
+  };
+
+  const handleCommitColumnStyle = () => {
+    if (!pendingColumnStyleId) return;
+    const label = getColumnCardStyleLabel(pendingColumnStyleId);
+    if (commitColumnCardStyle(pendingColumnStyleId, columnTintColor)) {
+      setActiveColumnStyleId(
+        pendingColumnStyleId === "neon-ring" ? null : pendingColumnStyleId,
+      );
+      setPendingColumnStyleId(null);
+      setPreviewKind(null);
+      alert(`✅ تم تطبيق شكل بطاقات الأعمدة «${label}».`);
+    } else {
+      alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
     }
   };
 
@@ -180,6 +230,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     if (previewKind === "glass") handleCommitGlassForm();
     else if (previewKind === "face") handleCommitFacePreset();
     else if (previewKind === "template") handleCommitTemplate();
+    else if (previewKind === "column") handleCommitColumnStyle();
   };
 
   const handleResetGlassForm = () => {
@@ -196,6 +247,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
       cancelGlassPreview();
       cancelFacePreview();
       cancelAssistantPreview?.();
+      cancelColumnCardPreview();
       setDesignPreviewActive(false);
     };
   }, []);
@@ -507,12 +559,20 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           onPreviewGlassForm={handlePreviewGlassForm}
                           onCommitPreview={handleCommitPreview}
                           onCancelPreview={handleCancelPreview}
-                          onGlassTintChange={handleGlassTintChange}
+                          onTintChange={(hex) => {
+                            if (previewKind === "column") handleColumnTintChange(hex);
+                            else handleGlassTintChange(hex);
+                          }}
+                          onPreviewColumnStyle={handlePreviewColumnStyle}
                           onResetGlassForm={handleResetGlassForm}
                           previewKind={previewKind}
                           activeGlassFormId={activeGlassFormId}
                           pendingGlassFormId={pendingGlassFormId}
-                          glassTintColor={glassTintColor}
+                          tintColor={
+                            previewKind === "column" ? columnTintColor : glassTintColor
+                          }
+                          pendingColumnStyleId={pendingColumnStyleId}
+                          activeColumnStyleId={activeColumnStyleId}
                           pendingFacePresetId={pendingFacePresetId}
                           activeFacePresetId={activeFacePresetId}
                           pendingTemplateId={pendingTemplateId}

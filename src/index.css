@@ -2,6 +2,7 @@
 @import "./components/login-screen-legacy.css";
 @import "./styles/lamma-magic-shell.css";
 @import "./styles/glass-forms.css";
+@import "./styles/column-card-styles.css";
 @import "tailwindcss";
 
 @theme {

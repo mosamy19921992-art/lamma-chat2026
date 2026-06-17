@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import type { ChatScreenProps, OwnerMusicTrack, RoomDjState } from "../lib/chatTypes";
 import { ensureFaceApplied } from "../lib/customFace";
 import { ensureGlassFormApplied } from "../services/design/glassTransparencyService";
+import { ensureColumnCardStyleApplied } from "../services/design/columnCardStyleService";
 import { setDesignPreviewActive } from "../services/design/designPreviewDom";
 import {
   Send,
@@ -2398,6 +2399,7 @@ export default function ChatScreen({
   useEffect(() => {
     ensureFaceApplied();
     ensureGlassFormApplied();
+    ensureColumnCardStyleApplied();
   }, []);
 
   useEffect(() => {

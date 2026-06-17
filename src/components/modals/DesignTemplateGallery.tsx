@@ -15,19 +15,27 @@ import {
   DesignPreviewBar,
   type DesignPreviewKind,
 } from "./DesignGlassPreviewBar";
+import {
+  COLUMN_CARD_STYLE_PRESETS,
+  getColumnCardStyleLabel,
+  type ColumnCardStyleId,
+} from "../../services/design/columnCardStyleService";
 
 interface DesignTemplateGalleryProps {
   onPreviewTemplate: (id: DesignAssistantProposalId) => void;
   onPreviewFacePreset: (presetId: string) => void;
   onPreviewGlassForm: (id: GlassFormId) => void;
+  onPreviewColumnStyle: (id: ColumnCardStyleId) => void;
   onCommitPreview: () => void;
   onCancelPreview: () => void;
-  onGlassTintChange: (hex: string) => void;
+  onTintChange: (hex: string) => void;
   onResetGlassForm?: () => void;
   previewKind?: DesignPreviewKind | null;
   activeGlassFormId?: GlassFormId | null;
   pendingGlassFormId?: GlassFormId | null;
-  glassTintColor?: string;
+  tintColor?: string;
+  pendingColumnStyleId?: ColumnCardStyleId | null;
+  activeColumnStyleId?: ColumnCardStyleId | null;
   pendingFacePresetId?: string | null;
   activeFacePresetId?: string | null;
   pendingTemplateId?: DesignAssistantProposalId | null;
@@ -219,11 +227,74 @@ function GlassFormCard({
   );
 }
 
+function ColumnCardStyleCard({
+  emoji,
+  title,
+  subtitle,
+  previewRadius,
+  previewBg,
+  previewBorder,
+  isActive,
+  isPending,
+  onClick,
+}: {
+  emoji: string;
+  title: string;
+  subtitle: string;
+  previewRadius: string;
+  previewBg: string;
+  previewBorder: string;
+  isActive?: boolean;
+  isPending?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-2xl border text-right transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 ${
+        isPending
+          ? "border-amber-400/65 ring-2 ring-amber-400/40"
+          : isActive
+            ? "border-amber-400/55 ring-1 ring-amber-400/30"
+            : "border-white/10 hover:border-amber-400/40"
+      }`}
+    >
+      <div className="relative h-[72px] w-full flex items-center justify-center p-4 bg-gradient-to-br from-[#0a0f16] to-[#1a2030]">
+        <div
+          className="w-full h-10 border-2 shadow-lg"
+          style={{
+            borderRadius: previewRadius,
+            background: previewBg,
+            borderColor: previewBorder.includes("gradient") ? "transparent" : previewBorder,
+            boxShadow:
+              previewBorder.includes("gradient")
+                ? "0 0 0 2px rgba(255,42,95,0.5), 0 0 0 4px rgba(16,185,129,0.35)"
+                : "inset 0 1px 0 rgba(255,255,255,0.2)",
+          }}
+        />
+        {isPending && (
+          <span className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded-md text-[7px] font-black bg-amber-500/90 text-black">
+            معاينة
+          </span>
+        )}
+      </div>
+      <div className="p-3 bg-white/[0.06] border-t border-white/8">
+        <div className="text-[11px] font-black text-white">
+          {emoji} {title}
+        </div>
+        <div className="text-[9px] text-gray-400 font-bold mt-1 line-clamp-2">{subtitle}</div>
+      </div>
+    </button>
+  );
+}
+
 function getPreviewBarLabel(
   previewKind: DesignPreviewKind | null | undefined,
   pendingGlassFormId: GlassFormId | null | undefined,
   pendingFacePresetId: string | null | undefined,
   pendingTemplateId: DesignAssistantProposalId | null | undefined,
+  pendingColumnStyleId: ColumnCardStyleId | null | undefined,
 ): string {
   if (previewKind === "glass" && pendingGlassFormId) {
     return getGlassFormLabel(pendingGlassFormId);
@@ -235,6 +306,9 @@ function getPreviewBarLabel(
     const template = READY_DESIGN_TEMPLATES.find((t) => t.id === pendingTemplateId);
     return template ? `${template.emoji} ${template.title}` : pendingTemplateId;
   }
+  if (previewKind === "column" && pendingColumnStyleId) {
+    return getColumnCardStyleLabel(pendingColumnStyleId);
+  }
   return "تصميم";
 }
 
@@ -242,14 +316,17 @@ export function DesignTemplateGallery({
   onPreviewTemplate,
   onPreviewFacePreset,
   onPreviewGlassForm,
+  onPreviewColumnStyle,
   onCommitPreview,
   onCancelPreview,
-  onGlassTintChange,
+  onTintChange,
   onResetGlassForm,
   previewKind = null,
   activeGlassFormId = null,
   pendingGlassFormId = null,
-  glassTintColor = "#6ee7b7",
+  tintColor = "#6ee7b7",
+  pendingColumnStyleId = null,
+  activeColumnStyleId = null,
   pendingFacePresetId = null,
   activeFacePresetId = null,
   pendingTemplateId = null,
@@ -270,8 +347,8 @@ export function DesignTemplateGallery({
     <div className="space-y-4">
       <div className="rounded-2xl p-3 lamma-admin-card border border-emerald-500/15">
         <div className="text-[10px] text-gray-300 font-bold leading-relaxed">
-          اضغط على أي بطاقة للمعاينة الحية على الشات — شوف النتيجة ورا المودال،
-          اختار لون البطاقة (للفورمات)، ثم «تطبيق نهائي» أو «إلغاء».
+          اضغط على أي بطاقة للمعاينة الحية — بما فيها بطاقات الأعمدة (VIP، راديو، غرف).
+          اختار لون البطاقة للفورمات وأشكال الأعمدة، ثم «تطبيق نهائي».
         </div>
       </div>
 
@@ -283,16 +360,19 @@ export function DesignTemplateGallery({
             pendingGlassFormId,
             pendingFacePresetId,
             pendingTemplateId,
+            pendingColumnStyleId,
           )}
           detail={
             previewKind === "template" && pendingTemplateSummary
               ? pendingTemplateSummary
-              : previewKind === "glass"
+              : previewKind === "glass" || previewKind === "column"
                 ? "اختار لون البطاقة ثم اضغط تطبيق نهائي"
                 : undefined
           }
-          tintHex={glassTintColor}
-          onTintChange={previewKind === "glass" ? onGlassTintChange : undefined}
+          tintHex={tintColor}
+          onTintChange={
+            previewKind === "glass" || previewKind === "column" ? onTintChange : undefined
+          }
           onCommit={onCommitPreview}
           onCancel={onCancelPreview}
         />
@@ -316,6 +396,35 @@ export function DesignTemplateGallery({
               isActive={activeTemplateId === template.id && previewKind !== "template"}
               isPending={pendingTemplateId === template.id && previewKind === "template"}
               onClick={() => onPreviewTemplate(template.id)}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-[11px] font-black text-amber-300 mb-2">
+          🃏 أشكال بطاقات الأعمدة (VIP · راديو · غرف)
+        </div>
+        <div className="text-[9px] text-gray-500 font-bold mb-2 leading-relaxed">
+          البطاقات الجانبية كانت ثابتة على «حلقة نيون» — دلوقتي تقدر تختار الشكل واللون.
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+          {COLUMN_CARD_STYLE_PRESETS.map((style) => (
+            <ColumnCardStyleCard
+              key={style.id}
+              emoji={style.emoji}
+              title={style.title}
+              subtitle={style.subtitle}
+              previewRadius={style.previewRadius}
+              previewBg={style.previewBg}
+              previewBorder={style.previewBorder}
+              isActive={
+                (activeColumnStyleId === style.id ||
+                  (style.id === "neon-ring" && !activeColumnStyleId)) &&
+                previewKind !== "column"
+              }
+              isPending={pendingColumnStyleId === style.id && previewKind === "column"}
+              onClick={() => onPreviewColumnStyle(style.id)}
             />
           ))}
         </div>
