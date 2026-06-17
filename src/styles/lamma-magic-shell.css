@@ -384,6 +384,149 @@
     color: #ecfdf5 !important;
     text-shadow: 0 0 16px rgba(110, 231, 183, 0.4);
   }
+
+  /* ── Magical glass nickname cards in chat ── */
+  @keyframes lammaNameCardShimmer {
+    0%,
+    100% {
+      box-shadow:
+        0 6px 22px rgba(45, 212, 191, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    }
+    50% {
+      box-shadow:
+        0 8px 28px rgba(110, 231, 183, 0.22),
+        0 0 20px rgba(167, 139, 250, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.36);
+    }
+  }
+
+  @keyframes lammaBossNameGlow {
+    0%,
+    100% {
+      box-shadow:
+        0 6px 24px rgba(251, 191, 36, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+    50% {
+      box-shadow:
+        0 10px 32px rgba(255, 215, 0, 0.28),
+        0 0 24px rgba(214, 179, 91, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.38);
+    }
+  }
+
+  .lamma-name-glass-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    flex-wrap: wrap;
+    max-width: min(100%, 300px);
+    width: fit-content;
+    padding: 5px 11px 5px 9px;
+    border-radius: 16px;
+    position: relative;
+    isolation: isolate;
+    line-height: 1.1;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.17) 0%,
+      rgba(110, 231, 183, 0.12) 42%,
+      rgba(167, 139, 250, 0.1) 100%
+    );
+    -webkit-backdrop-filter: blur(22px) saturate(1.55);
+    backdrop-filter: blur(22px) saturate(1.55);
+    border: 1px solid rgba(167, 243, 208, 0.32);
+    box-shadow:
+      0 6px 22px rgba(45, 212, 191, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    animation: lammaNameCardShimmer 5s ease-in-out infinite;
+    transition: transform 0.18s ease;
+  }
+
+  .lamma-name-glass-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 48%);
+    pointer-events: none;
+  }
+
+  .lamma-name-glass-card::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      rgba(110, 231, 183, 0.45),
+      rgba(167, 139, 250, 0.25),
+      rgba(255, 255, 255, 0.08)
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.65;
+  }
+
+  .lamma-name-glass-card-compact {
+    padding: 4px 9px;
+    border-radius: 13px;
+    max-width: min(100%, 240px);
+  }
+
+  .lamma-name-glass-card-own {
+    background: linear-gradient(
+      135deg,
+      rgba(214, 179, 91, 0.24) 0%,
+      rgba(110, 231, 183, 0.14) 52%,
+      rgba(255, 255, 255, 0.1) 100%
+    );
+    border-color: rgba(247, 231, 180, 0.38);
+  }
+
+  .lamma-name-glass-card-boss {
+    border-color: rgba(251, 191, 36, 0.48);
+    animation: lammaBossNameGlow 3.5s ease-in-out infinite;
+  }
+
+  .lamma-name-glass-card-boss.lamma-name-glass-card-own {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 215, 0, 0.22) 0%,
+      rgba(214, 179, 91, 0.2) 45%,
+      rgba(110, 231, 183, 0.1) 100%
+    );
+  }
+
+  .lamma-name-glass-card .lamma-author-name,
+  .lamma-name-glass-card > span.font-bold {
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+
+  .lamma-name-glass-card .lamma-role-chip,
+  .lamma-name-glass-card .lamma-badge-chip,
+  .lamma-name-glass-card .lamma-title-chip {
+    position: relative;
+    z-index: 1;
+    border-radius: 8px !important;
+  }
+
+  .lamma-name-glass-card:active {
+    transform: scale(0.98);
+  }
+
+  .lamma-neutral-glass[data-app-shell="aurora"] .lamma-author-meta {
+    margin-top: 0.28rem;
+    padding-inline-start: 0.15rem;
+  }
 }
 
 /* PWA standalone: slightly stronger aurora on any width phone */

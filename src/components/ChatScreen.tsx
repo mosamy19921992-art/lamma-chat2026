@@ -480,6 +480,21 @@ function readJsonStorage<T>(
   }
 }
 
+function getNameGlassCardClass(options: {
+  isSelf?: boolean;
+  isBoss?: boolean;
+  compact?: boolean;
+}) {
+  return [
+    "lamma-name-glass-card",
+    options.isSelf && "lamma-name-glass-card-own",
+    options.isBoss && "lamma-name-glass-card-boss",
+    options.compact && "lamma-name-glass-card-compact",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 function PostsFeedRoom({
   posts,
   currentSession,
@@ -613,7 +628,12 @@ function PostsFeedRoom({
                     className="cursor-pointer min-w-0"
                     onClick={() => onOpenProfile(msg.author)}
                   >
-                    <div className="lamma-author-line">
+                    <div
+                      className={`lamma-author-line ${getNameGlassCardClass({
+                        isSelf: msg.author === currentSession.nickname,
+                        isBoss: isOwnerAuthorRow,
+                      })}`}
+                    >
                       <span
                         style={prestigeClass ? undefined : { color: nameColor }}
                         className={`font-bold text-[12px] lamma-author-name ${prestigeClass}`}
@@ -5863,7 +5883,11 @@ export default function ChatScreen({
               </div>
               <div className="flex flex-col items-start leading-none gap-0.5">
                 <span
-                  className={`text-[11px] font-black flex items-center gap-1 truncate max-w-[45vw] sm:max-w-none ${getPrestigeNameClass(myActiveSession.nickname, myActiveSession, chatMembers, subscription, memberCosmeticGrants)}`}
+                  className={`${getNameGlassCardClass({
+                    isSelf: true,
+                    isBoss: isOwnerRole,
+                    compact: true,
+                  })} text-[11px] font-black flex items-center gap-1 truncate max-w-[45vw] sm:max-w-none ${getPrestigeNameClass(myActiveSession.nickname, myActiveSession, chatMembers, subscription, memberCosmeticGrants)}`}
                   style={{
                     color:
                       isOwnerRole ||
@@ -7403,10 +7427,16 @@ export default function ChatScreen({
                             )}
                           </div>
                           <div className="flex flex-col truncate">
-                            <div className="flex items-center gap-1 flex-wrap">
+                            <div
+                              className={`flex items-center gap-1 flex-wrap ${getNameGlassCardClass({
+                                isSelf: isCurrentUser,
+                                isBoss: isOwnerMember,
+                                compact: true,
+                              })}`}
+                            >
                               <span
                                 style={prestigeClass ? undefined : { color: m.color }}
-                                className={`font-bold text-[11px] truncate leading-tight ${prestigeClass}`}
+                                className={`font-bold text-[11px] truncate leading-tight lamma-author-name ${prestigeClass}`}
                               >
                                 {cleanName}
                               </span>
@@ -8538,7 +8568,12 @@ export default function ChatScreen({
                             chatMembers,
                           );
                           return (
-                            <div className="lamma-author-line">
+                            <div
+                              className={`lamma-author-line ${getNameGlassCardClass({
+                                isSelf: msg.author === myActiveSession.nickname,
+                                isBoss: ownerRow,
+                              })}`}
+                            >
                               <span
                                 style={prestigeClass ? undefined : { color: nameColor }}
                                 className={`font-bold text-[11px] group-hover/author:underline lamma-author-name ${prestigeClass}`}
@@ -9725,10 +9760,16 @@ export default function ChatScreen({
                               </div>
                             )}
                             <div className="flex flex-col truncate flex-1">
-                              <div className="flex items-center gap-1 flex-wrap">
+                              <div
+                                className={`flex items-center gap-1 flex-wrap ${getNameGlassCardClass({
+                                  isSelf: isCurrentUser,
+                                  isBoss: isOwnerMember,
+                                  compact: true,
+                                })}`}
+                              >
                                 <span
                                   style={prestigeClass ? undefined : { color: m.color }}
-                                  className={`font-bold text-[12px] truncate leading-tight ${prestigeClass}`}
+                                  className={`font-bold text-[12px] truncate leading-tight lamma-author-name ${prestigeClass}`}
                                 >
                                   {cleanName}
                                 </span>
