@@ -121,7 +121,6 @@ import {
   type PMTargetState,
   type ProductType,
 } from "../lib/chatTypes.ts";
-import { WelcomeMoment, type WelcomeMode } from "./WelcomeMoment";
 import { MemberPrestigeBadges } from "./MemberPrestigeBadges";
 import {
   hexToRgba,
@@ -146,6 +145,7 @@ import { useChatMessages } from "../hooks/useChatMessages";
 import { usePrivateMessages } from "../hooks/usePrivateMessages";
 import { useWebRTCCalls } from "../hooks/useWebRTCCalls";
 import { useOnlinePresence, type PresenceUpdateEvent } from "../hooks/useOnlinePresence";
+import { useIsMobileViewport } from "../hooks/useIsMobileViewport";
 import { useVoiceMessageRecorder } from "../hooks/useVoiceMessageRecorder";
 import { VoiceNoteBubble, VoiceRecorderBar } from "../components/VoiceNoteBubble";
 import { FloatingDropdownPortal } from "../components/FloatingDropdownPortal";
@@ -2066,16 +2066,10 @@ export default function ChatScreen({
     kind: "standby",
     onlineCount: 1,
   });
-  const [welcomeMode, setWelcomeMode] = useState<WelcomeMode | null>(null);
+  const isMobileAppShell = useIsMobileViewport();
   const roomEntryTickerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
-
-  useEffect(() => {
-    if (sessionStorage.getItem("lamma_welcome_v1")) return;
-    sessionStorage.setItem("lamma_welcome_v1", "1");
-    setWelcomeMode({ kind: "session", visible: true });
-  }, []);
 
   const showRoomEntryStandby = useCallback((onlineCount: number) => {
     setRoomEntryTicker({
@@ -5688,18 +5682,10 @@ export default function ChatScreen({
       // is the authoritative visual wrapper for the production chat design.
       className="fixed inset-0 h-screen w-full flex flex-col overflow-hidden font-sans text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app lamma-neutral-glass"
       dir="rtl"
-      data-frost-mobile="true"
-      data-app-shell="aurora"
+      data-app-shell={isMobileAppShell ? "aurora" : undefined}
       data-clear-bg={isDefaultAmbientBg ? "true" : "false"}
       data-reading-mode={readingMode ? "true" : "false"}
     >
-      <WelcomeMoment
-        user={myActiveSession}
-        mode={welcomeMode}
-        onDismiss={() => setWelcomeMode(null)}
-        subscription={subscription}
-        grants={memberCosmeticGrants}
-      />
       {activeRoomBg ? (
         <>
           <div

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase, getClientUid } from "../lib/supabase.ts";
+import { useIsMobileViewport } from "../hooks/useIsMobileViewport.ts";
 import { Smartphone, X, Download, Info, Check, Apple, HelpCircle, User, Sparkles } from "lucide-react";
 import {
   buildAuthRedirectUrl,
@@ -101,6 +102,7 @@ function EnvelopeIcon() {
 export default function LoginScreen(props: LoginScreenProps) {
   const { onLogin, isInstalledApp, onInstallApp, pendingSupabaseUser, inviteOnlyMode = false, hasInviteAccess = false } = props;
   const pwaEnabled = import.meta.env.VITE_ENABLE_PWA === "true";
+  const isMobileAppShell = useIsMobileViewport();
   const guestLoginAllowed = !inviteOnlyMode || hasInviteAccess;
   const brandName = import.meta.env.VITE_BRAND_NAME || "Lamma Chat";
   const brandCredit = import.meta.env.VITE_BRAND_CREDIT || "MR / Mohamed Samy";
@@ -491,7 +493,10 @@ export default function LoginScreen(props: LoginScreenProps) {
   };
 
   return (
-    <main className="page legacyLoginRoot lamma-magic-login-shell" dir="rtl">
+    <main
+      className={`page legacyLoginRoot${isMobileAppShell ? " lamma-magic-login-shell" : ""}`}
+      dir="rtl"
+    >
       <section className="card" aria-label="تسجيل الدخول">
         <div className="panel" id="panel" data-view={view}>
           <div className="view view--main">
