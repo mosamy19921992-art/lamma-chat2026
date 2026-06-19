@@ -12,6 +12,7 @@ export const ROOMS_DEF = [
   { id: "games", name: "Games 🎮", icon: "🎮", count: 0, category: "fun" },
   { id: "romance", name: "رومانسية", icon: "💖", count: 0, category: "relations" },
   { id: "admin", name: "الإدارة والشكاوى", icon: "🛡️", count: 0, category: "social" },
+  { id: "owner", name: "بوت التصميم AI", icon: "🎨", count: 0, category: "private", ownerOnly: true },
 ];
 
 export const ROOM_CATEGORIES = [

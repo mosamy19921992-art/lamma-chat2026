@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { supabase, getClientUid } from "../lib/supabase.ts";
+import { supabase } from "../lib/supabase.ts";
+import { establishGuestAuth } from "../services/auth/guestAuthService.ts";
 import { useIsMobileViewport } from "../hooks/useIsMobileViewport.ts";
 import { Smartphone, X, Download, Info, Check, Apple, HelpCircle, User, Sparkles } from "lucide-react";
 import {
@@ -114,6 +115,7 @@ export default function LoginScreen(props: LoginScreenProps) {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [guestNickname, setGuestNickname] = useState(() => randomGuestId());
+  const [guestLoading, setGuestLoading] = useState(false);
   const [message, setMessage] = useState<{
     text: string;
     type: MessageType;
@@ -180,7 +182,7 @@ export default function LoginScreen(props: LoginScreenProps) {
     setGuestNickname(randomGuestId());
   };
 
-  const handleGuestLogin = () => {
+  const handleGuestLogin = async () => {
     if (!guestLoginAllowed) {
       showFeedback(
         "الدخول كزائر متاح فقط عبر رابط دعوة. اطلب رابطاً من أحد الأعضاء أو سجّل حساباً.",
@@ -190,14 +192,20 @@ export default function LoginScreen(props: LoginScreenProps) {
       return;
     }
     const nickname = guestNickname.trim() || randomGuestId();
-    onLogin(
-      nickname,
-      "guest",
-      randomColor(),
-      getClientUid(),
-      undefined,
-      "guest",
-    );
+    const color = randomColor();
+    setGuestLoading(true);
+    try {
+      const uid = await establishGuestAuth(nickname, color);
+      onLogin(nickname, "guest", color, uid, undefined, "guest");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "تعذر الدخول كزائر. جرّب مرة أخرى أو سجّل حساباً.";
+      showFeedback(message, "error", true);
+    } finally {
+      setGuestLoading(false);
+    }
   };
 
   const handleInstallClick = async () => {
@@ -681,9 +689,9 @@ export default function LoginScreen(props: LoginScreenProps) {
                           className="primaryBtn"
                           type="button"
                           onClick={handleGuestLogin}
-                          disabled={authLoading}
+                          disabled={authLoading || guestLoading}
                         >
-                          دخول كزائر
+                          {guestLoading ? "جاري الدخول..." : "دخول كزائر"}
                         </button>
                         <button
                           className="secondaryBtn guestQuickSecondary"
@@ -756,9 +764,9 @@ export default function LoginScreen(props: LoginScreenProps) {
                         className="primaryBtn"
                         type="button"
                         onClick={handleGuestLogin}
-                        disabled={authLoading}
+                        disabled={authLoading || guestLoading}
                       >
-                        دخول كزائر
+                        {guestLoading ? "جاري الدخول..." : "دخول كزائر"}
                       </button>
                       <button
                         className="secondaryBtn guestQuickSecondary"

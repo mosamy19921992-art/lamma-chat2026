@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { pickVoiceRecorderMimeType } from "../services/chat/voiceMessageService";
 
 export function useVoiceMessageRecorder() {
@@ -60,6 +60,12 @@ export function useVoiceMessageRecorder() {
       setDurationSec((s) => s + 1);
     }, 1000);
   }, [isRecording]);
+
+  useEffect(() => {
+    return () => {
+      cleanupStream();
+    };
+  }, [cleanupStream]);
 
   const finalizeBlob = useCallback((): Blob | null => {
     const chunks = chunksRef.current;

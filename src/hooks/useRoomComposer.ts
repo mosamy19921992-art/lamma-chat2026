@@ -60,6 +60,7 @@ interface UseRoomComposerOptions {
     details: string,
     operatorNickname: string,
   ) => void;
+  onOwnerStylePrompt?: (prompt: string) => boolean;
   canShareYoutubeInMessage: () => boolean;
 }
 
@@ -98,6 +99,7 @@ export function useRoomComposer({
   addBotSystemWarning,
   addLammaBotMessage,
   addSystemActivityLog,
+  onOwnerStylePrompt,
   canShareYoutubeInMessage,
 }: UseRoomComposerOptions) {
   const handleSendMessage = useCallback(async () => {
@@ -157,6 +159,11 @@ export function useRoomComposer({
     });
 
     if (commandHandled) {
+      return;
+    }
+
+    if (onOwnerStylePrompt?.(inputText)) {
+      setInputText("");
       return;
     }
 
@@ -329,7 +336,6 @@ export function useRoomComposer({
       await persistRoomMessage({
         message: newMessage,
         roomId: activeRoomId,
-        senderUid,
       });
     } catch (error: any) {
         console.error("Error sending to Supabase:", error);

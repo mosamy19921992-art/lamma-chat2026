@@ -4,6 +4,17 @@ import { ensureFaceApplied } from "../lib/customFace";
 import { ensureGlassFormApplied } from "../services/design/glassTransparencyService";
 import { ensureColumnCardStyleApplied } from "../services/design/columnCardStyleService";
 import { setDesignPreviewActive } from "../services/design/designPreviewDom";
+import { loadUniversalStyleLocal, persistAndApplyUniversalStyle } from "../services/design/universalStyleStorage";
+import { getGlobalBackgroundForShell } from "../services/design/universalStyleApply";
+import type { UniversalStyleConfig } from "../services/design/universalStyleTypes";
+import { StyleSandboxCard } from "./design/StyleSandboxCard";
+import { UniversalStyleVideoLayer } from "./design/UniversalStyleVideoLayer";
+import {
+  buildStyleSandboxMessage,
+  MAX_STYLE_SANDBOX_SESSIONS,
+  useUniversalStyleEngine,
+} from "../hooks/useUniversalStyleEngine";
+import type { StyleSandboxSession } from "../services/design/universalStyleTypes";
 import {
   Send,
   Image,
@@ -89,7 +100,6 @@ import {
   uploadProfileAvatarFile,
 } from "../services/profile/profileAvatarService";
 import {
-  getClientUid,
   supabase,
   type BannedUserRow,
   type NicknameChangeRequestRow,
@@ -99,6 +109,7 @@ import {
   type OwnerMemberCosmeticsRow,
   type OwnerSettingsRow,
 } from "../lib/supabase.ts";
+import { userStoragePath } from "../services/storage/storagePaths";
 import {
   ROOMS_DEF,
   ROOM_CATEGORIES,
@@ -138,6 +149,7 @@ import {
   hasOwnerGrantedCosmetics,
   getYoutubeId,
   getShortenedNickname,
+  isSafeHttpUrl,
   canSendImages,
   canShareYoutube,
   type StoreCosmeticsSnapshot,
@@ -145,11 +157,11 @@ import {
 import { renderTextMessageWithMedia } from "../lib/chatMessageRender.tsx";
 import { createPortal } from "react-dom";
 import { useChatMessages } from "../hooks/useChatMessages";
-import { usePrivateMessages } from "../hooks/usePrivateMessages";
+import { usePrivateMessages, hasPmMessageWithDbId } from "../hooks/usePrivateMessages";
+import { useSocialFeed } from "../hooks/useSocialFeed";
 import { useWebRTCCalls } from "../hooks/useWebRTCCalls";
 import { useOnlinePresence, type PresenceUpdateEvent } from "../hooks/useOnlinePresence";
 import { useIsMobileViewport } from "../hooks/useIsMobileViewport";
-import { useVisualViewportOffset } from "../hooks/useVisualViewportOffset";
 import { useDeepLinkParams } from "../hooks/useDeepLinkParams";
 import { useVoiceMessageRecorder } from "../hooks/useVoiceMessageRecorder";
 import { VoiceNoteBubble, VoiceRecorderBar } from "../components/VoiceNoteBubble";
@@ -174,9 +186,15 @@ import { buildFriendSuggestions } from "../lib/friendSuggestions";
 import { AchievementsBlock } from "./AchievementsBlock";
 import {
   applyRoomDjToAudio,
+  computeDjStartedAtMs,
   parseRoomDjMap,
   persistRoomDjState,
 } from "../services/chat/roomDjService";
+import {
+  bindMessageAlertPriming,
+  playMessageAlertSound,
+  showBrowserMessageNotification,
+} from "../services/chat/messageAlertService";
 import { describeMediaError } from "../services/calls/callMediaUtils";
 import { OwnerMemberFeaturesPanel } from "./modals/OwnerMemberFeaturesPanel";
 import { OwnerMemberCosmeticsPanel } from "./modals/OwnerMemberCosmeticsPanel";
@@ -201,7 +219,18 @@ import {
   appendPmThreadMessage,
   createOptimisticPmMessage,
   persistPrivateMessage,
+  uploadPrivateMediaFile,
 } from "../services/chat/privateMessagesService";
+import { subscribeChannelWithRetry } from "../services/chat/realtimeUtils";
+import { upsertCurrentUserProfile } from "../services/social/userProfileService";
+import { deleteSocialPost } from "../services/social/socialPostsService";
+import { SocialFeedPanel } from "./social/SocialFeedPanel";
+import { UserProfilePageModal } from "./modals/UserProfilePageModal";
+import {
+  MobileBottomNav,
+  type MobileNavId,
+} from "./pwa/MobileBottomNav";
+import type { SocialPost } from "../lib/socialTypes";
 
 function MobileBottomSheet({
   isOpen,
@@ -327,6 +356,18 @@ function HeaderIconButton({
 }
 
 const OWNER_SETTINGS_ROW_ID = "global";
+
+function hydrateUniversalStyleFromSettings(
+  raw: unknown,
+  defaultAmbientBg: string,
+  setOwnerBgImage: (url: string | null) => void,
+): void {
+  const config = raw as UniversalStyleConfig | null | undefined;
+  if (!config || config.version !== 1) return;
+  persistAndApplyUniversalStyle(config);
+  const bg = getGlobalBackgroundForShell(config, defaultAmbientBg);
+  if (bg) setOwnerBgImage(bg);
+}
 const OWNER_SYNC_DEBOUNCE_MS = 350;
 const BANNED_USER_REASON_PREFIX = "lamma-ban-json:";
 const UUID_LIKE_PATTERN =
@@ -429,8 +470,11 @@ function sanitizeRoomBgMap(value: unknown): Record<string, string> {
   return Object.entries(value as Record<string, unknown>).reduce<
     Record<string, string>
   >((acc, [key, entry]) => {
-    if (typeof entry === "string" && entry.trim()) {
-      acc[key] = entry.trim();
+    if (typeof entry === "string") {
+      const trimmed = entry.trim();
+      if (trimmed && isSafeHttpUrl(trimmed)) {
+        acc[key] = trimmed;
+      }
     }
     return acc;
   }, {});
@@ -591,12 +635,19 @@ function PostsFeedRoom({
           currentSession,
           chatMembers,
         );
-        const storeVipChip = getStoreVipChip(
-          msg.author,
-          currentSession,
-          storeForAuthor,
-          cosmeticGrants,
-        );
+        const authorMember =
+          chatMembers.find((member) => member.nickname === msg.author) ?? {
+            nickname: msg.author,
+            role: role === "none" ? "user" : role,
+            badge:
+              msg.author === currentSession.nickname
+                ? currentSession.badge
+                : undefined,
+            title:
+              msg.author === currentSession.nickname
+                ? currentSession.title
+                : undefined,
+          };
 
         return (
           <article key={msg.id} className="lamma-post-card">
@@ -633,41 +684,33 @@ function PostsFeedRoom({
                     className="cursor-pointer min-w-0"
                     onClick={() => onOpenProfile(msg.author)}
                   >
-                    <div
-                      className={`lamma-author-line ${getNameGlassCardClass({
-                        isSelf: msg.author === currentSession.nickname,
-                        isBoss: isOwnerAuthorRow,
-                      })}`}
-                    >
-                      <span
-                        style={prestigeClass ? undefined : { color: nameColor }}
-                        className={`font-bold text-[12px] lamma-author-name ${prestigeClass}`}
+                    <div className="flex flex-col truncate min-w-0">
+                      <div
+                        className={`flex items-center gap-1 flex-wrap ${getNameGlassCardClass({
+                          isSelf: msg.author === currentSession.nickname,
+                          isBoss: isOwnerAuthorRow,
+                          compact: true,
+                        })}`}
                       >
-                        {cleanName}
-                      </span>
-                      {isOwnerAuthorRow && (
-                        <BossSigil size={14} className="opacity-95" />
-                      )}
-                      {isOwnerAuthorRow && (
-                        <span className="text-[7px] lamma-role-chip lamma-role-owner lamma-boss-badge">
-                          👑 {OWNER_DISPLAY_BADGE}
+                        <span
+                          style={prestigeClass ? undefined : { color: nameColor }}
+                          className={`font-bold text-[12px] lamma-author-name ${prestigeClass}`}
+                        >
+                          {cleanName}
                         </span>
-                      )}
-                      {storeVipChip === "platinum" && (
-                        <span className="text-[7px] lamma-role-chip lamma-role-plat">
-                          PLATINUM VIP
-                        </span>
-                      )}
-                      {storeVipChip === "vip" && (
-                        <span className="text-[7px] lamma-role-chip lamma-role-vip">
-                          VIP
-                        </span>
-                      )}
-                      {role === "admin" && (
-                        <span className="text-[7px] lamma-role-chip lamma-role-admin">
-                          ADMIN
-                        </span>
-                      )}
+                        {isOwnerAuthorRow && (
+                          <BossSigil size={12} className="opacity-95 shrink-0" />
+                        )}
+                      </div>
+                      <MemberPrestigeBadges
+                        member={authorMember}
+                        currentUser={currentSession}
+                        chatMembers={chatMembers}
+                        subscription={storeSnapshot}
+                        memberCosmeticGrants={cosmeticGrants}
+                        size="sm"
+                        highlightYou
+                      />
                     </div>
                     <div className="flex items-center gap-2 mt-1 text-[9px] text-gray-400">
                       <span>{msg.time}</span>
@@ -877,6 +920,7 @@ export default function ChatScreen({
   const [mobileTab, setMobileTab] = useState<
     "sidebar" | "chat" | "private" | "members"
   >("chat");
+  const [openReactionMsgId, setOpenReactionMsgId] = useState<string | null>(null);
 
   const [showFeaturesTray, setShowFeaturesTray] = useState(false);
   const [showMembersList, setShowMembersList] = useState(false);
@@ -990,7 +1034,7 @@ export default function ChatScreen({
   const appLink = buildRoomLink(activeRoomId);
   const geminiSearchEndpoint =
     import.meta.env.VITE_GEMINI_SEARCH_ENDPOINT || "";
-  const senderUid = currentUser.uid || getClientUid();
+  const senderUid = currentUser.uid || "";
   const publicChatSessionStartedAtRef = useRef<string>(
     new Date().toISOString(),
   );
@@ -1008,7 +1052,10 @@ export default function ChatScreen({
   const canPublishPosts = currentUser.authProvider === "supabase";
   const isRegisteredAccount = currentUser.authProvider === "supabase";
   const tempEntryTopicStorageKey = `lamma_temp_entry_topic_${currentUser.uid || currentUser.nickname}`;
-  const availableRooms = [...ROOMS_DEF, ...customRooms];
+  const availableRooms = useMemo(
+    () => [...ROOMS_DEF, ...customRooms],
+    [customRooms],
+  );
   useEffect(() => {
     const requestedRoomExists = availableRooms.some((room) => room.id === activeRoomId);
     if (!requestedRoomExists) {
@@ -1649,6 +1696,10 @@ export default function ChatScreen({
   const [showUserProfileBioPop, setShowUserProfileBioPop] = useState(false);
   const [userProfileBioTarget, setUserProfileBioTarget] =
     useState<ChatMember | null>(null);
+  const [showProfilePageModal, setShowProfilePageModal] = useState(false);
+  const [profilePageMember, setProfilePageMember] = useState<ChatMember | null>(
+    null,
+  );
 
   // Lists of friends, ignored, and blocked users
   const [friendsList, setFriendsList] = useState<string[]>(() =>
@@ -1852,10 +1903,12 @@ export default function ChatScreen({
 
   const deleteMessage = (msg: any) => {
     if (!msg?.id) return;
+    const roomId = activeRoomId;
+    let previousMessages: Message[] = [];
     setRoomMessages((prev) => {
-      const messagesInRoom = prev[activeRoomId] || [];
-      const next = messagesInRoom.filter((m) => m.id !== msg.id);
-      return { ...prev, [activeRoomId]: next };
+      previousMessages = prev[roomId] || [];
+      const next = previousMessages.filter((m) => m.id !== msg.id);
+      return { ...prev, [roomId]: next };
     });
     if (supabase) {
       supabase
@@ -1863,8 +1916,14 @@ export default function ChatScreen({
         .delete()
         .eq("id", msg.id)
         .then(({ error }) => {
-          if (error)
+          if (error) {
             console.error("Error deleting message from Supabase:", error);
+            setRoomMessages((prev) => ({
+              ...prev,
+              [roomId]: previousMessages,
+            }));
+            alert("❌ تعذر حذف الرسالة. حاول مرة أخرى.");
+          }
         });
     }
   };
@@ -2146,7 +2205,6 @@ export default function ChatScreen({
     onlineCount: 1,
   });
   const isMobileAppShell = useIsMobileViewport();
-  const keyboardOffset = useVisualViewportOffset(isMobileAppShell);
   const roomEntryTickerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -2627,141 +2685,160 @@ export default function ChatScreen({
 
   useEffect(() => {
     if (!supabase) return;
-    const subscription = supabase
-      .channel('owner_settings_sync')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'owner_settings', filter: 'id=eq.global' },
-        (payload) => {
-          const settings = payload.new;
-          if (settings.ghost_mode !== undefined && isCurrentUserOwner) {
-            setIsGhostMode(!!settings.ghost_mode);
-          }
-          if (settings.spy_mode !== undefined && isCurrentUserOwner) {
-            setIsSpyMode(!!settings.spy_mode);
-          }
-          if (settings.maintenance_mode !== undefined) setIsMaintenanceMode(!!settings.maintenance_mode);
-          if (settings.global_mute !== undefined) setIsGlobalMute(!!settings.global_mute);
-          if (settings.global_mic_mute !== undefined) setIsGlobalMicMute(!!settings.global_mic_mute);
-          if (settings.vip_only_images !== undefined) setIsOnlyVIPCanSendImages(!!settings.vip_only_images);
-          if (settings.bot_silent !== undefined) setIsBotSilent(!!settings.bot_silent);
-          if (settings.ads_enabled !== undefined) setIsAdsEnabled(!!settings.ads_enabled);
-          if (settings.greetings_enabled !== undefined) setIsWelcomeToastEnabled(!!settings.greetings_enabled);
-          if (settings.invite_only_mode !== undefined) setIsInviteOnlyMode(!!settings.invite_only_mode);
-          if (settings.banned_words) setBannedWords(settings.banned_words);
-          if (settings.owner_bg_image !== undefined) {
-            setOwnerBgImage((prev) => settings.owner_bg_image?.trim() || prev);
-          }
-          if (settings.custom_logo_url !== undefined) {
-            const nextLogo = settings.custom_logo_url?.trim() || null;
-            setBrandLogoUrl((prev) => nextLogo || prev);
-            setDesignLogoInput((prev) => nextLogo || prev);
-          }
-          if (settings.room_bg_map !== undefined) {
-            setRoomBgMap((prev) => {
-              const fromServer = sanitizeRoomBgMap(settings.room_bg_map);
-              return Object.keys(fromServer).length > 0 ? { ...prev, ...fromServer } : prev;
-            });
-          }
-          if (settings.room_dj_map !== undefined) {
-            setRoomDjMap(parseRoomDjMap(settings.room_dj_map));
-          }
-          if (settings.dj_library !== undefined) {
-            setDjLibrary(parseDjLibrary(settings.dj_library));
-          }
-          if (settings.bot_enabled !== undefined) setIsBotEnabled(!!settings.bot_enabled);
-          if (settings.bot_rule_anti_links !== undefined) setBotRuleAntiLinks(!!settings.bot_rule_anti_links);
-          if (settings.bot_rule_anti_spam !== undefined) setBotRuleAntiSpam(!!settings.bot_rule_anti_spam);
-          if (settings.bot_rule_swear_filter !== undefined) setBotRuleSwearFilter(!!settings.bot_rule_swear_filter);
-        }
-      )
-      .subscribe();
+    let isCancelled = false;
+    const unsubscribe = subscribeChannelWithRetry(() =>
+      supabase
+        .channel('owner_settings_sync')
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'owner_settings', filter: 'id=eq.global' },
+          (payload) => {
+            if (isCancelled) return;
+            const settings = payload.new;
+            if (settings.ghost_mode !== undefined && isCurrentUserOwner) {
+              setIsGhostMode(!!settings.ghost_mode);
+            }
+            if (settings.spy_mode !== undefined && isCurrentUserOwner) {
+              setIsSpyMode(!!settings.spy_mode);
+            }
+            if (settings.maintenance_mode !== undefined) setIsMaintenanceMode(!!settings.maintenance_mode);
+            if (settings.global_mute !== undefined) setIsGlobalMute(!!settings.global_mute);
+            if (settings.global_mic_mute !== undefined) setIsGlobalMicMute(!!settings.global_mic_mute);
+            if (settings.vip_only_images !== undefined) setIsOnlyVIPCanSendImages(!!settings.vip_only_images);
+            if (settings.bot_silent !== undefined) setIsBotSilent(!!settings.bot_silent);
+            if (settings.ads_enabled !== undefined) setIsAdsEnabled(!!settings.ads_enabled);
+            if (settings.greetings_enabled !== undefined) setIsWelcomeToastEnabled(!!settings.greetings_enabled);
+            if (settings.invite_only_mode !== undefined) setIsInviteOnlyMode(!!settings.invite_only_mode);
+            if (settings.banned_words) setBannedWords(settings.banned_words);
+            if (settings.owner_bg_image !== undefined) {
+              setOwnerBgImage((prev) => settings.owner_bg_image?.trim() || prev);
+            }
+            if (settings.custom_logo_url !== undefined) {
+              const nextLogo = settings.custom_logo_url?.trim() || null;
+              setBrandLogoUrl((prev) => nextLogo || prev);
+              setDesignLogoInput((prev) => nextLogo || prev);
+            }
+            if (settings.room_bg_map !== undefined) {
+              setRoomBgMap((prev) => {
+                const fromServer = sanitizeRoomBgMap(settings.room_bg_map);
+                return Object.keys(fromServer).length > 0 ? { ...prev, ...fromServer } : prev;
+              });
+            }
+            if (settings.room_dj_map !== undefined) {
+              setRoomDjMap(parseRoomDjMap(settings.room_dj_map));
+            }
+            if (settings.dj_library !== undefined) {
+              setDjLibrary(parseDjLibrary(settings.dj_library));
+            }
+            if (settings.bot_enabled !== undefined) setIsBotEnabled(!!settings.bot_enabled);
+            if (settings.bot_rule_anti_links !== undefined) setBotRuleAntiLinks(!!settings.bot_rule_anti_links);
+            if (settings.bot_rule_anti_spam !== undefined) setBotRuleAntiSpam(!!settings.bot_rule_anti_spam);
+            if (settings.bot_rule_swear_filter !== undefined) setBotRuleSwearFilter(!!settings.bot_rule_swear_filter);
+            if (settings.universal_style_config !== undefined) {
+              hydrateUniversalStyleFromSettings(
+                settings.universal_style_config,
+                DEFAULT_AMBIENT_BG,
+                setOwnerBgImage,
+              );
+            }
+          },
+        ),
+    );
     return () => {
-      supabase.removeChannel(subscription);
+      isCancelled = true;
+      unsubscribe();
     };
-  }, []);
+  }, [isCurrentUserOwner]);
 
   useEffect(() => {
     if (!supabase) return;
-    const subscription = supabase
-      .channel('owner_permissions_sync')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'owner_member_permissions' },
-        (payload) => {
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const p = payload.new;
-            setMemberCustomPermissions(prev => ({
-              ...prev,
-              [p.nickname]: {
-                recordingAllowed: !!p.recording_allowed,
-                callsAllowed: !!p.calls_allowed,
-                videoCallsAllowed: !!p.video_calls_allowed,
-                musicRadioAllowed: !!p.music_radio_allowed,
-                roomCreationAllowed: !!p.room_creation_allowed,
-                imagesAllowed: !!p.images_allowed,
-                youtubeAllowed: !!p.youtube_allowed,
+    let isCancelled = false;
+    const unsubscribe = subscribeChannelWithRetry(() =>
+      supabase
+        .channel('owner_permissions_sync')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'owner_member_permissions' },
+          (payload) => {
+            if (isCancelled) return;
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const p = payload.new;
+              setMemberCustomPermissions(prev => ({
+                ...prev,
+                [p.nickname]: {
+                  recordingAllowed: !!p.recording_allowed,
+                  callsAllowed: !!p.calls_allowed,
+                  videoCallsAllowed: !!p.video_calls_allowed,
+                  musicRadioAllowed: !!p.music_radio_allowed,
+                  roomCreationAllowed: !!p.room_creation_allowed,
+                  imagesAllowed: !!p.images_allowed,
+                  youtubeAllowed: !!p.youtube_allowed,
+                }
+              }));
+            } else if (payload.eventType === 'DELETE') {
+              const p = payload.old;
+              if (p && p.nickname) {
+                setMemberCustomPermissions(prev => {
+                  const next = { ...prev };
+                  delete next[p.nickname];
+                  return next;
+                });
               }
-            }));
-          } else if (payload.eventType === 'DELETE') {
-            const p = payload.old;
-            if (p && p.nickname) {
-              setMemberCustomPermissions(prev => {
-                const next = { ...prev };
-                delete next[p.nickname];
-                return next;
-              });
             }
-          }
-        }
-      )
-      .subscribe();
+          },
+        ),
+    );
     return () => {
-      supabase.removeChannel(subscription);
+      isCancelled = true;
+      unsubscribe();
     };
   }, []);
 
   useEffect(() => {
     if (!supabase) return;
-    const subscription = supabase
-      .channel("owner_cosmetics_sync")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "owner_member_cosmetics" },
-        (payload) => {
-          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-            const p = payload.new as OwnerMemberCosmeticsRow;
-            if (!p.nickname?.trim()) return;
-            if (!p.vip_tier && !p.frame) {
-              setMemberCosmeticGrants((prev) => {
-                const next = { ...prev };
-                delete next[p.nickname];
-                return next;
-              });
-              return;
+    let isCancelled = false;
+    const unsubscribe = subscribeChannelWithRetry(() =>
+      supabase
+        .channel("owner_cosmetics_sync")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "owner_member_cosmetics" },
+          (payload) => {
+            if (isCancelled) return;
+            if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+              const p = payload.new as OwnerMemberCosmeticsRow;
+              if (!p.nickname?.trim()) return;
+              if (!p.vip_tier && !p.frame) {
+                setMemberCosmeticGrants((prev) => {
+                  const next = { ...prev };
+                  delete next[p.nickname];
+                  return next;
+                });
+                return;
+              }
+              setMemberCosmeticGrants((prev) => ({
+                ...prev,
+                [p.nickname]: {
+                  vipTier: p.vip_tier || null,
+                  frame: p.frame || null,
+                },
+              }));
+            } else if (payload.eventType === "DELETE") {
+              const p = payload.old as OwnerMemberCosmeticsRow;
+              if (p?.nickname) {
+                setMemberCosmeticGrants((prev) => {
+                  const next = { ...prev };
+                  delete next[p.nickname];
+                  return next;
+                });
+              }
             }
-            setMemberCosmeticGrants((prev) => ({
-              ...prev,
-              [p.nickname]: {
-                vipTier: p.vip_tier || null,
-                frame: p.frame || null,
-              },
-            }));
-          } else if (payload.eventType === "DELETE") {
-            const p = payload.old as OwnerMemberCosmeticsRow;
-            if (p?.nickname) {
-              setMemberCosmeticGrants((prev) => {
-                const next = { ...prev };
-                delete next[p.nickname];
-                return next;
-              });
-            }
-          }
-        },
-      )
-      .subscribe();
+          },
+        ),
+    );
     return () => {
-      supabase.removeChannel(subscription);
+      isCancelled = true;
+      unsubscribe();
     };
   }, []);
 
@@ -2847,6 +2924,13 @@ export default function ChatScreen({
           }
           if (Array.isArray((settings as any).design_presets)) {
             setDesignPresets((settings as any).design_presets as DesignPreset[]);
+          }
+          if (settings.universal_style_config !== undefined) {
+            hydrateUniversalStyleFromSettings(
+              settings.universal_style_config,
+              DEFAULT_AMBIENT_BG,
+              setOwnerBgImage,
+            );
           }
           if (settings.bot_enabled !== undefined) setIsBotEnabled(Boolean(settings.bot_enabled));
           if (settings.bot_rule_anti_links !== undefined) setBotRuleAntiLinks(Boolean(settings.bot_rule_anti_links));
@@ -3059,6 +3143,7 @@ export default function ChatScreen({
     }
 
     ownerSettingsSyncTimeoutRef.current = setTimeout(async () => {
+      const universalStyle = loadUniversalStyleLocal();
       const payload: OwnerSettingsRow = {
         id: OWNER_SETTINGS_ROW_ID,
         ghost_mode: isGhostMode,
@@ -3082,6 +3167,7 @@ export default function ChatScreen({
         bot_rule_anti_links: botRuleAntiLinks,
         bot_rule_anti_spam: botRuleAntiSpam,
         bot_rule_swear_filter: botRuleSwearFilter,
+        universal_style_config: universalStyle as unknown as Record<string, unknown>,
       };
 
       const { error } = await supabase
@@ -3313,8 +3399,13 @@ export default function ChatScreen({
   const activeRoomDj = roomDjMap[activeRoomId];
 
   const syncOwnerRoomDj = useCallback(
-    async (track: MusicTrackItem | null, playing: boolean) => {
+    async (
+      track: MusicTrackItem | null,
+      playing: boolean,
+      positionSec = 0,
+    ) => {
       if (!isOwnerRole || !supabase) return;
+      const nowMs = Date.now();
       const state: RoomDjState | null =
         playing && track
           ? {
@@ -3323,9 +3414,9 @@ export default function ChatScreen({
               title: track.title,
               url: track.url,
               isPlaying: true,
-              startedAtMs: Date.now(),
+              startedAtMs: computeDjStartedAtMs(positionSec, nowMs),
               updatedBy: currentUser.nickname,
-              updatedAtMs: Date.now(),
+              updatedAtMs: nowMs,
             }
           : null;
       const next = await persistRoomDjState(
@@ -3343,7 +3434,7 @@ export default function ChatScreen({
     if (isOwnerRole) return;
     const audio = djBroadcastAudioRef.current;
     if (!audio) return;
-    applyRoomDjToAudio(audio, activeRoomDj, {
+    return applyRoomDjToAudio(audio, activeRoomDj, {
       listenEnabled: isDjListening,
     });
   }, [activeRoomDj, activeRoomId, isDjListening, isOwnerRole]);
@@ -3449,9 +3540,14 @@ export default function ChatScreen({
         radioAudioRef.current.pause();
         setIsRadioPlaying(false);
       }
-      musicAudioRef.current.play().catch((err) => console.log(err));
-      setIsMusicPlaying(true);
-      void syncOwnerRoomDj(currentMusicTrack, true);
+      musicAudioRef.current
+        .play()
+        .then(() => {
+          setIsMusicPlaying(true);
+          const pos = musicAudioRef.current?.currentTime ?? 0;
+          void syncOwnerRoomDj(currentMusicTrack, true, pos);
+        })
+        .catch(() => {});
     }
   };
 
@@ -3476,10 +3572,11 @@ export default function ChatScreen({
           .then(() => {
             setIsMusicPlaying(true);
             if (isOwnerRole || broadcastForOwner) {
-              void syncOwnerRoomDj(track, true);
+              const pos = musicAudioRef.current?.currentTime ?? 0;
+              void syncOwnerRoomDj(track, true, pos);
             }
           })
-          .catch((err) => console.log(err));
+          .catch(() => {});
       }, 200);
     }
   };
@@ -3579,7 +3676,7 @@ export default function ChatScreen({
   const [notifications, setNotifications] = useState<
     {
       id: string;
-      kind: "pm" | "mention" | "system";
+      kind: "pm" | "mention" | "room" | "system";
       title: string;
       body: string;
       at: number;
@@ -3588,43 +3685,30 @@ export default function ChatScreen({
   >(() => {
     return readJsonStorage("lamma_notifications", []);
   });
-  // In-app sound for new incoming messages
-  const messageAudioCtxRef = useRef<AudioContext | null>(null);
-  const playMessageSound = () => {
-    try {
-      const Ctx =
-        (window as any).AudioContext || (window as any).webkitAudioContext;
-      if (!Ctx) return;
-      if (!messageAudioCtxRef.current) messageAudioCtxRef.current = new Ctx();
-      const ctx = messageAudioCtxRef.current;
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = "sine";
-      o.frequency.setValueAtTime(880, ctx.currentTime);
-      o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.18);
-      g.gain.setValueAtTime(0.0001, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
-      o.connect(g);
-      g.connect(ctx.destination);
-      o.start();
-      o.stop(ctx.currentTime + 0.27);
-    } catch (e) {
-      // ignore
-    }
-  };
-  const handleIncomingRoomMessage = useCallback(
-    (sMsg: SupabaseMessage, roomId: string) => {
-      const mentionMatch =
-        typeof sMsg.text === "string" &&
-        sMsg.text.includes(`@${currentUser.nickname}`);
+  const [messageToasts, setMessageToasts] = useState<
+    { id: string; title: string; body: string }[]
+  >([]);
+  const isPmOpenRef = useRef(false);
+  const pmTargetNicknameRef = useRef<string | null>(null);
+  const mobileTabRef = useRef(mobileTab);
+
+  useEffect(() => {
+    mobileTabRef.current = mobileTab;
+  }, [mobileTab]);
+
+  useEffect(() => bindMessageAlertPriming(), []);
+
+  const pushAppNotification = useCallback(
+    (entry: {
+      kind: "pm" | "mention" | "room" | "system";
+      title: string;
+      body: string;
+    }) => {
       const newNotif = {
         id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        kind: mentionMatch ? ("mention" as const) : ("system" as const),
-        title: mentionMatch
-          ? `${sMsg.author} ذكرك في ${roomId}`
-          : `رسالة جديدة من ${sMsg.author}`,
-        body: (sMsg.text || sMsg.media_url || "[مرفق]").slice(0, 120),
+        kind: entry.kind,
+        title: entry.title,
+        body: entry.body.slice(0, 120),
         at: Date.now(),
         read: false,
       };
@@ -3632,14 +3716,67 @@ export default function ChatScreen({
         const next = [newNotif, ...prevN].slice(0, 30);
         try {
           localStorage.setItem("lamma_notifications", JSON.stringify(next));
-        } catch (e) {
+        } catch {
           // ignore
         }
         return next;
       });
-      if (document.hidden) playMessageSound();
     },
-    [currentUser.nickname],
+    [],
+  );
+
+  const showMessageToast = useCallback((title: string, body: string) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    setMessageToasts((prev) => [...prev, { id, title, body }].slice(-3));
+    window.setTimeout(() => {
+      setMessageToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 4500);
+  }, []);
+
+  const alertIncomingMessage = useCallback(
+    (entry: {
+      kind: "pm" | "mention" | "room";
+      title: string;
+      body: string;
+    }) => {
+      pushAppNotification(entry);
+      showMessageToast(entry.title, entry.body);
+      void playMessageAlertSound();
+      showBrowserMessageNotification(entry.title, entry.body);
+    },
+    [pushAppNotification, showMessageToast],
+  );
+
+  const playMessageSound = useCallback(() => {
+    void playMessageAlertSound();
+  }, []);
+
+  const handleIncomingRoomMessage = useCallback(
+    (sMsg: SupabaseMessage, roomId: string) => {
+      const mentionMatch =
+        typeof sMsg.text === "string" &&
+        sMsg.text.includes(`@${currentUser.nickname}`);
+
+      const viewingPublicChat =
+        roomId === activeRoomId &&
+        !isPmOpenRef.current &&
+        (mobileTabRef.current === "chat" || !isMobileAppShell);
+
+      if (viewingPublicChat && !mentionMatch) return;
+
+      const roomLabel =
+        ROOMS_DEF.find((room) => room.id === roomId)?.name || roomId;
+      const preview = (sMsg.text || sMsg.media_url || "[مرفق]").slice(0, 120);
+
+      alertIncomingMessage({
+        kind: mentionMatch ? "mention" : "room",
+        title: mentionMatch
+          ? `${sMsg.author} ذكرك في ${roomLabel}`
+          : `رسالة جديدة في ${roomLabel}`,
+        body: `${sMsg.author}: ${preview}`,
+      });
+    },
+    [activeRoomId, alertIncomingMessage, currentUser.nickname, isMobileAppShell],
   );
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
@@ -3902,63 +4039,64 @@ export default function ChatScreen({
 
     void fetchSyncedBans();
 
-    const subscription = supabase
-      .channel("banned_users_sync")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "banned_users",
-        },
-        (payload) => {
-          if (isCancelled) return;
-          setBannedUsersList((prev) =>
-            mergeBanLists(prev, [
-              parseBannedUserRow(payload.new as BannedUserRow),
-            ]),
-          );
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "banned_users",
-        },
-        (payload) => {
-          if (isCancelled) return;
-          const updated = parseBannedUserRow(payload.new as BannedUserRow);
-          setBannedUsersList((prev) =>
-            mergeBanLists(
-              prev.filter((ban) => ban.id !== updated.id),
-              [updated],
-            ),
-          );
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "banned_users",
-        },
-        (payload) => {
-          if (isCancelled) return;
-          const deletedId = (payload.old as { id?: string } | null)?.id;
-          if (!deletedId) return;
-          setBannedUsersList((prev) =>
-            prev.filter((ban) => ban.id !== deletedId),
-          );
-        },
-      )
-      .subscribe();
+    const unsubscribe = subscribeChannelWithRetry(() =>
+      supabase
+        .channel("banned_users_sync")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "banned_users",
+          },
+          (payload) => {
+            if (isCancelled) return;
+            setBannedUsersList((prev) =>
+              mergeBanLists(prev, [
+                parseBannedUserRow(payload.new as BannedUserRow),
+              ]),
+            );
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "banned_users",
+          },
+          (payload) => {
+            if (isCancelled) return;
+            const updated = parseBannedUserRow(payload.new as BannedUserRow);
+            setBannedUsersList((prev) =>
+              mergeBanLists(
+                prev.filter((ban) => ban.id !== updated.id),
+                [updated],
+              ),
+            );
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "banned_users",
+          },
+          (payload) => {
+            if (isCancelled) return;
+            const deletedId = (payload.old as { id?: string } | null)?.id;
+            if (!deletedId) return;
+            setBannedUsersList((prev) =>
+              prev.filter((ban) => ban.id !== deletedId),
+            );
+          },
+        ),
+    );
 
     return () => {
       isCancelled = true;
-      void supabase.removeChannel(subscription);
+      unsubscribe();
     };
   }, []);
 
@@ -4218,6 +4356,17 @@ export default function ChatScreen({
       member.nickname.toLowerCase() === selfNickname.toLowerCase() ||
       nickname.toLowerCase() === selfNickname.toLowerCase();
 
+    if (isSelf && isRegisteredAccount) {
+      closeProfileOverlays();
+      setProfilePageMember({
+        ...member,
+        nickname: selfNickname,
+        id: currentUser.uid || member.id,
+      });
+      setShowProfilePageModal(true);
+      return;
+    }
+
     if (isSelf) {
       openOwnProfileCard();
       return;
@@ -4228,6 +4377,17 @@ export default function ChatScreen({
     if (isOwnerChatRole(member.role)) {
       setSelectedProfileMember(member);
       setShowProfileModal(true);
+      return;
+    }
+
+    const isRegisteredMember =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        member.id,
+      ) && member.role !== "guest";
+
+    if (isRegisteredMember) {
+      setProfilePageMember(member);
+      setShowProfilePageModal(true);
       return;
     }
 
@@ -4243,11 +4403,58 @@ export default function ChatScreen({
       role: normalizePmRole(member.role),
       avatar: member.avatar || "👤",
     });
+    setMobileTab("private");
     setActiveModal(null);
-    if (window.innerWidth < 1280) {
-      setMobileTab("private");
-    } else {
+    if (window.innerWidth >= 1280) {
       setIsPmOpen(true);
+    }
+  };
+
+  const openOwnProfilePage = () => {
+    const selfNickname = myActiveSession.nickname || currentUser.nickname;
+    const member = resolveChatMemberByNickname(selfNickname) || {
+      id: currentUser.uid || `local-${selfNickname}`,
+      nickname: selfNickname,
+      role: (currentUser.role as ChatMember["role"]) || "user",
+      color: currentUser.color || "#10b981",
+      avatar: currentUser.avatar || "👤",
+      status: "online" as const,
+      fingerprint: myFingerprint,
+      browserSignature: myBrowserSig,
+      localStorageId: `local-${currentUser.uid || selfNickname}`,
+    };
+    setProfilePageMember(member);
+    setShowProfilePageModal(true);
+  };
+
+  const handleMobileNav = (tab: MobileNavId) => {
+    setMobileTab(tab);
+    switch (tab) {
+      case "chat":
+        setMobileTab("chat");
+        setIsSidebarOpen(false);
+        break;
+      case "members":
+        setActiveSidebarTab("members");
+        setIsSidebarOpen(true);
+        break;
+      case "private":
+        setIsSidebarOpen(false);
+        if (!pmTarget) {
+          const firstThread = Object.keys(pmThreads)[0];
+          if (firstThread) {
+            const member = resolveChatMemberByNickname(firstThread);
+            setPmTarget({
+              nickname: firstThread,
+              role: normalizePmRole(member?.role || "user"),
+              avatar: member?.avatar || "👤",
+            });
+          }
+        }
+        setIsPmOpen(true);
+        break;
+      default:
+        break;
     }
   };
 
@@ -4318,7 +4525,7 @@ export default function ChatScreen({
     setIsSidebarOpen(false);
     setShowMembersList(false);
     setIsPmOpen(false);
-    cleanupPublicChatSession(true);
+    cleanupPublicChatSession("logout");
     addSystemActivityLog(
       "logout",
       currentUser.nickname,
@@ -4351,6 +4558,11 @@ export default function ChatScreen({
 
     if (roomId === "admin" && !isAdmin) {
       alert("🛡️ غرفة الإدارة والشكاوى متاحة للمشرفين والمالك فقط.");
+      return;
+    }
+
+    if (roomId === "owner" && !isOwner) {
+      alert("🎨 غرفة بوت التصميم متاحة للمالك فقط.");
       return;
     }
 
@@ -4535,6 +4747,28 @@ export default function ChatScreen({
 
 
 
+  const handleIncomingPm = useCallback(
+    (payload: {
+      senderNickname: string;
+      preview: string;
+      messageId?: string;
+    }) => {
+      const viewingPm =
+        isPmOpenRef.current &&
+        pmTargetNicknameRef.current === payload.senderNickname &&
+        (mobileTabRef.current === "private" || !isMobileAppShell);
+
+      if (viewingPm) return;
+
+      alertIncomingMessage({
+        kind: "pm",
+        title: `رسالة خاصة من ${payload.senderNickname}`,
+        body: payload.preview,
+      });
+    },
+    [alertIncomingMessage, isMobileAppShell],
+  );
+
   const {
     pmTarget,
     setPmTarget,
@@ -4550,7 +4784,32 @@ export default function ChatScreen({
     isSpyMode,
     isPmOpen,
     playMessageSound,
+    onIncomingPm: handleIncomingPm,
   });
+
+  useEffect(() => {
+    isPmOpenRef.current = isPmOpen;
+  }, [isPmOpen]);
+
+  useEffect(() => {
+    pmTargetNicknameRef.current = pmTarget?.nickname ?? null;
+  }, [pmTarget?.nickname]);
+
+  const {
+    posts: socialPosts,
+    publishPost,
+    likePost,
+    commentOnPost,
+    reload: reloadSocialFeed,
+  } = useSocialFeed({
+    currentUser,
+    enabled: isPostsRoom || showProfilePageModal,
+  });
+
+  useEffect(() => {
+    void upsertCurrentUserProfile(currentUser);
+  }, [currentUser]);
+
   const pmInputRef = useRef<HTMLInputElement>(null);
 
   // Chat Header Welcome Message editability for owner
@@ -4566,12 +4825,13 @@ export default function ChatScreen({
     cleanupPublicChatSession,
   } = useChatMessages({
     activeRoomId,
-    currentUserNickname: currentUser.nickname,
+    currentUserNickname: currentDisplayNickname,
     ignoredUsers,
     blockedUsers,
     publicChatSessionStartedAt,
     publicChatSessionStartedAtMs,
     senderUid,
+    authProvider: currentUser.authProvider,
     onIncomingMessage: handleIncomingRoomMessage,
   });
 
@@ -4603,6 +4863,24 @@ export default function ChatScreen({
     .filter((msg) => ["text", "image", "video", "audio"].includes(msg.type))
     .reverse();
 
+  const combinedFeedPosts = useMemo((): SocialPost[] => {
+    const legacyPosts: SocialPost[] = postsFeedMessages.map((msg) => ({
+      id: msg.id,
+      createdAt: msg.time,
+      authorUid: "",
+      authorNickname: msg.author,
+      text: msg.text,
+      type: (msg.type as SocialPost["type"]) || "text",
+      mediaUrl: msg.mediaUrl,
+      color: msg.color,
+      likeCount: 0,
+      likedByMe: false,
+      comments: [],
+      isLegacy: true,
+    }));
+    return [...socialPosts, ...legacyPosts];
+  }, [postsFeedMessages, socialPosts]);
+
   // Audio elements for the in-extras call widget (decorative, not wired to WebRTC)
   const [isMuted, setIsMuted] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
@@ -4621,6 +4899,7 @@ export default function ChatScreen({
   const messageEndRef = useRef<HTMLDivElement>(null);
   const feedViewportRef = useRef<HTMLDivElement>(null);
   const pmEndRef = useRef<HTMLDivElement>(null);
+  const chatStickToBottomRef = useRef(true);
   const roomRateLimitRef = useRef<number[]>([]);
   const pmRateLimitRef = useRef<number[]>([]);
 
@@ -4771,12 +5050,26 @@ export default function ChatScreen({
     );
   };
 
-  // Scroll logic
+  // Scroll logic — only auto-scroll when user is already near the bottom
+  const handleChatFeedScroll = useCallback(() => {
+    const el = feedViewportRef.current;
+    if (!el) return;
+    const distanceFromBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight;
+    chatStickToBottomRef.current = distanceFromBottom < 160;
+  }, []);
+
   useEffect(() => {
     if (isPostsRoom) {
       feedViewportRef.current?.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+    const roomMsgs = messages;
+    const lastMsg = roomMsgs[roomMsgs.length - 1];
+    if (lastMsg?.isOwn) {
+      chatStickToBottomRef.current = true;
+    }
+    if (!chatStickToBottomRef.current) return;
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [isPostsRoom, messages]);
 
@@ -4826,7 +5119,7 @@ export default function ChatScreen({
     });
   };
 
-  const addLammaBotMessage = (roomId: string, text: string) => {
+  const addLammaBotMessage = useCallback((roomId: string, text: string) => {
     if (isBotSilent) return;
     const timeStr = new Date().toLocaleTimeString("ar-EG", {
       hour: "numeric",
@@ -4850,31 +5143,145 @@ export default function ChatScreen({
         [roomId]: [...currentMsgs, botMsg],
       };
     });
-  };
+  }, [isBotSilent, setRoomMessages]);
+
+  const [styleSandboxes, setStyleSandboxes] = useState<
+    Record<string, StyleSandboxSession>
+  >({});
+
+  const appendStyleSandboxMessage = useCallback(
+    (roomId: string, session: StyleSandboxSession, botReply: string) => {
+      setStyleSandboxes((prev) => {
+        const next = { ...prev, [session.id]: session };
+        const ids = Object.keys(next);
+        if (ids.length <= MAX_STYLE_SANDBOX_SESSIONS) return next;
+        const keep = ids
+          .sort(
+            (a, b) =>
+              (next[b]?.createdAt || 0) - (next[a]?.createdAt || 0),
+          )
+          .slice(0, MAX_STYLE_SANDBOX_SESSIONS);
+        return Object.fromEntries(keep.map((id) => [id, next[id]]));
+      });
+      setRoomMessages((prev) => ({
+        ...prev,
+        [roomId]: [
+          ...(prev[roomId] || []),
+          ...buildStyleSandboxMessage(
+            session,
+            botReply,
+            currentDisplayNickname,
+          ),
+        ].slice(-200),
+      }));
+    },
+    [currentDisplayNickname, setRoomMessages],
+  );
+
+  const {
+    committedConfig,
+    tryHandleOwnerStylePrompt,
+    applyStyleGlobally,
+    cancelStyleSandbox,
+  } = useUniversalStyleEngine({
+    activeRoomId,
+    isOwner: isOwnerRole,
+    defaultAmbientBg: DEFAULT_AMBIENT_BG,
+    ownerSettingsRowId: OWNER_SETTINGS_ROW_ID,
+    setOwnerBgImage,
+    addLammaBotMessage,
+    appendStyleSandboxMessage,
+  });
+
+  const activeUniversalStyle = useMemo(
+    () => committedConfig || loadUniversalStyleLocal(),
+    [committedConfig],
+  );
+  const universalGlobalMedia =
+    activeUniversalStyle?.backgrounds.global.kind !== "color";
+  const shellClearBg =
+    universalGlobalMedia || !isDefaultAmbientBg ? "false" : "true";
+
+  const handleApplyStyleSandbox = useCallback(
+    async (session: StyleSandboxSession) => {
+      const ok = await applyStyleGlobally(session);
+      if (ok) {
+        setStyleSandboxes((prev) => ({
+          ...prev,
+          [session.id]: { ...session, applied: true },
+        }));
+        setRoomMessages((prev) => {
+          const roomMsgs = prev[activeRoomId] || [];
+          return {
+            ...prev,
+            [activeRoomId]: roomMsgs.map((m) =>
+              m.styleSandboxId === session.id
+                ? { ...m, styleSandboxApplied: true }
+                : m,
+            ),
+          };
+        });
+      }
+    },
+    [activeRoomId, applyStyleGlobally, setRoomMessages],
+  );
+
+  const resolveStyleSandboxSession = useCallback(
+    (msg: Message): StyleSandboxSession | null => {
+      if (!msg.styleSandboxId) return null;
+      const fromState = styleSandboxes[msg.styleSandboxId];
+      if (fromState) return fromState;
+      if (msg.styleSandboxConfig) {
+        return {
+          id: msg.styleSandboxId,
+          createdAt: Date.now(),
+          prompt: msg.text,
+          summary: msg.styleSandboxSummary || "",
+          config: msg.styleSandboxConfig,
+          applied: Boolean(msg.styleSandboxApplied),
+        };
+      }
+      return null;
+    },
+    [styleSandboxes],
+  );
+
+  useEffect(() => {
+    setOpenReactionMsgId(null);
+  }, [activeRoomId]);
+
+  const activeRoomIdRef = useRef(activeRoomId);
+  useEffect(() => {
+    activeRoomIdRef.current = activeRoomId;
+  }, [activeRoomId]);
 
   // ── Load real subscription plans from DB ────────────────────────────────
   useEffect(() => {
-    fetchActivePlans().then(setSubscriptionPlans);
+    fetchActivePlans()
+      .then(setSubscriptionPlans)
+      .catch((err) => console.warn("fetchActivePlans failed:", err));
   }, []);
 
   // ── Load user's DB subscription on mount ────────────────────────────────
   useEffect(() => {
     const uid = currentUser.uid;
     if (!uid) return;
-    fetchMySubscription(uid).then((dbSub) => {
-      if (dbSub && dbSub.isActive) {
-        setSubscription((prev: any) => {
-          if (prev?.isActive && prev.expiresAt >= dbSub.expiresAt) return prev;
-          return { isActive: true, expiresAt: dbSub.expiresAt, badge: dbSub.badge, type: "vip" };
-        });
-      }
-    });
+    fetchMySubscription(uid)
+      .then((dbSub) => {
+        if (dbSub && dbSub.isActive) {
+          setSubscription((prev: any) => {
+            if (prev?.isActive && prev.expiresAt >= dbSub.expiresAt) return prev;
+            return { isActive: true, expiresAt: dbSub.expiresAt, badge: dbSub.badge, type: "vip" };
+          });
+        }
+      })
+      .catch((err) => console.warn("fetchMySubscription failed:", err));
     const unsub = subscribeToMySubscription(uid, (activated) => {
       setSubscription({ isActive: true, expiresAt: activated.expiresAt, badge: activated.badge, type: "vip" });
-      addLammaBotMessage(activeRoomId, `🎉 تم تفعيل اشتراكك في ${activated.planName} بنجاح! استمتع بمميزاتك 💎`);
+      addLammaBotMessage(activeRoomIdRef.current, `🎉 تم تفعيل اشتراكك في ${activated.planName} بنجاح! استمتع بمميزاتك 💎`);
     });
     return () => { if (unsub && supabase) supabase.removeChannel(unsub as any); };
-  }, [activeRoomId, currentUser.uid, addLammaBotMessage]);
+  }, [currentUser.uid, addLammaBotMessage]);
 
   // ── Owner: listen for new pending orders (badge notification) ───────────
   useEffect(() => {
@@ -4948,16 +5355,47 @@ export default function ChatScreen({
     addBotSystemWarning,
     addLammaBotMessage,
     addSystemActivityLog,
+    onOwnerStylePrompt: tryHandleOwnerStylePrompt,
     canShareYoutubeInMessage: () =>
       canShareYoutube(currentUser, memberCustomPermissions),
   });
 
-  const handleSendMessage = useCallback(() => {
+  const handleSendMessage = useCallback(async () => {
+    if (isPostsRoom) {
+      const trimmed = inputText.trim();
+      if (!trimmed) return;
+      if (!canPublishPosts) {
+        alert(
+          "📰 النشر في روم المنشورات متاح للأعضاء المسجلين فقط.",
+        );
+        return;
+      }
+      try {
+        await publishPost({ text: trimmed, type: "text" });
+        setInputText("");
+        bumpUserStat("messagesSent");
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? `❌ تعذر نشر المنشور: ${error.message}`
+            : "❌ تعذر نشر المنشور.",
+        );
+      }
+      return;
+    }
+
     if (inputText.trim()) {
       bumpUserStat("messagesSent");
     }
     sendRoomMessage();
-  }, [inputText, sendRoomMessage]);
+  }, [
+    canPublishPosts,
+    inputText,
+    isPostsRoom,
+    publishPost,
+    sendRoomMessage,
+    setInputText,
+  ]);
 
   useEffect(() => {
     bumpUserStat("sessionCount");
@@ -4995,20 +5433,26 @@ export default function ChatScreen({
         members: rawChatMembers,
       });
 
-      setPmThreads((prev) => ({
-        ...prev,
-        [targetNickname]: appendPmThreadMessage(prev[targetNickname] || [], {
-          ...createOptimisticPmMessage(textToSend),
-          time: persistedMessage.created_at
-            ? new Date(persistedMessage.created_at).toLocaleTimeString("ar-EG", {
-                hour: "numeric",
-                minute: "numeric",
-                hour12: true,
-              })
-            : createOptimisticPmMessage(textToSend).time,
-          dbId: persistedMessage.id,
-        }),
-      }));
+      setPmThreads((prev) => {
+        const thread = prev[targetNickname] || [];
+        if (hasPmMessageWithDbId(thread, persistedMessage.id)) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [targetNickname]: appendPmThreadMessage(thread, {
+            ...createOptimisticPmMessage(textToSend),
+            time: persistedMessage.created_at
+              ? new Date(persistedMessage.created_at).toLocaleTimeString("ar-EG", {
+                  hour: "numeric",
+                  minute: "numeric",
+                  hour12: true,
+                })
+              : createOptimisticPmMessage(textToSend).time,
+            dbId: persistedMessage.id,
+          }),
+        };
+      });
     } catch (error) {
       console.error("PM insert error:", error);
       setPmInputText(textToSend);
@@ -5049,11 +5493,12 @@ export default function ChatScreen({
       giftName: "هدية تفاعلية",
     };
 
+    const giftRoomId = activeRoomId;
     setRoomMessages((prev) => {
-      const currentMsgs = prev[activeRoomId] || [];
+      const currentMsgs = prev[giftRoomId] || [];
       return {
         ...prev,
-        [activeRoomId]: [...currentMsgs, newMessage],
+        [giftRoomId]: [...currentMsgs, newMessage],
       };
     });
 
@@ -5063,7 +5508,7 @@ export default function ChatScreen({
         .insert([
           {
             id: newUuid,
-            room_id: activeRoomId,
+            room_id: giftRoomId,
             author: currentUser.nickname,
             text: `أرسل هدية ${icon} في الغرفة 🎁`,
             color: currentUser.color || "#10b981",
@@ -5074,7 +5519,16 @@ export default function ChatScreen({
           },
         ])
         .then(({ error }) => {
-          if (error) console.error("Error sending gift to Supabase:", error);
+          if (error) {
+            console.error("Error sending gift to Supabase:", error);
+            setRoomMessages((prev) => ({
+              ...prev,
+              [giftRoomId]: (prev[giftRoomId] || []).filter(
+                (m) => m.id !== newUuid,
+              ),
+            }));
+            alert("❌ تعذر إرسال الهدية. حاول مرة أخرى.");
+          }
         });
     }
 
@@ -5099,6 +5553,24 @@ export default function ChatScreen({
   ) => {
     const finalType: "image" | "video" | "audio" =
       type === "imageUrl" ? "image" : type;
+
+    if (isPostsRoom && canPublishPosts) {
+      try {
+        await publishPost({
+          text: "",
+          type: finalType,
+          mediaUrl,
+        });
+        setShowAttachmentDropdown(false);
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? `❌ تعذر نشر الوسائط: ${error.message}`
+            : "❌ تعذر نشر الوسائط.",
+        );
+      }
+      return;
+    }
 
     const newUuid = crypto.randomUUID();
     const newMessage: Message = {
@@ -5190,7 +5662,12 @@ export default function ChatScreen({
     try {
       setIsUploadingImage(true);
       const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
-      const objectPath = `rooms/${activeRoomId}/${Date.now()}_${crypto.randomUUID()}_${safeName}`;
+      const objectPath = userStoragePath(
+        currentUser.uid || senderUid,
+        "rooms",
+        activeRoomId,
+        `${Date.now()}_${crypto.randomUUID()}_${safeName}`,
+      );
 
       const { error: uploadError } = await supabase.storage
         .from("chat-media")
@@ -5337,6 +5814,46 @@ export default function ChatScreen({
     setDesignLogoInput(url);
   };
 
+  const sendPrivateMediaMessage = async (
+    type: "image" | "video",
+    mediaUrl: string,
+    text = "",
+  ) => {
+    if (!pmTarget) {
+      alert("⚠️ اختر محادثة خاصة أولاً.");
+      return;
+    }
+
+    const targetNickname = pmTarget.nickname;
+    const persisted = await persistPrivateMessage({
+      currentUser,
+      targetNickname,
+      text,
+      type,
+      mediaUrl,
+      members: rawChatMembers,
+    });
+
+    setPmThreads((prev) => {
+      const thread = prev[targetNickname] || [];
+      if (hasPmMessageWithDbId(thread, persisted.id)) return prev;
+      return {
+        ...prev,
+        [targetNickname]: appendPmThreadMessage(thread, {
+          ...createOptimisticPmMessage(text, { type, mediaUrl }),
+          time: persisted.created_at
+            ? new Date(persisted.created_at).toLocaleTimeString("ar-EG", {
+                hour: "numeric",
+                minute: "numeric",
+                hour12: true,
+              })
+            : createOptimisticPmMessage(text, { type, mediaUrl }).time,
+          dbId: persisted.id,
+        }),
+      };
+    });
+  };
+
   const handlePmImageUploadChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -5352,8 +5869,8 @@ export default function ChatScreen({
       alert("📸 رفع الصور متاح للحسابات المسجلة فقط. سجل دخول الأول.");
       return;
     }
-    if (!supabase) {
-      alert("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.");
+    if (!pmTarget) {
+      alert("⚠️ اختر محادثة خاصة أولاً.");
       return;
     }
     if (!file.type.startsWith("image/")) {
@@ -5367,53 +5884,14 @@ export default function ChatScreen({
     }
     try {
       setIsUploadingImage(true);
-      const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
-      const target =
-        pmTarget?.nickname?.replace(/[^\w.\-]+/g, "_") || "unknown";
-      const objectPath = `pm/${target}/${Date.now()}_${crypto.randomUUID()}_${safeName}`;
-      const { error: uploadError } = await supabase.storage
-        .from("chat-media")
-        .upload(objectPath, file, {
-          cacheControl: "3600",
-          contentType: file.type,
-          upsert: false,
-        });
-      if (uploadError) {
-        alert(`❌ فشل رفع الصورة: ${uploadError.message}`);
-        return;
-      }
-      const { data: publicData } = supabase.storage
-        .from("chat-media")
-        .getPublicUrl(objectPath);
-      const publicUrl = publicData?.publicUrl;
-      if (!publicUrl) {
-        alert("❌ حصل خطأ في توليد رابط الصورة بعد الرفع.");
-        return;
-      }
-      const timeStr = new Date().toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
-      });
-      if (!pmTarget) {
-        alert("⚠️ اختر محادثة خاصة أولاً.");
-        return;
-      }
-      const targetNickname = pmTarget.nickname;
-      setPmThreads((prev) => ({
-        ...prev,
-        [targetNickname]: [
-          ...(prev[targetNickname] || []),
-          {
-            text: "",
-            isOwn: true,
-            time: timeStr,
-            mediaUrl: publicUrl,
-            type: "image",
-            status: "delivered",
-          },
-        ],
-      }));
+      const publicUrl = await uploadPrivateMediaFile(file, pmTarget.nickname);
+      await sendPrivateMediaMessage("image", publicUrl);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? `❌ فشل إرسال الصورة: ${error.message}`
+          : "❌ فشل إرسال الصورة.",
+      );
     } finally {
       setIsUploadingImage(false);
     }
@@ -5433,8 +5911,8 @@ export default function ChatScreen({
       alert("🎬 رفع الفيديو متاح للحسابات المسجلة فقط. سجل دخول الأول.");
       return;
     }
-    if (!supabase) {
-      alert("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.");
+    if (!pmTarget) {
+      alert("⚠️ اختر محادثة خاصة أولاً.");
       return;
     }
     if (!file.type.startsWith("video/")) {
@@ -5448,53 +5926,14 @@ export default function ChatScreen({
     }
     try {
       setIsUploadingImage(true);
-      const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
-      const target =
-        pmTarget?.nickname?.replace(/[^\w.\-]+/g, "_") || "unknown";
-      const objectPath = `pm/${target}/${Date.now()}_${crypto.randomUUID()}_${safeName}`;
-      const { error: uploadError } = await supabase.storage
-        .from("chat-media")
-        .upload(objectPath, file, {
-          cacheControl: "3600",
-          contentType: file.type,
-          upsert: false,
-        });
-      if (uploadError) {
-        alert(`❌ فشل رفع الفيديو: ${uploadError.message}`);
-        return;
-      }
-      const { data: publicData } = supabase.storage
-        .from("chat-media")
-        .getPublicUrl(objectPath);
-      const publicUrl = publicData?.publicUrl;
-      if (!publicUrl) {
-        alert("❌ حصل خطأ في توليد رابط الفيديو بعد الرفع.");
-        return;
-      }
-      const timeStr = new Date().toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
-      });
-      if (!pmTarget) {
-        alert("⚠️ اختر محادثة خاصة أولاً.");
-        return;
-      }
-      const targetNickname = pmTarget.nickname;
-      setPmThreads((prev) => ({
-        ...prev,
-        [targetNickname]: [
-          ...(prev[targetNickname] || []),
-          {
-            text: "",
-            isOwn: true,
-            time: timeStr,
-            mediaUrl: publicUrl,
-            type: "video",
-            status: "delivered",
-          },
-        ],
-      }));
+      const publicUrl = await uploadPrivateMediaFile(file, pmTarget.nickname);
+      await sendPrivateMediaMessage("video", publicUrl);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? `❌ فشل إرسال الفيديو: ${error.message}`
+          : "❌ فشل إرسال الفيديو.",
+      );
     } finally {
       setIsUploadingImage(false);
     }
@@ -5771,28 +6210,52 @@ export default function ChatScreen({
     <div
       // Keep the current shipped chat skin stable. The neutral glass layer
       // is the authoritative visual wrapper for the production chat design.
-      className="fixed inset-0 h-[100dvh] min-h-[100dvh] w-full flex flex-col overflow-hidden font-sans text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app lamma-neutral-glass"
+      className={`fixed inset-0 w-full flex flex-col overflow-hidden font-sans text-[color:var(--text-primary)] lamma-fire-frame lamma-fire-frame-app lamma-neutral-glass${
+        isMobileAppShell
+          ? " lamma-pwa-app-shell"
+          : " h-[100dvh] min-h-[100dvh]"
+      }`}
       dir="rtl"
-      data-app-shell={isMobileAppShell ? "aurora" : undefined}
-      data-clear-bg={isDefaultAmbientBg ? "true" : "false"}
+      data-clear-bg={shellClearBg}
       data-reading-mode={readingMode ? "true" : "false"}
     >
-      {activeRoomBg ? (
+      <UniversalStyleVideoLayer />
+      {messageToasts.length > 0 ? (
+        <div
+          className="fixed top-14 left-1/2 -translate-x-1/2 z-[250] flex flex-col gap-2 pointer-events-none w-[min(92vw,360px)]"
+          aria-live="polite"
+        >
+          {messageToasts.map((toast) => (
+            <div
+              key={toast.id}
+              className="lamma-room-welcome-toast shadow-lg pointer-events-auto flex items-start gap-2"
+            >
+              <Bell size={12} className="shrink-0 mt-0.5" aria-hidden />
+              <div className="min-w-0 text-right">
+                <div className="font-black truncate text-[11px]">{toast.title}</div>
+                <div className="text-[10px] opacity-90 truncate">{toast.body}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {activeRoomBg || universalGlobalMedia ? (
         <>
           <div
             className="absolute inset-0 z-0 pointer-events-none lamma-active-wallpaper"
-            style={{
-              backgroundImage: `url(${activeRoomBg})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center center",
-              transform: "scale(1)",
-              filter:
-                activeRoomBg === "/bg.jpg" || activeRoomBg === "/MAN.png"
-                  ? "none"
-                  : "none",
-            }}
+            style={
+              universalGlobalMedia
+                ? undefined
+                : {
+                    backgroundImage: `url(${activeRoomBg})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center center",
+                    transform: "scale(1)",
+                    filter: "none",
+                  }
+            }
           />
-          {isDefaultAmbientBg ? (
+          {isDefaultAmbientBg && !universalGlobalMedia ? (
             <div
               className="absolute inset-0 z-0 pointer-events-none"
               style={{
@@ -6797,9 +7260,9 @@ export default function ChatScreen({
         </header>
       )}
 
-      {/* Mobile panel toggler header bar (Visible only on compact screens) */}
+      {/* Legacy top tabs — hidden on mobile; bottom nav replaces them */}
       {!isZenMode && (
-        <div className="md:hidden grid grid-cols-3 text-[10px] font-black text-center select-none z-10 relative shrink-0 tracking-wider overflow-hidden lamma-mobile-tabs lamma-frost-glass">
+        <div className="md:hidden hidden lamma-mobile-tabs-legacy lamma-mobile-tabs lamma-frost-glass">
           <button
             onClick={() => {
               setMobileTab("chat");
@@ -6850,7 +7313,11 @@ export default function ChatScreen({
       )}
 
       {/* ================= FOUR-PANEL BODY ================= */}
-      <div className="flex-1 flex overflow-hidden relative min-h-0">
+      <div
+        className={`flex-1 flex overflow-hidden relative min-h-0${
+          isMobileAppShell ? " lamma-pwa-main-stage" : ""
+        }`}
+      >
         {!isZenMode && (
           <button
             type="button"
@@ -7291,7 +7758,7 @@ export default function ChatScreen({
         </aside>
 
         <div
-          className={`xl:hidden absolute inset-0 bg-black/70 z-30 transition-opacity ${
+          className={`xl:hidden absolute inset-0 bg-black/70 z-30 transition-opacity lamma-mobile-sidebar-backdrop ${
             isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
           onClick={() => setIsSidebarOpen(false)}
@@ -7299,7 +7766,9 @@ export default function ChatScreen({
         {/* ----------------- OVERLAY SIDEBAR PANEL (ROOMS & MEMBERS TABBED) ----------------- */}
         <aside
           className={`xl:hidden sidebar-container w-full sm:w-[420px] border-l border-green-500/10 flex flex-col justify-between flex-shrink-0 z-40 absolute inset-y-0 right-0 h-full shadow-[0_0_25px_rgba(0,0,0,0.85)] max-w-[92vw] lamma-mobile-sidebar-shell ${
-            isSidebarOpen ? "flex animate-fade-in" : "hidden"
+            isSidebarOpen
+              ? "flex lamma-mobile-sidebar-open"
+              : "hidden pointer-events-none"
           }`}
         >
           {/* Header switchers inside the sidebar */}
@@ -7355,9 +7824,13 @@ export default function ChatScreen({
                 )}
 
                 {(() => {
-                  const visibleRooms = ROOMS_DEF.filter(
-                    (room) => room.id !== "admin" || isManagementRole,
-                  );
+                  const visibleRooms = ROOMS_DEF.filter((room) => {
+                    if (room.id === "admin" && !isManagementRole) return false;
+                    if ((room as { ownerOnly?: boolean }).ownerOnly && !isOwnerRole) {
+                      return false;
+                    }
+                    return true;
+                  });
                   const mergedVisibleRooms = [...visibleRooms, ...customRooms];
 
                   return ROOM_CATEGORIES.map((category) => {
@@ -7560,9 +8033,9 @@ export default function ChatScreen({
         {/* ----------------- PANEL 3: MAIN ACTIVE MESSAGE LOG (3rd column / Center) ----------------- */}
         <div
           data-col="center"
-          className={`flex-1 flex flex-col min-w-0 backdrop-blur-xl xl:order-2 lamma-column-frame lamma-chat-core-shell ${
-            mobileTab === "chat" ? "flex" : "hidden md:flex"
-          } ${isLeftColumnCollapsed ? "xl:border-l xl:border-white/10" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-white/10" : ""} lamma-column-frame`}
+          className={`flex-1 flex flex-col min-w-0 min-h-0 backdrop-blur-xl xl:order-2 lamma-column-frame lamma-chat-core-shell ${
+            isMobileAppShell || mobileTab === "chat" ? "flex" : "hidden md:flex"
+          } ${isLeftColumnCollapsed ? "xl:border-l xl:border-white/10" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-white/10" : ""}`}
         >
           {/* Room Top Bar: Topic & System Actions */}
           <div className="flex items-stretch justify-between min-h-[32px] shrink-0 lamma-fire-underline lamma-room-header">
@@ -8259,10 +8732,12 @@ export default function ChatScreen({
           </div>
 
           {/* Messages Feed Viewport */}
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden lamma-pwa-chat-scroll-region">
           <div
             ref={feedViewportRef}
-            className="flex-1 overflow-y-auto lamma-fire-scroll pr-3 pl-4 pt-1 pb-0"
+            className="flex-1 min-h-0 overflow-y-auto lamma-fire-scroll lamma-chat-feed-viewport pr-3 pl-4 pt-1 pb-0"
             dir="rtl"
+            onScroll={handleChatFeedScroll}
           >
             <div className="flex flex-col gap-2.5">
               {/* Owner Control Alerts Block */}
@@ -8499,17 +8974,55 @@ export default function ChatScreen({
               )}
 
               {isPostsRoom ? (
-                <PostsFeedRoom
-                  posts={postsFeedMessages}
+                <SocialFeedPanel
+                  posts={combinedFeedPosts}
                   currentSession={myActiveSession}
                   chatMembers={chatMembers}
                   storeSnapshot={subscription}
                   cosmeticGrants={memberCosmeticGrants}
                   isCompactView={isCompactView}
                   isChatColumnExpanded={isChatColumnExpanded}
+                  canInteract={canPublishPosts}
                   onOpenProfile={openMemberProfile}
-                  canDeletePost={canDeleteMessage}
-                  onDeletePost={deleteMessage}
+                  onLike={likePost}
+                  onComment={commentOnPost}
+                  canDeletePost={(post) =>
+                    post.isLegacy
+                      ? canDeleteMessage({
+                          id: post.id,
+                          author: post.authorNickname,
+                          text: post.text,
+                          type: post.type,
+                          color: post.color || "#10b981",
+                          isOwn: post.authorNickname === currentUser.nickname,
+                          time: post.createdAt,
+                        })
+                      : post.authorUid === currentUser.uid || isManagementRole
+                  }
+                  onDeletePost={async (post) => {
+                    if (post.isLegacy) {
+                      deleteMessage({
+                        id: post.id,
+                        author: post.authorNickname,
+                        text: post.text,
+                        type: post.type,
+                        color: post.color || "#10b981",
+                        isOwn: post.authorNickname === currentUser.nickname,
+                        time: post.createdAt,
+                      });
+                      return;
+                    }
+                    try {
+                      await deleteSocialPost(post.id);
+                      void reloadSocialFeed();
+                    } catch (error) {
+                      alert(
+                        error instanceof Error
+                          ? `❌ تعذر حذف المنشور: ${error.message}`
+                          : "❌ تعذر حذف المنشور.",
+                      );
+                    }
+                  }}
                 />
               ) : (
                 <>
@@ -8633,143 +9146,164 @@ export default function ChatScreen({
                             storeForAuthor,
                             memberCosmeticGrants,
                           );
-                          const storeVipChip = getStoreVipChip(
-                            msg.author,
-                            myActiveSession,
-                            storeForAuthor,
-                            memberCosmeticGrants,
-                          );
                           const ownerRow = isOwnerAuthor(
                             msg.author,
                             myActiveSession,
                             chatMembers,
                           );
+                          const authorMember =
+                            chatMembers.find(
+                              (member) => member.nickname === msg.author,
+                            ) ?? {
+                              nickname: msg.author,
+                              role: role === "none" ? "user" : role,
+                              badge:
+                                msg.author === myActiveSession.nickname
+                                  ? myActiveSession.badge
+                                  : undefined,
+                              title:
+                                msg.author === myActiveSession.nickname
+                                  ? myActiveSession.title
+                                  : undefined,
+                            };
                           return (
-                            <div
-                              className={`lamma-author-line ${getNameGlassCardClass({
-                                isSelf: msg.author === myActiveSession.nickname,
-                                isBoss: ownerRow,
-                              })}`}
-                            >
-                              <span
-                                style={prestigeClass ? undefined : { color: nameColor }}
-                                className={`font-bold text-[11px] group-hover/author:underline lamma-author-name ${prestigeClass}`}
-                              >
-                                {cleanName}
-                              </span>
-                              {msg.author === myActiveSession.nickname &&
-                                activeTempEntryTopic && (
-                                  <span className="max-w-[110px] truncate rounded-full border border-cyan-400/25 bg-cyan-500/10 px-1.5 py-0.5 text-[7px] text-cyan-200">
-                                    {activeTempEntryTopic}
+                            <>
+                              <div className="flex flex-col items-start truncate min-w-0 max-w-full">
+                                <div
+                                  className={`flex items-center gap-1 flex-wrap ${getNameGlassCardClass({
+                                    isSelf:
+                                      msg.author === myActiveSession.nickname,
+                                    isBoss: ownerRow,
+                                    compact: true,
+                                  })}`}
+                                >
+                                  <span
+                                    style={
+                                      prestigeClass ? undefined : { color: nameColor }
+                                    }
+                                    className={`font-bold text-[11px] group-hover/author:underline lamma-author-name ${prestigeClass}`}
+                                  >
+                                    {cleanName}
                                   </span>
+                                  {ownerRow && (
+                                    <BossSigil
+                                      size={12}
+                                      className="opacity-95 shrink-0"
+                                    />
+                                  )}
+                                  {msg.author === myActiveSession.nickname &&
+                                    activeTempEntryTopic && (
+                                      <span className="max-w-[110px] truncate rounded-full border border-cyan-400/25 bg-cyan-500/10 px-1.5 py-0.5 text-[7px] text-cyan-200">
+                                        {activeTempEntryTopic}
+                                      </span>
+                                    )}
+                                </div>
+                                {!isSystem && (
+                                  <div className="relative group/msgactions flex items-center gap-1 flex-wrap max-w-full">
+                                    <MemberPrestigeBadges
+                                      member={authorMember}
+                                      currentUser={myActiveSession}
+                                      chatMembers={chatMembers}
+                                      subscription={subscription}
+                                      memberCosmeticGrants={memberCosmeticGrants}
+                                      size="sm"
+                                      highlightYou
+                                    />
+                                    {msg.type === "text" && (
+                                      <button
+                                        type="button"
+                                        aria-label="تفاعلات الرسالة"
+                                        aria-expanded={
+                                          openReactionMsgId === msg.id
+                                        }
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenReactionMsgId((prev) =>
+                                            prev === msg.id ? null : msg.id,
+                                          );
+                                        }}
+                                        className="text-[8px] font-mono font-black text-gray-500/90 hover:text-green-300 transition-colors leading-none p-0 border-0 bg-transparent shadow-none cursor-pointer shrink-0 group-hover/author:text-green-300"
+                                      >
+                                        +
+                                      </button>
+                                    )}
+                                    {/* Interaction popover — tap + on mobile, hover on desktop */}
+                                    <div
+                                      className={`absolute top-full mt-0.5 start-0 p-1.5 rounded-lg flex-row gap-2 z-50 w-max items-center lamma-popover-shell ${
+                                        openReactionMsgId === msg.id
+                                          ? "flex"
+                                          : "hidden group-hover/msgactions:flex"
+                                      }`}
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          addReaction(activeRoomId, msg.id, "❤️");
+                                          setOpenReactionMsgId(null);
+                                        }}
+                                        className="text-[11px] md:text-[13px] hover:scale-125 transition-transform cursor-pointer"
+                                      >
+                                        ❤️
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          addReaction(activeRoomId, msg.id, "😂");
+                                          setOpenReactionMsgId(null);
+                                        }}
+                                        className="text-[11px] md:text-[13px] hover:scale-125 transition-transform cursor-pointer"
+                                      >
+                                        😂
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          addReaction(activeRoomId, msg.id, "👍");
+                                          setOpenReactionMsgId(null);
+                                        }}
+                                        className="text-[11px] md:text-[13px] hover:scale-125 transition-transform cursor-pointer"
+                                      >
+                                        👍
+                                      </button>
+                                      {canDeleteMessage(msg) && (
+                                        <>
+                                          <div className="w-[1px] h-3 bg-white/20 mx-0.5"></div>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (
+                                                confirm(
+                                                  "🗑️ حذف الرسالة؟\n\nلو الرسالة مرفوعة على Supabase هتتمسح هناك كمان.",
+                                                )
+                                              ) {
+                                                deleteMessage(msg);
+                                              }
+                                            }}
+                                            className="text-[10px] text-red-400 hover:text-red-300 font-bold px-1 cursor-pointer"
+                                            title="حذف الرسالة"
+                                          >
+                                            🗑️
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
                                 )}
-                              {ownerRow && (
-                                <BossSigil size={13} className="opacity-95 shrink-0" />
-                              )}
-
-                              {/* Dynamically Render Custom Badge and Title */}
-                              {msg.author === myActiveSession.nickname &&
-                                myActiveSession.badge && (
-                                  <span className="text-[7.5px] lamma-badge-chip">
-                                    {myActiveSession.badge}
-                                  </span>
-                                )}
-                              {msg.author === myActiveSession.nickname &&
-                                myActiveSession.title && (
-                                  <span className="text-[7.5px] lamma-title-chip">
-                                    [{myActiveSession.title}]
-                                  </span>
-                                )}
-
-                              {storeVipChip === "platinum" && (
-                                <span className="text-[7px] lamma-role-chip lamma-role-plat">
-                                  PLATINUM VIP
+                              </div>
+                              <div className="lamma-author-meta">
+                                <span
+                                  className="text-[8px] font-mono lamma-msg-meta"
+                                  dir="ltr"
+                                >
+                                  {msg.time}
                                 </span>
-                              )}
-                              {storeVipChip === "vip" && (
-                                <span className="text-[7px] lamma-role-chip lamma-role-vip">
-                                  VIP
-                                </span>
-                              )}
-                              {role === "admin" && (
-                                <span className="text-[7px] lamma-role-chip lamma-role-admin">
-                                  ADMIN
-                                </span>
-                              )}
-                              {ownerRow && (
-                                <span className="text-[7px] lamma-role-chip lamma-role-owner lamma-boss-badge">
-                                  👑 {OWNER_DISPLAY_BADGE}
-                                </span>
-                              )}
-                            </div>
+                              </div>
+                            </>
                           );
                         })()}
-                        <div className="lamma-author-meta group/msgactions">
-                          <span
-                            className="text-[8px] font-mono lamma-msg-meta"
-                            dir="ltr"
-                          >
-                            {msg.time}
-                          </span>
-
-                          {msg.type === "text" && (
-                            <button className="text-gray-500 text-[10px] font-mono font-black opacity-100 hover:text-green-300 transition-opacity flex items-center justify-center p-0.5 rounded cursor-pointer group-hover/author:text-green-300 lamma-toolbar-btn">
-                              +
-                            </button>
-                          )}
-
-                          {/* Interaction popover */}
-                          <div className="absolute top-full mt-0.5 -right-2 hidden group-hover/msgactions:flex p-1.5 rounded-lg flex-row gap-2 z-50 w-max items-center lamma-popover-shell">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                addReaction(activeRoomId, msg.id, "❤️");
-                              }}
-                              className="text-[11px] md:text-[13px] hover:scale-125 transition-transform cursor-pointer"
-                            >
-                              ❤️
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                addReaction(activeRoomId, msg.id, "😂");
-                              }}
-                              className="text-[11px] md:text-[13px] hover:scale-125 transition-transform cursor-pointer"
-                            >
-                              😂
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                addReaction(activeRoomId, msg.id, "👍");
-                              }}
-                              className="text-[11px] md:text-[13px] hover:scale-125 transition-transform cursor-pointer"
-                            >
-                              👍
-                            </button>
-                            {canDeleteMessage(msg) && (
-                              <>
-                                <div className="w-[1px] h-3 bg-white/20 mx-0.5"></div>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (
-                                      confirm(
-                                        "🗑️ حذف الرسالة؟\n\nلو الرسالة مرفوعة على Supabase هتتمسح هناك كمان.",
-                                      )
-                                    ) {
-                                      deleteMessage(msg);
-                                    }
-                                  }}
-                                  className="text-[10px] text-red-400 hover:text-red-300 font-bold px-1 cursor-pointer"
-                                  title="حذف الرسالة"
-                                >
-                                  🗑️
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
                       </div>
 
                       {/* Message Content */}
@@ -8787,6 +9321,38 @@ export default function ChatScreen({
                                 : ""
                           }`}
                         >
+                          {msg.type === "style_sandbox" && msg.styleSandboxId ? (
+                            <div className="space-y-2">
+                              <p className="text-[10px] text-emerald-200/90 font-bold">
+                                🎨 طلب تصميم: {msg.text}
+                              </p>
+                              {(() => {
+                                const session = resolveStyleSandboxSession(msg);
+                                if (!session) {
+                                  return (
+                                    <p className="text-[10px] text-amber-300/90">
+                                      ⚠️ بطاقة المعاينة غير متاحة — أعد إرسال الطلب.
+                                    </p>
+                                  );
+                                }
+                                return (
+                                  <StyleSandboxCard
+                                    config={session.config}
+                                    summary={session.summary}
+                                    prompt={session.prompt}
+                                    disabled={session.applied}
+                                    onApply={() =>
+                                      void handleApplyStyleSandbox(session)
+                                    }
+                                    onCancel={() =>
+                                      cancelStyleSandbox(msg.styleSandboxId)
+                                    }
+                                  />
+                                );
+                              })()}
+                            </div>
+                          ) : null}
+
                           {msg.type === "text" &&
                             renderTextMessageWithMedia(msg.text)}
 
@@ -8880,7 +9446,9 @@ export default function ChatScreen({
               {!isPostsRoom && <div ref={messageEndRef} />}
             </div>
           </div>
+          </div>
 
+          <div className="lamma-pwa-composer-stack shrink-0">
           {/* Scrolling Commercial ad banner */}
           {isAdsEnabled && (
             <div
@@ -8941,9 +9509,6 @@ export default function ChatScreen({
                   ? undefined
                   : {
                       marginBottom: "-1px",
-                      ...(isMobileAppShell && keyboardOffset > 0
-                        ? { transform: `translateY(-${keyboardOffset}px)` }
-                        : {}),
                     }
               }
             >
@@ -9596,6 +10161,7 @@ export default function ChatScreen({
               </button>
             </div>
           </div>
+          </div>
 
           {/* End of content */}
         </div>
@@ -9895,7 +10461,7 @@ export default function ChatScreen({
           dragMomentum={false}
           className={`flex-col justify-between flex-shrink-0 z-50 ${
             mobileTab === "private"
-              ? "absolute inset-0 w-full flex lamma-panel-shell"
+              ? "absolute inset-x-0 top-0 w-full flex lamma-panel-shell lamma-mobile-pm-fullscreen"
               : isPmOpen
                 ? "hidden md:flex fixed bottom-6 left-6 w-80 h-[450px] rounded-2xl lamma-modal-shell"
                 : "hidden"
@@ -10054,11 +10620,38 @@ export default function ChatScreen({
                             ? "bg-blue-500/15 border border-blue-500/20 text-blue-100 rounded-tr-none"
                             : "bg-rose-500/15 border border-rose-500/20 text-rose-100 rounded-tl-none"
                           : msg.isOwn
-                          ? "bg-white/12 border border-white/10 text-white font-extrabold rounded-tr-none"
-                          : "bg-black/40 border border-white/8 text-gray-100 rounded-tl-none"
+                          ? "lamma-pm-bubble-own bg-white/12 border border-white/10 text-white font-extrabold rounded-tr-none"
+                          : "lamma-pm-bubble-incoming bg-black/40 border border-white/8 text-gray-100 rounded-tl-none"
                       }`}
                     >
-                      {msg.mediaUrl ? (
+                      {msg.mediaUrl && msg.type === "image" ? (
+                        <img
+                          src={msg.mediaUrl}
+                          alt="مرفق"
+                          className="max-w-[220px] max-h-[220px] rounded-xl mb-1.5 object-cover"
+                          loading="lazy"
+                        />
+                      ) : null}
+                      {msg.mediaUrl && msg.type === "video" ? (
+                        getYoutubeId(msg.mediaUrl) ? (
+                          <div className="relative pb-[56.25%] h-0 w-[220px] max-w-full rounded-xl overflow-hidden mb-1.5">
+                            <iframe
+                              title="PM YouTube"
+                              src={`https://www.youtube.com/embed/${getYoutubeId(msg.mediaUrl)}`}
+                              frameBorder="0"
+                              allowFullScreen
+                              className="absolute inset-0 w-full h-full"
+                            />
+                          </div>
+                        ) : (
+                          <video
+                            src={msg.mediaUrl}
+                            controls
+                            className="max-w-[220px] rounded-xl mb-1.5 border border-white/10"
+                          />
+                        )
+                      ) : null}
+                      {msg.mediaUrl && !msg.type ? (
                         <img
                           src={msg.mediaUrl}
                           alt="مرفق"
@@ -10105,18 +10698,12 @@ export default function ChatScreen({
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 5 }}
-                        className="flex items-center gap-2 mb-2 w-fit"
+                        className="flex items-center gap-2 mb-2 w-fit lamma-typing-indicator"
                       >
                         <div className="bg-white/5 px-3 py-1.5 rounded-2xl rounded-tl-none border border-white/10 flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"></span>
-                          <span
-                            className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"
-                            style={{ animationDelay: "0.1s" }}
-                          ></span>
-                          <span
-                            className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"
-                            style={{ animationDelay: "0.2s" }}
-                          ></span>
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full lamma-typing-dot"></span>
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full lamma-typing-dot"></span>
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full lamma-typing-dot"></span>
                           <span className="text-[9px] text-gray-400 mr-2">
                             {pmTarget.nickname} يكتب الان...
                           </span>
@@ -10197,25 +10784,16 @@ export default function ChatScreen({
                             "🎥 أدخل رابط يوتيوب أو فيdeo:",
                           );
                           if (!inputUrl?.trim() || !pmTarget) return;
-                          const timeStr = new Date().toLocaleTimeString("en-US", {
-                            hour: "numeric",
-                            minute: "numeric",
-                            hour12: true,
+                          void sendPrivateMediaMessage(
+                            "video",
+                            inputUrl.trim(),
+                          ).catch((error) => {
+                            alert(
+                              error instanceof Error
+                                ? `❌ تعذر إرسال الرابط: ${error.message}`
+                                : "❌ تعذر إرسال الرابط.",
+                            );
                           });
-                          setPmThreads((prev) => ({
-                            ...prev,
-                            [pmTarget.nickname]: [
-                              ...(prev[pmTarget.nickname] || []),
-                              {
-                                text: "",
-                                isOwn: true,
-                                time: timeStr,
-                                mediaUrl: inputUrl.trim(),
-                                type: "video" as const,
-                                status: "delivered" as const,
-                              },
-                            ],
-                          }));
                         }}
                       >
                         <div className="w-8 h-8 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center">
@@ -10361,6 +10939,20 @@ export default function ChatScreen({
           )}
         </motion.aside>
       </div>
+
+      {!isZenMode && isMobileAppShell ? (
+        <MobileBottomNav
+          active={
+            mobileTab === "private"
+              ? "private"
+              : mobileTab === "members" || mobileTab === "sidebar"
+                ? "members"
+                : "chat"
+          }
+          onNavigate={handleMobileNav}
+          hasPmActivity={Object.keys(pmThreads).length > 0}
+        />
+      ) : null}
 
       {/* ================= MODALS OVERLAYS ================= */}
       <AnimatePresence>
@@ -10548,6 +11140,36 @@ export default function ChatScreen({
                       <div className="text-[9px] text-yellow-300 font-black px-3 py-1.5 rounded-xl lamma-soft-action">
                         صلاحية: Owner فقط
                       </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 space-y-3">
+                      <div className="text-[11px] font-black text-emerald-300">
+                        🎨 Universal Visual AI Style Engine
+                      </div>
+                      <p className="text-[10px] text-gray-300 leading-relaxed">
+                        بوت التصميم يشتغل من <strong>غرفة الشات</strong> مش من
+                        هنا. افتح غرفة «بوت التصميم AI» واكتب طلبك في شريط
+                        الكتابة السفلي — مثلاً:{" "}
+                        <span className="text-white/90">make the site cyberpunk neon</span>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!openRooms.find((r) => r.id === "owner")) {
+                            setOpenRooms((prev) => [
+                              ...prev,
+                              { id: "owner", name: "بوت التصميم AI", flag: "🎨" },
+                            ]);
+                          }
+                          handleSwitchRoom("owner");
+                          setActiveModal(null);
+                          setIsSidebarOpen(false);
+                          setMobileTab("chat");
+                        }}
+                        className="w-full py-2.5 rounded-xl text-[10px] font-black bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all cursor-pointer"
+                      >
+                        افتح غرفة بوت التصميم AI ←
+                      </button>
                     </div>
 
                     <div className="flex items-center gap-1.5 border-b border-white/5 pb-2 overflow-x-auto scroller-hidden">
@@ -11289,7 +11911,6 @@ export default function ChatScreen({
         }}
       />
 
-      {/* --- User Profile Info/Bio Popup --- */}
       <UserProfileBioPopup
         isOpen={showUserProfileBioPop}
         target={userProfileBioTarget}
@@ -11350,6 +11971,26 @@ export default function ChatScreen({
           },
           onBioChange: (newBio) => setMyCustomBio(newBio),
         }}
+      />
+
+      <UserProfilePageModal
+        isOpen={showProfilePageModal}
+        member={profilePageMember}
+        currentUser={currentUser}
+        storeSnapshot={subscription}
+        cosmeticGrants={memberCosmeticGrants}
+        chatMembers={chatMembers}
+        onClose={() => {
+          setShowProfilePageModal(false);
+          setProfilePageMember(null);
+        }}
+        onSendPM={(target) => {
+          setShowProfilePageModal(false);
+          setProfilePageMember(null);
+          startPrivateChatWithMember(target.nickname);
+        }}
+        onLike={likePost}
+        onComment={commentOnPost}
       />
 
       {/* WebRTC Calling UI + incoming call */}
@@ -11524,7 +12165,7 @@ export default function ChatScreen({
       {/* Real audio elements for Radio and Music streaming/playback */}
       <audio ref={radioAudioRef} preload="none" playsInline />
       <audio ref={musicAudioRef} src={currentMusicTrack.url || undefined} preload="none" playsInline />
-      <audio ref={djBroadcastAudioRef} preload="none" className="hidden" />
+      <audio ref={djBroadcastAudioRef} preload="auto" playsInline className="hidden" />
       <input
         ref={musicUploadInputRef}
         type="file"

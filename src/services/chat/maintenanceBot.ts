@@ -635,8 +635,9 @@ export function startSilentAutoHeal(intervalMs = 5 * 60 * 1000): () => void {
         const pct = est.quota ? Math.round(((est.usage ?? 0) / est.quota) * 100) : 0;
         if (pct > 85 && typeof caches !== "undefined") {
           const names = await caches.keys();
-          await Promise.all(names.map((n) => caches.delete(n)));
-          if (names.length > 0) actions.push(`أُفرغ الكاش (${names.length} كاش — مساحة ${pct}%)`);
+          const lammaCaches = names.filter((n) => n.startsWith("lamma-"));
+          await Promise.all(lammaCaches.map((n) => caches.delete(n)));
+          if (lammaCaches.length > 0) actions.push(`أُفرغ الكاش (${lammaCaches.length} كاش — مساحة ${pct}%)`);
         }
       }
     } catch { /* ignore */ }

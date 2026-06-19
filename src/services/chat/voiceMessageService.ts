@@ -1,4 +1,5 @@
 import { supabase } from "../../lib/supabase";
+import { userStoragePath } from "../storage/storagePaths";
 
 export async function uploadVoiceNoteBlob(
   blob: Blob,
@@ -15,7 +16,12 @@ export async function uploadVoiceNoteBlob(
         ? "ogg"
         : "webm";
 
-  const objectPath = `voice/${roomId}/${userId}_${Date.now()}_${crypto.randomUUID()}.${ext}`;
+  const objectPath = userStoragePath(
+    userId,
+    "voice",
+    roomId,
+    `${Date.now()}_${crypto.randomUUID()}.${ext}`,
+  );
 
   const { error: uploadError } = await supabase.storage
     .from("chat-media")

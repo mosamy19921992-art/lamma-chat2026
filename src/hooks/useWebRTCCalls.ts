@@ -59,6 +59,7 @@ export function useWebRTCCalls({
   const callTypeRef = useRef<CallMediaType>("audio");
   const ringTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const failoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const endCallDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const peerUidRef = useRef<string>("");
   const peerNickRef = useRef<string>("");
@@ -81,9 +82,11 @@ export function useWebRTCCalls({
   const clearTimers = useCallback(() => {
     if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
     if (failoverTimeoutRef.current) clearTimeout(failoverTimeoutRef.current);
+    if (endCallDelayRef.current) clearTimeout(endCallDelayRef.current);
     if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
     ringTimeoutRef.current = null;
     failoverTimeoutRef.current = null;
+    endCallDelayRef.current = null;
     durationIntervalRef.current = null;
   }, []);
 
@@ -142,42 +145,49 @@ export function useWebRTCCalls({
 
       engine.onFailoverNeeded = () => {
         if (failoverTimeoutRef.current) return;
-        failoverTimeoutRef.current = setTimeout(async () => {
+        failoverTimeoutRef.current = setTimeout(() => {
           failoverTimeoutRef.current = null;
-          const eng = engineRef.current;
-          if (!eng || eng.getServerIndex() >= 1) {
-            patchCall({ status: "failed" });
-            return;
-          }
-          patchCall({ status: "reconnecting" });
-          const switched = await eng.switchToFallbackServer();
-          if (!switched) {
-            patchCall({ status: "failed" });
-            return;
-          }
-          void sendCallSignal({
-            call_id: callId,
-            from_uid: myUid,
-            from_nickname: myNick,
-            to_uid: peerUid,
-            to_nickname: peerNickRef.current,
-            call_type: callTypeRef.current,
-            signal_type: "server-switch",
-            payload: { serverIndex: eng.getServerIndex() },
-          });
-          const offer = await eng.createOffer(true);
-          if (offer) {
-            await sendCallSignal({
-              call_id: callId,
-              from_uid: myUid,
-              from_nickname: myNick,
-              to_uid: peerUid,
-              to_nickname: peerNickRef.current,
-              call_type: callTypeRef.current,
-              signal_type: "offer",
-              payload: { sdp: offer, iceRestart: true },
-            });
-          }
+          void (async () => {
+            try {
+              const eng = engineRef.current;
+              if (!eng || eng.getServerIndex() >= 1) {
+                patchCall({ status: "failed" });
+                return;
+              }
+              patchCall({ status: "reconnecting" });
+              const switched = await eng.switchToFallbackServer();
+              if (!switched) {
+                patchCall({ status: "failed" });
+                return;
+              }
+              void sendCallSignal({
+                call_id: callId,
+                from_uid: myUid,
+                from_nickname: myNick,
+                to_uid: peerUid,
+                to_nickname: peerNickRef.current,
+                call_type: callTypeRef.current,
+                signal_type: "server-switch",
+                payload: { serverIndex: eng.getServerIndex() },
+              });
+              const offer = await eng.createOffer(true);
+              if (offer) {
+                await sendCallSignal({
+                  call_id: callId,
+                  from_uid: myUid,
+                  from_nickname: myNick,
+                  to_uid: peerUid,
+                  to_nickname: peerNickRef.current,
+                  call_type: callTypeRef.current,
+                  signal_type: "offer",
+                  payload: { sdp: offer, iceRestart: true },
+                });
+              }
+            } catch (err) {
+              console.warn("Call failover failed:", err);
+              patchCall({ status: "failed" });
+            }
+          })();
         }, ICE_FAILOVER_DELAY_MS);
       };
     },
@@ -213,7 +223,9 @@ export function useWebRTCCalls({
     }
     patchCall({ status: "ended" });
     cleanupCall();
-    setTimeout(() => {
+    if (endCallDelayRef.current) clearTimeout(endCallDelayRef.current);
+    endCallDelayRef.current = setTimeout(() => {
+      endCallDelayRef.current = null;
       setActiveCall(null);
       setIncomingCall(null);
     }, 1200);
@@ -381,9 +393,6 @@ export function useWebRTCCalls({
         signal_type: "answer",
         payload: { sdp: answer },
       });
-
-      patchCall({ status: "connected" });
-      startDurationTimer();
     } catch (err) {
       console.error("Accept call failed:", err);
       alert(describeMediaError(err, type));
@@ -424,11 +433,14 @@ export function useWebRTCCalls({
       payload: {},
     });
     setIncomingCall(null);
+    delete pendingOffersRef.current[incomingCall.callId];
   }, [incomingCall, myNick, myUid]);
 
   // Handle incoming signals
   useEffect(() => {
     if (!myUid || currentUser.authProvider !== "supabase") return;
+
+    processedSignals.current.clear();
 
     return subscribeToCallSignals(myUid, async (signal: CallSignalRow) => {
       if (processedSignals.current.has(signal.id)) return;
@@ -439,8 +451,7 @@ export function useWebRTCCalls({
         );
       }
 
-      const engine = getEngine();
-
+      try {
       switch (signal.signal_type) {
         case "ring": {
           if (activeCallRef.current || incomingCallRef.current) {
@@ -467,6 +478,7 @@ export function useWebRTCCalls({
         }
 
         case "offer": {
+          const engine = getEngine();
           const sdp = signal.payload.sdp as RTCSessionDescriptionInit;
           if (incomingCallRef.current?.callId === signal.call_id) {
             setIncomingCall((prev) =>
@@ -478,6 +490,9 @@ export function useWebRTCCalls({
             signal.to_uid === myUid
           ) {
             pendingOffersRef.current[signal.call_id] = sdp;
+            setTimeout(() => {
+              delete pendingOffersRef.current[signal.call_id];
+            }, 60_000);
           } else if (callIdRef.current === signal.call_id) {
             // Renegotiation / failover from peer
             if (typeof signal.payload.serverIndex === "number") {
@@ -508,16 +523,16 @@ export function useWebRTCCalls({
 
         case "answer": {
           if (callIdRef.current !== signal.call_id) break;
+          const engine = getEngine();
           const sdp = signal.payload.sdp as RTCSessionDescriptionInit;
           await engine.setRemoteDescription(sdp);
           if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
-          patchCall({ status: "connected" });
-          startDurationTimer();
           break;
         }
 
         case "ice": {
           if (callIdRef.current !== signal.call_id) break;
+          const engine = getEngine();
           await engine.addIceCandidate(
             signal.payload.candidate as RTCIceCandidateInit,
           );
@@ -526,6 +541,7 @@ export function useWebRTCCalls({
 
         case "server-switch": {
           if (callIdRef.current !== signal.call_id) break;
+          const engine = getEngine();
           const idx = signal.payload.serverIndex as number;
           engine.setServerIndex(idx);
           patchCall({
@@ -545,6 +561,7 @@ export function useWebRTCCalls({
 
         case "reject":
         case "hangup": {
+          delete pendingOffersRef.current[signal.call_id];
           if (
             callIdRef.current === signal.call_id ||
             incomingCallRef.current?.callId === signal.call_id
@@ -552,9 +569,25 @@ export function useWebRTCCalls({
             patchCall({ status: "ended" });
             cleanupCall();
             setIncomingCall(null);
-            setTimeout(() => setActiveCall(null), 1200);
+            if (endCallDelayRef.current) clearTimeout(endCallDelayRef.current);
+            endCallDelayRef.current = setTimeout(() => {
+              endCallDelayRef.current = null;
+              setActiveCall(null);
+            }, 1200);
           }
           break;
+        }
+      }
+      } catch (err) {
+        console.error("Call signal handling failed:", signal.signal_type, err);
+        if (
+          callIdRef.current === signal.call_id ||
+          incomingCallRef.current?.callId === signal.call_id
+        ) {
+          patchCall({ status: "failed" });
+          cleanupCall();
+          setIncomingCall(null);
+          setActiveCall(null);
         }
       }
     });

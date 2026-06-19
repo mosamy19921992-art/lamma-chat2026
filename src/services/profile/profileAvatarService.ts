@@ -1,4 +1,5 @@
 import { supabase } from "../../lib/supabase";
+import { userStoragePath } from "../storage/storagePaths";
 
 const MAX_PROFILE_AVATAR_BYTES = 3 * 1024 * 1024;
 
@@ -40,7 +41,11 @@ export async function uploadProfileAvatarFile(
   const safeExt = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext)
     ? ext
     : "jpg";
-  const objectPath = `profiles/${userId}/avatar-${Date.now()}.${safeExt}`;
+  const objectPath = userStoragePath(
+    userId,
+    "profiles",
+    `avatar-${Date.now()}.${safeExt}`,
+  );
 
   const { error: uploadError } = await supabase.storage
     .from("chat-media")

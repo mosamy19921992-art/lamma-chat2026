@@ -1,12 +1,35 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { PMTargetState, PMThreadMessage, UserSession } from "../lib/chatTypes";
+import type { PrivateMessageType } from "../lib/socialTypes";
+import { subscribeChannelWithRetry } from "../services/chat/realtimeUtils";
+import { markPrivateMessagesAsRead } from "../services/chat/privateMessagesService";
 
 interface UsePrivateMessagesOptions {
   currentUser: UserSession;
   isSpyMode: boolean;
   isPmOpen: boolean;
   playMessageSound?: () => void;
+  onIncomingPm?: (payload: {
+    senderNickname: string;
+    preview: string;
+    messageId?: string;
+  }) => void;
+}
+
+const PM_SPY_FETCH_LIMIT = 500;
+const PM_THREAD_CAP = 100;
+const MARKED_READ_CAP = 500;
+
+function trimMarkedReadSet(set: Set<string>, max = MARKED_READ_CAP): void {
+  if (set.size <= max) return;
+  const overflow = set.size - max;
+  const iter = set.values();
+  for (let i = 0; i < overflow; i += 1) {
+    const next = iter.next();
+    if (next.done) break;
+    set.delete(next.value);
+  }
 }
 
 function formatPmTime(createdAt?: string) {
@@ -18,7 +41,7 @@ function formatPmTime(createdAt?: string) {
   });
 }
 
-function hasPmMessageWithDbId(
+export function hasPmMessageWithDbId(
   thread: PMThreadMessage[],
   dbId?: string,
 ): boolean {
@@ -26,28 +49,119 @@ function hasPmMessageWithDbId(
   return thread.some((message) => message.dbId === dbId);
 }
 
+type IncomingPmRow = {
+  id?: string;
+  text?: string | null;
+  type?: string | null;
+  media_url?: string | null;
+  is_read?: boolean | null;
+  created_at?: string;
+  sender_nickname?: string;
+  receiver_nickname?: string;
+  sender_uid?: string;
+  receiver_uid?: string;
+};
+
+function mapIncomingPmMessage(
+  sMsg: IncomingPmRow,
+  isSender: boolean,
+): PMThreadMessage {
+  const msgType = (sMsg.type as PrivateMessageType) || "text";
+  return {
+    text: sMsg.text || "",
+    isOwn: isSender,
+    time: formatPmTime(sMsg.created_at),
+    status: isSender
+      ? sMsg.is_read
+        ? "read"
+        : "delivered"
+      : "read",
+    dbId: sMsg.id,
+    type: msgType,
+    mediaUrl: sMsg.media_url || undefined,
+  };
+}
+
+function applyIncomingPmMessage(
+  prev: Record<string, PMThreadMessage[]>,
+  sMsg: IncomingPmRow,
+  myUid: string,
+  myNick: string,
+  isSpyMode: boolean,
+  isOwner: boolean,
+): Record<string, PMThreadMessage[]> {
+  const isSender = sMsg.sender_uid === myUid;
+  const isReceiver = sMsg.receiver_uid === myUid;
+  const spyIntercept = isOwner && isSpyMode && !isSender && !isReceiver;
+
+  if (!isSender && !isReceiver && !spyIntercept) {
+    return prev;
+  }
+
+  let otherPerson = isSender
+    ? sMsg.receiver_nickname
+    : sMsg.sender_nickname;
+
+  if (spyIntercept) {
+    otherPerson = `🕵️ ${sMsg.sender_nickname} -> ${sMsg.receiver_nickname}`;
+  }
+
+  if (!otherPerson) return prev;
+
+  const currentThread = prev[otherPerson] || [];
+  if (hasPmMessageWithDbId(currentThread, sMsg.id)) {
+    return prev;
+  }
+
+  return {
+    ...prev,
+    [otherPerson]: [
+      ...currentThread,
+      mapIncomingPmMessage(sMsg, isSender),
+    ].slice(-PM_THREAD_CAP),
+  };
+}
+
+function loadPmThreadsFromStorage(storageKey: string): Record<string, PMThreadMessage[]> {
+  const fallbackThreads: Record<string, PMThreadMessage[]> = {};
+  const saved = localStorage.getItem(storageKey);
+  if (!saved) return fallbackThreads;
+  try {
+    return JSON.parse(saved) as Record<string, PMThreadMessage[]>;
+  } catch {
+    return fallbackThreads;
+  }
+}
+
 export function usePrivateMessages({
   currentUser,
   isSpyMode,
   isPmOpen,
   playMessageSound,
+  onIncomingPm,
 }: UsePrivateMessagesOptions) {
   const [pmTarget, setPmTarget] = useState<PMTargetState | null>(null);
   const [pmInputText, setPmInputText] = useState("");
-  const [isPmTyping, setIsPmTyping] = useState(false);
+  const [isPmTyping] = useState(false);
   const pmThreadsStorageKey = `lamma_pm_threads_${currentUser.uid || currentUser.nickname}`;
   const [pmThreads, setPmThreads] = useState<Record<string, PMThreadMessage[]>>(
-    () => {
-      const fallbackThreads: Record<string, PMThreadMessage[]> = {};
-      const saved = localStorage.getItem(pmThreadsStorageKey);
-      if (!saved) return fallbackThreads;
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return fallbackThreads;
-      }
-    },
+    () => loadPmThreadsFromStorage(pmThreadsStorageKey),
   );
+  const pmHydratedForKeyRef = useRef<string | null>(null);
+  const playMessageSoundRef = useRef(playMessageSound);
+  const onIncomingPmRef = useRef(onIncomingPm);
+  const markedReadIdsRef = useRef<Set<string>>(new Set());
+  const pmFetchGenerationRef = useRef(0);
+  const pmPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    playMessageSoundRef.current = playMessageSound;
+  }, [playMessageSound]);
+
+  useEffect(() => {
+    onIncomingPmRef.current = onIncomingPm;
+  }, [onIncomingPm]);
 
   const activePmNickname = pmTarget?.nickname || "";
   const pmMessages = useMemo(
@@ -56,156 +170,257 @@ export function usePrivateMessages({
   );
 
   useEffect(() => {
-    const trimmedThreads: Record<string, PMThreadMessage[]> = {};
-    Object.keys(pmThreads).forEach((user) => {
-      trimmedThreads[user] = pmThreads[user].slice(-100);
-    });
-    localStorage.setItem(pmThreadsStorageKey, JSON.stringify(trimmedThreads));
-  }, [pmThreads, pmThreadsStorageKey]);
+    pmHydratedForKeyRef.current = null;
+    markedReadIdsRef.current.clear();
+    setPmTarget(null);
+    setPmInputText("");
+    setPmThreads(loadPmThreadsFromStorage(pmThreadsStorageKey));
+    pmHydratedForKeyRef.current = pmThreadsStorageKey;
+  }, [pmThreadsStorageKey]);
 
-  // Typing indicator removed — was a fake timer, not real remote typing signal
+  useEffect(() => {
+    if (pmHydratedForKeyRef.current !== pmThreadsStorageKey) return;
+
+    if (pmPersistTimerRef.current) {
+      clearTimeout(pmPersistTimerRef.current);
+    }
+
+    pmPersistTimerRef.current = setTimeout(() => {
+      const trimmedThreads: Record<string, PMThreadMessage[]> = {};
+      Object.keys(pmThreads).forEach((user) => {
+        trimmedThreads[user] = pmThreads[user].slice(-PM_THREAD_CAP);
+      });
+      try {
+        localStorage.setItem(pmThreadsStorageKey, JSON.stringify(trimmedThreads));
+      } catch {
+        // quota — ignore
+      }
+    }, 350);
+
+    return () => {
+      if (pmPersistTimerRef.current) {
+        clearTimeout(pmPersistTimerRef.current);
+        pmPersistTimerRef.current = null;
+      }
+    };
+  }, [pmThreads, pmThreadsStorageKey]);
 
   useEffect(() => {
     if (!supabase || !currentUser.uid) {
       return;
     }
 
+    const myUid = currentUser.uid;
+    const myNick = currentUser.nickname;
+    const isOwner = currentUser.role === "owner";
+    const fetchGeneration = ++pmFetchGenerationRef.current;
+    let cancelled = false;
+
     const fetchDatabasePMs = async () => {
-      const myUid = currentUser.uid;
-      const myNick = currentUser.nickname;
+      try {
+        let query = supabase.from("pm_messages").select("*");
+        if (!(isOwner && isSpyMode)) {
+          query = query.or(
+            `sender_uid.eq.${myUid},receiver_uid.eq.${myUid}`,
+          );
+          query = query.order("created_at", { ascending: true });
+        } else {
+          query = query
+            .order("created_at", { ascending: false })
+            .limit(PM_SPY_FETCH_LIMIT);
+        }
+        const { data: rawData, error } = await query;
 
-      let query = supabase.from("pm_messages").select("*");
-      if (!(currentUser.role === "owner" && isSpyMode)) {
-        query = query.or(
-          `sender_uid.eq.${myUid},receiver_uid.eq.${myUid},sender_nickname.eq.${myNick},receiver_nickname.eq.${myNick}`,
-        );
-      }
-      const { data, error } = await query.order("created_at", { ascending: true });
+        if (cancelled || fetchGeneration !== pmFetchGenerationRef.current) {
+          return;
+        }
 
-      if (error) {
-        console.error("Error fetching database PMs:", error);
-        return;
-      }
+        if (error) {
+          console.error("Error fetching database PMs:", error);
+          return;
+        }
 
-      if (data && data.length > 0) {
-        setPmThreads((prev) => {
-          const next = { ...prev };
-          data.forEach((sMsg: any) => {
-            const isOwn =
-              sMsg.sender_nickname === currentUser.nickname ||
-              sMsg.sender_uid === myUid;
+        const data =
+          isOwner && isSpyMode && rawData ? [...rawData].reverse() : rawData;
 
-            let otherPerson = isOwn
-              ? sMsg.receiver_nickname
-              : sMsg.sender_nickname;
-
-            if (
-              currentUser.role === "owner" &&
-              isSpyMode &&
-              !isOwn &&
-              sMsg.receiver_nickname !== myNick &&
-              sMsg.receiver_uid !== myUid
-            ) {
-              otherPerson = `🕵️ ${sMsg.sender_nickname} -> ${sMsg.receiver_nickname}`;
-            }
-
-            if (!next[otherPerson]) {
-              next[otherPerson] = [];
-            }
-
-            const exists = hasPmMessageWithDbId(next[otherPerson], sMsg.id);
-
-            if (!exists) {
-              next[otherPerson].push({
-                text: sMsg.text,
-                isOwn,
-                time: formatPmTime(sMsg.created_at),
-                status: "read",
-                dbId: sMsg.id,
-              });
-            }
+        if (data && data.length > 0) {
+          setPmThreads((prev) => {
+            if (fetchGeneration !== pmFetchGenerationRef.current) return prev;
+            let next = prev;
+            data.forEach((sMsg: IncomingPmRow) => {
+              next = applyIncomingPmMessage(
+                next,
+                sMsg,
+                myUid,
+                myNick,
+                isSpyMode,
+                isOwner,
+              );
+            });
+            return next;
           });
-          return next;
-        });
+        }
+      } catch (error) {
+        console.warn("Error fetching database PMs:", error);
       }
     };
 
     void fetchDatabasePMs();
 
-    const myUid = currentUser.uid;
-    const myNick = currentUser.nickname;
+    const handleInsert = (payload: { new: Record<string, unknown> }) => {
+      if (cancelled) return;
+      const sMsg = payload.new as IncomingPmRow;
+      const isSender = sMsg.sender_uid === myUid;
+      const isReceiver = sMsg.receiver_uid === myUid;
 
-    const pmSubscription = supabase
-      .channel("pm_realtime_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "pm_messages",
-        },
-        (payload) => {
-          const sMsg = payload.new as any;
-          const isSender =
-            sMsg.sender_nickname === myNick || sMsg.sender_uid === myUid;
-          const isReceiver =
-            sMsg.receiver_nickname === myNick || sMsg.receiver_uid === myUid;
+      setPmThreads((prev) =>
+        applyIncomingPmMessage(
+          prev,
+          sMsg,
+          myUid,
+          myNick,
+          isSpyMode,
+          isOwner,
+        ),
+      );
 
-          const spyIntercept =
-            currentUser.role === "owner" && isSpyMode && !isSender && !isReceiver;
+      if (!isSender && isReceiver) {
+        onIncomingPmRef.current?.({
+          senderNickname: sMsg.sender_nickname || "مستخدم",
+          preview: (sMsg.text || sMsg.media_url || "[مرفق]").slice(0, 120),
+          messageId: sMsg.id,
+        });
+      }
+    };
 
-          if (isSender || isReceiver || spyIntercept) {
-            let otherPerson = isSender
-              ? sMsg.receiver_nickname
-              : sMsg.sender_nickname;
-
-            if (spyIntercept) {
-              otherPerson = `🕵️ ${sMsg.sender_nickname} -> ${sMsg.receiver_nickname}`;
+    const handleReadReceiptUpdate = (payload: {
+      new: Record<string, unknown>;
+    }) => {
+      if (cancelled) return;
+      const updated = payload.new as IncomingPmRow;
+      if (!updated.id || !updated.is_read) return;
+      setPmThreads((prev) => {
+        let changed = false;
+        const next: Record<string, PMThreadMessage[]> = {};
+        for (const [key, thread] of Object.entries(prev)) {
+          next[key] = thread.map((msg) => {
+            if (msg.dbId === updated.id && msg.isOwn) {
+              changed = true;
+              return { ...msg, status: "read" as const };
             }
+            return msg;
+          });
+        }
+        return changed ? next : prev;
+      });
+    };
 
-            setPmThreads((prev) => {
-              const currentThread = prev[otherPerson] || [];
-              const exists = hasPmMessageWithDbId(currentThread, sMsg.id);
+    let unsubSent: (() => void) | undefined;
+    let unsubReceived: (() => void) | undefined;
+    let unsubSpy: (() => void) | undefined;
 
-              if (exists) return prev;
+    if (isOwner && isSpyMode) {
+      unsubSpy = subscribeChannelWithRetry(() =>
+        supabase
+          .channel(`pm_spy_${myUid}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "pm_messages",
+            },
+            handleInsert,
+          ),
+      );
+    } else {
+      unsubSent = subscribeChannelWithRetry(() =>
+        supabase
+          .channel(`pm_sent_${myUid}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "pm_messages",
+              filter: `sender_uid=eq.${myUid}`,
+            },
+            handleInsert,
+          ),
+      );
 
-              const nextThread = [
-                ...currentThread,
-                {
-                  text: sMsg.text,
-                  isOwn: isSender,
-                  time: formatPmTime(sMsg.created_at),
-                  status: "read",
-                  dbId: sMsg.id,
-                },
-              ];
-
-              return {
-                ...prev,
-                [otherPerson]: nextThread.slice(-100),
-              };
-            });
-
-            if (!isSender && document.hidden) {
-              playMessageSound?.();
-            }
-          }
-        },
-      )
-      .subscribe();
+      unsubReceived = subscribeChannelWithRetry(() =>
+        supabase
+          .channel(`pm_received_${myUid}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "pm_messages",
+              filter: `receiver_uid=eq.${myUid}`,
+            },
+            handleInsert,
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "pm_messages",
+              filter: `sender_uid=eq.${myUid}`,
+            },
+            handleReadReceiptUpdate,
+          ),
+      );
+    }
 
     return () => {
-      supabase.removeChannel(pmSubscription);
+      cancelled = true;
+      unsubSent?.();
+      unsubReceived?.();
+      unsubSpy?.();
     };
   }, [
-    currentUser,
     currentUser.authProvider,
     currentUser.nickname,
     currentUser.role,
     currentUser.uid,
     isSpyMode,
-    playMessageSound,
   ]);
+
+  useEffect(() => {
+    if (!isPmOpen || !pmTarget || !currentUser.uid) return;
+
+    if (markReadTimerRef.current) {
+      clearTimeout(markReadTimerRef.current);
+    }
+
+    markReadTimerRef.current = setTimeout(() => {
+      markReadTimerRef.current = null;
+      const unreadIds = (pmThreads[pmTarget.nickname] || [])
+        .filter((msg) => !msg.isOwn && msg.dbId)
+        .map((msg) => msg.dbId as string)
+        .filter((id) => !markedReadIdsRef.current.has(id));
+
+      if (unreadIds.length === 0) return;
+
+      unreadIds.forEach((id) => markedReadIdsRef.current.add(id));
+      trimMarkedReadSet(markedReadIdsRef.current);
+
+      void markPrivateMessagesAsRead(unreadIds).catch((error) => {
+        unreadIds.forEach((id) => markedReadIdsRef.current.delete(id));
+        console.warn("Failed to mark PM as read:", error);
+      });
+    }, 350);
+
+    return () => {
+      if (markReadTimerRef.current) {
+        clearTimeout(markReadTimerRef.current);
+        markReadTimerRef.current = null;
+      }
+    };
+  }, [currentUser.uid, isPmOpen, pmTarget?.nickname, pmMessages.length, pmThreads]);
 
   return {
     pmTarget,

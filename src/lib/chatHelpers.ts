@@ -2,6 +2,21 @@
 
 import type { MemberCosmeticGrant, MemberCustomPermissions, UserSession } from "./chatTypes";
 
+/** Allow only http(s) URLs — blocks javascript:, data:, vbscript: in chat links/media. */
+export function isSafeHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** Strict hex color for inline [color=#...] tags. */
+export function sanitizeHexColor(value: string): string | null {
+  return /^#[0-9a-fA-F]{3,8}$/.test(value) ? value : null;
+}
+
 export function getYoutubeId(url: string | undefined): string | null {
   if (!url) return null;
   const regExp =

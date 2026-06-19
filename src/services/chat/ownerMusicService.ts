@@ -1,4 +1,5 @@
 import { supabase } from "../../lib/supabase";
+import { userStoragePath } from "../storage/storagePaths";
 import type { OwnerMusicTrack } from "../../lib/chatTypes";
 import { fetchServerUserRole } from "../auth/userRoleService";
 import { normalizeAuthRole } from "../../lib/authProfile";
@@ -82,7 +83,11 @@ export async function uploadOwnerMusicFile(
 
   const storageFileName = buildMusicStorageFileName(file.name);
   const displayTitle = buildMusicDisplayTitle(file.name);
-  const objectPath = `dj/${session.user.id}/${Date.now()}_${crypto.randomUUID()}_${storageFileName}`;
+  const objectPath = userStoragePath(
+    session.user.id,
+    "dj",
+    `${Date.now()}_${crypto.randomUUID()}_${storageFileName}`,
+  );
 
   const { error: uploadError } = await supabase.storage
     .from("chat-media")

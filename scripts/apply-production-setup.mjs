@@ -1,12 +1,15 @@
 /**
- * One-shot Supabase production setup (SQL hardening + OAuth redirect URLs).
+ * One-shot Supabase production setup (full hardening chain + OAuth URLs).
+ *
+ * Order matters — do NOT run supabase-storage.sql after identity-hardening
+ * (it overwrites folder-scoped upload policies).
  *
  * Usage (PowerShell):
  *   $env:SUPABASE_ACCESS_TOKEN="your_pat_from_supabase.com/dashboard/account/tokens"
  *   node scripts/apply-production-setup.mjs
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -51,30 +54,35 @@ async function api(path, options = {}) {
   return body;
 }
 
+async function applySqlFile(root, filename, label) {
+  const path = join(root, "..", filename);
+  if (!existsSync(path)) {
+    console.warn(`Skipping missing ${filename}`);
+    return;
+  }
+  const sql = readFileSync(path, "utf8");
+  console.log(`Applying ${label || filename} ...`);
+  await api(`/projects/${PROJECT_REF}/database/query`, {
+    method: "POST",
+    body: JSON.stringify({ query: sql }),
+  });
+  console.log(`Done: ${label || filename}`);
+}
+
 async function applySql() {
   const root = dirname(fileURLToPath(import.meta.url));
 
-  const hardeningSql = readFileSync(
-    join(root, "..", "supabase-production-hardening.sql"),
-    "utf8",
-  );
-  console.log("Applying supabase-production-hardening.sql ...");
-  await api(`/projects/${PROJECT_REF}/database/query`, {
-    method: "POST",
-    body: JSON.stringify({ query: hardeningSql }),
-  });
-  console.log("SQL hardening applied.");
+  const migrationChain = [
+    ["supabase-production-hardening.sql", "production hardening"],
+    ["supabase-social-network.sql", "social network schema"],
+    ["supabase-security-audit-fixes.sql", "security audit fixes"],
+    ["supabase-identity-hardening.sql", "identity + storage folder RLS"],
+    ["supabase-launch-hardening.sql", "launch hardening (PM + call_signals)"],
+  ];
 
-  const storageSql = readFileSync(
-    join(root, "..", "supabase-storage.sql"),
-    "utf8",
-  );
-  console.log("Applying supabase-storage.sql ...");
-  await api(`/projects/${PROJECT_REF}/database/query`, {
-    method: "POST",
-    body: JSON.stringify({ query: storageSql }),
-  });
-  console.log("Storage buckets/policies applied.");
+  for (const [file, label] of migrationChain) {
+    await applySqlFile(root, file, label);
+  }
 }
 
 async function updateAuthUrls() {
@@ -98,7 +106,7 @@ async function updateAuthUrls() {
 try {
   await applySql();
   await updateAuthUrls();
-  console.log("\nDone. Production Supabase setup complete.");
+  console.log("\nDone. Full production Supabase hardening chain applied.");
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   process.exit(1);

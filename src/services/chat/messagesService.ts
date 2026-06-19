@@ -1,4 +1,6 @@
 import { supabase, type SupabaseMessage } from "../../lib/supabase";
+import { isSafeHttpUrl } from "../../lib/chatHelpers";
+import { requireAuthenticatedUid } from "../auth/guestAuthService";
 import type { Message } from "../../lib/chatTypes";
 
 export async function fetchRoomMessages(
@@ -14,7 +16,7 @@ export async function fetchRoomMessages(
     .select("*")
     .eq("room_id", roomId)
     .gte("created_at", publicChatSessionStartedAt)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(100);
 }
 
@@ -60,13 +62,11 @@ export function appendRoomMessage(
 interface PersistRoomMessageOptions {
   message: Message;
   roomId: string;
-  senderUid: string;
 }
 
 export async function persistRoomMessage({
   message,
   roomId,
-  senderUid,
 }: PersistRoomMessageOptions): Promise<void> {
   if (message.type === "shadow_msg") {
     return;
@@ -76,17 +76,28 @@ export async function persistRoomMessage({
     throw new Error("تعذر إرسال الرسالة لأن اتصال Supabase غير متاح.");
   }
 
-  const { error } = await supabase.from("messages").insert([
-    {
-      id: message.id,
-      room_id: roomId,
-      author: message.author,
-      text: message.text,
-      color: message.color || "#10b981",
-      type: "text",
-      sender_uid: senderUid,
-    },
-  ]);
+  const senderUid = await requireAuthenticatedUid();
+
+  const safeText = (message.text || "").slice(0, 8000);
+  const safeMedia =
+    message.mediaUrl && isSafeHttpUrl(message.mediaUrl)
+      ? message.mediaUrl.slice(0, 2048)
+      : null;
+
+  const row: Record<string, unknown> = {
+    id: message.id,
+    room_id: roomId,
+    text: safeText,
+    color: message.color || "#10b981",
+    type: message.type || "text",
+    sender_uid: senderUid,
+  };
+
+  if (safeMedia) {
+    row.media_url = safeMedia;
+  }
+
+  const { error } = await supabase.from("messages").insert([row]);
 
   if (error) {
     throw error;
@@ -111,6 +122,11 @@ export function subscribeToRoomMessages(
   const attach = () => {
     if (stopped || !supabase) return;
 
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+
     activeChannel = supabase
       .channel(`room_${roomId}_${Date.now()}`)
       .on(
@@ -122,6 +138,7 @@ export function subscribeToRoomMessages(
           filter: `room_id=eq.${roomId}`,
         },
         (payload) => {
+          if (stopped) return;
           handlers.onInsert(payload.new as SupabaseMessage);
         },
       )
@@ -134,6 +151,7 @@ export function subscribeToRoomMessages(
           filter: `room_id=eq.${roomId}`,
         },
         (payload) => {
+          if (stopped) return;
           const deletedId = (payload.old as { id?: string }).id;
           if (deletedId) {
             handlers.onDelete?.(deletedId);
@@ -153,7 +171,9 @@ export function subscribeToRoomMessages(
             void supabase.removeChannel(activeChannel);
             activeChannel = null;
           }
-          retryTimer = setTimeout(attach, 2500);
+          retryTimer = setTimeout(() => {
+            if (!stopped) attach();
+          }, 2500);
         }
       });
   };
@@ -165,9 +185,11 @@ export function subscribeToRoomMessages(
       stopped = true;
       if (retryTimer) {
         clearTimeout(retryTimer);
+        retryTimer = null;
       }
       if (activeChannel) {
-        supabase.removeChannel(activeChannel);
+        void supabase.removeChannel(activeChannel);
+        activeChannel = null;
       }
     },
   };

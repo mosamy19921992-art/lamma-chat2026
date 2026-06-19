@@ -18,9 +18,10 @@ export function UpdateBanner({
 
   useEffect(() => {
     if (needRefresh) {
-      const t = setTimeout(() => setShowUpdate(true), 1500);
+      const t = setTimeout(() => setShowUpdate(true), 300);
       return () => clearTimeout(t);
     }
+    setShowUpdate(false);
   }, [needRefresh]);
 
   return (

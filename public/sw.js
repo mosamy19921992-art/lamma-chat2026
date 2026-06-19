@@ -5,7 +5,7 @@
 //  - Network-First  for HTML / routes
 //  - Offline fallback page
 
-const VERSION = "lamma-v1.0.23";
+const VERSION = "lamma-v1.0.27-mobile-grid";
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const IMAGE_CACHE = `${VERSION}-images`;
@@ -14,8 +14,11 @@ const OFFLINE_URL = "/offline.html";
 const PRECACHE_URLS = [
   "/manifest.json",
   "/images/lamma-search-icon.svg",
+  "/images/lamma-app-icon-180.png",
   "/images/lamma-app-icon-192.png",
   "/images/lamma-app-icon-512.png",
+  "/images/lamma-app-icon-512-maskable.png",
+  "/images/lamma-app-icon-1024.png",
   "/images/lamma-wordmark.svg",
   "/images/lamma-logo-nice.png",
   "/images/login-hero.jpg",
@@ -57,8 +60,7 @@ self.addEventListener("activate", (event) => {
             (n) =>
               n !== STATIC_CACHE &&
               n !== RUNTIME_CACHE &&
-              n !== IMAGE_CACHE &&
-              n !== API_CACHE,
+              n !== IMAGE_CACHE,
           )
           .map((n) => caches.delete(n)),
       );
@@ -94,16 +96,21 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 4. Static assets (CSS, JS, fonts) — Network first
+  // 4. Hashed JS/CSS bundles — network only (never serve stale app code)
+  if (url.pathname.startsWith("/assets/")) {
+    event.respondWith(networkOnly(request));
+    return;
+  }
+
+  // 5. Other static assets (fonts, manifest) — network first
   if (
-    ["style", "script", "font", "manifest"].includes(request.destination) ||
-    url.pathname.startsWith("/assets/")
+    ["style", "script", "font", "manifest"].includes(request.destination)
   ) {
     event.respondWith(networkFirst(request, STATIC_CACHE));
     return;
   }
 
-  // 5. HTML / navigation — always prefer a fresh network response.
+  // 6. HTML / navigation — always prefer a fresh network response.
   // If the network is unavailable, return the dedicated offline page
   // instead of a stale cached app shell that may reference old bundles.
   if (

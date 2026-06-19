@@ -11,16 +11,25 @@ export function useVisualViewportOffset(enabled = true) {
     if (!vv) return;
 
     const update = () => {
-      const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      setKeyboardOffset(Math.round(offset));
+      const layoutHeight = window.innerHeight;
+      const visualHeight = vv.height;
+      const top = Math.max(0, vv.offsetTop);
+      const raw = Math.max(0, layoutHeight - visualHeight - top);
+      const keyboardLikelyOpen =
+        visualHeight > 0 && visualHeight < layoutHeight * 0.78;
+      setKeyboardOffset(
+        keyboardLikelyOpen && raw > 80 ? Math.min(Math.round(raw), layoutHeight * 0.55) : 0,
+      );
     };
 
     update();
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
+    window.addEventListener("orientationchange", update);
     return () => {
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
+      window.removeEventListener("orientationchange", update);
     };
   }, [enabled]);
 

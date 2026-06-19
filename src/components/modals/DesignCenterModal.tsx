@@ -496,125 +496,30 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
 
                     {section === "assistant" && isOwnerRole && (
                       <div className="space-y-4">
-                        <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <div className="text-[11px] text-emerald-300 font-black">
-                                🤖 المساعد الذكي — معرض التصاميم
-                              </div>
-                              <div className="text-[10px] text-gray-400 font-bold mt-1">
-                                بطاقات زجاجية جاهزة — اختار تصميم وطبّقه كمالك بضغطة واحدة.
-                              </div>
-                            </div>
-                            <span className="px-2 py-1 rounded-full text-[9px] font-black bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shrink-0">
-                              Safe Mode
-                            </span>
+                        <div className="p-5 rounded-2xl space-y-3 lamma-section-card border border-emerald-500/25">
+                          <div className="text-[12px] font-black text-emerald-300">
+                            ✨ Universal Visual AI Style Engine
                           </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={runAssistantAudit}
-                              onPointerDown={stopDrag}
-                              className="px-4 py-2 rounded-xl text-[10px] font-black lamma-tab-soft hover:text-white"
-                            >
-                              🔍 فحص الشات
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleSmartRecommendPreview}
-                              onPointerDown={stopDrag}
-                              className="px-4 py-2 rounded-xl text-[10px] font-black lamma-accent-btn text-white"
-                            >
-                              ✨ اقتراح ذكي
-                            </button>
-                            {lastAppliedDesignSnapshot && (
-                              <button
-                                type="button"
-                                onClick={handleRestoreLastDesignSnapshot}
-                                onPointerDown={stopDrag}
-                                className="px-4 py-2 rounded-xl text-[10px] font-black lamma-danger-btn"
-                              >
-                                ↩️ تراجع
-                              </button>
-                            )}
-                          </div>
-
-                          {assistantAudit && (
-                            <div className="rounded-2xl p-3 lamma-admin-card">
-                              <div className="text-[10px] text-gray-400 font-black">تقييم المظهر</div>
-                              <div className="text-2xl font-black text-emerald-300 mt-1">
-                                {assistantAudit.score}/100
-                              </div>
-                              <div className="text-[10px] text-gray-300 font-bold mt-1">
-                                {assistantAudit.verdict}
-                              </div>
-                            </div>
-                          )}
+                          <p className="text-[10px] text-gray-300 leading-relaxed font-bold">
+                            النظام القديم للأوامر الصلبة اتلغى. افتح{" "}
+                            <span className="text-emerald-200">غرفة المالك (Owner)</span>{" "}
+                            واكتب بالعربي أو الإنجليزي — مثلاً:{" "}
+                            <span className="text-white/90">
+                              make the site cyberpunk neon
+                            </span>{" "}
+                            أو{" "}
+                            <span className="text-white/90">fabulous glassmorphic look</span>.
+                          </p>
+                          <ul className="text-[10px] text-gray-400 space-y-1.5 font-bold list-disc list-inside">
+                            <li>معاينة Sandbox داخل الشات قبل أي تطبيق global</li>
+                            <li>Refine متعدد الجولات (مثلاً: make buttons rounder)</li>
+                            <li>Apply Globally يحفظ في Supabase لكل المستخدمين + PWA</li>
+                            <li>خلفيات صورة/فيديو مع overlay تلقائي للقراءة</li>
+                          </ul>
+                          <p className="text-[9px] text-gray-500">
+                            تبويب Studio أعلاه لرفع الخلفيات اليدوي — المساعد الذكي الآن في الشات فقط.
+                          </p>
                         </div>
-
-                        <DesignTemplateGallery
-                          onPreviewTemplate={handlePreviewTemplate}
-                          onPreviewFacePreset={handlePreviewFacePreset}
-                          onPreviewGlassForm={handlePreviewGlassForm}
-                          onCommitPreview={handleCommitPreview}
-                          onCancelPreview={handleCancelPreview}
-                          onTintChange={(hex) => {
-                            if (previewKind === "column") handleColumnTintChange(hex);
-                            else handleGlassTintChange(hex);
-                          }}
-                          onPreviewColumnStyle={handlePreviewColumnStyle}
-                          onResetGlassForm={handleResetGlassForm}
-                          previewKind={previewKind}
-                          activeGlassFormId={activeGlassFormId}
-                          pendingGlassFormId={pendingGlassFormId}
-                          tintColor={
-                            previewKind === "column" ? columnTintColor : glassTintColor
-                          }
-                          pendingColumnStyleId={pendingColumnStyleId}
-                          activeColumnStyleId={activeColumnStyleId}
-                          pendingFacePresetId={pendingFacePresetId}
-                          activeFacePresetId={activeFacePresetId}
-                          pendingTemplateId={pendingTemplateId}
-                          activeTemplateId={activeTemplateId}
-                          pendingTemplateSummary={pendingTemplateSummary}
-                          recommendedPresetId={assistantAudit?.recommendedPreset}
-                          designPresets={designPresets}
-                          designPresetName={designPresetName}
-                          setDesignPresetName={setDesignPresetName}
-                          handleSaveDesignPreset={handleSaveDesignPreset}
-                          applyDesignPreset={applyDesignPreset}
-                          handleDeleteDesignPreset={handleDeleteDesignPreset}
-                        />
-
-                        {assistantProposal && (
-                          <div className="p-4 rounded-2xl space-y-3 lamma-section-card border border-cyan-500/20">
-                            <div className="text-[11px] font-black text-cyan-300">
-                              📋 مقترح قيد المراجعة: {assistantProposal.title}
-                            </div>
-                            <div className="text-[10px] text-gray-400 font-bold">
-                              {assistantProposal.summary}
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={handleApplyAssistantProposal}
-                                onPointerDown={stopDrag}
-                                className="flex-1 py-2.5 rounded-xl text-[10px] font-black lamma-accent-btn"
-                              >
-                                ✅ تطبيق المقترح
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setAssistantProposal(null)}
-                                onPointerDown={stopDrag}
-                                className="px-4 py-2.5 rounded-xl text-[10px] font-black lamma-tab-soft"
-                              >
-                                إلغاء
-                              </button>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>

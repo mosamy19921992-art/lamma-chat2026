@@ -1,6 +1,9 @@
 import { supabase } from "../../lib/supabase";
 import type { RoomDjState } from "../../lib/chatTypes";
 
+const SYNC_KEY_ATTR = "data-dj-sync-key";
+const DJ_URL_ATTR = "data-dj-url";
+
 export function parseRoomDjMap(raw: unknown): Record<string, RoomDjState> {
   if (!raw || typeof raw !== "object") return {};
   const result: Record<string, RoomDjState> = {};
@@ -20,6 +23,79 @@ export function parseRoomDjMap(raw: unknown): Record<string, RoomDjState> {
     };
   }
   return result;
+}
+
+/** يحسب وقت بداية الأغنية على الساعة الحائطية من موضع التشغيل الحالي */
+export function computeDjStartedAtMs(
+  positionSec: number,
+  nowMs = Date.now(),
+): number {
+  return nowMs - Math.max(0, positionSec) * 1000;
+}
+
+/** الموضع المتوقع للأغنية الآن بناءً على startedAtMs */
+export function expectedDjPositionSec(
+  dj: RoomDjState,
+  nowMs = Date.now(),
+): number {
+  if (!dj.isPlaying || !dj.startedAtMs) return 0;
+  return Math.max(0, (nowMs - dj.startedAtMs) / 1000);
+}
+
+function buildSyncKey(dj: RoomDjState): string {
+  return `${dj.trackId}|${dj.url}|${dj.startedAtMs}|${dj.isPlaying}`;
+}
+
+function seekToExpectedPosition(
+  audio: HTMLAudioElement,
+  dj: RoomDjState,
+  minDriftSec = 0.35,
+): void {
+  if (dj.mode !== "music" || !dj.startedAtMs) return;
+
+  const target = expectedDjPositionSec(dj);
+  if (!Number.isFinite(target) || target <= 0) return;
+
+  const duration = audio.duration;
+  if (
+    Number.isFinite(duration) &&
+    duration > 0 &&
+    target >= duration - 0.25
+  ) {
+    return;
+  }
+
+  if (Math.abs(audio.currentTime - target) <= minDriftSec) return;
+
+  try {
+    audio.currentTime = target;
+  } catch {
+    // not seekable yet
+  }
+}
+
+export function syncDjAudioDrift(
+  audio: HTMLAudioElement,
+  dj: RoomDjState,
+  driftThresholdSec = 1.2,
+): boolean {
+  if (!dj.isPlaying || dj.mode !== "music") return false;
+
+  const expected = expectedDjPositionSec(dj);
+  const duration = audio.duration;
+  if (
+    Number.isFinite(duration) &&
+    duration > 0 &&
+    expected >= duration - 0.5
+  ) {
+    return false;
+  }
+
+  const drift = expected - audio.currentTime;
+  if (Math.abs(drift) <= driftThresholdSec) return false;
+
+  seekToExpectedPosition(audio, dj, 0.05);
+  return true;
 }
 
 export async function persistRoomDjState(
@@ -48,50 +124,95 @@ export async function persistRoomDjState(
   return next;
 }
 
+/** يطبّق بث DJ على عنصر الصوت — يرجع cleanup لإزالة المؤقتات والمستمعين */
 export function applyRoomDjToAudio(
   audio: HTMLAudioElement,
   dj: RoomDjState | undefined,
   options?: { listenEnabled?: boolean },
-): void {
+): () => void {
+  const cleanupFns: Array<() => void> = [];
+  const cleanup = () => {
+    for (const fn of cleanupFns) fn();
+    cleanupFns.length = 0;
+  };
+
   const listenEnabled = options?.listenEnabled !== false;
 
   if (!listenEnabled || !dj?.isPlaying) {
     audio.pause();
-    audio.removeAttribute("data-dj-url");
-    return;
+    audio.removeAttribute(DJ_URL_ATTR);
+    audio.removeAttribute(SYNC_KEY_ATTR);
+    return cleanup;
   }
 
-  const currentDjUrl = audio.getAttribute("data-dj-url");
-  if (currentDjUrl !== dj.url) {
-    audio.setAttribute("data-dj-url", dj.url);
-    audio.src = dj.url;
-    audio.load();
-  }
+  audio.preload = "auto";
 
-  const playSynced = () => {
-    if (dj.mode === "music" && dj.startedAtMs) {
-      const elapsed = (Date.now() - dj.startedAtMs) / 1000;
-      if (
-        Number.isFinite(elapsed) &&
-        elapsed > 0 &&
-        audio.duration &&
-        Number.isFinite(audio.duration) &&
-        elapsed < audio.duration - 0.5
-      ) {
-        audio.currentTime = elapsed;
-      }
-    }
+  const syncKey = buildSyncKey(dj);
+  const prevSyncKey = audio.getAttribute(SYNC_KEY_ATTR);
+  const prevUrl = audio.getAttribute(DJ_URL_ATTR);
+  const urlChanged = prevUrl !== dj.url;
+
+  const startPlayback = () => {
+    seekToExpectedPosition(audio, dj);
     void audio.play().catch(() => {});
   };
 
-  if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
-    playSynced();
-    return;
+  if (
+    !urlChanged &&
+    prevSyncKey === syncKey &&
+    !audio.paused &&
+    audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA
+  ) {
+    const driftTimer = window.setInterval(() => {
+      if (audio.paused || !dj.isPlaying) return;
+      syncDjAudioDrift(audio, dj);
+    }, 3000);
+    cleanupFns.push(() => window.clearInterval(driftTimer));
+    return cleanup;
   }
 
-  const onReady = () => {
-    audio.removeEventListener("canplay", onReady);
-    playSynced();
-  };
-  audio.addEventListener("canplay", onReady);
+  if (urlChanged) {
+    audio.setAttribute(DJ_URL_ATTR, dj.url);
+    audio.setAttribute(SYNC_KEY_ATTR, syncKey);
+    audio.src = dj.url;
+    audio.load();
+  } else if (prevSyncKey !== syncKey) {
+    audio.setAttribute(SYNC_KEY_ATTR, syncKey);
+    startPlayback();
+  } else if (audio.paused) {
+    startPlayback();
+  }
+
+  if (
+    urlChanged ||
+    audio.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA
+  ) {
+    const onReady = () => {
+      audio.removeEventListener("canplaythrough", onReady);
+      audio.removeEventListener("loadedmetadata", onMetadata);
+      startPlayback();
+    };
+    const onMetadata = () => {
+      seekToExpectedPosition(audio, dj);
+    };
+
+    audio.addEventListener("canplaythrough", onReady);
+    audio.addEventListener("loadedmetadata", onMetadata);
+    cleanupFns.push(() => {
+      audio.removeEventListener("canplaythrough", onReady);
+      audio.removeEventListener("loadedmetadata", onMetadata);
+    });
+
+    if (audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
+      onReady();
+    }
+  }
+
+  const driftTimer = window.setInterval(() => {
+    if (audio.paused || !dj.isPlaying) return;
+    syncDjAudioDrift(audio, dj);
+  }, 3000);
+  cleanupFns.push(() => window.clearInterval(driftTimer));
+
+  return cleanup;
 }

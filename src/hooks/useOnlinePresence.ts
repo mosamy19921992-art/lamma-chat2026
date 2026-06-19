@@ -76,6 +76,28 @@ export function useOnlinePresence({
       return;
     }
 
+    setChatMembers((prev) => {
+      const existingSelf = prev.find((member) => member.id === currentUser.uid);
+      if (existingSelf) return [existingSelf];
+      return [
+        {
+          id: currentUser.uid,
+          nickname: displayNickname,
+          role: normalizeRole(
+            typeof currentUser.role === "string" ? currentUser.role : undefined,
+          ),
+          color: displayColor || "#10b981",
+          avatar: displayAvatar || "👤",
+          status: "online" as const,
+          email: currentUser.email || undefined,
+          fingerprint: myFingerprint,
+          browserSignature: myBrowserSig,
+          ip: "",
+          localStorageId: `local-${currentUser.uid}`,
+        },
+      ];
+    });
+
     const myUid = currentUser.uid;
     const channelName = presenceChannelName(roomId);
     let lastEvent: PresenceUpdateEvent["type"] = "sync";
@@ -86,6 +108,11 @@ export function useOnlinePresence({
 
     const attach = () => {
       if (stopped || !supabase) return;
+
+      if (syncTimer) {
+        clearTimeout(syncTimer);
+        syncTimer = null;
+      }
 
       const channel = supabase.channel(channelName, {
         config: { presence: { key: myUid } },
@@ -168,6 +195,8 @@ export function useOnlinePresence({
           clearTimeout(syncTimer);
         }
         syncTimer = setTimeout(() => {
+          if (stopped) return;
+
           if (!isInitialPresenceSync) {
             for (const [uid, nickname] of nextMembersByUid) {
               if (!prevMembersByUid.has(uid) && uid !== myUid) {
@@ -209,16 +238,20 @@ export function useOnlinePresence({
           if (stopped) return;
 
           if (status === "SUBSCRIBED") {
-            await channel.track({
-              uid: myUid,
-              nickname: displayNickname,
-              role: currentUser.role,
-              color: displayColor || "#10b981",
-              avatar: displayAvatar || "👤",
-              fingerprint: myFingerprint,
-              browserSignature: myBrowserSig,
-              authProvider: currentUser.authProvider,
-            } satisfies PresenceMeta);
+            try {
+              await channel.track({
+                uid: myUid,
+                nickname: displayNickname,
+                role: currentUser.role,
+                color: displayColor || "#10b981",
+                avatar: displayAvatar || "👤",
+                fingerprint: myFingerprint,
+                browserSignature: myBrowserSig,
+                authProvider: currentUser.authProvider,
+              } satisfies PresenceMeta);
+            } catch (trackError) {
+              console.warn("Presence track failed:", trackError);
+            }
             syncFromPresence();
             return;
           }

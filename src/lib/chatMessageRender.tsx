@@ -1,13 +1,22 @@
 // Helper component for rendering text messages with embedded media (YouTube, images, videos).
-// Extracted from ChatScreen.tsx — pure refactor, no behavior change.
 
 import React from "react";
-import { getYoutubeId } from "./chatHelpers.ts";
+import { getYoutubeId, isSafeHttpUrl, sanitizeHexColor } from "./chatHelpers.ts";
 
 const INLINE_FORMAT_REGEX =
   /(\[color=(#[0-9a-fA-F]{3,8})\]([\s\S]*?)\[\/color\]|\*\*([\s\S]+?)\*\*|\*([\s\S]+?)\*)/g;
 
-function renderInlineFormattedText(text: string): React.ReactNode[] {
+const MAX_INLINE_FORMAT_DEPTH = 8;
+const MAX_MESSAGE_RENDER_LENGTH = 8000;
+
+function renderInlineFormattedText(
+  text: string,
+  depth = 0,
+): React.ReactNode[] {
+  if (depth > MAX_INLINE_FORMAT_DEPTH) {
+    return [text];
+  }
+
   const nodes: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -22,16 +31,21 @@ function renderInlineFormattedText(text: string): React.ReactNode[] {
     const [fullMatch, _whole, colorValue, colorText, boldText, italicText] = match;
     const key = `${match.index}-${fullMatch.length}-${nodes.length}`;
 
-    if (colorValue && typeof colorText === "string") {
+    const safeColor = colorValue ? sanitizeHexColor(colorValue) : null;
+    if (safeColor && typeof colorText === "string") {
       nodes.push(
-        <span key={key} style={{ color: colorValue }}>
-          {renderInlineFormattedText(colorText)}
+        <span key={key} style={{ color: safeColor }}>
+          {renderInlineFormattedText(colorText, depth + 1)}
         </span>,
       );
     } else if (typeof boldText === "string") {
-      nodes.push(<strong key={key}>{renderInlineFormattedText(boldText)}</strong>);
+      nodes.push(
+        <strong key={key}>{renderInlineFormattedText(boldText, depth + 1)}</strong>,
+      );
     } else if (typeof italicText === "string") {
-      nodes.push(<em key={key}>{renderInlineFormattedText(italicText)}</em>);
+      nodes.push(
+        <em key={key}>{renderInlineFormattedText(italicText, depth + 1)}</em>,
+      );
     } else {
       nodes.push(fullMatch);
     }
@@ -49,21 +63,31 @@ function renderInlineFormattedText(text: string): React.ReactNode[] {
 export function renderTextMessageWithMedia(text: string) {
   if (!text) return null;
 
-  // Regex to find URLs
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const urls = text.match(urlRegex);
+  const safeText =
+    text.length > MAX_MESSAGE_RENDER_LENGTH
+      ? `${text.slice(0, MAX_MESSAGE_RENDER_LENGTH)}…`
+      : text;
 
-  // Split text to make URLs clickable first
-  const parts = text.split(urlRegex);
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const urls = safeText.match(urlRegex);
+
+  const parts = safeText.split(urlRegex);
   const clickableText = parts.map((part, index) => {
     if (part.match(urlRegex)) {
+      if (!isSafeHttpUrl(part)) {
+        return (
+          <span key={index} className="text-gray-400 break-all">
+            {part}
+          </span>
+        );
+      }
       return (
         <a
           key={index}
           href={part}
           target="_blank"
           referrerPolicy="no-referrer"
-          rel="noopener noreferrer"
+          rel="noopener noreferrer nofollow"
           className="text-cyan-400 hover:text-cyan-300 underline font-semibold break-all"
         >
           {part}
@@ -73,12 +97,12 @@ export function renderTextMessageWithMedia(text: string) {
     return <span key={index}>{renderInlineFormattedText(part)}</span>;
   });
 
-  // Now, parse and extract media previews to render UNDER the text
   const mediaPreviews: React.ReactNode[] = [];
 
   if (urls) {
     urls.forEach((url, idx) => {
-      // 1. YouTube Link Extraction
+      if (!isSafeHttpUrl(url)) return;
+
       const yid = getYoutubeId(url);
       if (yid) {
         mediaPreviews.push(
@@ -98,11 +122,10 @@ export function renderTextMessageWithMedia(text: string) {
             </div>
           </div>,
         );
-        return; // don't render it as double if it matches Youtube
+        return;
       }
 
-      // 2. Image Link Detection
-      const isImg = url.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) || url.includes("img");
+      const isImg = url.match(/\.(jpeg|jpg|gif|png|webp)(\?|$)/i);
       if (isImg) {
         mediaPreviews.push(
           <div
@@ -111,6 +134,7 @@ export function renderTextMessageWithMedia(text: string) {
           >
             <img
               loading="lazy"
+              decoding="async"
               src={url}
               alt="Embedded Link Attachment"
               referrerPolicy="no-referrer"
@@ -121,9 +145,9 @@ export function renderTextMessageWithMedia(text: string) {
         return;
       }
 
-      // 3. Video Link Detection
       const isVid =
-        url.match(/\.(mp4|webm|ogg|mov)/i) || url.includes("assets.mixkit.co");
+        url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i) ||
+        url.includes("assets.mixkit.co");
       if (isVid) {
         mediaPreviews.push(
           <div
@@ -137,7 +161,6 @@ export function renderTextMessageWithMedia(text: string) {
             />
           </div>,
         );
-        return;
       }
     });
   }

@@ -19,6 +19,12 @@ import {
 } from './lib/authProfile';
 import { isOwnerChatRole, OWNER_DISPLAY_BADGE } from './lib/ownerIdentity';
 import { mergeSessionRole } from './services/auth/userRoleService';
+import {
+  buildGuestUserSession,
+  isAnonymousAuthUser,
+  loadGuestSessionFromDb,
+  reconcileGuestSession,
+} from './services/auth/guestAuthService';
 import { ensureFreshAppBuild } from './lib/appCache';
 
 const CHAT_SCREEN_IMPORT = () => import('./components/ChatScreen');
@@ -176,6 +182,26 @@ async function hydrateSupabaseUserSession(
   return mergedRole === base.role ? base : { ...base, role: mergedRole };
 }
 
+async function hydrateAnonymousGuestUser(
+  supaUser: SupabaseUser,
+): Promise<UserSession | null> {
+  const cached = readGuestSession();
+  if (cached?.uid === supaUser.id) {
+    return cached;
+  }
+
+  const fromDb = await loadGuestSessionFromDb(supaUser.id);
+  if (!fromDb) return null;
+
+  const guest = buildGuestUserSession(
+    supaUser.id,
+    fromDb.nickname,
+    fromDb.color,
+  );
+  writeGuestSession(guest);
+  return guest;
+}
+
 export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
   const [authReady, setAuthReady] = useState(() => !isSupabaseConfigured);
@@ -263,15 +289,29 @@ export default function App() {
     }
 
     let cancelled = false;
+    let authEpoch = 0;
 
     const finishAuth = async () => {
+      const epoch = ++authEpoch;
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        if (cancelled) return;
+        if (cancelled || epoch !== authEpoch) return;
 
         if (session?.user) {
+          if (isAnonymousAuthUser(session.user)) {
+            const guestUser = await hydrateAnonymousGuestUser(session.user);
+            if (guestUser) {
+              setPendingSupabaseUser(null);
+              setUser(guestUser);
+              return;
+            }
+            await supabase.auth.signOut({ scope: 'local' });
+            setUser(null);
+            return;
+          }
+
           clearGuestSession();
           if (needsProfileNickname(session.user)) {
             setPendingSupabaseUser(session.user);
@@ -285,7 +325,9 @@ export default function App() {
 
         setPendingSupabaseUser(null);
         if (guestSession) {
-          setUser(guestSession);
+          const restored = await reconcileGuestSession(guestSession);
+          writeGuestSession(restored);
+          setUser(restored);
           return;
         }
 
@@ -294,10 +336,12 @@ export default function App() {
         }
       } catch (error) {
         console.warn('[Auth] getSession failed:', error);
-        if (cancelled) return;
+        if (cancelled || epoch !== authEpoch) return;
         setPendingSupabaseUser(null);
         if (guestSession) {
-          setUser(guestSession);
+          const restored = await reconcileGuestSession(guestSession);
+          writeGuestSession(restored);
+          setUser(restored);
         } else if (devSession) {
           setUser(devSession);
         }
@@ -312,21 +356,46 @@ export default function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'TOKEN_REFRESHED') {
+        return;
+      }
+
+      const epoch = ++authEpoch;
+
       if (session?.user) {
+        if (isAnonymousAuthUser(session.user)) {
+          const guestUser = await hydrateAnonymousGuestUser(session.user);
+          if (epoch !== authEpoch) return;
+          setPendingSupabaseUser(null);
+          setUser(guestUser);
+          return;
+        }
+
         clearGuestSession();
         if (needsProfileNickname(session.user)) {
+          if (epoch !== authEpoch) return;
           setPendingSupabaseUser(session.user);
           setUser(null);
           return;
         }
         setPendingSupabaseUser(null);
-        setUser(await hydrateSupabaseUserSession(session.user));
+        const hydrated = await hydrateSupabaseUserSession(session.user);
+        if (epoch !== authEpoch) return;
+        setUser(hydrated);
         return;
       }
 
+      if (epoch !== authEpoch) return;
       setPendingSupabaseUser(null);
-      setUser(readGuestSession() || readDevSession());
+      const cachedGuest = readGuestSession();
+      if (cachedGuest) {
+        const restored = await reconcileGuestSession(cachedGuest);
+        writeGuestSession(restored);
+        setUser(restored);
+        return;
+      }
+      setUser(readDevSession());
     });
 
     return () => {
@@ -353,16 +422,16 @@ export default function App() {
     };
 
     if (authProvider === 'guest') {
-      const guestUid = uid || getClientUid();
-      writeGuestSession({ ...nextUser, uid: guestUid });
-      setUser({ ...nextUser, uid: guestUid });
+      if (!uid) {
+        console.warn('[Auth] Guest login missing uid from anonymous auth.');
+        return;
+      }
+      writeGuestSession({ ...nextUser, uid });
+      setUser({ ...nextUser, uid });
     } else {
       clearGuestSession();
       setPendingSupabaseUser(null);
-    }
-
-    if (authProvider !== 'guest') {
-      setUser(nextUser);
+      // Supabase session hydration is handled by onAuthStateChange.
     }
   };
 
@@ -394,6 +463,7 @@ export default function App() {
         ) : (
           <Suspense fallback={<ChatLoadingScreen user={user} />}>
             <ChatScreen
+              key={`${user.uid}-${user.authProvider}`}
               currentUser={user}
               onLogout={handleLogout}
               primaryTheme={primaryTheme}

@@ -1,28 +1,32 @@
 import { supabase } from "../../lib/supabase";
+import { isSafeHttpUrl } from "../../lib/chatHelpers";
+import { requireAuthenticatedUid } from "../auth/guestAuthService";
+import { userStoragePath } from "../storage/storagePaths";
 import type { ChatMember, PMThreadMessage, UserSession } from "../../lib/chatTypes";
+import type { PersistedPrivateMessage, PrivateMessageType } from "../../lib/socialTypes";
+import { resolveReceiverUid } from "../social/userProfileService";
 
 const MAX_PM_THREAD_MESSAGES = 100;
-const UUID_LIKE_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function isUuidLike(value?: string | null): value is string {
-  return Boolean(value && UUID_LIKE_PATTERN.test(value));
-}
 
 function formatComposerTime(): string {
-  return new Date().toLocaleTimeString("en-US", {
+  return new Date().toLocaleTimeString("ar-EG", {
     hour: "numeric",
     minute: "numeric",
     hour12: true,
   });
 }
 
-export function createOptimisticPmMessage(text: string): PMThreadMessage {
+export function createOptimisticPmMessage(
+  text: string,
+  options?: { type?: PrivateMessageType; mediaUrl?: string },
+): PMThreadMessage {
   return {
     text,
     isOwn: true,
     time: formatComposerTime(),
     status: "delivered",
+    type: options?.type || "text",
+    mediaUrl: options?.mediaUrl,
   };
 }
 
@@ -37,20 +41,22 @@ interface PersistPrivateMessageOptions {
   currentUser: UserSession;
   targetNickname: string;
   text: string;
+  type?: PrivateMessageType;
+  mediaUrl?: string;
   members: Pick<ChatMember, "id" | "nickname">[];
 }
 
-interface PersistedPrivateMessage {
-  id: string;
-  created_at?: string;
-  text: string;
-}
-
-function createLocalPrivateMessage(text: string): PersistedPrivateMessage {
+function createLocalPrivateMessage(
+  text: string,
+  type: PrivateMessageType = "text",
+  mediaUrl?: string,
+): PersistedPrivateMessage {
   return {
     id: `local-pm-${crypto.randomUUID()}`,
     created_at: new Date().toISOString(),
     text,
+    type,
+    media_url: mediaUrl,
   };
 }
 
@@ -58,41 +64,47 @@ export async function persistPrivateMessage({
   currentUser,
   targetNickname,
   text,
+  type = "text",
+  mediaUrl,
   members,
 }: PersistPrivateMessageOptions): Promise<PersistedPrivateMessage> {
   if (!currentUser.uid) {
     throw new Error("تعذر إرسال الرسالة الخاصة بدون معرف جلسة.");
   }
 
-  const receiver = members.find((member) => member.nickname === targetNickname);
-  const receiverUid = receiver && isUuidLike(receiver.id) ? receiver.id : null;
+  const receiverUid = await resolveReceiverUid(targetNickname, members);
+  const trimmedText = text.trim();
 
   if (!supabase) {
-    return createLocalPrivateMessage(text);
+    return createLocalPrivateMessage(trimmedText, type, mediaUrl);
   }
+
+  if (currentUser.authProvider !== "guest" && !receiverUid) {
+    throw new Error(
+      "تعذر تحديد الطرف الآخر. تأكد أن العضو مسجّل ومتصل أو جرّب لاحقاً.",
+    );
+  }
+
+  const senderUid = await requireAuthenticatedUid();
+  const safeMedia =
+    mediaUrl && isSafeHttpUrl(mediaUrl) ? mediaUrl.slice(0, 2048) : null;
 
   const { data, error } = await supabase
     .from("pm_messages")
     .insert([
       {
-        sender_uid: currentUser.uid,
-        sender_nickname: currentUser.nickname,
+        sender_uid: senderUid,
         receiver_uid: receiverUid,
         receiver_nickname: targetNickname,
-        text,
-        type: "text",
+        text: trimmedText.slice(0, 4000),
+        type,
+        media_url: safeMedia,
       },
     ])
-    .select("id, created_at, text")
+    .select("id, created_at, text, type, media_url")
     .single();
 
   if (error) {
-    if (currentUser.authProvider === "guest") {
-      return createLocalPrivateMessage(text);
-    }
-    if (!receiverUid) {
-      throw new Error("تعذر تحديد الطرف الآخر لهذه الرسالة الخاصة.");
-    }
     throw error;
   }
 
@@ -101,4 +113,60 @@ export async function persistPrivateMessage({
   }
 
   return data;
+}
+
+export async function markPrivateMessagesAsRead(
+  messageIds: string[],
+): Promise<void> {
+  if (!supabase || messageIds.length === 0) return;
+
+  const { error } = await supabase
+    .from("pm_messages")
+    .update({ is_read: true })
+    .in("id", messageIds);
+
+  if (error) {
+    console.warn("Failed to mark PM as read:", error.message);
+  }
+}
+
+export async function uploadPrivateMediaFile(
+  file: File,
+  targetNickname: string,
+): Promise<string> {
+  if (!supabase) {
+    throw new Error("Supabase غير متصل.");
+  }
+
+  const uid = await requireAuthenticatedUid();
+  const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
+  const target = targetNickname.replace(/[^\w.\-]+/g, "_") || "unknown";
+  const objectPath = userStoragePath(
+    uid,
+    "pm",
+    target,
+    `${Date.now()}_${crypto.randomUUID()}_${safeName}`,
+  );
+
+  const { error: uploadError } = await supabase.storage
+    .from("chat-media")
+    .upload(objectPath, file, {
+      cacheControl: "3600",
+      contentType: file.type,
+      upsert: false,
+    });
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const { data: publicData } = supabase.storage
+    .from("chat-media")
+    .getPublicUrl(objectPath);
+
+  if (!publicData?.publicUrl) {
+    throw new Error("تعذر توليد رابط الوسائط.");
+  }
+
+  return publicData.publicUrl;
 }

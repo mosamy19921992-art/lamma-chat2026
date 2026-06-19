@@ -62,12 +62,17 @@ export interface Message {
     | "leave"
     | "gift"
     | "youtube"
-    | "shadow_msg";
+    | "shadow_msg"
+    | "style_sandbox";
   mediaUrl?: string;
   giftIcon?: string;
   giftName?: string;
   youtubeId?: string;
   reactions?: Record<string, number>;
+  styleSandboxId?: string;
+  styleSandboxConfig?: import("../services/design/universalStyleTypes").UniversalStyleConfig;
+  styleSandboxSummary?: string;
+  styleSandboxApplied?: boolean;
 }
 
 export interface ChatMember {

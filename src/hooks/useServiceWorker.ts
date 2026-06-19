@@ -13,6 +13,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 export const PWA_ENABLED = import.meta.env.VITE_ENABLE_PWA === "true";
 const ENABLE_PWA = PWA_ENABLED;
 const CACHE_PREFIXES = ["lamma-"];
+const VERSION_TOKEN = "1.0.27-mobile-grid";
 
 interface ServiceWorkerState {
   needRefresh: boolean;
@@ -77,6 +78,14 @@ export function useServiceWorker(): ServiceWorkerState {
 
       if (registration.waiting) {
         setNeedRefresh(true);
+        const standalone =
+          typeof window !== "undefined" &&
+          (window.matchMedia?.("(display-mode: standalone)")?.matches ||
+            (window.navigator as Navigator & { standalone?: boolean })
+              .standalone === true);
+        if (standalone) {
+          registration.waiting.postMessage("SKIP_WAITING");
+        }
       }
 
       if (registration.active) {
@@ -92,6 +101,13 @@ export function useServiceWorker(): ServiceWorkerState {
 
           if (navigator.serviceWorker.controller) {
             setNeedRefresh(true);
+            const standalone =
+              window.matchMedia?.("(display-mode: standalone)")?.matches ||
+              (window.navigator as Navigator & { standalone?: boolean })
+                .standalone === true;
+            if (standalone && registration.waiting) {
+              registration.waiting.postMessage("SKIP_WAITING");
+            }
             return;
           }
 
@@ -117,13 +133,33 @@ export function useServiceWorker(): ServiceWorkerState {
       }
     };
 
+    let unregisterSwListeners: (() => void) | undefined;
+
     const registerServiceWorker = async () => {
       try {
-        const registration = await navigator.serviceWorker.register("/sw.js");
+        const registration = await navigator.serviceWorker.register(
+          `/sw.js?v=${VERSION_TOKEN}`,
+        );
         if (!mounted) return;
 
         bindRegistrationEvents(registration);
         await registration.update().catch(() => {});
+
+        const refreshRegistration = () => {
+          registration.update().catch(() => {});
+        };
+        const intervalId = window.setInterval(refreshRegistration, 5 * 60 * 1000);
+        const handleVisibility = () => {
+          if (document.visibilityState === "visible") {
+            refreshRegistration();
+          }
+        };
+        document.addEventListener("visibilitychange", handleVisibility);
+
+        unregisterSwListeners = () => {
+          window.clearInterval(intervalId);
+          document.removeEventListener("visibilitychange", handleVisibility);
+        };
       } catch (err) {
         console.warn("[SW] Registration failed:", err);
       }
@@ -164,6 +200,7 @@ export function useServiceWorker(): ServiceWorkerState {
 
     return () => {
       mounted = false;
+      unregisterSwListeners?.();
       window.removeEventListener(
         "beforeinstallprompt",
         handleBeforeInstallPrompt,

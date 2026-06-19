@@ -96,6 +96,7 @@ export interface OwnerSettingsRow {
   chat_theme?: string | null;
   room_dj_map?: Record<string, unknown> | null;
   dj_library?: unknown[] | null;
+  universal_style_config?: Record<string, unknown> | null;
 }
 
 export interface OwnerMemberPermissionRow {
