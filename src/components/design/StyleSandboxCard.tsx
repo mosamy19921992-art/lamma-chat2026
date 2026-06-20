@@ -8,6 +8,7 @@ interface StyleSandboxCardProps {
   onApply: () => void;
   onCancel: () => void;
   disabled?: boolean;
+  isApplying?: boolean;
 }
 
 function StyleSandboxCardInner({
@@ -17,6 +18,7 @@ function StyleSandboxCardInner({
   onApply,
   onCancel,
   disabled = false,
+  isApplying = false,
 }: StyleSandboxCardProps) {
   const chaseActive = config.effects?.sidebarCardChase;
   const headerActive =
@@ -137,15 +139,15 @@ function StyleSandboxCardInner({
         <button
           type="button"
           className="lamma-style-sandbox-apply"
-          disabled={disabled}
+          disabled={disabled || isApplying}
           onClick={onApply}
         >
-          ✅ تطبيق على الكل
+          {isApplying ? "⏳ جاري الحفظ..." : "✅ تطبيق على الكل"}
         </button>
         <button
           type="button"
           className="lamma-style-sandbox-cancel"
-          disabled={disabled}
+          disabled={disabled || isApplying}
           onClick={onCancel}
         >
           ✖ إلغاء / تعديل

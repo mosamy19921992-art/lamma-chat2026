@@ -20,6 +20,7 @@ import {
   formatSuggestionOneLiner,
   type DesignInspectSuggestion,
 } from "../services/design/designInspectSuggestions";
+import { checkOwnerWriteAccess } from "../services/auth/ownerWriteAccessService";
 import {
   buildStyleSandboxMessage,
   MAX_STYLE_SANDBOX_SESSIONS,
@@ -2356,8 +2357,31 @@ export default function ChatScreen({
     null,
   );
   const ownerRlsAlertShownRef = useRef(false);
+  const ownerMemberPermissionsAlertShownRef = useRef(false);
+  const lastSyncedMemberPermissionsRef = useRef("");
+  const lastSyncedMemberCosmeticsRef = useRef("");
+  const [ownerWriteAccessOk, setOwnerWriteAccessOk] = useState<boolean | null>(
+    null,
+  );
+  const [applyingStyleSandboxId, setApplyingStyleSandboxId] = useState<
+    string | null
+  >(null);
 
-  const canPersistOwnerSettings = isOwnerRole;
+  const canPersistOwnerSettings = isOwnerRole && ownerWriteAccessOk === true;
+
+  useEffect(() => {
+    if (!isOwnerRole) {
+      setOwnerWriteAccessOk(null);
+      return;
+    }
+    let cancelled = false;
+    void checkOwnerWriteAccess().then((result) => {
+      if (!cancelled) setOwnerWriteAccessOk(result.ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwnerRole, currentUser.uid, currentUser.authProvider]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -2435,24 +2459,29 @@ export default function ChatScreen({
             if (isCancelled) return;
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
               const p = payload.new;
-              setMemberCustomPermissions(prev => ({
-                ...prev,
-                [p.nickname]: {
-                  recordingAllowed: !!p.recording_allowed,
-                  callsAllowed: !!p.calls_allowed,
-                  videoCallsAllowed: !!p.video_calls_allowed,
-                  musicRadioAllowed: !!p.music_radio_allowed,
-                  roomCreationAllowed: !!p.room_creation_allowed,
-                  imagesAllowed: !!p.images_allowed,
-                  youtubeAllowed: !!p.youtube_allowed,
-                }
-              }));
+              setMemberCustomPermissions(prev => {
+                const next = {
+                  ...prev,
+                  [p.nickname]: {
+                    recordingAllowed: !!p.recording_allowed,
+                    callsAllowed: !!p.calls_allowed,
+                    videoCallsAllowed: !!p.video_calls_allowed,
+                    musicRadioAllowed: !!p.music_radio_allowed,
+                    roomCreationAllowed: !!p.room_creation_allowed,
+                    imagesAllowed: !!p.images_allowed,
+                    youtubeAllowed: !!p.youtube_allowed,
+                  },
+                };
+                lastSyncedMemberPermissionsRef.current = JSON.stringify(next);
+                return next;
+              });
             } else if (payload.eventType === 'DELETE') {
               const p = payload.old;
               if (p && p.nickname) {
                 setMemberCustomPermissions(prev => {
                   const next = { ...prev };
                   delete next[p.nickname];
+                  lastSyncedMemberPermissionsRef.current = JSON.stringify(next);
                   return next;
                 });
               }
@@ -2488,19 +2517,24 @@ export default function ChatScreen({
                 });
                 return;
               }
-              setMemberCosmeticGrants((prev) => ({
-                ...prev,
-                [p.nickname]: {
-                  vipTier: p.vip_tier || null,
-                  frame: p.frame || null,
-                },
-              }));
+              setMemberCosmeticGrants((prev) => {
+                const next = {
+                  ...prev,
+                  [p.nickname]: {
+                    vipTier: p.vip_tier || null,
+                    frame: p.frame || null,
+                  },
+                };
+                lastSyncedMemberCosmeticsRef.current = JSON.stringify(next);
+                return next;
+              });
             } else if (payload.eventType === "DELETE") {
               const p = payload.old as OwnerMemberCosmeticsRow;
               if (p?.nickname) {
                 setMemberCosmeticGrants((prev) => {
                   const next = { ...prev };
                   delete next[p.nickname];
+                  lastSyncedMemberCosmeticsRef.current = JSON.stringify(next);
                   return next;
                 });
               }
@@ -2623,6 +2657,7 @@ export default function ChatScreen({
             return acc;
           }, {});
 
+          lastSyncedMemberPermissionsRef.current = JSON.stringify(nextPermissions);
           setMemberCustomPermissions(nextPermissions);
         }
 
@@ -2638,6 +2673,7 @@ export default function ChatScreen({
             };
             return acc;
           }, {});
+          lastSyncedMemberCosmeticsRef.current = JSON.stringify(nextCosmetics);
           setMemberCosmeticGrants(nextCosmetics);
         }
 
@@ -2902,6 +2938,11 @@ export default function ChatScreen({
     }
 
     ownerPermissionsSyncTimeoutRef.current = setTimeout(async () => {
+      const snapshot = JSON.stringify(memberCustomPermissions);
+      if (snapshot === lastSyncedMemberPermissionsRef.current) {
+        return;
+      }
+
       const rows: OwnerMemberPermissionRow[] = Object.entries(
         memberCustomPermissions,
       ).map(([nickname, permissions]) => ({
@@ -2924,11 +2965,18 @@ export default function ChatScreen({
 
       if (error) {
         console.warn("Failed to sync owner member permissions", error);
-        if (isOwnerRole) {
+        if (
+          isOwnerRole &&
+          !ownerMemberPermissionsAlertShownRef.current
+        ) {
+          ownerMemberPermissionsAlertShownRef.current = true;
           alert(
-            `⚠️ تعذر حفظ صلاحيات الأعضاء على السيرفر: ${error.message}\nتأكد أن حسابك مضبوط كـ owner في Supabase (user_roles أو user_metadata.role).`,
+            `⚠️ تعذر حفظ صلاحيات الأعضاء على السيرفر: ${error.message}\n` +
+              "تحقق من user_roles (role=owner) وسياسات RLS على owner_member_permissions.",
           );
         }
+      } else {
+        lastSyncedMemberPermissionsRef.current = snapshot;
       }
     }, OWNER_SYNC_DEBOUNCE_MS);
 
@@ -2937,7 +2985,7 @@ export default function ChatScreen({
         clearTimeout(ownerPermissionsSyncTimeoutRef.current);
       }
     };
-  }, [canPersistOwnerSettings, currentUser.nickname, memberCustomPermissions]);
+  }, [canPersistOwnerSettings, currentUser.nickname, isOwnerRole, memberCustomPermissions]);
 
   useEffect(() => {
     if (
@@ -2953,6 +3001,11 @@ export default function ChatScreen({
     }
 
     ownerCosmeticsSyncTimeoutRef.current = setTimeout(async () => {
+      const snapshot = JSON.stringify(memberCosmeticGrants);
+      if (snapshot === lastSyncedMemberCosmeticsRef.current) {
+        return;
+      }
+
       const rows: OwnerMemberCosmeticsRow[] = Object.entries(
         memberCosmeticGrants,
       ).map(([nickname, grant]) => ({
@@ -2986,6 +3039,8 @@ export default function ChatScreen({
 
       if (error) {
         console.warn("Failed to sync owner member cosmetics", error);
+      } else {
+        lastSyncedMemberCosmeticsRef.current = snapshot;
       }
     }, OWNER_SYNC_DEBOUNCE_MS);
 
@@ -4904,6 +4959,7 @@ export default function ChatScreen({
     commitPendingDesignPreview,
     cancelPendingDesignPreview,
     hasPendingDesignPreview,
+    isApplyingStyle,
   } = useUniversalStyleEngine({
     activeRoomId,
     isOwner: isOwnerRole,
@@ -5078,23 +5134,28 @@ export default function ChatScreen({
 
   const handleApplyStyleSandbox = useCallback(
     async (session: StyleSandboxSession) => {
-      const ok = await applyStyleGlobally(session);
-      if (ok) {
-        setStyleSandboxes((prev) => ({
-          ...prev,
-          [session.id]: { ...session, applied: true },
-        }));
-        setRoomMessages((prev) => {
-          const roomMsgs = prev[activeRoomId] || [];
-          return {
+      setApplyingStyleSandboxId(session.id);
+      try {
+        const ok = await applyStyleGlobally(session);
+        if (ok) {
+          setStyleSandboxes((prev) => ({
             ...prev,
-            [activeRoomId]: roomMsgs.map((m) =>
-              m.styleSandboxId === session.id
-                ? { ...m, styleSandboxApplied: true }
-                : m,
-            ),
-          };
-        });
+            [session.id]: { ...session, applied: true },
+          }));
+          setRoomMessages((prev) => {
+            const roomMsgs = prev[activeRoomId] || [];
+            return {
+              ...prev,
+              [activeRoomId]: roomMsgs.map((m) =>
+                m.styleSandboxId === session.id
+                  ? { ...m, styleSandboxApplied: true }
+                  : m,
+              ),
+            };
+          });
+        }
+      } finally {
+        setApplyingStyleSandboxId(null);
       }
     },
     [activeRoomId, applyStyleGlobally, setRoomMessages],
@@ -9245,6 +9306,7 @@ export default function ChatScreen({
                                     summary={session.summary}
                                     prompt={session.prompt}
                                     disabled={session.applied}
+                                    isApplying={applyingStyleSandboxId === session.id}
                                     onApply={() =>
                                       void handleApplyStyleSandbox(session)
                                     }
@@ -11433,6 +11495,7 @@ export default function ChatScreen({
                     previewDesignPrompt={previewDesignPrompt}
                     commitPendingDesignPreview={commitPendingDesignPreview}
                     cancelPendingDesignPreview={cancelPendingDesignPreview}
+                    ownerWriteAccessOk={ownerWriteAccessOk}
                   />
                 )}
                 {activeModal === 'leadership' && leadershipTab === 'stats' && (

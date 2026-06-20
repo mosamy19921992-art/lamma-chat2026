@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { setDesignPreviewActive } from "../services/design/designPreviewDom";
 import {
+  checkOwnerWriteAccess,
+  formatOwnerWriteDeniedMessage,
+} from "../services/auth/ownerWriteAccessService";
+import {
   previewImportPackVisuals,
   commitImportPackVisuals,
   cancelImportPackVisualPreview,
@@ -56,6 +60,7 @@ export function useUniversalStyleEngine({
     null,
   );
   const [hasPendingDesignPreview, setHasPendingDesignPreview] = useState(false);
+  const [isApplyingStyle, setIsApplyingStyle] = useState(false);
   const previewMemoryRef = useRef<UniversalStyleConfig | null>(null);
   const previewSnapshotRef = useRef<UniversalStyleConfig | null>(null);
   const pendingImportPackRef = useRef<DesignImportPack | null>(null);
@@ -186,8 +191,18 @@ export function useUniversalStyleEngine({
     async (session: StyleSandboxSession): Promise<boolean> => {
       if (session.applied || applyInFlightRef.current) return false;
       applyInFlightRef.current = true;
+      setIsApplyingStyle(true);
 
       try {
+        const access = await checkOwnerWriteAccess();
+        if (!access.ok) {
+          addLammaBotMessage(
+            activeRoomId,
+            formatOwnerWriteDeniedMessage(access.reason),
+          );
+          return false;
+        }
+
         const config = session.config;
         setCommittedConfig(config);
         saveUniversalStyleLocal(config);
@@ -216,13 +231,16 @@ export function useUniversalStyleEngine({
         return true;
       } catch (error) {
         console.warn("[UniversalStyle] apply failed:", error);
+        const msg =
+          error instanceof Error ? error.message : "خطأ غير معروف";
         addLammaBotMessage(
           activeRoomId,
-          "⚠️ فشل الحفظ على السيرفر — المعاينة لسه على جهازك. تأكد من صلاحيات المالك في Supabase.",
+          formatOwnerWriteDeniedMessage(msg),
         );
         return false;
       } finally {
         applyInFlightRef.current = false;
+        setIsApplyingStyle(false);
       }
     },
     [activeRoomId, addLammaBotMessage, ownerSettingsRowId, setOwnerBgImage],
@@ -324,6 +342,7 @@ export function useUniversalStyleEngine({
     commitPendingDesignPreview,
     cancelPendingDesignPreview,
     hasPendingDesignPreview,
+    isApplyingStyle,
   };
 }
 

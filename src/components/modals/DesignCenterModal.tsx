@@ -37,7 +37,7 @@ import {
 
 type DesignSection = "uploads" | "studio" | "library" | "assistant";
 
-export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode, previewDesignPrompt, cancelPendingDesignPreview, commitPendingDesignPreview }: any) => {
+export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode, previewDesignPrompt, cancelPendingDesignPreview, commitPendingDesignPreview, ownerWriteAccessOk }: any) => {
   type PreviewKind = "glass" | "face" | "template" | "column" | "import-pack" | null;
 
   const [section, setSection] = useState<DesignSection>("uploads");
@@ -261,20 +261,29 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     if (!pendingImportPack) return;
     const pack = pendingImportPack;
     const title = pack.title;
-    commitImportPackVisuals(pack);
-    if (pack.templateId) {
-      commitAssistantPreset?.(pack.templateId);
+    try {
+      if (ownerWriteAccessOk === false && pack.stylePrompt) {
+        alert(
+          "⚠️ الزجاج والبطاقات تُحفظ محلياً — لكن الألوان العامة تحتاج صلاحية owner على Supabase (user_roles).",
+        );
+      }
+      commitImportPackVisuals(pack);
+      if (pack.templateId) {
+        commitAssistantPreset?.(pack.templateId);
+      }
+      if (pack.stylePrompt && commitPendingDesignPreview) {
+        await commitPendingDesignPreview();
+      }
+      setActiveImportPackId(pack.id);
+      setPendingImportPack(null);
+      setPendingTemplateId(null);
+      setPendingTemplateSummary("");
+      setPreviewKind(null);
+      setDesignPreviewActive(false);
+      alert(`✅ تم تطبيق pack «${title}» (${describeImportPackLayers(pack)}).`);
+    } catch {
+      alert("⚠️ تعذر إكمال التطبيق — جرّب «إلغاء» ثم أعد المعاينة.");
     }
-    if (pack.stylePrompt && commitPendingDesignPreview) {
-      await commitPendingDesignPreview();
-    }
-    setActiveImportPackId(pack.id);
-    setPendingImportPack(null);
-    setPendingTemplateId(null);
-    setPendingTemplateSummary("");
-    setPreviewKind(null);
-    setDesignPreviewActive(false);
-    alert(`✅ تم تطبيق pack «${title}» (${describeImportPackLayers(pack)}).`);
   };
 
   const handleCancelPreview = () => {
@@ -655,6 +664,13 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                             >
                               🎯 حدّد بالماوس (Inspect Mode)
                             </button>
+                          ) : null}
+                          {ownerWriteAccessOk === false ? (
+                            <p className="text-[10px] text-amber-300/95 font-bold mt-3 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 leading-relaxed">
+                              ⚠️ حسابك يظهر كـ BOSS لكن Supabase يرفض الحفظ — سجّل دخول
+                              حقيقي وأضف role=owner في جدول user_roles. المعاينة تعمل محلياً
+                              لكن «تطبيق على الكل» لن يُحفظ للجميع.
+                            </p>
                           ) : null}
                           <p className="text-[9px] text-gray-500 mt-2 leading-relaxed">
                             انقر على أي جزء في الشات — هيدر، أعمدة، رسائل، خلفية، أو شريط

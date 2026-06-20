@@ -7,6 +7,26 @@ import {
   type UniversalStyleConfig,
 } from "./universalStyleTypes";
 
+const SUPABASE_WRITE_TIMEOUT_MS = 10_000;
+
+async function withWriteTimeout<T>(
+  promise: PromiseLike<T>,
+  label: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} — انتهت مهلة الاتصال بالسيرفر`)),
+      SUPABASE_WRITE_TIMEOUT_MS,
+    );
+  });
+  try {
+    return await Promise.race([Promise.resolve(promise), timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export function loadUniversalStyleLocal(): UniversalStyleConfig | null {
   try {
     const raw = localStorage.getItem(UNIVERSAL_STYLE_STORAGE_KEY);
@@ -34,25 +54,44 @@ export async function syncUniversalStyleToSupabase(
   saveUniversalStyleLocal(config);
   if (!supabase) return;
 
-  const { error } = await supabase
-    .from("owner_settings")
-    .update({
-      universal_style_config: config,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", ownerSettingsRowId);
+  const patch = {
+    universal_style_config: config,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await withWriteTimeout(
+    supabase
+      .from("owner_settings")
+      .update(patch)
+      .eq("id", ownerSettingsRowId),
+    "حفظ التصميم",
+  );
 
   if (error) {
-    // Fallback: row may not exist yet — safe partial upsert
-    const { error: upsertError } = await supabase.from("owner_settings").upsert(
-      {
-        id: ownerSettingsRowId,
-        universal_style_config: config,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" },
+    const { error: upsertError } = await withWriteTimeout(
+      supabase.from("owner_settings").upsert(
+        {
+          id: ownerSettingsRowId,
+          ...patch,
+        },
+        { onConflict: "id" },
+      ),
+      "حفظ التصميم (upsert)",
     );
     if (upsertError) {
+      if (upsertError.code === "42501") {
+        throw new Error(
+          "RLS: حسابك لا يملك صلاحية الكتابة — أضف role=owner في user_roles",
+        );
+      }
+      if (
+        upsertError.message.includes("universal_style_config") ||
+        upsertError.code === "PGRST204"
+      ) {
+        throw new Error(
+          "عمود universal_style_config غير موجود — شغّل supabase-universal-style.sql",
+        );
+      }
       throw new Error(upsertError.message);
     }
   }
