@@ -19,6 +19,13 @@ import {
   formatDesignSuggestionsSummary,
   isDesignSuggestionPrompt,
 } from "./designInspectSuggestions";
+import { isDesignImportPrompt } from "./designImportCatalog";
+import {
+  formatDesignImportLibrarySummary,
+  matchImportPackFromPrompt,
+  describeImportPackApply,
+} from "./designImportBotService";
+import { loadImportedDesignPacks } from "./designNetImportService";
 import { resetConfigWallpaperToDefault } from "./universalStyleStorage";
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/gi;
@@ -613,6 +620,32 @@ export function parseOwnerStylePrompt(
       config,
       summary: formatDesignSuggestionsSummary(suggestions),
       refined: false,
+    };
+  }
+
+  if (isDesignImportPrompt(trimmed)) {
+    const imported =
+      typeof window !== "undefined" ? loadImportedDesignPacks() : [];
+    const matched = matchImportPackFromPrompt(trimmed, imported);
+    if (matched?.stylePrompt) {
+      const inner = parseOwnerStylePrompt(matched.stylePrompt, previous);
+      return {
+        ...inner,
+        summary: `📦 ${describeImportPackApply(matched)}\n\n${inner.summary}`,
+        refined: Boolean(previous),
+        importPack: matched,
+      };
+    }
+    const config = previous
+      ? structuredClone(previous)
+      : createDefaultUniversalStyle();
+    return {
+      config,
+      summary: matched
+        ? `📦 ${describeImportPackApply(matched)}\n\nافتح مركز التصميم → 📚 مكتبة الثيمات للمعاينة، أو أكمل «طبّق ${matched.id}» بعد المعاينة.`
+        : formatDesignImportLibrarySummary(imported),
+      refined: false,
+      importPack: matched ?? undefined,
     };
   }
 

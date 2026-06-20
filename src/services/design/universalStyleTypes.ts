@@ -13,6 +13,7 @@ import type {
   ChatDesignRegion,
   RegionStyleState,
 } from "./chatDesignVocabulary";
+import type { DesignImportPack } from "./designImportCatalog";
 import { createDefaultRegions } from "./chatDesignVocabulary";
 
 export type ChatHeaderStyleId = "none" | "flow-strip" | "glass-minimal" | "luxe-gold";
@@ -67,6 +68,8 @@ export interface StyleEngineParseResult {
   config: UniversalStyleConfig;
   summary: string;
   refined: boolean;
+  /** When owner triggers a design import pack from chat */
+  importPack?: DesignImportPack;
 }
 
 export interface StyleSandboxSession {

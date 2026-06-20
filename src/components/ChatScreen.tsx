@@ -11430,6 +11430,9 @@ export default function ChatScreen({
                     handleDeleteDesignPreset={handleDeleteDesignPreset}
                     uploadDesignImage={uploadDesignAsset}
                     onStartInspectMode={handleStartDesignInspect}
+                    previewDesignPrompt={previewDesignPrompt}
+                    commitPendingDesignPreview={commitPendingDesignPreview}
+                    cancelPendingDesignPreview={cancelPendingDesignPreview}
                   />
                 )}
                 {activeModal === 'leadership' && leadershipTab === 'stats' && (

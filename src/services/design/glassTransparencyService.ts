@@ -6,7 +6,10 @@ export type GlassFormId =
   | "mirror"
   | "smoke-dark"
   | "crystal"
-  | "ghost";
+  | "ghost"
+  | "ios-vibrancy"
+  | "ios-liquid"
+  | "ios-widget";
 
 export interface GlassFormPreset {
   id: GlassFormId;
@@ -109,6 +112,40 @@ export const GLASS_FORM_PRESETS: GlassFormPreset[] = [
     previewPanelBlur: "blur(22px)",
     previewPanelBorder: "rgba(255,255,255,0.12)",
     previewBackdrop: "linear-gradient(145deg, #0a060f, #a855f7)",
+  },
+  {
+    id: "ios-vibrancy",
+    title: "iOS Vibrancy",
+    subtitle: "blur عميق + تشبع — Control Center",
+    emoji: "🌑",
+    blurLabel: "52px",
+    previewPanelBg: "rgba(255,255,255,0.06)",
+    previewPanelBlur: "blur(24px)",
+    previewPanelBorder: "rgba(255,255,255,0.16)",
+    previewBackdrop: "linear-gradient(145deg, #030712, #334155)",
+  },
+  {
+    id: "ios-liquid",
+    title: "Liquid Glass",
+    subtitle: "زجاج سائل iOS 18 — لمعة + depth",
+    emoji: "🫧",
+    blurLabel: "40px",
+    previewPanelBg:
+      "linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04))",
+    previewPanelBlur: "blur(18px)",
+    previewPanelBorder: "rgba(255,255,255,0.28)",
+    previewBackdrop: "linear-gradient(145deg, #0a1628, #6366f1)",
+  },
+  {
+    id: "ios-widget",
+    title: "iOS Widget",
+    subtitle: "بطاقات Home Screen — ناعمة فاتحة",
+    emoji: "📱",
+    blurLabel: "24px",
+    previewPanelBg: "rgba(255,255,255,0.22)",
+    previewPanelBlur: "blur(12px)",
+    previewPanelBorder: "rgba(255,255,255,0.35)",
+    previewBackdrop: "linear-gradient(145deg, #f1f5f9, #94a3b8)",
   },
 ];
 

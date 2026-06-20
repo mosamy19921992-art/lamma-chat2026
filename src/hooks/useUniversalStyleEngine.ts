@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { setDesignPreviewActive } from "../services/design/designPreviewDom";
+import {
+  previewImportPackVisuals,
+  commitImportPackVisuals,
+  cancelImportPackVisualPreview,
+} from "../services/design/designImportApplyService";
+import type { DesignImportPack } from "../services/design/designImportCatalog";
 import type { Message } from "../lib/chatTypes";
 import {
   applyUniversalStyleToDom,
@@ -52,6 +58,7 @@ export function useUniversalStyleEngine({
   const [hasPendingDesignPreview, setHasPendingDesignPreview] = useState(false);
   const previewMemoryRef = useRef<UniversalStyleConfig | null>(null);
   const previewSnapshotRef = useRef<UniversalStyleConfig | null>(null);
+  const pendingImportPackRef = useRef<DesignImportPack | null>(null);
   const stylePromptCooldownRef = useRef(0);
   const applyInFlightRef = useRef(false);
 
@@ -90,6 +97,8 @@ export function useUniversalStyleEngine({
   );
 
   const rollbackLivePreview = useCallback(() => {
+    cancelImportPackVisualPreview();
+    pendingImportPackRef.current = null;
     const restore = structuredClone(
       previewSnapshotRef.current ?? captureRollbackSnapshot(),
     );
@@ -115,6 +124,10 @@ export function useUniversalStyleEngine({
       const previous = previewMemoryRef.current || committedConfig;
       const parsed = parseOwnerStylePrompt(trimmed, previous);
       previewMemoryRef.current = parsed.config;
+      pendingImportPackRef.current = parsed.importPack ?? null;
+      if (parsed.importPack) {
+        previewImportPackVisuals(parsed.importPack);
+      }
       const prevFx = previous?.effects;
       const nextFx = parsed.config.effects;
       const intentChanged =
@@ -136,7 +149,11 @@ export function useUniversalStyleEngine({
         applied: false,
       };
 
-      const botReply = parsed.summary.startsWith("📖")
+      const botReply = parsed.summary.startsWith("📚")
+        ? parsed.summary
+        : parsed.summary.startsWith("📦")
+          ? `${parsed.summary}\n\n👀 شوف الزجاج والبطاقات والألوان على الموقع.\n\n✅ «تطبيق على الكل» للحفظ | ✖ «إلغاء» للتراجع`
+          : parsed.summary.startsWith("📖")
         ? parsed.summary
         : parsed.summary.startsWith("🎯")
           ? `${parsed.summary}\n\n👀 شوف التغيير على «${parsed.config.label}» في الموقع.\n\n✅ «تطبيق على الكل» للحفظ | ✖ «إلغاء / تعديل» للتراجع\n💡 اكتب «مصطلحات» لقائمة أجزاء الشات`
@@ -178,6 +195,11 @@ export function useUniversalStyleEngine({
         applyUniversalStyleToDom(config, { preview: false });
         previewSnapshotRef.current = null;
         previewMemoryRef.current = config;
+
+        if (pendingImportPackRef.current) {
+          commitImportPackVisuals(pendingImportPackRef.current);
+          pendingImportPackRef.current = null;
+        }
 
         if (setOwnerBgImage && isDefaultWallpaperConfig(config)) {
           setOwnerBgImage(null);

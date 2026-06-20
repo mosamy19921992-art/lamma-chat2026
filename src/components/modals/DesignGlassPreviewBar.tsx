@@ -4,7 +4,7 @@ import {
   GLASS_TINT_SWATCHES,
 } from "../../services/design/glassTransparencyService";
 
-export type DesignPreviewKind = "glass" | "face" | "template" | "column";
+export type DesignPreviewKind = "glass" | "face" | "template" | "column" | "import-pack";
 
 interface DesignPreviewBarProps {
   kind: DesignPreviewKind;

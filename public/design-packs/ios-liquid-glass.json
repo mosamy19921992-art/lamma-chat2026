@@ -1,0 +1,13 @@
+{
+  "id": "ios-liquid-glass",
+  "title": "Liquid Glass iOS 18",
+  "subtitle": "زجاج سائل + vibrancy — مثل iOS الحديث",
+  "emoji": "🫧",
+  "category": "ios",
+  "tags": ["iOS", "liquid", "2024"],
+  "previewGradient": "linear-gradient(145deg, #0a1628 0%, #6366f1 45%, #c4b5fd 100%)",
+  "glassFormId": "ios-liquid",
+  "columnCardStyleId": "ios-sheet",
+  "stylePrompt": "fabulous glassmorphic look ios liquid glass emerald calm",
+  "tintHex": "#a5b4fc"
+}

@@ -9,7 +9,10 @@ export type ColumnCardStyleId =
   | "sharp"
   | "crystal"
   | "smoke"
-  | "minimal";
+  | "minimal"
+  | "ios-sheet"
+  | "ios-inset"
+  | "liquid-ring";
 
 export interface ColumnCardStylePreset {
   id: ColumnCardStyleId;
@@ -103,6 +106,36 @@ export const COLUMN_CARD_STYLE_PRESETS: ColumnCardStylePreset[] = [
     previewBg: "rgba(255,255,255,0.04)",
     previewBorder: "rgba(255,255,255,0.14)",
   },
+  {
+    id: "ios-sheet",
+    title: "iOS Sheet",
+    subtitle: "بطاقة منبثقة — زوايا علوية ناعمة",
+    emoji: "📄",
+    radiusPx: 28,
+    previewRadius: "22px 22px 14px 14px",
+    previewBg: "rgba(255,255,255,0.14)",
+    previewBorder: "rgba(255,255,255,0.22)",
+  },
+  {
+    id: "ios-inset",
+    title: "iOS Inset",
+    subtitle: "بطاقة داخلية — حافة داخلية خفيفة",
+    emoji: "🔲",
+    radiusPx: 20,
+    previewRadius: "16px",
+    previewBg: "rgba(255,255,255,0.08)",
+    previewBorder: "rgba(255,255,255,0.12)",
+  },
+  {
+    id: "liquid-ring",
+    title: "Liquid Ring",
+    subtitle: "حلقة سائلة متدرجة — VIP iOS",
+    emoji: "💫",
+    radiusPx: 26,
+    previewRadius: "20px",
+    previewBg: "rgba(14,11,7,0.88)",
+    previewBorder: "linear-gradient(135deg,#a855f7,#22d3ee)",
+  },
 ];
 
 const STORAGE_KEY = "lamma_column_card_style";
@@ -151,7 +184,11 @@ function applyColumnCardStyleToDom(
   } else {
     const preset = getPreset(id);
     root.dataset.columnCardStyle = id;
-    root.style.setProperty("--cc-radius", `${preset?.radiusPx ?? 24}px`);
+    if (id === "ios-sheet") {
+      root.style.setProperty("--cc-radius", "28px 28px 14px 14px");
+    } else {
+      root.style.setProperty("--cc-radius", `${preset?.radiusPx ?? 24}px`);
+    }
     root.style.setProperty("--cc-tint-rgb", hexToRgbTriplet(tintHex));
     root.style.setProperty("--cc-accent", tintHex);
     root.dataset.columnCardPreview = isPreview ? "true" : "false";
