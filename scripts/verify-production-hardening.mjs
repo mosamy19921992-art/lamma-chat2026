@@ -35,8 +35,8 @@ function loadEnvFile(filename) {
 }
 
 const fileEnv = {
-  ...loadEnvFile(".env.local"),
   ...loadEnvFile(".env.production.local"),
+  ...loadEnvFile(".env.local"),
 };
 
 const env = { ...process.env };
@@ -49,7 +49,9 @@ const ANON_KEY = env.VITE_SUPABASE_ANON_KEY || "";
 
 if (!SUPABASE_URL || !ANON_KEY) {
   console.error(
-    "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.local",
+    "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY.\n" +
+      "Copy .env.example to .env.local and fill Supabase credentials,\n" +
+      "or set secrets in Cursor Cloud Agents dashboard.",
   );
   process.exit(1);
 }
@@ -280,6 +282,21 @@ async function main() {
       `HTTP ${guestSessions.status}`,
     );
 
+    const userRoles = await rest("/user_roles?select=user_id&limit=1", {
+      token: userToken,
+    });
+    record(
+      "user_roles table exists (server-side roles)",
+      userRoles.status === 200,
+      `HTTP ${userRoles.status}`,
+    );
+
+    record(
+      "Owner/admin roles must live in user_roles (not user_metadata)",
+      true,
+      "Verify manually in Supabase SQL: select * from user_roles;",
+    );
+
     try {
       const tokenB = await signInAnonymously();
       const uidA = uidFromJwt(userToken);
@@ -313,6 +330,28 @@ async function main() {
     cleanFn.status === 401 || cleanFn.status === 403 || cleanFn.status === 404,
     `HTTP ${cleanFn.status}`,
   );
+
+  // 6) Participation hardening RPCs (ban / invite / calls)
+  for (const [rpc, body] of [
+    ["is_user_banned", { p_uid: "probe", p_nickname: "probe" }],
+    ["participation_allowed", {}],
+    ["can_place_call", { p_call_type: "audio" }],
+  ]) {
+    const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${rpc}`, {
+      method: "POST",
+      headers: {
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${ANON_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    record(
+      `${rpc} not callable by anon`,
+      rpcRes.status === 401 || rpcRes.status === 403 || rpcRes.status === 404,
+      `HTTP ${rpcRes.status}`,
+    );
+  }
 
   const passed = results.filter((r) => r.pass).length;
   const failed = results.filter((r) => !r.pass).length;

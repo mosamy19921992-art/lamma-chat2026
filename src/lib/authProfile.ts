@@ -87,7 +87,7 @@ function getDeterministicPaletteColor(seed: string) {
   for (let i = 0; i < seed.length; i += 1) {
     hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
   }
-  return PROFILE_COLOR_PALETTE[hash % PROFILE_COLOR_PALETTE.length];
+  return PROFILE_COLOR_PALETTE[hash % PROFILE_COLOR_PALETTE.length] ?? "#58a6ff";
 }
 
 export function getResolvedSupabaseColor(user: SupabaseLikeUser): string {

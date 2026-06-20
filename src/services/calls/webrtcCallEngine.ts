@@ -48,7 +48,10 @@ export class WebRTCCallEngine {
 
   createPeerConnection() {
     this.closePeerConnection(false);
-    const bundle = this.bundles[this.serverIndex];
+    const bundle = this.bundles[this.serverIndex] ?? this.bundles[0];
+    if (!bundle) {
+      throw new Error("No ICE server bundle configured");
+    }
     this.pc = new RTCPeerConnection({ iceServers: bundle.iceServers });
 
     if (this.localStream) {
@@ -113,7 +116,10 @@ export class WebRTCCallEngine {
     if (this.serverIndex >= this.bundles.length - 1) return false;
     this.failoverInProgress = true;
     this.serverIndex++;
-    this.onServerSwitch?.(this.bundles[this.serverIndex].name, this.serverIndex);
+    this.onServerSwitch?.(
+      this.bundles[this.serverIndex]?.name ?? "fallback",
+      this.serverIndex,
+    );
     this.createPeerConnection();
     this.failoverInProgress = false;
     return true;

@@ -15,6 +15,7 @@ export function subscribeChannelWithRetry(
 
   const attach = () => {
     if (stopped || !supabase) return;
+    const client = supabase;
 
     if (retryTimer) {
       clearTimeout(retryTimer);
@@ -27,7 +28,7 @@ export function subscribeChannelWithRetry(
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
         console.warn("[Realtime] Channel issue, retrying:", status, err);
         if (activeChannel) {
-          void supabase.removeChannel(activeChannel);
+          void client.removeChannel(activeChannel);
           activeChannel = null;
         }
         retryTimer = setTimeout(() => {
@@ -46,7 +47,7 @@ export function subscribeChannelWithRetry(
       retryTimer = null;
     }
     if (activeChannel) {
-      void supabase.removeChannel(activeChannel);
+      void supabase?.removeChannel(activeChannel);
       activeChannel = null;
     }
   };

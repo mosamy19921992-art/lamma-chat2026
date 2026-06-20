@@ -36,7 +36,7 @@
 
 ## 2. المعمارية العامة
 
-المعمارية الحالية تعتمد على واجهة React مع تكامل مباشر مع Supabase، بدون طبقة backend تقليدية كاملة. يوجد فقط endpoint خفيف على Vercel لتمرير إعدادات المصادقة إلى الواجهة.
+المعمارية الحالية تعتمد على واجهة React مع تكامل مباشر مع Supabase. OAuth و env vars تُقرأ من `VITE_*` في العميل. يوجد endpoint Vercel واحد للـ SEO.
 
 ### 2.1 مخطط معماري مختصر
 
@@ -45,14 +45,14 @@ Browser
   -> index.html
   -> src/main.tsx
   -> src/App.tsx
-       -> LoginScreen / ChatScreen
+       -> LoginScreen / ChatScreen (lazy + code-split modals)
        -> hooks العامة (service worker)
-       -> src/services/* (chat, calls, auth, store)
+       -> src/services/* (chat, calls, auth, store, storage)
        -> Supabase Auth Session
-             -> Database
+             -> Database + RLS hardening chain
              -> Realtime
-             -> Storage
-  -> /api/auth-config (Vercel serverless function)
+             -> Storage (public chat-media + private chat-media-private)
+  -> /api/sitemap (Vercel serverless)
 ```
 
 ### 2.2 طبقات المشروع
@@ -63,8 +63,8 @@ Browser
 - طبقة العقود والمساعدات والثوابت: `src/lib`
 - طبقة الملفات الثابتة وPWA: `public`
 - طبقة منطق الأعمال: `src/services`
-- طبقة endpoint السيرفري الخفيف: `api` (`auth-config.js`, `sitemap.js`)
-- طبقة البنية البيانية: `supabase-schema.sql` و`supabase-storage.sql`
+- طبقة endpoint السيرفري الخفيف: `api/sitemap.js`
+- طبقة البنية البيانية: سلسلة `supabase-*.sql` (انظر `scripts/apply-production-setup.mjs`)
 
 ## 3. مسار التشغيل
 
@@ -92,7 +92,7 @@ Browser
 
 ```text
 api/
-  auth-config.js
+  sitemap.js
 
 public/
   manifest.json
@@ -354,19 +354,11 @@ README.md
 
 ## 6. الملفات الثابتة والبنية التحتية
 
-### 6.1 `api/auth-config.js`
+### 6.1 `api/sitemap.js`
 
-Endpoint خفيف يعمل على Vercel.
+Endpoint Vercel لـ SEO — يولّد `sitemap.xml` مع غرف الشات وروابط الإنتاج.
 
-وظيفته:
-
-- قراءة `VITE_SUPABASE_URL`
-- قراءة `VITE_SUPABASE_ANON_KEY`
-- قراءة `VITE_APP_URL`
-- إرجاع `configured=true/false`
-- منع الكاش لهذه الاستجابة
-
-هذا الملف مهم خصوصًا لصفحة الدخول الثابتة في `public/login.html` و`public/assets/login.js`.
+OAuth و Supabase config تُقرأ مباشرة من `VITE_*` env vars في العميل (لا يوجد `auth-config.js`).
 
 ### 6.2 `public/sw.js`
 
@@ -401,7 +393,6 @@ Service Worker فعلي يحتوي:
 - `App.tsx` يعتمد على:
   - `LoginScreen.tsx`
   - `ChatScreen.tsx`
-  - `useTheme.ts`
   - `useServiceWorker.ts`
   - `supabase.ts`
   - `authProfile.ts`
@@ -415,10 +406,10 @@ Service Worker فعلي يحتوي:
   - `chatHelpers.ts`
   - `chatMessageRender.tsx`
   - `supabase.ts`
+  - `components/chat/lazyModals.tsx` (modals مقسّمة lazy)
   - `modals/*`
   - بعض مكونات `pwa/*`
-- `useTheme.ts` يعتمد على `themes.ts`
-- `api/auth-config.js` يعتمد على متغيرات البيئة الخاصة بالنشر
+- OAuth/Supabase: `VITE_*` env vars في العميل (لا endpoint `auth-config`)
 
 ### 7.2 التبعيات الخارجية
 
@@ -548,7 +539,8 @@ npm run preview
 
 - اربط المستودع بـ Vercel
 - اضبط متغيرات البيئة نفسها داخل إعدادات المشروع
-- سيعمل endpoint `/api/auth-config` تلقائيًا
+- `/api/sitemap` يعمل تلقائيًا للـ SEO
+- نفّذ سلسلة SQL: `node scripts/apply-production-setup.mjs`
 
 #### Supabase
 

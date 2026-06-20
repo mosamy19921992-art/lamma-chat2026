@@ -1,5 +1,5 @@
 import { supabase } from "../../lib/supabase";
-import { userStoragePath } from "../storage/storagePaths";
+import { uploadPrivateMediaFile as uploadToPrivateBucket } from "../storage/mediaStorageService";
 
 export async function uploadVoiceNoteBlob(
   blob: Blob,
@@ -16,27 +16,18 @@ export async function uploadVoiceNoteBlob(
         ? "ogg"
         : "webm";
 
-  const objectPath = userStoragePath(
-    userId,
-    "voice",
-    roomId,
-    `${Date.now()}_${crypto.randomUUID()}.${ext}`,
-  );
+  const subfolder = `voice/${roomId.replace(/[^\w.\-]+/g, "_")}`;
+  const file = new File([blob], `voice.${ext}`, {
+    type: blob.type || "audio/webm",
+  });
 
-  const { error: uploadError } = await supabase.storage
-    .from("chat-media")
-    .upload(objectPath, blob, {
-      cacheControl: "3600",
-      contentType: blob.type || "audio/webm",
-      upsert: false,
-    });
+  const { signedUrl, error } = await uploadToPrivateBucket(file, userId, subfolder);
 
-  if (uploadError) {
-    return { url: null, error: uploadError.message };
+  if (error || !signedUrl) {
+    return { url: null, error: error || "فشل رفع المقطع الصوتي." };
   }
 
-  const { data } = supabase.storage.from("chat-media").getPublicUrl(objectPath);
-  return { url: data?.publicUrl ?? null, error: null };
+  return { url: signedUrl, error: null };
 }
 
 export function pickVoiceRecorderMimeType(): string | undefined {

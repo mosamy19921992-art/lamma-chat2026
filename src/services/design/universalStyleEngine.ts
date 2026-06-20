@@ -14,6 +14,7 @@ import {
   type DetectedDesignCommand,
   type RegionStyleState,
 } from "./chatDesignVocabulary";
+import { resetConfigWallpaperToDefault } from "./universalStyleStorage";
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/gi;
 const MAX_STYLE_URL_LENGTH = 2048;
@@ -25,6 +26,28 @@ function clamp(n: number, min: number, max: number): number {
 function hasAny(text: string, words: string[]): boolean {
   const lower = text.toLowerCase();
   return words.some((w) => lower.includes(w.toLowerCase()));
+}
+
+function isWallpaperResetPrompt(text: string): boolean {
+  return hasAny(text, [
+    "رجع الخلفية",
+    "رجّع الخلفية",
+    "ارجع الخلفية",
+    "الخلفية الافتراضية",
+    "خلفية افتراضية",
+    "رجع الافتراضي",
+    "رجّع الافتراضي",
+    "استعادة الخلفية",
+    "استرجاع الخلفية",
+    "امسح الخلفية",
+    "شيل الخلفية",
+    "ازالة الخلفية",
+    "إزالة الخلفية",
+    "reset background",
+    "default background",
+    "man.png",
+    "/man.png",
+  ]);
 }
 
 function wantsChatHeaderStyle(text: string): boolean {
@@ -574,6 +597,16 @@ export function parseOwnerStylePrompt(
     return {
       config: previous ? structuredClone(previous) : createDefaultUniversalStyle(),
       summary: DESIGN_VOCABULARY_HINT,
+      refined: false,
+    };
+  }
+
+  if (isWallpaperResetPrompt(trimmed)) {
+    const base = previous ? structuredClone(previous) : createDefaultUniversalStyle();
+    return {
+      config: resetConfigWallpaperToDefault(base),
+      summary:
+        "↩️ رجوع للخلفية الافتراضية (/MAN.png) — اضغط «تطبيق على الكل» للحفظ أو «إلغاء» للتراجع.",
       refined: false,
     };
   }

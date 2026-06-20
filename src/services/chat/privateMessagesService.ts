@@ -2,6 +2,9 @@ import { supabase } from "../../lib/supabase";
 import { isSafeHttpUrl } from "../../lib/chatHelpers";
 import { requireAuthenticatedUid } from "../auth/guestAuthService";
 import { userStoragePath } from "../storage/storagePaths";
+import {
+  uploadPrivateMediaFile as uploadToPrivateBucket,
+} from "../storage/mediaStorageService";
 import type { ChatMember, PMThreadMessage, UserSession } from "../../lib/chatTypes";
 import type { PersistedPrivateMessage, PrivateMessageType } from "../../lib/socialTypes";
 import { resolveReceiverUid } from "../social/userProfileService";
@@ -139,34 +142,14 @@ export async function uploadPrivateMediaFile(
   }
 
   const uid = await requireAuthenticatedUid();
-  const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
   const target = targetNickname.replace(/[^\w.\-]+/g, "_") || "unknown";
-  const objectPath = userStoragePath(
-    uid,
-    "pm",
-    target,
-    `${Date.now()}_${crypto.randomUUID()}_${safeName}`,
-  );
+  const subfolder = `pm/${target}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from("chat-media")
-    .upload(objectPath, file, {
-      cacheControl: "3600",
-      contentType: file.type,
-      upsert: false,
-    });
+  const { signedUrl, error } = await uploadToPrivateBucket(file, uid, subfolder);
 
-  if (uploadError) {
-    throw uploadError;
+  if (error || !signedUrl) {
+    throw new Error(error || "تعذر رفع الوسائط الخاصة.");
   }
 
-  const { data: publicData } = supabase.storage
-    .from("chat-media")
-    .getPublicUrl(objectPath);
-
-  if (!publicData?.publicUrl) {
-    throw new Error("تعذر توليد رابط الوسائط.");
-  }
-
-  return publicData.publicUrl;
+  return signedUrl;
 }

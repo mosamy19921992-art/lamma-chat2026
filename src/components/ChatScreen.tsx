@@ -5,7 +5,6 @@ import { ensureGlassFormApplied } from "../services/design/glassTransparencyServ
 import { ensureColumnCardStyleApplied } from "../services/design/columnCardStyleService";
 import { setDesignPreviewActive } from "../services/design/designPreviewDom";
 import { loadUniversalStyleLocal, persistAndApplyUniversalStyle } from "../services/design/universalStyleStorage";
-import { getGlobalBackgroundForShell } from "../services/design/universalStyleApply";
 import type { UniversalStyleConfig } from "../services/design/universalStyleTypes";
 import { StyleSandboxCard } from "./design/StyleSandboxCard";
 import { UniversalStyleVideoLayer } from "./design/UniversalStyleVideoLayer";
@@ -78,12 +77,20 @@ import ShareModal from "./modals/ShareModal.tsx";
 import CreateRoomModal from "./modals/CreateRoomModal.tsx";
 import UserContextPopup from "./modals/UserContextPopup.tsx";
 import UserProfileBioPopup from "./modals/UserProfileBioPopup.tsx";
-import { OwnerPanelModal } from "./modals/OwnerPanelModal";
-import { AdminPanelModal } from "./modals/AdminPanelModal";
-import { GuardPanelModal } from "./modals/GuardPanelModal";
-import { StorePanelModal } from "./modals/StorePanelModal";
-import { OwnerStorePanelModal } from "./modals/OwnerStorePanelModal";
-import { DesignCenterModal } from "./modals/DesignCenterModal";
+import {
+  LazyOwnerPanelModal,
+  LazyAdminPanelModal,
+  LazyGuardPanelModal,
+  LazyStorePanelModal,
+  LazyOwnerStorePanelModal,
+  LazyDesignCenterModal,
+  LazyStatsModal,
+  LazyUserProfileModal,
+  ModalSuspense,
+} from "./chat/lazyModals";
+import { MobileBottomSheet } from "./chat/MobileBottomSheet";
+import { HeaderIconButton } from "./chat/HeaderIconButton";
+import { ChatMessageVirtualList } from "./chat/ChatMessageVirtualList";
 import {
   fetchActivePlans,
   fetchMySubscription,
@@ -91,8 +98,6 @@ import {
   subscribeToNewOrders,
   type SubscriptionPlan,
 } from "../services/store/subscriptionService";
-import { StatsModal } from "./modals/StatsModal";
-import { UserProfileModal } from "./modals/UserProfileModal";
 import { MemberAvatar } from "./MemberAvatar";
 import { isAvatarImageUrl } from "../lib/avatarDisplay";
 import {
@@ -232,141 +237,14 @@ import {
 } from "./pwa/MobileBottomNav";
 import type { SocialPost } from "../lib/socialTypes";
 
-function MobileBottomSheet({
-  isOpen,
-  onClose,
-  title,
-  icon,
-  children,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  const content = (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          className="md:hidden fixed inset-0 z-[9999]"
-        >
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/70 w-full h-full cursor-default"
-            onClick={onClose}
-            aria-label="إغلاق"
-          />
-          <motion.div
-            initial={{ y: 520 }}
-            animate={{ y: 0 }}
-            exit={{ y: 520 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute inset-x-0 bottom-0 flex max-h-[85vh] min-h-0 flex-col overflow-hidden rounded-t-3xl lamma-sheet-shell bg-[#0a0a0a]"
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <div className="flex shrink-0 items-center justify-between px-4 py-3 lamma-sheet-header border-b border-white/10 bg-black/40">
-              <div className="flex items-center gap-2">
-                {icon}
-                <h3 className="font-black text-white text-sm">{title}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-2 rounded-xl text-red-400 hover:text-white transition-all cursor-pointer bg-white/5 hover:bg-red-500/20"
-                aria-label="إغلاق"
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-3 overscroll-contain">
-              {children}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
-  return typeof document !== "undefined" ? createPortal(content, document.body) : content;
-}
-
-function HeaderIconButton({
-  title,
-  onClick,
-  className,
-  children,
-}: {
-  title: string;
-  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  const [isTipOpen, setIsTipOpen] = useState(false);
-  const pressTimerRef = useRef<number | null>(null);
-
-  const clearPressTimer = () => {
-    if (pressTimerRef.current) {
-      window.clearTimeout(pressTimerRef.current);
-      pressTimerRef.current = null;
-    }
-  };
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        aria-label={title}
-        title={title}
-        onClick={onClick}
-        onMouseEnter={() => setIsTipOpen(true)}
-        onMouseLeave={() => setIsTipOpen(false)}
-        onFocus={() => setIsTipOpen(true)}
-        onBlur={() => setIsTipOpen(false)}
-        onPointerDown={() => {
-          clearPressTimer();
-          pressTimerRef.current = window.setTimeout(() => {
-            setIsTipOpen(true);
-          }, 420);
-        }}
-        onPointerUp={() => {
-          clearPressTimer();
-          window.setTimeout(() => setIsTipOpen(false), 250);
-        }}
-        onPointerCancel={() => {
-          clearPressTimer();
-          setIsTipOpen(false);
-        }}
-        className={className}
-      >
-        {children}
-      </button>
-      {isTipOpen && (
-        <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[200] rounded-xl border border-white/10 bg-black/80 px-2.5 py-1 text-[10px] font-black text-white whitespace-nowrap">
-          {title}
-        </div>
-      )}
-    </div>
-  );
-}
-
 const OWNER_SETTINGS_ROW_ID = "global";
 
 function hydrateUniversalStyleFromSettings(
   raw: unknown,
-  defaultAmbientBg: string,
-  setOwnerBgImage: (url: string | null) => void,
 ): void {
   const config = raw as UniversalStyleConfig | null | undefined;
   if (!config || config.version !== 1) return;
   persistAndApplyUniversalStyle(config);
-  const bg = getGlobalBackgroundForShell(config, defaultAmbientBg);
-  if (bg) setOwnerBgImage(bg);
 }
 const OWNER_SYNC_DEBOUNCE_MS = 350;
 const BANNED_USER_REASON_PREFIX = "lamma-ban-json:";
@@ -542,249 +420,6 @@ function getNameGlassCardClass(options: {
   ]
     .filter(Boolean)
     .join(" ");
-}
-
-function PostsFeedRoom({
-  posts,
-  currentSession,
-  chatMembers,
-  storeSnapshot,
-  cosmeticGrants,
-  isCompactView,
-  isChatColumnExpanded,
-  onOpenProfile,
-  canDeletePost,
-  onDeletePost,
-}: {
-  posts: Message[];
-  currentSession: UserSession;
-  chatMembers: ChatMember[];
-  storeSnapshot: StoreCosmeticsSnapshot;
-  cosmeticGrants: Record<string, MemberCosmeticGrant>;
-  isCompactView: boolean;
-  isChatColumnExpanded: boolean;
-  onOpenProfile: (nickname: string) => void;
-  canDeletePost: (msg: Message) => boolean;
-  onDeletePost: (msg: Message) => void;
-}) {
-  if (posts.length === 0) {
-    return (
-      <div className="lamma-post-feed-shell">
-        <div className="lamma-post-hero">
-          <div className="flex items-center gap-2 text-amber-200">
-            <Sparkles size={16} />
-            <span className="text-sm font-black">مجتمع لمة</span>
-          </div>
-          <p className="text-[11px] text-gray-200 leading-relaxed mt-2">
-            هنا تظهر منشورات الأعضاء المسجلين للجميع بشكل واضح وهادئ، كأنها
-            مساحة مجتمع مصغرة داخل الشات.
-          </p>
-        </div>
-        <div className="lamma-post-empty">
-          <div className="text-3xl">📰</div>
-          <div className="text-sm font-black text-white">
-            لا توجد منشورات بعد
-          </div>
-          <div className="text-[11px] text-gray-300 leading-relaxed">
-            ابدأ أول منشور في الغرفة، وسيظهر مباشرة لكل من يدخلها.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="lamma-post-feed-shell">
-      <div className="lamma-post-hero">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-amber-200">
-            <Sparkles size={16} />
-            <span className="text-sm font-black">روم المنشورات</span>
-          </div>
-          <span className="text-[10px] font-mono text-gray-400">
-            {posts.length} POSTS
-          </span>
-        </div>
-        <p className="text-[11px] text-gray-200 leading-relaxed mt-2">
-          منشورات عامة مرئية لكل من يدخل الغرفة، سواء كانوا أصدقاء أو لا.
-        </p>
-      </div>
-
-      {posts.map((msg) => {
-        const role = getRoleFromAuthor(
-          msg.author,
-          currentSession,
-          chatMembers,
-        );
-        const cleanName = getShortenedNickname(msg.author);
-        const nameColor =
-          msg.author === currentSession.nickname
-            ? currentSession.color
-            : msg.color;
-        const storeForAuthor =
-          msg.author === currentSession.nickname ? storeSnapshot : null;
-        const prestigeClass = getPrestigeNameClass(
-          msg.author,
-          currentSession,
-          chatMembers,
-          storeForAuthor,
-          cosmeticGrants,
-        );
-        const isOwnerAuthorRow = isOwnerAuthor(
-          msg.author,
-          currentSession,
-          chatMembers,
-        );
-        const authorMember =
-          chatMembers.find((member) => member.nickname === msg.author) ?? {
-            nickname: msg.author,
-            role: role === "none" ? "user" : role,
-            badge:
-              msg.author === currentSession.nickname
-                ? currentSession.badge
-                : undefined,
-            title:
-              msg.author === currentSession.nickname
-                ? currentSession.title
-                : undefined,
-          };
-
-        return (
-          <article key={msg.id} className="lamma-post-card">
-            <div className="flex items-start gap-3">
-              <div
-                className="flex-shrink-0 cursor-pointer"
-                onClick={() => onOpenProfile(msg.author)}
-              >
-                <OwnerAvatarAura active={isOwnerAuthorRow}>
-                  <AMLogo
-                    size={isCompactView ? 26 : 34}
-                    variant="circular"
-                    glow={msg.author === currentSession.nickname}
-                    frame={getFrameFromAuthor(
-                      msg.author,
-                      currentSession,
-                      chatMembers,
-                      cosmeticGrants,
-                    )}
-                    crownRole={getCrownRoleForDisplay(
-                      msg.author,
-                      currentSession,
-                      chatMembers,
-                      storeForAuthor,
-                      cosmeticGrants,
-                    )}
-                  />
-                </OwnerAvatarAura>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-3">
-                  <div
-                    className="cursor-pointer min-w-0"
-                    onClick={() => onOpenProfile(msg.author)}
-                  >
-                    <div className="flex flex-col truncate min-w-0">
-                      <div
-                        className={`flex items-center gap-1 flex-wrap ${getNameGlassCardClass({
-                          isSelf: msg.author === currentSession.nickname,
-                          isBoss: isOwnerAuthorRow,
-                          compact: true,
-                        })}`}
-                      >
-                        <span
-                          style={prestigeClass ? undefined : { color: nameColor }}
-                          className={`font-bold text-[12px] lamma-author-name ${prestigeClass}`}
-                        >
-                          {cleanName}
-                        </span>
-                        {isOwnerAuthorRow && (
-                          <BossSigil size={12} className="opacity-95 shrink-0" />
-                        )}
-                      </div>
-                      <MemberPrestigeBadges
-                        member={authorMember}
-                        currentUser={currentSession}
-                        chatMembers={chatMembers}
-                        subscription={storeSnapshot}
-                        memberCosmeticGrants={cosmeticGrants}
-                        size="sm"
-                        highlightYou
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 text-[9px] text-gray-400">
-                      <span>{msg.time}</span>
-                      <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <span>منشور عام</span>
-                    </div>
-                  </div>
-
-                  {canDeletePost(msg) && (
-                    <button
-                      type="button"
-                      onClick={() => onDeletePost(msg)}
-                      className="text-[10px] text-red-400 hover:text-red-300 font-bold px-2 py-1 rounded-lg cursor-pointer lamma-soft-action"
-                      title="حذف المنشور"
-                    >
-                      حذف
-                    </button>
-                  )}
-                </div>
-
-                <div
-                  className={`lamma-post-body ${
-                    isChatColumnExpanded
-                      ? "max-w-full"
-                      : "max-w-[min(820px,100%)]"
-                  }`}
-                >
-                  {msg.type === "text" && renderTextMessageWithMedia(msg.text)}
-
-                  {msg.type === "image" && msg.mediaUrl && (
-                    <div className="mt-3">
-                      <img
-                        loading="lazy"
-                        src={msg.mediaUrl}
-                        alt="Post attachment"
-                        className="rounded-2xl max-w-[280px] max-h-[220px] object-cover border border-white/10 bg-black/10"
-                      />
-                    </div>
-                  )}
-
-                  {msg.type === "video" && msg.mediaUrl && (
-                    <div className="mt-3">
-                      {getYoutubeId(msg.mediaUrl) ? (
-                        <div className="relative pb-[56.25%] h-0 w-[420px] max-w-full rounded-2xl overflow-hidden border border-red-500/20 shadow-lg">
-                          <iframe
-                            title="Post YouTube Video Player"
-                            src={`https://www.youtube.com/embed/${getYoutubeId(msg.mediaUrl)}`}
-                            frameBorder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            className="absolute top-0 left-0 w-full h-full"
-                          />
-                        </div>
-                      ) : (
-                        <video
-                          src={msg.mediaUrl}
-                          controls
-                          className="rounded-2xl max-w-[420px] border border-white/10"
-                        />
-                      )}
-                    </div>
-                  )}
-
-                  {msg.type === "audio" && msg.mediaUrl && (
-                    <VoiceNoteBubble src={msg.mediaUrl} />
-                  )}
-                </div>
-              </div>
-            </div>
-          </article>
-        );
-      })}
-    </div>
-  );
 }
 
 export default function ChatScreen({
@@ -1536,6 +1171,16 @@ export default function ChatScreen({
   const [isDbConnectionLost, setIsDbConnectionLost] = useState(false);
   const [isReconnectingDb, setIsReconnectingDb] = useState(false);
   const [dbStatusLogs, setDbStatusLogs] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (isDbConnectionLost) {
+      setAuthError(
+        "انقطع الاتصال بقاعدة البيانات. تحقق من الشبكة أو حاول إعادة تحميل الصفحة.",
+      );
+    } else if (supabase) {
+      setAuthError(null);
+    }
+  }, [isDbConnectionLost]);
 
   // Custom user suggestions friend request list
   const [friendSuggestions, setFriendSuggestions] = useState<any[]>([]);
@@ -2735,11 +2380,7 @@ export default function ChatScreen({
             if (settings.bot_rule_anti_spam !== undefined) setBotRuleAntiSpam(!!settings.bot_rule_anti_spam);
             if (settings.bot_rule_swear_filter !== undefined) setBotRuleSwearFilter(!!settings.bot_rule_swear_filter);
             if (settings.universal_style_config !== undefined) {
-              hydrateUniversalStyleFromSettings(
-                settings.universal_style_config,
-                DEFAULT_AMBIENT_BG,
-                setOwnerBgImage,
-              );
+              hydrateUniversalStyleFromSettings(settings.universal_style_config);
             }
           },
         ),
@@ -2926,11 +2567,7 @@ export default function ChatScreen({
             setDesignPresets((settings as any).design_presets as DesignPreset[]);
           }
           if (settings.universal_style_config !== undefined) {
-            hydrateUniversalStyleFromSettings(
-              settings.universal_style_config,
-              DEFAULT_AMBIENT_BG,
-              setOwnerBgImage,
-            );
+            hydrateUniversalStyleFromSettings(settings.universal_style_config);
           }
           if (settings.bot_enabled !== undefined) setIsBotEnabled(Boolean(settings.bot_enabled));
           if (settings.bot_rule_anti_links !== undefined) setBotRuleAntiLinks(Boolean(settings.bot_rule_anti_links));
@@ -4849,6 +4486,14 @@ export default function ChatScreen({
 
   const [authError, setAuthError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!supabase) {
+      setAuthError(
+        "Supabase غير متصل — أضف VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY في البيئة.",
+      );
+    }
+  }, []);
+
   const [messageShowCount, setMessageShowCount] = useState<number>(50);
 
   // Reset message count when changing room
@@ -5183,15 +4828,25 @@ export default function ChatScreen({
     tryHandleOwnerStylePrompt,
     applyStyleGlobally,
     cancelStyleSandbox,
+    resetChatBackgroundToDefault,
   } = useUniversalStyleEngine({
     activeRoomId,
     isOwner: isOwnerRole,
-    defaultAmbientBg: DEFAULT_AMBIENT_BG,
     ownerSettingsRowId: OWNER_SETTINGS_ROW_ID,
     setOwnerBgImage,
     addLammaBotMessage,
     appendStyleSandboxMessage,
   });
+
+  const handleResetDefaultChatBackground = useCallback(async () => {
+    const ok = await resetChatBackgroundToDefault();
+    setDesignOwnerBgInput("");
+    if (ok) {
+      alert("✅ رجّعت خلفية الشات للافتراضي (/MAN.png).");
+    } else {
+      alert("⚠️ تم التراجع محلياً — تأكد من صلاحيات المالك على Supabase.");
+    }
+  }, [resetChatBackgroundToDefault]);
 
   const activeUniversalStyle = useMemo(
     () => committedConfig || loadUniversalStyleLocal(),
@@ -6465,7 +6120,7 @@ export default function ChatScreen({
                       memberCosmeticGrants,
                     ) ? (
                       <span className="text-[8px] lamma-role-chip lamma-role-plat">
-                        PLATINUM VIP
+                        بلاتيني
                       </span>
                     ) : hasStoreVipDisplay(
                         myActiveSession.nickname,
@@ -6480,7 +6135,7 @@ export default function ChatScreen({
                       </span>
                     ) : myVisualRole === "admin" ? (
                       <span className="text-[8px] lamma-role-chip lamma-role-admin">
-                        ADMIN
+                        مشرف
                       </span>
                     ) : null}
                     {myActiveSession.title && (
@@ -6847,7 +6502,7 @@ export default function ChatScreen({
                                           {(targetUser as any).role ===
                                             "platinum_vip" && (
                                             <span className="text-[6px] lamma-role-chip lamma-role-plat">
-                                              PLATINUM VIP
+                                              بلاتيني
                                             </span>
                                           )}
                                           {(targetUser as any).role ===
@@ -6859,7 +6514,7 @@ export default function ChatScreen({
                                           {(targetUser as any).role ===
                                             "admin" && (
                                             <span className="text-[6px] lamma-role-chip lamma-role-admin">
-                                              ADMIN
+                                              مشرف
                                             </span>
                                           )}
                                           {(targetUser as any).role ===
@@ -6948,7 +6603,7 @@ export default function ChatScreen({
                                     {(targetUser as any).role ===
                                       "platinum_vip" && (
                                       <span className="text-[6px] lamma-role-chip lamma-role-plat">
-                                        PLATINUM VIP
+                                        بلاتيني
                                       </span>
                                     )}
                                     {(targetUser as any).role === "vip" && (
@@ -6958,7 +6613,7 @@ export default function ChatScreen({
                                     )}
                                     {(targetUser as any).role === "admin" && (
                                       <span className="text-[6px] lamma-role-chip lamma-role-admin">
-                                        ADMIN
+                                        مشرف
                                       </span>
                                     )}
                                     {(targetUser as any).role === "owner" && (
@@ -9052,7 +8707,10 @@ export default function ChatScreen({
                       )}
                     </div>
                   )}
-                  {messages.map((msg, index) => {
+                  <ChatMessageVirtualList
+                    messages={messages}
+                    parentRef={feedViewportRef}
+                    renderMessage={(msg, index) => {
                   const isSystem = msg.type === "system";
                   return (
                     <div
@@ -9439,7 +9097,8 @@ export default function ChatScreen({
                       </div>
                     </div>
                   );
-                })}
+                }}
+                  />
                 </>
               )}
 
@@ -10493,7 +10152,7 @@ export default function ChatScreen({
                       )}
                       {pmTarget.role === "platinum_vip" ? (
                         <span className="text-[8px] lamma-role-chip lamma-role-plat">
-                          PLATINUM VIP
+                          بلاتيني
                         </span>
                       ) : pmTarget.role === "vip" ? (
                         <span className="text-[8px] lamma-role-chip lamma-role-vip">
@@ -10505,7 +10164,7 @@ export default function ChatScreen({
                         </span>
                       ) : pmTarget.role === "admin" ? (
                         <span className="text-[8px] lamma-role-chip lamma-role-admin">
-                          ADMIN
+                          مشرف
                         </span>
                       ) : null}
                     </div>
@@ -11312,11 +10971,12 @@ export default function ChatScreen({
                   />
                 )}
 
+                <ModalSuspense>
                 {/* OWNER MODAL CONTENT */}
                 {(activeModal === "owner" ||
                   (activeModal === "leadership" &&
                     leadershipTab === "quick")) && (
-                  <OwnerPanelModal
+                  <LazyOwnerPanelModal
                     isSpyMode={isSpyMode}
                     setIsSpyMode={setIsSpyMode}
                     isMaintenanceMode={isMaintenanceMode}
@@ -11344,7 +11004,7 @@ export default function ChatScreen({
 
                 {/* ADMIN MODAL CONTENT */}
                 {activeModal === "admin" && (
-                  <AdminPanelModal
+                  <LazyAdminPanelModal
                     adminTab={adminTab}
                     setAdminTab={setAdminTab}
                     activityLogs={activityLogs}
@@ -11403,7 +11063,7 @@ export default function ChatScreen({
                 {(activeModal === "guard" ||
                   (activeModal === "leadership" &&
                     leadershipTab === "guard")) && (
-                  <GuardPanelModal
+                  <LazyGuardPanelModal
                     isBotEnabled={isBotEnabled}
                     setIsBotEnabled={setIsBotEnabled}
                     botRuleSwearFilter={botRuleSwearFilter}
@@ -11425,7 +11085,7 @@ export default function ChatScreen({
                 {(activeModal === "store" ||
                   (activeModal === "leadership" &&
                     leadershipTab === "store")) && (
-                  <StorePanelModal
+                  <LazyStorePanelModal
                     shopTab={shopTab}
                     setShopTab={setShopTab}
                     payStatus={payStatus}
@@ -11466,7 +11126,7 @@ export default function ChatScreen({
                   />
                 )}
                 {activeModal === 'leadership' && leadershipTab === 'design' && (
-                  <DesignCenterModal
+                  <LazyDesignCenterModal
                     isOwnerRole={isOwnerRole}
                     runAssistantAudit={runAssistantAudit}
                     queueAssistantProposal={queueAssistantProposal}
@@ -11500,6 +11160,7 @@ export default function ChatScreen({
                     designOwnerBgInput={designOwnerBgInput}
                     setDesignOwnerBgInput={setDesignOwnerBgInput}
                     setOwnerBgImage={setOwnerBgImage}
+                    onResetDefaultChatBackground={handleResetDefaultChatBackground}
                     designPresets={designPresets}
                     designPresetName={designPresetName}
                     setDesignPresetName={setDesignPresetName}
@@ -11510,7 +11171,7 @@ export default function ChatScreen({
                   />
                 )}
                 {activeModal === 'leadership' && leadershipTab === 'stats' && (
-                  <StatsModal
+                  <LazyStatsModal
                     chatMembers={chatMembers}
                     roomMessages={roomMessages}
                     activeRoomId={activeRoomId}
@@ -11519,12 +11180,13 @@ export default function ChatScreen({
                   />
                 )}
                 {activeModal === 'leadership' && leadershipTab === 'owner_store' && isOwnerRole && (
-                  <OwnerStorePanelModal
+                  <LazyOwnerStorePanelModal
                     ownerNickname={currentUser.nickname}
                     addLammaBotMessage={addLammaBotMessage}
                     activeRoomId={activeRoomId}
                   />
                 )}
+                </ModalSuspense>
               </div>
             </div>
           </motion.div>
@@ -11532,7 +11194,9 @@ export default function ChatScreen({
       </AnimatePresence>
 
       <AnimatePresence>
-      <UserProfileModal
+        {showProfileModal && (
+        <ModalSuspense>
+          <LazyUserProfileModal
         showProfileModal={showProfileModal}
         selectedProfileMember={selectedProfileMember}
         setShowProfileModal={setShowProfileModal}
@@ -11577,7 +11241,9 @@ export default function ChatScreen({
           setShowProfileModal(false);
           setSelectedProfileMember(null);
         }}
-        />
+          />
+        </ModalSuspense>
+        )}
       </AnimatePresence>
 
       {/* Modal for Creating Room */}

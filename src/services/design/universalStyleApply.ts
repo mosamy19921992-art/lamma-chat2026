@@ -111,9 +111,7 @@ export function applyUniversalStyleToDom(
     root.removeAttribute("data-us-chase-outer");
     root.style.removeProperty("--us-chase-speed");
     root.style.removeProperty("--us-chase-tint");
-    if (options?.preview) {
-      cancelColumnCardPreview();
-    }
+    cancelColumnCardPreview();
   }
 
   const headerStyle = config.effects?.chatHeaderStyle ?? "none";
@@ -179,12 +177,17 @@ function applyChatRegionsToDom(
   }
 }
 
-export function clearUniversalStylePreview(): void {
+/** Strip preview flag only — use after applyUniversalStyleToDom restore. */
+export function clearUniversalStylePreviewDomOnly(): void {
   const root = getRoot();
   if (!root) return;
   root.removeAttribute("data-universal-style-preview");
-  cancelColumnCardPreview();
   setDesignPreviewActive(false);
+}
+
+export function clearUniversalStylePreview(): void {
+  clearUniversalStylePreviewDomOnly();
+  cancelColumnCardPreview();
 }
 
 export function removeUniversalStyleFromDom(): void {

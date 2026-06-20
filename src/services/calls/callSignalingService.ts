@@ -59,8 +59,9 @@ export function subscribeToCallSignals(
 
   const attach = () => {
     if (stopped || !supabase || !myUid) return;
+    const client = supabase;
 
-    activeChannel = supabase
+    activeChannel = client
       .channel(`call_signals:${myUid}:${Date.now()}`)
       .on(
         "postgres_changes",
@@ -80,7 +81,7 @@ export function subscribeToCallSignals(
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           console.warn("[Calls] Signal channel error:", status, err);
           if (activeChannel) {
-            void supabase.removeChannel(activeChannel);
+            void client.removeChannel(activeChannel);
             activeChannel = null;
           }
           retryTimer = setTimeout(attach, 2500);
@@ -95,7 +96,7 @@ export function subscribeToCallSignals(
     if (retryTimer) {
       clearTimeout(retryTimer);
     }
-    if (activeChannel) {
+    if (activeChannel && supabase) {
       supabase.removeChannel(activeChannel);
     }
   };

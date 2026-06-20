@@ -95,3 +95,39 @@ export function persistAndApplyUniversalStyle(config: UniversalStyleConfig): voi
   saveUniversalStyleLocal(config);
   applyUniversalStyleToDom(config, { preview: false });
 }
+
+/** True when universal style uses the built-in chat wallpaper (MAN.png layer). */
+export function isDefaultWallpaperConfig(config: UniversalStyleConfig): boolean {
+  const defaults = createDefaultUniversalStyle();
+  const g = config.backgrounds.global;
+  const f = config.backgrounds.feed;
+  return (
+    g.kind === "color" &&
+    f.kind === "color" &&
+    g.value === defaults.backgrounds.global.value &&
+    f.value === defaults.backgrounds.feed.value
+  );
+}
+
+/** Strip custom wallpaper layers from a style config (keeps colors, glass, effects). */
+export function resetConfigWallpaperToDefault(
+  config: UniversalStyleConfig,
+): UniversalStyleConfig {
+  const next = structuredClone(normalizeUniversalStyleConfig(config));
+  const defaults = createDefaultUniversalStyle();
+  next.backgrounds.global = { ...defaults.backgrounds.global };
+  next.backgrounds.feed = { ...defaults.backgrounds.feed };
+  next.backgrounds.sidebar = { ...defaults.backgrounds.sidebar };
+  if (next.regions?.["chat-wallpaper"]) {
+    next.regions["chat-wallpaper"] = {
+      ...next.regions["chat-wallpaper"],
+      clean: true,
+      removeColors: true,
+      darken: 0,
+    };
+  }
+  if (next.regions?.["chat-feed"]) {
+    next.regions["chat-feed"] = { ...next.regions["chat-feed"], darken: 0 };
+  }
+  return next;
+}

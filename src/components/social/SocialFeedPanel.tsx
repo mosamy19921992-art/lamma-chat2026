@@ -102,7 +102,7 @@ export function SocialFeedPanel({
             <span className="text-sm font-black">روم المنشورات</span>
           </div>
           <span className="text-[10px] font-mono text-gray-400">
-            {posts.length} POSTS
+            {posts.length} منشور
           </span>
         </div>
         <p className="text-[11px] text-gray-200 leading-relaxed mt-2">
@@ -212,7 +212,7 @@ export function SocialFeedPanel({
                       )}
                       {role === "admin" && (
                         <span className="text-[7px] lamma-role-chip lamma-role-admin">
-                          ADMIN
+                          أدمن
                         </span>
                       )}
                     </div>

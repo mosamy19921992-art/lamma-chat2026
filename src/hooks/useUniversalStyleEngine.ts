@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Message } from "../lib/chatTypes";
 import {
   applyUniversalStyleToDom,
-  clearUniversalStylePreview,
-  getGlobalBackgroundForShell,
+  clearUniversalStylePreviewDomOnly,
 } from "../services/design/universalStyleApply";
 import { parseOwnerStylePrompt } from "../services/design/universalStyleEngine";
 import {
+  isDefaultWallpaperConfig,
   loadUniversalStyleFromSupabase,
+  loadUniversalStyleLocal,
+  resetConfigWallpaperToDefault,
   saveUniversalStyleLocal,
   syncUniversalStyleToSupabase,
 } from "../services/design/universalStyleStorage";
@@ -25,7 +27,6 @@ const MAX_STYLE_SANDBOX_SESSIONS = 12;
 interface UseUniversalStyleEngineOptions {
   activeRoomId: string;
   isOwner: boolean;
-  defaultAmbientBg: string;
   ownerSettingsRowId?: string;
   setOwnerBgImage?: (url: string | null) => void;
   addLammaBotMessage: (roomId: string, text: string) => void;
@@ -39,7 +40,6 @@ interface UseUniversalStyleEngineOptions {
 export function useUniversalStyleEngine({
   activeRoomId,
   isOwner,
-  defaultAmbientBg,
   ownerSettingsRowId = "global",
   setOwnerBgImage,
   addLammaBotMessage,
@@ -53,6 +53,16 @@ export function useUniversalStyleEngine({
   const stylePromptCooldownRef = useRef(0);
   const applyInFlightRef = useRef(false);
 
+  const resolveCommittedConfig = useCallback((): UniversalStyleConfig => {
+    return normalizeUniversalStyleConfig(
+      committedConfig ?? loadUniversalStyleLocal() ?? createDefaultUniversalStyle(),
+    );
+  }, [committedConfig]);
+
+  const captureRollbackSnapshot = useCallback((): UniversalStyleConfig => {
+    return structuredClone(resolveCommittedConfig());
+  }, [resolveCommittedConfig]);
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -61,37 +71,31 @@ export function useUniversalStyleEngine({
       const normalized = normalizeUniversalStyleConfig(loaded);
       setCommittedConfig(normalized);
       applyUniversalStyleToDom(normalized, { preview: false });
-      const bg = getGlobalBackgroundForShell(normalized, defaultAmbientBg);
-      if (bg && setOwnerBgImage) setOwnerBgImage(bg);
     })();
     return () => {
       cancelled = true;
     };
-  }, [defaultAmbientBg, ownerSettingsRowId, setOwnerBgImage]);
+  }, [ownerSettingsRowId]);
 
   const beginLivePreview = useCallback(
     (config: UniversalStyleConfig) => {
       if (!previewSnapshotRef.current) {
-        previewSnapshotRef.current = committedConfig;
+        previewSnapshotRef.current = captureRollbackSnapshot();
       }
       applyUniversalStyleToDom(config, { preview: true });
-      const bg = getGlobalBackgroundForShell(config, defaultAmbientBg);
-      if (bg && setOwnerBgImage) setOwnerBgImage(bg);
     },
-    [committedConfig, defaultAmbientBg, setOwnerBgImage],
+    [captureRollbackSnapshot],
   );
 
   const rollbackLivePreview = useCallback(() => {
-    clearUniversalStylePreview();
-    const restore =
-      previewSnapshotRef.current ??
-      committedConfig ??
-      createDefaultUniversalStyle();
-    applyUniversalStyleToDom(restore, { preview: false });
-    const bg = getGlobalBackgroundForShell(restore, defaultAmbientBg);
-    if (bg && setOwnerBgImage) setOwnerBgImage(bg);
+    const restore = structuredClone(
+      previewSnapshotRef.current ?? captureRollbackSnapshot(),
+    );
     previewSnapshotRef.current = null;
-  }, [committedConfig, defaultAmbientBg, setOwnerBgImage]);
+
+    applyUniversalStyleToDom(restore, { preview: false });
+    clearUniversalStylePreviewDomOnly();
+  }, [captureRollbackSnapshot]);
 
   const tryHandleOwnerStylePrompt = useCallback(
     (rawPrompt: string): boolean => {
@@ -116,7 +120,7 @@ export function useUniversalStyleEngine({
         (prevFx?.sidebarCardChase !== nextFx?.sidebarCardChase ||
           prevFx?.chatHeaderStyle !== nextFx?.chatHeaderStyle);
       if (intentChanged) {
-        previewSnapshotRef.current = committedConfig;
+        previewSnapshotRef.current = captureRollbackSnapshot();
       }
 
       beginLivePreview(parsed.config);
@@ -134,6 +138,8 @@ export function useUniversalStyleEngine({
         ? parsed.summary
         : parsed.summary.startsWith("🎯")
           ? `${parsed.summary}\n\n👀 شوف التغيير على «${parsed.config.label}» في الموقع.\n\n✅ «تطبيق على الكل» للحفظ | ✖ «إلغاء / تعديل» للتراجع\n💡 اكتب «مصطلحات» لقائمة أجزاء الشات`
+          : parsed.summary.startsWith("↩️")
+            ? `${parsed.summary}\n\n👀 المفروض تشوف /MAN.png رجعت. ✅ «تطبيق على الكل» للحفظ | ✖ «إلغاء» للتراجع`
           : parsed.config.effects?.sidebarCardChase
         ? `🎨 ${parsed.summary}\n\n👀 بص على الأعمدة الجانبية (VIP، الراديو، الغرف) — المفروض تشوف شريط النور بيلف حوالين كل بطاقة.\n\n✅ «تطبيق على الكل» للحفظ | ✖ «إلغاء / تعديل» للتراجع\n💡 بعد كده عدّل: «أبطأ» أو «أسرع» أو «لون أخضر»`
         : parsed.config.effects?.chatHeaderStyle &&
@@ -151,6 +157,7 @@ export function useUniversalStyleEngine({
       addLammaBotMessage,
       appendStyleSandboxMessage,
       beginLivePreview,
+      captureRollbackSnapshot,
       committedConfig,
       isOwner,
     ],
@@ -165,19 +172,22 @@ export function useUniversalStyleEngine({
         const config = session.config;
         setCommittedConfig(config);
         saveUniversalStyleLocal(config);
-        clearUniversalStylePreview();
+        clearUniversalStylePreviewDomOnly();
         applyUniversalStyleToDom(config, { preview: false });
         previewSnapshotRef.current = null;
         previewMemoryRef.current = config;
 
-        const bg = getGlobalBackgroundForShell(config, defaultAmbientBg);
-        if (bg && setOwnerBgImage) setOwnerBgImage(bg);
+        if (setOwnerBgImage && isDefaultWallpaperConfig(config)) {
+          setOwnerBgImage(null);
+        }
 
         await syncUniversalStyleToSupabase(config, ownerSettingsRowId);
 
         addLammaBotMessage(
           activeRoomId,
-          `✅ تم تطبيق «${config.label}» — ${config.effects?.sidebarCardChase ? "شريط النور على بطاقات الأعمدة شغّال للجميع." : "كل المستخدمين هيشوفوه."}`,
+          isDefaultWallpaperConfig(config)
+            ? "✅ رجّعت الخلفية الافتراضية (/MAN.png) للجميع."
+            : `✅ تم تطبيق «${config.label}» — ${config.effects?.sidebarCardChase ? "شريط النور على بطاقات الأعمدة شغّال للجميع." : "كل المستخدمين هيشوفوه."}`,
         );
         return true;
       } catch (error) {
@@ -191,14 +201,32 @@ export function useUniversalStyleEngine({
         applyInFlightRef.current = false;
       }
     },
-    [
-      activeRoomId,
-      addLammaBotMessage,
-      defaultAmbientBg,
-      ownerSettingsRowId,
-      setOwnerBgImage,
-    ],
+    [activeRoomId, addLammaBotMessage, ownerSettingsRowId, setOwnerBgImage],
   );
+
+  const resetChatBackgroundToDefault = useCallback(async (): Promise<boolean> => {
+    if (applyInFlightRef.current) return false;
+    applyInFlightRef.current = true;
+
+    try {
+      previewSnapshotRef.current = null;
+      previewMemoryRef.current = null;
+      const config = resetConfigWallpaperToDefault(resolveCommittedConfig());
+      setCommittedConfig(config);
+      saveUniversalStyleLocal(config);
+      clearUniversalStylePreviewDomOnly();
+      applyUniversalStyleToDom(config, { preview: false });
+      if (setOwnerBgImage) setOwnerBgImage(null);
+
+      await syncUniversalStyleToSupabase(config, ownerSettingsRowId);
+      return true;
+    } catch (error) {
+      console.warn("[UniversalStyle] reset wallpaper failed:", error);
+      return false;
+    } finally {
+      applyInFlightRef.current = false;
+    }
+  }, [ownerSettingsRowId, resolveCommittedConfig, setOwnerBgImage]);
 
   const cancelStyleSandbox = useCallback(
     (sandboxId?: string) => {
@@ -219,6 +247,7 @@ export function useUniversalStyleEngine({
     tryHandleOwnerStylePrompt,
     applyStyleGlobally,
     cancelStyleSandbox,
+    resetChatBackgroundToDefault,
   };
 }
 

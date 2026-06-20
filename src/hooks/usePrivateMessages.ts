@@ -320,19 +320,26 @@ export function usePrivateMessages({
     let unsubSpy: (() => void) | undefined;
 
     if (isOwner && isSpyMode) {
-      unsubSpy = subscribeChannelWithRetry(() =>
-        supabase
-          .channel(`pm_spy_${myUid}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "INSERT",
-              schema: "public",
-              table: "pm_messages",
-            },
-            handleInsert,
-          ),
-      );
+      // Spy mode: poll instead of subscribing to all PM INSERTs (bandwidth + privacy).
+      const pollSpyPm = async () => {
+        if (cancelled || !supabase) return;
+        try {
+          const { data, error } = await supabase
+            .from("pm_messages")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(40);
+          if (error || !data?.length) return;
+          for (const row of [...data].reverse()) {
+            handleInsert({ new: row as IncomingPmRow });
+          }
+        } catch {
+          // ignore transient poll errors
+        }
+      };
+      void pollSpyPm();
+      const pollTimer = window.setInterval(pollSpyPm, 30_000);
+      unsubSpy = () => window.clearInterval(pollTimer);
     } else {
       unsubSent = subscribeChannelWithRetry(() =>
         supabase

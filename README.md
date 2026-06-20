@@ -79,7 +79,19 @@ npm run preview
 npm run lint
 ```
 
-ملاحظة: `lint` = `tsc --noEmit`، وليس ESLint.
+### 7. التحقق من hardening الإنتاج
+
+```bash
+npm run verify:hardening
+```
+
+يتطلب `.env.local` مع `VITE_SUPABASE_URL` و `VITE_SUPABASE_ANON_KEY`.
+
+### 8. ESLint
+
+```bash
+npm run lint:eslint
+```
 
 ## Cursor Cloud Agents
 
@@ -91,7 +103,7 @@ npm run lint
 ## هيكل المشروع
 
 ```text
-api/                 دوال Vercel (auth-config, sitemap)
+api/                 دوال Vercel (sitemap)
 public/              ملفات ثابتة و PWA
 scripts/             إعداد production (Supabase hardening)
 src/
@@ -103,7 +115,9 @@ src/
   main.tsx           نقطة الدخول
 supabase-schema.sql          جداول وسياسات
 supabase-storage.sql         bucket الوسائط
-supabase-production-hardening.sql  RLS إضافي
+supabase-production-hardening.sql          RLS إضافي
+supabase-participation-hardening.sql       حظر/invite/calls على السيرفر
+supabase-private-media.sql                 bucket خاص للوسائط الحساسة
 vercel.json                  إعدادات النشر
 AGENTS.md                    دليل AI agents
 ```

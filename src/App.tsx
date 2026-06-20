@@ -504,7 +504,7 @@ function ChatLoadingScreen({ user }: { user?: UserSession | null }) {
     isOwnerChatRole(user?.role)
       ? `👑 ${OWNER_DISPLAY_BADGE}`
       : user?.role === "admin"
-        ? "ADMIN"
+        ? "أدمن"
         : user?.role === "vip" || user?.role === "platinum_vip"
           ? "VIP"
           : user?.role === "guest"

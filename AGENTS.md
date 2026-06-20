@@ -48,7 +48,7 @@ npm run build
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-- مسارات `api/*` (مثل `/api/auth-config`) **لا تعمل** مع Vite dev — تحتاج Vercel أو `vercel dev`.
+- مسارات `api/sitemap` **لا تعمل** مع Vite dev — تحتاج Vercel أو `vercel dev`.
 - التطبيق React الرئيسي في `src/` يقرأ `VITE_*` مباشرة من env.
 
 ### 4. Network access
@@ -90,7 +90,7 @@ npm run lint && npm run build
 ## هيكل المشروع
 
 ```text
-api/                    Vercel serverless (auth-config, sitemap)
+api/                    Vercel serverless (sitemap)
 public/                 Static + PWA assets
 scripts/                Production setup helpers
 src/

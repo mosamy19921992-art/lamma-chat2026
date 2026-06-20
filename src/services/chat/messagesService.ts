@@ -45,7 +45,7 @@ export function createOutgoingRoomMessage({
     id: crypto.randomUUID(),
     author,
     text,
-    color,
+    color: color ?? "#10b981",
     isOwn: true,
     time: formatComposerTime(),
     type: isShadowed ? "shadow_msg" : "text",
@@ -121,13 +121,14 @@ export function subscribeToRoomMessages(
 
   const attach = () => {
     if (stopped || !supabase) return;
+    const client = supabase;
 
     if (retryTimer) {
       clearTimeout(retryTimer);
       retryTimer = null;
     }
 
-    activeChannel = supabase
+    activeChannel = client
       .channel(`room_${roomId}_${Date.now()}`)
       .on(
         "postgres_changes",
@@ -168,7 +169,7 @@ export function subscribeToRoomMessages(
             err,
           );
           if (activeChannel) {
-            void supabase.removeChannel(activeChannel);
+            void client.removeChannel(activeChannel);
             activeChannel = null;
           }
           retryTimer = setTimeout(() => {
@@ -188,7 +189,7 @@ export function subscribeToRoomMessages(
         retryTimer = null;
       }
       if (activeChannel) {
-        void supabase.removeChannel(activeChannel);
+        void supabase?.removeChannel(activeChannel);
         activeChannel = null;
       }
     },

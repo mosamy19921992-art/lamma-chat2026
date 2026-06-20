@@ -27,7 +27,7 @@ import {
 
 type DesignSection = "uploads" | "studio" | "assistant";
 
-export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset }: any) => {
+export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset }: any) => {
   type PreviewKind = "glass" | "face" | "template" | "column" | null;
 
   const [section, setSection] = useState<DesignSection>("uploads");
@@ -450,6 +450,22 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           تطبيق
                         </button>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          cancelAllPreviews();
+                          if (onResetDefaultChatBackground) {
+                            void onResetDefaultChatBackground();
+                          } else {
+                            setOwnerBgImage(null);
+                            setDesignOwnerBgInput("");
+                            alert("✅ رجّعت خلفية الشات للافتراضي (/MAN.png).");
+                          }
+                        }}
+                        className="w-full py-2.5 rounded-xl font-black text-[10px] transition-all lamma-tab-soft hover:text-white"
+                      >
+                        ↩ رجوع للخلفية الافتراضية (/MAN.png)
+                      </button>
                     </div>
 
                     <div className="p-4 rounded-2xl space-y-3 lamma-section-card">

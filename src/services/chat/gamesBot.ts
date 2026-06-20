@@ -87,7 +87,10 @@ function saveScores() {
 }
 
 function pickRandom<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
+  if (arr.length === 0) {
+    throw new Error("pickRandom requires a non-empty array");
+  }
+  return arr[Math.floor(Math.random() * arr.length)] as T;
 }
 
 function normalize(text: string): string {

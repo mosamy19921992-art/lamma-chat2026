@@ -104,6 +104,8 @@ async function applySql() {
     ["supabase-security-audit-fixes.sql", "security audit fixes"],
     ["supabase-identity-hardening.sql", "identity + storage folder RLS"],
     ["supabase-launch-hardening.sql", "launch hardening (PM + call_signals)"],
+    ["supabase-participation-hardening.sql", "participation (ban/invite/calls)"],
+    ["supabase-private-media.sql", "private PM media bucket"],
   ];
 
   for (const [file, label] of migrationChain) {

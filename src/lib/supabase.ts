@@ -38,6 +38,16 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
+/** Use in services when Supabase is required — throws if env is missing. */
+export function requireSupabase() {
+  if (!supabase) {
+    throw new Error(
+      "Supabase client is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
+    );
+  }
+  return supabase;
+}
+
 export function getClientUid() {
   const key = "lamma_client_uid";
   const storage = safeLocalStorage();
