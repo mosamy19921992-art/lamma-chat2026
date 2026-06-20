@@ -531,6 +531,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                             <li>Refine متعدد الجولات (مثلاً: make buttons rounder)</li>
                             <li>Apply Globally يحفظ في Supabase لكل المستخدمين + PWA</li>
                             <li>خلفيات صورة/فيديو مع overlay تلقائي للقراءة</li>
+                            <li>اكتب «اقتراحات» أو «الألوان مش مناسبة» — البوت يحلل ويقترح إصلاحات</li>
                           </ul>
                           <p className="text-[9px] text-gray-500">
                             تبويب Studio أعلاه لرفع الخلفيات اليدوي — المساعد الذكي الآن في الشات فقط.

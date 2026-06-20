@@ -6,16 +6,20 @@ import {
   INSPECT_ACTION_LABELS_AR,
   INSPECT_QUICK_ACTIONS,
 } from "../../services/design/designInspectService";
+import type { DesignInspectSuggestion } from "../../services/design/designInspectSuggestions";
+import { getSuggestionCategoryLabel } from "../../services/design/designInspectSuggestions";
 
 export interface DesignInspectOverlayProps {
   active: boolean;
   selectedRegion: ChatDesignRegion | null;
   highlightRect: DOMRect | null;
   lastSummary: string;
+  suggestions: DesignInspectSuggestion[];
   hasPendingPreview: boolean;
   isApplying: boolean;
   onAction: (region: ChatDesignRegion, action: RegionAction) => void;
   onCustomPrompt: (region: ChatDesignRegion, prompt: string) => void;
+  onApplySuggestion: (suggestion: DesignInspectSuggestion) => void;
   onCommit: () => void;
   onCancel: () => void;
   onExit: () => void;
@@ -26,10 +30,12 @@ export function DesignInspectOverlay({
   selectedRegion,
   highlightRect,
   lastSummary,
+  suggestions,
   hasPendingPreview,
   isApplying,
   onAction,
   onCustomPrompt,
+  onApplySuggestion,
   onCommit,
   onCancel,
   onExit,
@@ -113,13 +119,74 @@ export function DesignInspectOverlay({
         </div>
 
         {!selectedRegion ? (
-          <div className="design-inspect-empty">
-            انقر على الهيدر، الأعمدة، الرسائل، الخلفية، أو شريط الكتابة
-            <br />
-            لتظهر أوامر التصميم السريعة
-          </div>
+          <>
+            {suggestions.length > 0 ? (
+              <div className="design-inspect-suggestions">
+                <div className="design-inspect-suggestions__title">
+                  💡 ملاحظات عامة على الشكل الحالي
+                </div>
+                <div className="design-inspect-suggestions__list">
+                  {suggestions.slice(0, 3).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`design-inspect-suggestion design-inspect-suggestion--${item.tone}`}
+                      onClick={() => onApplySuggestion(item)}
+                      title={`معاينة: ${item.prompt}`}
+                    >
+                      <span className="design-inspect-suggestion__badge">
+                        {getSuggestionCategoryLabel(item.category)}
+                      </span>
+                      <span className="design-inspect-suggestion__headline">
+                        {item.tone === "warn" ? "⚠️ " : item.tone === "good" ? "✅ " : "💡 "}
+                        {item.title}
+                      </span>
+                      <span className="design-inspect-suggestion__reason">
+                        {item.reason}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <div className="design-inspect-empty">
+              انقر على الهيدر، الأعمدة، الرسائل، الخلفية، أو شريط الكتابة
+              <br />
+              لتظهر اقتراحات مخصصة + أوامر سريعة
+            </div>
+          </>
         ) : (
           <>
+            {suggestions.length > 0 ? (
+              <div className="design-inspect-suggestions">
+                <div className="design-inspect-suggestions__title">
+                  💡 اقتراحات البوت — ألوان / خلفية / شكل
+                </div>
+                <div className="design-inspect-suggestions__list">
+                  {suggestions.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`design-inspect-suggestion design-inspect-suggestion--${item.tone}`}
+                      onClick={() => onApplySuggestion(item)}
+                      title={`معاينة: ${item.prompt}`}
+                    >
+                      <span className="design-inspect-suggestion__badge">
+                        {getSuggestionCategoryLabel(item.category)}
+                      </span>
+                      <span className="design-inspect-suggestion__headline">
+                        {item.tone === "warn" ? "⚠️ " : item.tone === "good" ? "✅ " : "💡 "}
+                        {item.title}
+                      </span>
+                      <span className="design-inspect-suggestion__reason">
+                        {item.reason}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <div className="design-inspect-actions">
               {quickActions.map((action) => (
                 <button

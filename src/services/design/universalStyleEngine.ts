@@ -14,6 +14,11 @@ import {
   type DetectedDesignCommand,
   type RegionStyleState,
 } from "./chatDesignVocabulary";
+import {
+  buildDesignInspectSuggestions,
+  formatDesignSuggestionsSummary,
+  isDesignSuggestionPrompt,
+} from "./designInspectSuggestions";
 import { resetConfigWallpaperToDefault } from "./universalStyleStorage";
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/gi;
@@ -597,6 +602,16 @@ export function parseOwnerStylePrompt(
     return {
       config: previous ? structuredClone(previous) : createDefaultUniversalStyle(),
       summary: DESIGN_VOCABULARY_HINT,
+      refined: false,
+    };
+  }
+
+  if (isDesignSuggestionPrompt(trimmed)) {
+    const config = previous ? structuredClone(previous) : createDefaultUniversalStyle();
+    const suggestions = buildDesignInspectSuggestions(config, null, 6);
+    return {
+      config,
+      summary: formatDesignSuggestionsSummary(suggestions),
       refined: false,
     };
   }

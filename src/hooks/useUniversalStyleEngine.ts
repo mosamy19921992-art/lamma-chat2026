@@ -247,7 +247,7 @@ export function useUniversalStyleEngine({
   );
 
   const previewDesignPrompt = useCallback(
-    (rawPrompt: string): string | null => {
+    (rawPrompt: string): { summary: string; config: UniversalStyleConfig } | null => {
       if (!isOwner) return null;
 
       const trimmed = rawPrompt.trim();
@@ -259,7 +259,7 @@ export function useUniversalStyleEngine({
       beginLivePreview(parsed.config);
       setHasPendingDesignPreview(true);
       setDesignPreviewActive(true);
-      return parsed.summary;
+      return { summary: parsed.summary, config: parsed.config };
     },
     [beginLivePreview, committedConfig, isOwner],
   );

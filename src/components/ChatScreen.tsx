@@ -16,6 +16,11 @@ import {
   resolveDesignRegionFromElement,
 } from "../services/design/designInspectService";
 import {
+  buildDesignInspectSuggestions,
+  formatSuggestionOneLiner,
+  type DesignInspectSuggestion,
+} from "../services/design/designInspectSuggestions";
+import {
   buildStyleSandboxMessage,
   MAX_STYLE_SANDBOX_SESSIONS,
   useUniversalStyleEngine,
@@ -1079,6 +1084,8 @@ export default function ChatScreen({
   const [inspectTargetEl, setInspectTargetEl] = useState<HTMLElement | null>(null);
   const [inspectLastSummary, setInspectLastSummary] = useState("");
   const [inspectApplying, setInspectApplying] = useState(false);
+  const [inspectPreviewConfig, setInspectPreviewConfig] =
+    useState<UniversalStyleConfig | null>(null);
   const modalDragControls = useDragControls();
 
   // --- AUTOMATION AND STORE SYSTEM STATES ---
@@ -4920,6 +4927,7 @@ export default function ChatScreen({
     setInspectHighlightRect(null);
     setInspectTargetEl(null);
     setInspectLastSummary("");
+    setInspectPreviewConfig(null);
   }, [isOwnerRole]);
 
   const handleExitDesignInspect = useCallback(() => {
@@ -4929,13 +4937,17 @@ export default function ChatScreen({
     setInspectHighlightRect(null);
     setInspectTargetEl(null);
     setInspectLastSummary("");
+    setInspectPreviewConfig(null);
   }, [cancelPendingDesignPreview, hasPendingDesignPreview]);
 
   const handleInspectRegionAction = useCallback(
     (region: ChatDesignRegion, action: RegionAction) => {
       const prompt = buildRegionActionPrompt(region, action);
-      const summary = previewDesignPrompt(prompt);
-      if (summary) setInspectLastSummary(summary);
+      const result = previewDesignPrompt(prompt);
+      if (result) {
+        setInspectLastSummary(result.summary);
+        setInspectPreviewConfig(result.config);
+      }
     },
     [previewDesignPrompt],
   );
@@ -4957,8 +4969,24 @@ export default function ChatScreen({
       const fullPrompt = prompt.includes(regionHint)
         ? prompt
         : `${prompt} ${regionHint}`.trim();
-      const summary = previewDesignPrompt(fullPrompt);
-      if (summary) setInspectLastSummary(summary);
+      const result = previewDesignPrompt(fullPrompt);
+      if (result) {
+        setInspectLastSummary(result.summary);
+        setInspectPreviewConfig(result.config);
+      }
+    },
+    [previewDesignPrompt],
+  );
+
+  const handleApplyInspectSuggestion = useCallback(
+    (suggestion: DesignInspectSuggestion) => {
+      const result = previewDesignPrompt(suggestion.prompt);
+      if (result) {
+        setInspectLastSummary(
+          `💡 ${formatSuggestionOneLiner(suggestion)}\n\n${result.summary}`,
+        );
+        setInspectPreviewConfig(result.config);
+      }
     },
     [previewDesignPrompt],
   );
@@ -4980,6 +5008,7 @@ export default function ChatScreen({
 
   const handleInspectCancel = useCallback(() => {
     cancelPendingDesignPreview();
+    setInspectPreviewConfig(null);
     setInspectLastSummary("↩️ تم إلغاء المعاينة.");
   }, [cancelPendingDesignPreview]);
 
@@ -5027,6 +5056,17 @@ export default function ChatScreen({
     () => committedConfig || loadUniversalStyleLocal(),
     [committedConfig],
   );
+
+  const inspectStyleConfig = inspectPreviewConfig || activeUniversalStyle;
+
+  const inspectSuggestions = useMemo(
+    () =>
+      designInspectActive
+        ? buildDesignInspectSuggestions(inspectStyleConfig, inspectSelectedRegion, 4)
+        : [],
+    [designInspectActive, inspectSelectedRegion, inspectStyleConfig],
+  );
+
   const universalGlobalMedia =
     activeUniversalStyle?.backgrounds.global.kind !== "color";
   const shellClearBg =
@@ -12057,10 +12097,12 @@ export default function ChatScreen({
           selectedRegion={inspectSelectedRegion}
           highlightRect={inspectHighlightRect}
           lastSummary={inspectLastSummary}
+          suggestions={inspectSuggestions}
           hasPendingPreview={hasPendingDesignPreview}
           isApplying={inspectApplying}
           onAction={handleInspectRegionAction}
           onCustomPrompt={handleInspectCustomPrompt}
+          onApplySuggestion={handleApplyInspectSuggestion}
           onCommit={handleInspectCommit}
           onCancel={handleInspectCancel}
           onExit={handleExitDesignInspect}
