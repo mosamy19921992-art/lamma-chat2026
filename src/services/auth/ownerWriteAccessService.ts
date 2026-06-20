@@ -1,6 +1,7 @@
 import { normalizeAuthRole } from "../../lib/authProfile";
 import { supabase } from "../../lib/supabase";
 import { fetchServerUserRole } from "./userRoleService";
+import { tryClaimOwnerRoleViaRpc } from "./claimOwnerRoleService";
 
 export interface OwnerWriteAccessResult {
   ok: boolean;
@@ -85,6 +86,22 @@ export async function checkOwnerWriteAccess(): Promise<OwnerWriteAccessResult> {
       serverRole: null,
     };
   }
+}
+
+/** Check write access; if missing, attempt RPC self-claim once. */
+export async function checkOwnerWriteAccessWithClaim(): Promise<OwnerWriteAccessResult> {
+  const first = await checkOwnerWriteAccess();
+  if (first.ok) return first;
+
+  const claim = await tryClaimOwnerRoleViaRpc();
+  if (!claim.ok) {
+    return {
+      ...first,
+      reason: `${first.reason}\n\n(${claim.message})`,
+    };
+  }
+
+  return checkOwnerWriteAccess();
 }
 
 export function formatOwnerWriteDeniedMessage(reason: string): string {

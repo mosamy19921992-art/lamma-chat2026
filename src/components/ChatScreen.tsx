@@ -20,7 +20,7 @@ import {
   formatSuggestionOneLiner,
   type DesignInspectSuggestion,
 } from "../services/design/designInspectSuggestions";
-import { checkOwnerWriteAccess } from "../services/auth/ownerWriteAccessService";
+import { checkOwnerWriteAccessWithClaim } from "../services/auth/ownerWriteAccessService";
 import {
   buildStyleSandboxMessage,
   MAX_STYLE_SANDBOX_SESSIONS,
@@ -2375,7 +2375,7 @@ export default function ChatScreen({
       return;
     }
     let cancelled = false;
-    void checkOwnerWriteAccess().then((result) => {
+    void checkOwnerWriteAccessWithClaim().then((result) => {
       if (!cancelled) setOwnerWriteAccessOk(result.ok);
     });
     return () => {

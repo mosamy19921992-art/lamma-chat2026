@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { setDesignPreviewActive } from "../services/design/designPreviewDom";
 import {
-  checkOwnerWriteAccess,
+  checkOwnerWriteAccessWithClaim,
   formatOwnerWriteDeniedMessage,
 } from "../services/auth/ownerWriteAccessService";
 import {
@@ -194,7 +194,7 @@ export function useUniversalStyleEngine({
       setIsApplyingStyle(true);
 
       try {
-        const access = await checkOwnerWriteAccess();
+        const access = await checkOwnerWriteAccessWithClaim();
         if (!access.ok) {
           addLammaBotMessage(
             activeRoomId,
