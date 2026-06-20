@@ -167,6 +167,7 @@ import { useSocialFeed } from "../hooks/useSocialFeed";
 import { useWebRTCCalls } from "../hooks/useWebRTCCalls";
 import { useOnlinePresence, type PresenceUpdateEvent } from "../hooks/useOnlinePresence";
 import { useIsMobileViewport } from "../hooks/useIsMobileViewport";
+import { useVisualViewportLayout } from "../hooks/useVisualViewportOffset";
 import { useDeepLinkParams } from "../hooks/useDeepLinkParams";
 import { useVoiceMessageRecorder } from "../hooks/useVoiceMessageRecorder";
 import { VoiceNoteBubble, VoiceRecorderBar } from "../components/VoiceNoteBubble";
@@ -1850,6 +1851,7 @@ export default function ChatScreen({
     onlineCount: 1,
   });
   const isMobileAppShell = useIsMobileViewport();
+  const vvLayout = useVisualViewportLayout(isMobileAppShell);
   const roomEntryTickerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -4704,6 +4706,48 @@ export default function ChatScreen({
     chatStickToBottomRef.current = distanceFromBottom < 160;
   }, []);
 
+  const scrollChatToBottom = useCallback(
+    (behavior: ScrollBehavior = "smooth") => {
+      const el = feedViewportRef.current;
+      if (!el) return;
+      chatStickToBottomRef.current = true;
+      el.scrollTo({ top: el.scrollHeight, behavior });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!isMobileAppShell || !vvLayout.keyboardOpen) return;
+    const t1 = window.setTimeout(() => scrollChatToBottom("auto"), 40);
+    const t2 = window.setTimeout(() => scrollChatToBottom("smooth"), 320);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [
+    isMobileAppShell,
+    vvLayout.keyboardOpen,
+    scrollChatToBottom,
+    messages.length,
+  ]);
+
+  useEffect(() => {
+    if (!isMobileAppShell) return;
+    const cls = "lamma-keyboard-open";
+    if (vvLayout.keyboardOpen) {
+      document.documentElement.classList.add(cls);
+      document.body.classList.add(cls);
+      window.scrollTo(0, 0);
+    } else {
+      document.documentElement.classList.remove(cls);
+      document.body.classList.remove(cls);
+    }
+    return () => {
+      document.documentElement.classList.remove(cls);
+      document.body.classList.remove(cls);
+    };
+  }, [isMobileAppShell, vvLayout.keyboardOpen]);
+
   useEffect(() => {
     if (isPostsRoom) {
       feedViewportRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -4715,8 +4759,8 @@ export default function ChatScreen({
       chatStickToBottomRef.current = true;
     }
     if (!chatStickToBottomRef.current) return;
-    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [isPostsRoom, messages]);
+    scrollChatToBottom("smooth");
+  }, [isPostsRoom, messages, scrollChatToBottom]);
 
   useEffect(() => {
     pmEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -5042,12 +5086,19 @@ export default function ChatScreen({
     if (inputText.trim()) {
       bumpUserStat("messagesSent");
     }
+    chatStickToBottomRef.current = true;
     sendRoomMessage();
+    if (isMobileAppShell) {
+      window.setTimeout(() => scrollChatToBottom("smooth"), 120);
+      window.setTimeout(() => scrollChatToBottom("smooth"), 420);
+    }
   }, [
     canPublishPosts,
     inputText,
+    isMobileAppShell,
     isPostsRoom,
     publishPost,
+    scrollChatToBottom,
     sendRoomMessage,
     setInputText,
   ]);
@@ -5869,7 +5920,17 @@ export default function ChatScreen({
         isMobileAppShell
           ? " lamma-pwa-app-shell"
           : " h-[100dvh] min-h-[100dvh]"
-      }`}
+      }${vvLayout.keyboardOpen ? " lamma-keyboard-open" : ""}`}
+      style={
+        isMobileAppShell && vvLayout.keyboardOpen && vvLayout.shellHeight
+          ? {
+              height: `${vvLayout.shellHeight}px`,
+              maxHeight: `${vvLayout.shellHeight}px`,
+              top: `${vvLayout.shellTop}px`,
+              bottom: "auto",
+            }
+          : undefined
+      }
       dir="rtl"
       data-clear-bg={shellClearBg}
       data-reading-mode={readingMode ? "true" : "false"}
@@ -5992,21 +6053,19 @@ export default function ChatScreen({
 
       {/* ================= HEADER BAR ================= */}
       {!isZenMode && (
-        <header className="lamma-header px-2 sm:px-4 md:px-6 flex items-center justify-between relative z-20 shrink-0">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-            <img
-              src={brandLogoUrl || "/images/lamma-wordmark.svg"}
-              alt="LAMMA CHAT"
-              className="h-4 sm:h-5 opacity-55 object-contain"
-            />
-          </div>
+        <header className="lamma-header px-2 sm:px-4 md:px-6 flex items-center justify-between gap-2 relative z-30 shrink-0">
+          <div
+            className="lamma-header-aurora pointer-events-none absolute inset-0"
+            aria-hidden="true"
+          />
+          <div className="lamma-header-start-cluster">
           {/* Right side controls (User account & actions - Now in the visual start "اول الصفحة" due to RTL) */}
-          <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             {/* User badge — tap to open personal profile card */}
             <button
               type="button"
               onClick={openOwnProfileCard}
-              className="flex items-center gap-2 select-none max-w-[58vw] sm:max-w-none lamma-header-rail lamma-header-user-rail cursor-pointer rounded-2xl hover:bg-white/5 transition-colors text-right"
+              className="flex items-center gap-1.5 select-none min-w-0 flex-1 sm:flex-none sm:max-w-[200px] lamma-header-rail lamma-header-user-rail cursor-pointer rounded-2xl hover:bg-white/5 transition-colors text-right"
               title="بطاقتي الشخصية والإعدادات"
             >
               <div className="relative shrink-0">
@@ -6078,11 +6137,11 @@ export default function ChatScreen({
               </div>
               <div className="flex flex-col items-start leading-none gap-0.5">
                 <span
-                  className={`${getNameGlassCardClass({
+                  className={`lamma-header-name ${getNameGlassCardClass({
                     isSelf: true,
                     isBoss: isOwnerRole,
                     compact: true,
-                  })} text-[11px] font-black flex items-center gap-1 truncate max-w-[45vw] sm:max-w-none ${getPrestigeNameClass(myActiveSession.nickname, myActiveSession, chatMembers, subscription, memberCosmeticGrants)}`}
+                  })} text-[11px] font-black flex items-center gap-1 min-w-0 ${getPrestigeNameClass(myActiveSession.nickname, myActiveSession, chatMembers, subscription, memberCosmeticGrants)}`}
                   style={{
                     color:
                       isOwnerRole ||
@@ -6111,7 +6170,7 @@ export default function ChatScreen({
                     </span>
                   )}
                 </span>
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="lamma-header-user-meta flex items-center gap-1.5 mt-0.5">
                   <div className="flex items-center gap-1 flex-wrap">
                     {hasStorePlatinumDisplay(
                       myActiveSession.nickname,
@@ -6145,12 +6204,10 @@ export default function ChatScreen({
                     )}
                   </div>
                 </div>
+              </div>
+            </button>
 
-                {/* Icons bar under the name and role */}
-                <div
-                  className="flex items-center gap-1 mt-1"
-                  onClick={(e) => e.stopPropagation()}
-                >
+            <div className="lamma-header-actions shrink-0" aria-label="اختصارات الهيدر">
                   {/* Rooms selector button */}
                   <div className="relative dropdown-container flex items-center xl:hidden">
                     <HeaderIconButton
@@ -6222,7 +6279,7 @@ export default function ChatScreen({
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           transition={{ duration: 0.15 }}
-                          className="hidden md:flex fixed top-20 right-4 md:right-10 w-[240px] rounded-2xl z-[99] flex-col pb-1 lamma-popover-shell"
+                          className="hidden md:flex fixed top-[4.75rem] right-4 md:right-10 w-[240px] rounded-2xl z-[99] flex-col pb-1 lamma-popover-shell"
                         >
                           <div className="flex items-center justify-between p-2.5 lamma-feature-header cursor-grab active:cursor-grabbing">
                             <div className="flex items-center gap-2 pointer-events-none">
@@ -6413,7 +6470,7 @@ export default function ChatScreen({
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           transition={{ duration: 0.15 }}
-                          className="hidden md:flex fixed top-20 left-4 md:left-auto md:right-1/4 w-[280px] rounded-2xl z-[99] flex-col lamma-popover-shell"
+                          className="hidden md:flex fixed top-[4.75rem] left-4 md:left-auto md:right-1/4 w-[280px] rounded-2xl z-[99] flex-col lamma-popover-shell"
                           style={{
                             resize: "both",
                             overflow: "hidden",
@@ -6673,7 +6730,7 @@ export default function ChatScreen({
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           transition={{ duration: 0.15 }}
-                          className="hidden md:flex fixed top-20 left-4 md:left-auto md:right-1/3 w-[280px] sm:w-[320px] rounded-2xl z-[99] flex-col lamma-popover-shell"
+                          className="hidden md:flex fixed top-[4.75rem] left-4 md:left-auto md:right-1/3 w-[280px] sm:w-[320px] rounded-2xl z-[99] flex-col lamma-popover-shell"
                           style={{
                             resize: "both",
                             overflow: "hidden",
@@ -6876,40 +6933,35 @@ export default function ChatScreen({
                     </div>
                   </MobileBottomSheet>
                 </div>
-              </div>
-            </button>
+            </div>
           </div>
 
-          {/* Center welcome moved into header wordmark container */}
-
-          {/* Left indicators (Branding and Home button - Now visually on the left side) */}
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-center justify-center h-full lamma-header-rail lamma-header-brand-rail">
-              <div className="text-[13px] sm:text-[14px] font-black text-white leading-none mb-0.5 w-full text-center pl-1 translate-y-1 lamma-header-wordmark">
-                LAMMA CHAT
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex flex-col items-end leading-tight">
-                  <span className="text-[11px] sm:text-[12px] font-extrabold text-green-400 mb-0.5">
-                    اللمة تحلى
-                  </span>
-                  <span className="text-[9px] sm:text-[10px] font-bold text-gray-400">
-                    بالصحبة الأحلى
-                  </span>
-                </div>
+          {/* Brand — logo + slogan (no duplicate center watermark) */}
+          <div className="flex items-center shrink-0 z-[1]">
+            <div className="lamma-header-rail lamma-header-brand-rail flex items-center gap-2 sm:gap-2.5">
                 <button
-                  className="transition-transform hover:scale-105 active:scale-95 cursor-pointer object-contain flex items-center justify-center lamma-brand-mark"
+                  className="transition-transform hover:scale-105 active:scale-95 cursor-pointer object-contain flex items-center justify-center lamma-brand-mark shrink-0"
                   title="الرئيسية"
                   onClick={() => window.location.reload()}
                 >
                   <AMLogo
-                    size={44}
+                    size={40}
                     variant="circular"
                     glow={true}
                     crown={true}
                   />
                 </button>
-              </div>
+                <div className="hidden sm:flex flex-col items-end leading-tight min-w-0">
+                  <span className="text-[10px] font-black text-white tracking-[0.18em] lamma-header-wordmark leading-none">
+                    LAMMA CHAT
+                  </span>
+                  <span className="text-[10px] font-extrabold text-green-400 mt-0.5">
+                    اللمة تحلى
+                  </span>
+                  <span className="text-[8.5px] font-bold text-gray-400">
+                    بالصحبة الأحلى
+                  </span>
+                </div>
             </div>
           </div>
         </header>
@@ -7692,8 +7744,9 @@ export default function ChatScreen({
             isMobileAppShell || mobileTab === "chat" ? "flex" : "hidden md:flex"
           } ${isLeftColumnCollapsed ? "xl:border-l xl:border-white/10" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-white/10" : ""}`}
         >
+          <div className="lamma-chat-subheader shrink-0 flex flex-col">
           {/* Room Top Bar: Topic & System Actions */}
-          <div className="flex items-stretch justify-between min-h-[32px] shrink-0 lamma-fire-underline lamma-room-header">
+          <div className="flex items-stretch justify-between min-h-[34px] shrink-0 lamma-fire-underline lamma-room-header">
             {/* Topic Side (Right) */}
             <div
               className="flex-1 flex flex-col justify-center px-2.5 border-l border-white/10 group/topic cursor-pointer relative lamma-topic-shell"
@@ -8384,6 +8437,7 @@ export default function ChatScreen({
                 </div>
               )}
             </div>
+          </div>
           </div>
 
           {/* Messages Feed Viewport */}
@@ -9635,6 +9689,13 @@ export default function ChatScreen({
                 rows={isPostsRoom ? 3 : 1}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
+                onFocus={() => {
+                  chatStickToBottomRef.current = true;
+                  if (isMobileAppShell) {
+                    window.setTimeout(() => scrollChatToBottom("auto"), 80);
+                    window.setTimeout(() => scrollChatToBottom("smooth"), 360);
+                  }
+                }}
                 onKeyDown={(e) => {
                   if (!isPostsRoom && e.key === "Enter") {
                     e.preventDefault();

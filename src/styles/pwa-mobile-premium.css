@@ -222,6 +222,43 @@
     display: none !important;
   }
 
+  /* Keyboard open — shrink shell to visual viewport, hide bottom nav, keep chat + composer visible */
+  html.lamma-keyboard-open,
+  body.lamma-keyboard-open {
+    overflow: hidden !important;
+    height: 100% !important;
+    position: fixed;
+    width: 100%;
+  }
+
+  .lamma-pwa-app-shell.lamma-keyboard-open {
+    position: fixed !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    grid-template-areas:
+      "header"
+      "main" !important;
+    overflow: hidden !important;
+  }
+
+  .lamma-pwa-app-shell.lamma-keyboard-open > .lamma-pwa-bottom-nav {
+    display: none !important;
+  }
+
+  .lamma-pwa-app-shell.lamma-keyboard-open .lamma-pwa-main-stage {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .lamma-pwa-app-shell.lamma-keyboard-open .lamma-chat-feed-viewport {
+    scroll-padding-bottom: 12px;
+  }
+
+  .lamma-pwa-app-shell.lamma-keyboard-open .lamma-pwa-composer-stack {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 5;
+  }
+
   .lamma-mobile-sidebar-shell {
     transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
   }
