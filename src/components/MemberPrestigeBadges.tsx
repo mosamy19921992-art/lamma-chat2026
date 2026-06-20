@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import type { ChatMember, MemberCosmeticGrant, UserSession } from "../lib/chatTypes";
 import {
   getRoleFromAuthor,
@@ -30,9 +30,17 @@ export function MemberPrestigeBadges({
   showTitle = true,
   highlightYou = false,
 }: MemberPrestigeBadgesProps) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const isYou = member.nickname === currentUser.nickname;
   const storeForMember =
-    isYou && subscription?.isActive && (subscription.expiresAt ?? 0) > Date.now()
+    isYou &&
+    subscription?.isActive &&
+    (subscription.expiresAt ?? 0) > nowMs
       ? subscription
       : null;
   const vipChip = getStoreVipChip(

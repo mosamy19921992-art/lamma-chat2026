@@ -73,11 +73,14 @@ export function useWebRTCCalls({
   const activeCallRef = useRef<ActiveCallState | null>(null);
   const incomingCallRef = useRef<IncomingCallState | null>(null);
   const pendingOffersRef = useRef<Record<string, RTCSessionDescriptionInit>>({});
-  activeCallRef.current = activeCall;
-  incomingCallRef.current = incomingCall;
-  callTypeRef.current = activeCall?.type ?? incomingCall?.type ?? "audio";
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+
+  useEffect(() => {
+    activeCallRef.current = activeCall;
+    incomingCallRef.current = incomingCall;
+    callTypeRef.current = activeCall?.type ?? incomingCall?.type ?? "audio";
+  }, [activeCall, incomingCall]);
 
   const clearTimers = useCallback(() => {
     if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);

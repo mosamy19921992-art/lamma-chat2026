@@ -111,7 +111,7 @@ export function OwnerMemberCosmeticsPanel({
 
     setMemberCosmeticGrants((prev) => {
       const current = prev[nickname] || emptyGrant();
-      let next: MemberCosmeticGrant = { ...current };
+      const next: MemberCosmeticGrant = { ...current };
 
       if (activeCosmetic === "vip") {
         next.vipTier = enabled ? "vip" : current.vipTier === "vip" ? null : current.vipTier;

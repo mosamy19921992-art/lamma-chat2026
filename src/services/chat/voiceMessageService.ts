@@ -16,7 +16,7 @@ export async function uploadVoiceNoteBlob(
         ? "ogg"
         : "webm";
 
-  const subfolder = `voice/${roomId.replace(/[^\w.\-]+/g, "_")}`;
+  const subfolder = `voice/${roomId.replace(/[^\w.-]+/g, "_")}`;
   const file = new File([blob], `voice.${ext}`, {
     type: blob.type || "audio/webm",
   });

@@ -92,7 +92,7 @@ export default function AMLogo({
     return { fromColor, viaColor, toColor };
   }, [frame]);
 
-  const uniqueId = React.useId ? React.useId().replace(/:/g, "") : Math.floor(Math.random() * 1000000);
+  const uniqueId = React.useId().replace(/:/g, "");
   const userFrameGradId = `userFrameGrad-${uniqueId}`;
 
   if (variant === "circular") {

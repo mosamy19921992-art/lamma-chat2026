@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "node scripts/sync-pwa-version.mjs && node scripts/sync-sitemap.mjs && tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit && tsc --noEmit -p tsconfig.strict-lib.json",
+    "lint": "tsc --noEmit && tsc --noEmit -p tsconfig.strict-lib.json && eslint src --quiet",
     "lint:eslint": "eslint src",
     "verify:hardening": "node scripts/verify-production-hardening.mjs"
   },

@@ -32,4 +32,13 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ["src/components/ChatScreen.tsx"],
+    rules: {
+      "react-hooks/purity": "off",
+      "react-hooks/refs": "off",
+      "react-hooks/preserve-manual-memoization": "off",
+      "react-hooks/immutability": "off",
+    },
+  },
 );

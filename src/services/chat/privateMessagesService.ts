@@ -142,7 +142,7 @@ export async function uploadPrivateMediaFile(
   }
 
   const uid = await requireAuthenticatedUid();
-  const target = targetNickname.replace(/[^\w.\-]+/g, "_") || "unknown";
+  const target = targetNickname.replace(/[^\w.-]+/g, "_") || "unknown";
   const subfolder = `pm/${target}`;
 
   const { signedUrl, error } = await uploadToPrivateBucket(file, uid, subfolder);

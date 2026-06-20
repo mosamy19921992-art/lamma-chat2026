@@ -680,13 +680,8 @@ export default function ChatScreen({
   });
   const [activeRoomId, setActiveRoomId] = useState(() => readRequestedRoomId());
   const appLink = buildRoomLink(activeRoomId);
-  const geminiSearchEndpoint =
-    import.meta.env.VITE_GEMINI_SEARCH_ENDPOINT || "";
   const senderUid = currentUser.uid || "";
-  const publicChatSessionStartedAtRef = useRef<string>(
-    new Date().toISOString(),
-  );
-  const publicChatSessionStartedAt = publicChatSessionStartedAtRef.current;
+  const [publicChatSessionStartedAt] = useState(() => new Date().toISOString());
   const publicChatSessionStartedAtMs = new Date(
     publicChatSessionStartedAt,
   ).getTime();
@@ -1094,8 +1089,13 @@ export default function ChatScreen({
   );
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [subscriptionNowMs, setSubscriptionNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setSubscriptionNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
   const hasActiveSubscription =
-    subscription?.isActive && subscription?.expiresAt > Date.now();
+    subscription?.isActive && (subscription?.expiresAt ?? 0) > subscriptionNowMs;
   const subscriptionVisualRole = hasActiveSubscription
     ? subscription.type === "platinum"
       ? "platinum_vip"
@@ -1195,6 +1195,7 @@ export default function ChatScreen({
   const [isDbConnectionLost, setIsDbConnectionLost] = useState(false);
   const [isReconnectingDb, setIsReconnectingDb] = useState(false);
   const [dbStatusLogs, setDbStatusLogs] = useState<string[]>([]);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isDbConnectionLost) {
@@ -1255,6 +1256,7 @@ export default function ChatScreen({
 
   // Current ban tracking state for the active logged-in user
   const [isCurrentlyBanned, setIsCurrentlyBanned] = useState(false);
+  const [banRecheckLoading, setBanRecheckLoading] = useState(false);
   const [banDetails, setBanDetails] = useState<BanInfo | null>(null);
   const canSyncModerationToSupabase = Boolean(
     supabase &&
@@ -2098,7 +2100,9 @@ export default function ChatScreen({
   const [djLibrary, setDjLibrary] = useState<OwnerMusicTrack[]>([]);
   const [roomDjMap, setRoomDjMap] = useState<Record<string, RoomDjState>>({});
   const roomDjMapRef = useRef<Record<string, RoomDjState>>({});
-  roomDjMapRef.current = roomDjMap;
+  useEffect(() => {
+    roomDjMapRef.current = roomDjMap;
+  }, [roomDjMap]);
   // Persistent state synchronization loops
   useEffect(() => {
     localStorage.setItem("lamma_maintenance_mode", String(isMaintenanceMode));
@@ -2150,7 +2154,9 @@ export default function ChatScreen({
     if (saved) {
       try {
         return JSON.parse(saved);
-      } catch (e) {}
+      } catch {
+        /* ignore corrupt local banned-words cache */
+      }
     }
     return [
       "شتيمة",
@@ -4509,8 +4515,6 @@ export default function ChatScreen({
   const [isEditingTopic, setIsEditingTopic] = useState(false);
   const [topicInputText, setTopicInputText] = useState("");
 
-  const [authError, setAuthError] = useState<string | null>(null);
-
   useEffect(() => {
     if (!supabase) {
       setAuthError(
@@ -5538,7 +5542,7 @@ export default function ChatScreen({
 
     try {
       setIsUploadingImage(true);
-      const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(0, 80);
+      const safeName = file.name.replace(/[^\w.-]+/g, "_").slice(0, 80);
       const objectPath = userStoragePath(
         currentUser.uid || senderUid,
         "rooms",
@@ -6063,13 +6067,36 @@ export default function ChatScreen({
 
           <div className="flex gap-3">
             <button
-              onClick={() => {
-                localStorage.removeItem("lamma_banned_list");
-                location.reload();
+              type="button"
+              disabled={banRecheckLoading || !supabase}
+              onClick={async () => {
+                if (!supabase) return;
+                setBanRecheckLoading(true);
+                try {
+                  const { data, error } = await supabase
+                    .from("banned_users")
+                    .select("*")
+                    .order("created_at", { ascending: false });
+                  if (error) {
+                    console.warn("Ban recheck failed", error);
+                    alert("⚠️ تعذر التحقق من السيرفر — تحقق من الاتصال.");
+                    return;
+                  }
+                  const serverBans = (data as BannedUserRow[]).map((row) =>
+                    parseBannedUserRow(row),
+                  );
+                  setBannedUsersList(serverBans);
+                  localStorage.setItem(
+                    "lamma_banned_list",
+                    JSON.stringify(serverBans),
+                  );
+                } finally {
+                  setBanRecheckLoading(false);
+                }
               }}
-              className="flex-1 py-3 text-[10px] font-black bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl border border-white/10 transition-all cursor-pointer"
+              className="flex-1 py-3 text-[10px] font-black bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl border border-white/10 transition-all cursor-pointer disabled:opacity-50"
             >
-              🔄 إعادة التحقق الأمني
+              {banRecheckLoading ? "جاري التحقق…" : "🔄 إعادة التحقق الأمني"}
             </button>
             <button
               onClick={() => onLogout()}
@@ -7079,9 +7106,9 @@ export default function ChatScreen({
                           {unreadNotificationsCount > 0 && (
                             <span className="text-[8px] px-1.5 py-0.5 font-mono lamma-notify-pill">{unreadNotificationsCount} جديد</span>
                           )}
-                          <button onClick={() => setNotifications((prev) => { const next = prev.map((n) => ({ ...n, read: true })); try { localStorage.setItem("lamma_notifications", JSON.stringify(next)); } catch {} return next; })}
+                          <button onClick={() => setNotifications((prev) => { const next = prev.map((n) => ({ ...n, read: true })); try { localStorage.setItem("lamma_notifications", JSON.stringify(next)); } catch { /* quota */ } return next; })}
                             className="text-[9px] text-gray-300 px-2 py-0.5 rounded cursor-pointer lamma-soft-action">تحديد الكل كمقروء</button>
-                          <button onClick={() => { setNotifications([]); try { localStorage.removeItem("lamma_notifications"); } catch {} }}
+                          <button onClick={() => { setNotifications([]); try { localStorage.removeItem("lamma_notifications"); } catch { /* quota */ } }}
                             className="text-[9px] text-red-400 px-2 py-0.5 rounded cursor-pointer lamma-soft-action">مسح الكل</button>
                         </div>
                       </div>
@@ -7092,7 +7119,7 @@ export default function ChatScreen({
                           {notifications.slice(0, 20).map((n) => (
                             <div key={n.id}
                               className={`p-2.5 rounded-xl border flex items-start gap-2.5 cursor-pointer lamma-notification-card ${n.read ? "opacity-75" : "lamma-notification-card-unread"}`}
-                              onClick={() => setNotifications((prev) => { const next = prev.map((x) => x.id === n.id ? { ...x, read: true } : x); try { localStorage.setItem("lamma_notifications", JSON.stringify(next)); } catch {} return next; })}
+                              onClick={() => setNotifications((prev) => { const next = prev.map((x) => x.id === n.id ? { ...x, read: true } : x); try { localStorage.setItem("lamma_notifications", JSON.stringify(next)); } catch { /* quota */ } return next; })}
                             >
                               <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${n.kind === "mention" ? "bg-yellow-500/20 text-yellow-400" : n.kind === "pm" ? "bg-blue-500/20 text-blue-400" : "bg-green-500/20 text-green-400"}`}>
                                 <Bell size={12} />
@@ -8717,34 +8744,6 @@ export default function ChatScreen({
                       </p>
                     </div>
                   </div>
-                  {false && (
-                    <button
-                      onClick={async () => {
-                        console.log("Login not available");
-                      }}
-                      className="mt-1 w-full py-1.5 rounded-xl text-[9px] font-black text-white transition-all flex items-center justify-center gap-2 lamma-soft-action"
-                    >
-                      <svg className="w-3 h-3" viewBox="0 0 24 24">
-                        <path
-                          fill="#4285f4"
-                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        />
-                        <path
-                          fill="#34a853"
-                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        />
-                        <path
-                          fill="#fbbc05"
-                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                        />
-                        <path
-                          fill="#ea4335"
-                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 11.99 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                        />
-                      </svg>
-                      دخول سريع بـ Google للمزامنة
-                    </button>
-                  )}
                 </div>
               )}
 

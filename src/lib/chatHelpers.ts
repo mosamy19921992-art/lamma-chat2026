@@ -20,7 +20,7 @@ export function sanitizeHexColor(value: string): string | null {
 export function getYoutubeId(url: string | undefined): string | null {
   if (!url) return null;
   const regExp =
-    /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
   const videoId = match?.[2];
   return videoId && videoId.length === 11 ? videoId : null;
