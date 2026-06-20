@@ -27,7 +27,7 @@ import {
 
 type DesignSection = "uploads" | "studio" | "assistant";
 
-export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset }: any) => {
+export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode }: any) => {
   type PreviewKind = "glass" | "face" | "template" | "column" | null;
 
   const [section, setSection] = useState<DesignSection>("uploads");
@@ -534,6 +534,20 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           </ul>
                           <p className="text-[9px] text-gray-500">
                             تبويب Studio أعلاه لرفع الخلفيات اليدوي — المساعد الذكي الآن في الشات فقط.
+                          </p>
+                          {onStartInspectMode ? (
+                            <button
+                              type="button"
+                              onClick={() => onStartInspectMode()}
+                              onPointerDown={stopDrag}
+                              className="w-full mt-2 py-3 rounded-xl font-black text-[11px] transition-all cursor-pointer lamma-accent-btn text-white shadow-[0_0_24px_rgba(16,185,129,0.25)]"
+                            >
+                              🎯 حدّد بالماوس (Inspect Mode)
+                            </button>
+                          ) : null}
+                          <p className="text-[9px] text-gray-500 mt-2 leading-relaxed">
+                            انقر على أي جزء في الشات — هيدر، أعمدة، رسائل، خلفية، أو شريط
+                            الكتابة — ثم طبّق أوامر سريعة مع معاينة حية قبل الحفظ.
                           </p>
                         </div>
                       </div>

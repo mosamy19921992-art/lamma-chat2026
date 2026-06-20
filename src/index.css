@@ -5,6 +5,7 @@
 @import "./styles/column-card-styles.css";
 @import "./styles/pwa-mobile-premium.css";
 @import "./styles/universal-style-engine.css";
+@import "./styles/design-inspect.css";
 @import "tailwindcss";
 
 @theme {

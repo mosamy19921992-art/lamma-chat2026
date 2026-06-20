@@ -7,7 +7,14 @@ import { setDesignPreviewActive } from "../services/design/designPreviewDom";
 import { loadUniversalStyleLocal, persistAndApplyUniversalStyle } from "../services/design/universalStyleStorage";
 import type { UniversalStyleConfig } from "../services/design/universalStyleTypes";
 import { StyleSandboxCard } from "./design/StyleSandboxCard";
+import { DesignInspectOverlay } from "./design/DesignInspectOverlay";
 import { UniversalStyleVideoLayer } from "./design/UniversalStyleVideoLayer";
+import type { ChatDesignRegion, RegionAction } from "../services/design/chatDesignVocabulary";
+import {
+  buildRegionActionPrompt,
+  resolveDesignRegionElement,
+  resolveDesignRegionFromElement,
+} from "../services/design/designInspectService";
 import {
   buildStyleSandboxMessage,
   MAX_STYLE_SANDBOX_SESSIONS,
@@ -1063,6 +1070,15 @@ export default function ChatScreen({
   const [leadershipTab, setLeadershipTab] = useState<
     "quick" | "features" | "cosmetics" | "guard" | "store" | "design" | "stats" | "owner_store"
   >("quick");
+  const [designInspectActive, setDesignInspectActive] = useState(false);
+  const [inspectSelectedRegion, setInspectSelectedRegion] =
+    useState<ChatDesignRegion | null>(null);
+  const [inspectHighlightRect, setInspectHighlightRect] = useState<DOMRect | null>(
+    null,
+  );
+  const [inspectTargetEl, setInspectTargetEl] = useState<HTMLElement | null>(null);
+  const [inspectLastSummary, setInspectLastSummary] = useState("");
+  const [inspectApplying, setInspectApplying] = useState(false);
   const modalDragControls = useDragControls();
 
   // --- AUTOMATION AND STORE SYSTEM STATES ---
@@ -4873,6 +4889,10 @@ export default function ChatScreen({
     applyStyleGlobally,
     cancelStyleSandbox,
     resetChatBackgroundToDefault,
+    previewDesignPrompt,
+    commitPendingDesignPreview,
+    cancelPendingDesignPreview,
+    hasPendingDesignPreview,
   } = useUniversalStyleEngine({
     activeRoomId,
     isOwner: isOwnerRole,
@@ -4891,6 +4911,117 @@ export default function ChatScreen({
       alert("⚠️ تم التراجع محلياً — تأكد من صلاحيات المالك على Supabase.");
     }
   }, [resetChatBackgroundToDefault]);
+
+  const handleStartDesignInspect = useCallback(() => {
+    if (!isOwnerRole) return;
+    setActiveModal(null);
+    setDesignInspectActive(true);
+    setInspectSelectedRegion(null);
+    setInspectHighlightRect(null);
+    setInspectTargetEl(null);
+    setInspectLastSummary("");
+  }, [isOwnerRole]);
+
+  const handleExitDesignInspect = useCallback(() => {
+    if (hasPendingDesignPreview) cancelPendingDesignPreview();
+    setDesignInspectActive(false);
+    setInspectSelectedRegion(null);
+    setInspectHighlightRect(null);
+    setInspectTargetEl(null);
+    setInspectLastSummary("");
+  }, [cancelPendingDesignPreview, hasPendingDesignPreview]);
+
+  const handleInspectRegionAction = useCallback(
+    (region: ChatDesignRegion, action: RegionAction) => {
+      const prompt = buildRegionActionPrompt(region, action);
+      const summary = previewDesignPrompt(prompt);
+      if (summary) setInspectLastSummary(summary);
+    },
+    [previewDesignPrompt],
+  );
+
+  const handleInspectCustomPrompt = useCallback(
+    (region: ChatDesignRegion, prompt: string) => {
+      const regionTerms: Partial<Record<ChatDesignRegion, string>> = {
+        "top-header": "الشريط العلوي",
+        "room-header-strip": "الشريط تحت الهيدر",
+        "topic-bar": "شريط موضوع الغرفة",
+        "chat-feed": "منطقة الرسائل",
+        "chat-wallpaper": "خلفية الشات",
+        composer: "شريط الكتابة",
+        "side-columns": "الأعمدة الجانبية",
+        "column-cards": "بطاقات الأعمدة",
+        "message-bubbles": "فقاعات الرسائل",
+      };
+      const regionHint = regionTerms[region] || "";
+      const fullPrompt = prompt.includes(regionHint)
+        ? prompt
+        : `${prompt} ${regionHint}`.trim();
+      const summary = previewDesignPrompt(fullPrompt);
+      if (summary) setInspectLastSummary(summary);
+    },
+    [previewDesignPrompt],
+  );
+
+  const handleInspectCommit = useCallback(async () => {
+    setInspectApplying(true);
+    try {
+      const ok = await commitPendingDesignPreview();
+      if (ok) {
+        setInspectLastSummary("✅ تم حفظ التصميم للجميع.");
+        alert("✅ تم تطبيق التصميم على كل المستخدمين.");
+      } else {
+        alert("⚠️ فشل الحفظ — تأكد من صلاحيات المالك.");
+      }
+    } finally {
+      setInspectApplying(false);
+    }
+  }, [commitPendingDesignPreview]);
+
+  const handleInspectCancel = useCallback(() => {
+    cancelPendingDesignPreview();
+    setInspectLastSummary("↩️ تم إلغاء المعاينة.");
+  }, [cancelPendingDesignPreview]);
+
+  useEffect(() => {
+    if (!designInspectActive) return;
+
+    const onCaptureClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("[data-design-inspect-panel]")) return;
+
+      const region = resolveDesignRegionFromElement(target);
+      const regionEl = resolveDesignRegionElement(target);
+      if (!region || !regionEl) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      setInspectSelectedRegion(region);
+      setInspectTargetEl(regionEl);
+      setInspectHighlightRect(regionEl.getBoundingClientRect());
+    };
+
+    document.addEventListener("click", onCaptureClick, true);
+    return () => document.removeEventListener("click", onCaptureClick, true);
+  }, [designInspectActive]);
+
+  useEffect(() => {
+    if (!designInspectActive || !inspectTargetEl) return;
+
+    const updateRect = () => {
+      setInspectHighlightRect(inspectTargetEl.getBoundingClientRect());
+    };
+
+    updateRect();
+    window.addEventListener("resize", updateRect);
+    window.addEventListener("scroll", updateRect, true);
+    return () => {
+      window.removeEventListener("resize", updateRect);
+      window.removeEventListener("scroll", updateRect, true);
+    };
+  }, [designInspectActive, inspectTargetEl]);
 
   const activeUniversalStyle = useMemo(
     () => committedConfig || loadUniversalStyleLocal(),
@@ -5920,7 +6051,9 @@ export default function ChatScreen({
         isMobileAppShell
           ? " lamma-pwa-app-shell"
           : " h-[100dvh] min-h-[100dvh]"
-      }${vvLayout.keyboardOpen ? " lamma-keyboard-open" : ""}`}
+      }${vvLayout.keyboardOpen ? " lamma-keyboard-open" : ""}${
+        designInspectActive ? " lamma-design-inspect-active" : ""
+      }`}
       style={
         isMobileAppShell && vvLayout.keyboardOpen && vvLayout.shellHeight
           ? {
@@ -5959,6 +6092,7 @@ export default function ChatScreen({
         <>
           <div
             className="absolute inset-0 z-0 pointer-events-none lamma-active-wallpaper"
+            data-design-region="chat-wallpaper"
             style={
               universalGlobalMedia
                 ? undefined
@@ -6053,7 +6187,10 @@ export default function ChatScreen({
 
       {/* ================= HEADER BAR ================= */}
       {!isZenMode && (
-        <header className="lamma-header px-2 sm:px-4 md:px-6 flex items-center justify-between gap-2 relative z-30 shrink-0">
+        <header
+          className="lamma-header px-2 sm:px-4 md:px-6 flex items-center justify-between gap-2 relative z-30 shrink-0"
+          data-design-region="top-header"
+        >
           <div
             className="lamma-header-aurora pointer-events-none absolute inset-0"
             aria-hidden="true"
@@ -7057,6 +7194,7 @@ export default function ChatScreen({
 
         <aside
           data-col="left"
+          data-design-region="side-columns"
           className={`hidden xl:flex xl:order-3 flex-col overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isLeftColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
@@ -7071,7 +7209,10 @@ export default function ChatScreen({
             }}
           >
             <div className="min-h-0">
-              <div className="lamma-glass rounded-3xl p-4 lamma-soft-glow overflow-hidden h-full flex flex-col justify-between">
+              <div
+                className="lamma-glass rounded-3xl p-4 lamma-soft-glow overflow-hidden h-full flex flex-col justify-between"
+                data-design-region="column-cards"
+              >
                 <div className="flex items-center justify-between">
                   <div className="text-right">
                     <div className="text-[12px] font-black text-[color:var(--accent-secondary)]">
@@ -7148,7 +7289,10 @@ export default function ChatScreen({
             />
 
             <div className="min-h-0">
-              <div className="lamma-glass rounded-3xl p-4 overflow-hidden flex flex-col min-h-0 h-full">
+              <div
+                className="lamma-glass rounded-3xl p-4 overflow-hidden flex flex-col min-h-0 h-full"
+                data-design-region="column-cards"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-[color:var(--text-primary)]">
                     <Radio
@@ -7285,7 +7429,10 @@ export default function ChatScreen({
             />
 
             <div className="min-h-0">
-              <div className="lamma-glass rounded-3xl p-4 overflow-hidden h-full flex flex-col">
+              <div
+                className="lamma-glass rounded-3xl p-4 overflow-hidden h-full flex flex-col"
+                data-design-region="column-cards"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-[color:var(--text-primary)]">
                     <Music
@@ -7740,16 +7887,21 @@ export default function ChatScreen({
         {/* ----------------- PANEL 3: MAIN ACTIVE MESSAGE LOG (3rd column / Center) ----------------- */}
         <div
           data-col="center"
+          data-design-region="chat-feed"
           className={`flex-1 flex flex-col min-w-0 min-h-0 backdrop-blur-xl xl:order-2 lamma-column-frame lamma-chat-core-shell ${
             isMobileAppShell || mobileTab === "chat" ? "flex" : "hidden md:flex"
           } ${isLeftColumnCollapsed ? "xl:border-l xl:border-white/10" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-white/10" : ""}`}
         >
-          <div className="lamma-chat-subheader shrink-0 flex flex-col">
+          <div
+            className="lamma-chat-subheader shrink-0 flex flex-col"
+            data-design-region="room-header-strip"
+          >
           {/* Room Top Bar: Topic & System Actions */}
           <div className="flex items-stretch justify-between min-h-[34px] shrink-0 lamma-fire-underline lamma-room-header">
             {/* Topic Side (Right) */}
             <div
               className="flex-1 flex flex-col justify-center px-2.5 border-l border-white/10 group/topic cursor-pointer relative lamma-topic-shell"
+              data-design-region="topic-bar"
               onClick={() => {
                 if (!isEditingTopic && (isAdminRole || isOwnerRole)) {
                   setTopicInputText(roomTopics[activeRoomId] || "");
@@ -9032,6 +9184,7 @@ export default function ChatScreen({
                                 ? "lamma-msg-bubble-own"
                                 : ""
                           }`}
+                          data-design-region="message-bubbles"
                         >
                           {msg.type === "style_sandbox" && msg.styleSandboxId ? (
                             <div className="space-y-2">
@@ -9217,6 +9370,7 @@ export default function ChatScreen({
                   ? "bg-[#0b100c]/88 border border-green-500/24 shadow-2xl backdrop-blur-xl lamma-chat-input-shell"
                   : "bg-[rgba(7,10,12,0.22)] border border-white/6 shadow-none lamma-chat-input-shell"
               }`}
+              data-design-region="composer"
               style={
                 isZenMode
                   ? undefined
@@ -9888,6 +10042,7 @@ export default function ChatScreen({
 
         <aside
           data-col="right"
+          data-design-region="side-columns"
           className={`hidden xl:flex xl:order-1 flex-col gap-3 overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isRightColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
@@ -9902,7 +10057,10 @@ export default function ChatScreen({
             }}
           >
             <div className="min-h-0">
-              <div className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full">
+              <div
+                className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full"
+                data-design-region="column-cards"
+              >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2 text-[color:var(--accent-secondary)]">
                     <BookOpen
@@ -10028,7 +10186,10 @@ export default function ChatScreen({
             />
 
             <div className="min-h-0">
-              <div className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full">
+              <div
+                className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full"
+                data-design-region="column-cards"
+              >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2 text-[color:var(--accent-secondary)]">
                     <Users
@@ -11229,6 +11390,7 @@ export default function ChatScreen({
                     applyDesignPreset={applyDesignPreset}
                     handleDeleteDesignPreset={handleDeleteDesignPreset}
                     uploadDesignImage={uploadDesignAsset}
+                    onStartInspectMode={handleStartDesignInspect}
                   />
                 )}
                 {activeModal === 'leadership' && leadershipTab === 'stats' && (
@@ -11888,6 +12050,22 @@ export default function ChatScreen({
         onClose={() => setShowShareModalInChat(false)}
         appLink={appLink}
       />
+
+      {isOwnerRole && designInspectActive ? (
+        <DesignInspectOverlay
+          active={designInspectActive}
+          selectedRegion={inspectSelectedRegion}
+          highlightRect={inspectHighlightRect}
+          lastSummary={inspectLastSummary}
+          hasPendingPreview={hasPendingDesignPreview}
+          isApplying={inspectApplying}
+          onAction={handleInspectRegionAction}
+          onCustomPrompt={handleInspectCustomPrompt}
+          onCommit={handleInspectCommit}
+          onCancel={handleInspectCancel}
+          onExit={handleExitDesignInspect}
+        />
+      ) : null}
 
       {/* Real audio elements for Radio and Music streaming/playback */}
       <audio ref={radioAudioRef} preload="none" playsInline />

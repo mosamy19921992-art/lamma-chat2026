@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { setDesignPreviewActive } from "../services/design/designPreviewDom";
 import type { Message } from "../lib/chatTypes";
 import {
   applyUniversalStyleToDom,
@@ -48,6 +49,7 @@ export function useUniversalStyleEngine({
   const [committedConfig, setCommittedConfig] = useState<UniversalStyleConfig | null>(
     null,
   );
+  const [hasPendingDesignPreview, setHasPendingDesignPreview] = useState(false);
   const previewMemoryRef = useRef<UniversalStyleConfig | null>(null);
   const previewSnapshotRef = useRef<UniversalStyleConfig | null>(null);
   const stylePromptCooldownRef = useRef(0);
@@ -232,6 +234,8 @@ export function useUniversalStyleEngine({
     (sandboxId?: string) => {
       rollbackLivePreview();
       previewMemoryRef.current = null;
+      setHasPendingDesignPreview(false);
+      setDesignPreviewActive(false);
       addLammaBotMessage(
         activeRoomId,
         sandboxId
@@ -242,12 +246,62 @@ export function useUniversalStyleEngine({
     [activeRoomId, addLammaBotMessage, rollbackLivePreview],
   );
 
+  const previewDesignPrompt = useCallback(
+    (rawPrompt: string): string | null => {
+      if (!isOwner) return null;
+
+      const trimmed = rawPrompt.trim();
+      if (!trimmed) return null;
+
+      const previous = previewMemoryRef.current || committedConfig;
+      const parsed = parseOwnerStylePrompt(trimmed, previous);
+      previewMemoryRef.current = parsed.config;
+      beginLivePreview(parsed.config);
+      setHasPendingDesignPreview(true);
+      setDesignPreviewActive(true);
+      return parsed.summary;
+    },
+    [beginLivePreview, committedConfig, isOwner],
+  );
+
+  const commitPendingDesignPreview = useCallback(async (): Promise<boolean> => {
+    const config = previewMemoryRef.current;
+    if (!config || !isOwner) return false;
+
+    const session: StyleSandboxSession = {
+      id: `inspect-${Date.now()}`,
+      createdAt: Date.now(),
+      prompt: "inspect-mode",
+      summary: config.label || "معاينة Inspect",
+      config,
+      applied: false,
+    };
+
+    const ok = await applyStyleGlobally(session);
+    if (ok) {
+      setHasPendingDesignPreview(false);
+      setDesignPreviewActive(false);
+    }
+    return ok;
+  }, [applyStyleGlobally, isOwner]);
+
+  const cancelPendingDesignPreview = useCallback(() => {
+    rollbackLivePreview();
+    previewMemoryRef.current = null;
+    setHasPendingDesignPreview(false);
+    setDesignPreviewActive(false);
+  }, [rollbackLivePreview]);
+
   return {
     committedConfig,
     tryHandleOwnerStylePrompt,
     applyStyleGlobally,
     cancelStyleSandbox,
     resetChatBackgroundToDefault,
+    previewDesignPrompt,
+    commitPendingDesignPreview,
+    cancelPendingDesignPreview,
+    hasPendingDesignPreview,
   };
 }
 
