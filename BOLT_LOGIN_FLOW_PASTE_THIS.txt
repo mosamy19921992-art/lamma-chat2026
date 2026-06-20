@@ -1,0 +1,145 @@
+=== BOLT — LOGIN FLOW EXACT (PASTE THIS) ===
+
+Reference: https://lamma-arabic-chat-room.vercel.app (login page BEFORE chat)
+
+WRONG (what Bolt built): one small card, 3 tabs [زائر|دخول|حساب], color dots, no cover image, no يالا بينا, no two cards.
+
+---
+
+## 1) FULL-PAGE COVER (background — REQUIRED)
+
+The ENTIRE login page background is NOT solid color.
+
+Use full viewport cover image:
+/images/login-hero.jpg
+URL: https://lamma-arabic-chat-room.vercel.app/images/login-hero.jpg
+
+On top of photo add CSS overlays:
+- radial gold glow top-right rgba(255,196,99,0.16)
+- radial warm orange left rgba(255,120,60,0.10)
+- radial green bottom rgba(16,185,129,0.08)
+- subtle dark gradient overlay
+
+Body is edge-to-edge — card floats centered on this wallpaper.
+
+If image missing: upload login-hero.jpg (warm dark atmospheric photo — chat/social vibe).
+
+---
+
+## 2) SCREEN A — FIRST CARD ONLY (data-view="main")
+
+One glass panel centered, width ~450px, rounded 22px, dark glass with gold+green inner gradient.
+
+Content order top to bottom:
+
+1. GOLD LOGO large (~235px wide) — see BOLT_LOGIN_LOGO_PASTE_THIS.txt
+   Image: lamma-app-icon-512.png or lamma-logo-nice.png
+
+2. Gold tagline pill: "المتعه كلها بتستناك"
+
+3. Gray subtitle: "شات بالروح المصرية بيجمع تلاقي مع الأصالة العربية"
+
+4. Badges row: 🛡️ خصوصية | ⚡ أمان | رَوْقان
+
+5. ONE button only: "يالا بينا →" (green gradient primaryBtn--go)
+   - This button switches to Screen B — NOT guest login yet
+
+6. Footer: © 2026 Lamma Chat + gold pill "By MR / Mohamed Samy"
+
+7. Optional: PWA "تحميل تطبيق الموبايل 📱"
+
+NO guest form on Screen A.
+NO tabs زائر/تسجيل/حساب on Screen A.
+NO color picker circles on Screen A.
+
+---
+
+## 3) SCREEN B — AFTER "يالا بينا" — TWO CARDS SIDE BY SIDE
+
+Panel expands to ~900px wide (desktop). Transparent outer, inner = CSS grid 2 columns equal (1fr 1fr).
+
+### CARD 1 (LEFT) — optionCard optionCard--empty
+Glass card with animated fire/gold border glow around edges.
+
+Top: back button ← (returns to Screen A)
+
+Content — STORY card:
+- Kicker: "✨ أهلاً بك يا شريكي في «لمة»"
+- Title: "لمة.. قعدتنا الرقمية"
+- Quote paragraphs about (ونس) in gold highlight
+- Email note at bottom
+
+DESKTOP ONLY — Guest block inside this left card:
+- Title: "دخول كزائر"
+- Sub: "اسم مولّد تلقائيًا — تقدر تغيّره قبل الدخول."
+- Input pre-filled with auto nickname (see section 4)
+- Buttons: "دخول كزائر" (green) + "توليد اسم" (secondary)
+
+### CARD 2 (RIGHT) — optionCard optionCard--methods
+Same fire-edge glass card style.
+
+- Title: "اختيارات دخول لمة"
+- Google button full width: "الدخول السريع بـ Google" with G icon
+- Email section with 2 tabs INSIDE this card only:
+  - Tab "تسجيل الدخول" | Tab "إنشاء حساب جديد"
+  - Login form: email + password + submit
+  - OR register form: email + password + confirm
+
+MOBILE (<820px):
+- Panel back to ~450px single column
+- LEFT story card HIDDEN
+- Guest block moves into RIGHT/methods card (guestQuick--mobile)
+- Still: back button, google, email tabs
+
+---
+
+## 4) GUEST NICKNAME — AUTO GENERATOR (NOT missing)
+
+On load and on "توليد اسم" generate:
+
+Format: LC-Guest##### 
+Example: LC-Guest48291
+
+Code logic:
+`LC-Guest` + random 5 digits (10000–99999)
+
+Placeholder in input: "مثال: LC-Guest12345"
+
+User CAN edit before submit.
+
+Color: picked RANDOM server-side from palette on login — NO color picker UI on login:
+["#22c55e","#3fb950","#58a6ff","#a371f7","#ef4444","#f59e0b"]
+
+Button "دخول كزائر" → anonymous Supabase auth → enter chat.
+
+---
+
+## 5) VISUAL CARD STYLE (both cards)
+
+- background: dark glass panel-bg with gold/green radial gradients
+- ::before animated fire edge (gold/orange glow border pulse)
+- ::after thin white/6 border inset
+- border-radius 24px inner
+- padding 16–20px
+
+---
+
+## 6) TRANSITION
+
+Screen A → B: panel width animates 450px → 900px, view slides
+Screen B → A: back button ← sets view back to main
+
+panel attribute: data-view="main" | data-view="options"
+
+---
+
+## 7) ONE BLOCK PROMPT FOR BOLT
+
+Rebuild login exactly:
+- Full page /images/login-hero.jpg cover
+- Screen 1: gold logo + taglines + يالا بينا only
+- Screen 2: TWO fire-edge glass cards side by side (story+guest LEFT | google+email RIGHT)
+- Guest name auto LC-Guest##### with توليد اسم button — no color dots
+- Logo: gold lamma-app-icon-512.png NOT teal bubble
+
+Live: https://lamma-arabic-chat-room.vercel.app

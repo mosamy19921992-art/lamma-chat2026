@@ -1,0 +1,165 @@
+=== BOLT — STEP 0: DOWNLOAD ALL ASSETS (PASTE THIS FIRST) ===
+
+Before writing any UI code, download every image below from the live Lamma site
+and save them into the project `public/` folder at the exact paths shown.
+
+Source site: https://lamma-arabic-chat-room.vercel.app
+
+DO NOT invent logos. DO NOT use teal chat bubble icons. DO NOT use placeholder images.
+
+---
+
+## REQUIRED: RUN THIS DOWNLOAD STEP
+
+For each row: fetch the URL → save to local path → verify file exists before continuing.
+
+If your environment supports shell, run:
+
+```bash
+mkdir -p public/images
+curl -L -o public/images/login-hero.jpg "https://lamma-arabic-chat-room.vercel.app/images/login-hero.jpg"
+curl -L -o public/images/lamma-app-icon-512.png "https://lamma-arabic-chat-room.vercel.app/images/lamma-app-icon-512.png"
+curl -L -o public/images/lamma-logo-nice.png "https://lamma-arabic-chat-room.vercel.app/images/lamma-logo-nice.png"
+curl -L -o public/images/lamma-wordmark.svg "https://lamma-arabic-chat-room.vercel.app/images/lamma-wordmark.svg"
+curl -L -o public/images/lamma-app-icon-192.png "https://lamma-arabic-chat-room.vercel.app/images/lamma-app-icon-192.png"
+curl -L -o public/images/lamma-app-icon-180.png "https://lamma-arabic-chat-room.vercel.app/images/lamma-app-icon-180.png"
+curl -L -o public/images/lamma-app-icon-512-maskable.png "https://lamma-arabic-chat-room.vercel.app/images/lamma-app-icon-512-maskable.png"
+curl -L -o public/images/lamma-favicon.svg "https://lamma-arabic-chat-room.vercel.app/images/lamma-favicon.svg"
+curl -L -o public/MAN.png "https://lamma-arabic-chat-room.vercel.app/MAN.png"
+```
+
+If curl is unavailable: use fetch() in Node or download each URL manually via HTTP GET
+and write bytes to the paths above.
+
+After download, confirm in your reply: list each saved file path + file size.
+
+---
+
+## ASSET TABLE (copy-paste reference)
+
+| # | Purpose | Download URL | Save as |
+|---|---------|--------------|---------|
+| 1 | Login page FULL background cover | https://lamma-arabic-chat-room.vercel.app/images/login-hero.jpg | public/images/login-hero.jpg |
+| 2 | Main gold logo (login + brand) | https://lamma-arabic-chat-room.vercel.app/images/lamma-app-icon-512.png | public/images/lamma-app-icon-512.png |
+| 3 | Login logo alternate (large) | https://lamma-arabic-chat-room.vercel.app/images/lamma-logo-nice.png | public/images/lamma-logo-nice.png |
+| 4 | Logo fallback wordmark | https://lamma-arabic-chat-room.vercel.app/images/lamma-wordmark.svg | public/images/lamma-wordmark.svg |
+| 5 | PWA icon 192 | https://lamma-arabic-chat-room.vercel.app/images/lamma-app-icon-192.png | public/images/lamma-app-icon-192.png |
+| 6 | Apple touch icon | https://lamma-arabic-chat-room.vercel.app/images/lamma-app-icon-180.png | public/images/lamma-app-icon-180.png |
+| 7 | PWA maskable icon | https://lamma-arabic-chat-room.vercel.app/images/lamma-app-icon-512-maskable.png | public/images/lamma-app-icon-512-maskable.png |
+| 8 | Favicon SVG | https://lamma-arabic-chat-room.vercel.app/images/lamma-favicon.svg | public/images/lamma-favicon.svg |
+| 9 | Chat default wallpaper | https://lamma-arabic-chat-room.vercel.app/MAN.png | public/MAN.png |
+
+Priority if short on time: download #1, #2, #9 first — then the rest.
+
+---
+
+## HOW TO USE EACH FILE IN CODE (after download)
+
+### 1) login-hero.jpg — login background
+```css
+.lamma-login-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(900px 520px at 88% 12%, rgba(255,196,99,0.16), transparent 60%),
+    radial-gradient(700px 420px at 8% 18%, rgba(255,120,60,0.10), transparent 55%),
+    radial-gradient(800px 480px at 50% 100%, rgba(16,185,129,0.08), transparent 60%),
+    url("/images/login-hero.jpg") center / cover no-repeat !important;
+}
+```
+
+### 2) lamma-app-icon-512.png — gold logo on login screen 1
+```html
+<img
+  src="/images/lamma-app-icon-512.png"
+  alt="Lamma Chat"
+  width="235"
+  style="max-width:66vw; filter:drop-shadow(0 8px 25px rgba(214,179,91,0.75))"
+/>
+```
+Fallback if nice logo fails: `/images/lamma-wordmark.svg`
+
+### 3) MAN.png — chat wallpaper behind glass panels
+```css
+.lamma-chat-root {
+  background: url("/MAN.png") center / cover no-repeat fixed;
+}
+```
+
+### 4) Favicon + manifest
+```html
+<link rel="icon" href="/images/lamma-favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/images/lamma-app-icon-180.png" />
+```
+```json
+"icons": [
+  { "src": "/images/lamma-app-icon-192.png", "sizes": "192x192", "type": "image/png" },
+  { "src": "/images/lamma-app-icon-512.png", "sizes": "512x512", "type": "image/png" },
+  { "src": "/images/lamma-app-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+]
+```
+
+---
+
+## WHAT EACH IMAGE LOOKS LIKE (so you verify download)
+
+login-hero.jpg
+→ Dark atmospheric photo, warm tones, full-screen moody cover (NOT solid black)
+
+lamma-app-icon-512.png
+→ Vertical GOLD 3D emblem: ornate LM monogram + Arabic "لمة" + "LAMMA CHAT" serif text on dark navy
+→ NOT a teal rounded square, NOT a white speech bubble
+
+lamma-logo-nice.png
+→ Similar gold Lamma branding, wide logo for login hero
+
+MAN.png
+→ Chat room default background wallpaper visible through glass UI
+
+---
+
+## FORBIDDEN
+
+✗ Generic MessageCircle / chat bubble icon as logo
+✗ Teal/cyan brand color for logo (logo is GOLD; buttons use emerald #10b981)
+✗ CSS gradient placeholder instead of downloading login-hero.jpg
+✗ Hotlinking only without saving files — MUST save to public/ folder
+
+---
+
+## ONE BLOCK — paste everything to Bolt in one message
+
+```
+TASK 0 (mandatory before UI):
+Download all Lamma assets from lamma-arabic-chat-room.vercel.app into public/:
+
+public/images/login-hero.jpg
+  ← https://lamma-arabic-chat-room.vercel.app/images/login-hero.jpg
+
+public/images/lamma-app-icon-512.png
+  ← https://lamma-arabic-chat-room.vercel.app/images/lamma-app-icon-512.png
+
+public/images/lamma-logo-nice.png
+  ← https://lamma-arabic-chat-room.vercel.app/images/lamma-logo-nice.png
+
+public/images/lamma-wordmark.svg
+  ← https://lamma-arabic-chat-room.vercel.app/images/lamma-wordmark.svg
+
+public/MAN.png
+  ← https://lamma-arabic-chat-room.vercel.app/MAN.png
+
+Use curl or fetch. Confirm files saved. Then build login + chat using LOCAL paths (/images/... and /MAN.png).
+
+Login: full-screen login-hero.jpg bg → screen1 gold logo + يالا بينا → screen2 two cards (guest LC-Guest##### + google/email).
+Chat: MAN.png wallpaper, emerald #10b981 accents, gold logo in header.
+Never use teal bubble icon.
+```
+
+---
+
+## ORDER OF PASTES FOR BOLT (recommended)
+
+1. THIS FILE — BOLT_DOWNLOAD_ASSETS_PASTE_THIS.txt (download first)
+2. BOLT_LOGIN_FLOW_PASTE_THIS.txt (login screens)
+3. BOLT_UI_PASTE_THIS.txt (chat layout)
+
+Wait for Bolt to confirm downloads before asking for login/chat UI.

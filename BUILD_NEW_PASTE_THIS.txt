@@ -1,0 +1,121 @@
+Build a complete Arabic RTL chat platform exactly like "Lamma Chat | شات لمة". Same product, same features, better professional UI.
+
+=== WHAT IT IS ===
+Arabic social chat website + PWA. Users join as guest or register (email + Google). Multi-room public chat, private messages, social posts, VIP store, voice/video calls, owner DJ music sync, and an AI design bot for the owner to change site colors/glass/backgrounds by typing natural language in a special room.
+
+Live reference: https://lamma-arabic-chat-room.vercel.app
+
+=== TECH (use same stack) ===
+- React 19 + TypeScript + Vite
+- Tailwind CSS v4, Motion animations, lucide-react icons
+- Supabase: Auth (anonymous guest + email + Google OAuth), PostgreSQL, Realtime websockets, Storage
+- Deploy as SPA on Vercel
+- PWA: manifest, service worker, mobile bottom nav, installable app
+- WebRTC for calls (signaling stored in Supabase call_signals table)
+
+=== LANGUAGE & DESIGN ===
+- Full RTL Arabic (dir=rtl), Egyptian Arabic UI text
+- Dark frosted-glass UI
+- Colors: background #060a12 / #050806, accent green #10b981, text #f8fafc
+- Default chat wallpaper image: /MAN.png
+- Desktop layout: 3 columns — left widgets (store/radio) | CENTER chat (widest) | right (rooms list + online users)
+- Mobile: bottom tab bar, side drawers, keyboard-safe message input, fixed header 64px
+- VIP gold accents #eab308
+
+=== ROOMS (exact IDs) ===
+egypt (مصر), arab (كل العرب), youth (شباب وبنات), palestine (فلسطين), posts-feed (منشورات social feed), fun (فرفشة), games, romance (رومانسية), admin (إدارة وشكاوى), owner (بوت التصميم AI — owner only)
+
+=== CORE FEATURES (all required) ===
+
+LOGIN:
+- Guest login with nickname + color
+- Email/password signup and login
+- Google OAuth
+- Mandatory nickname for registered users
+
+PUBLIC CHAT:
+- Realtime messages per room via Supabase Realtime
+- Text, emoji picker, image upload to Supabase Storage bucket "chat-media"
+- Voice message recording
+- YouTube link embeds in messages
+- Gift messages (rose, heart, crown, diamond, etc.)
+- Message reactions (jsonb)
+- @mentions with notification badge
+- Sound + browser notification when new message and tab not focused
+- Delete message: owner/admin or message owner
+- Bot commands: /clear, /guard, /status
+- Banned words wall (owner configurable)
+- Anti-link, anti-spam, swear filter toggles
+- Rate limit: 3 media uploads per minute
+
+PRIVATE MESSAGES (PM):
+- Separate pm_messages table
+- Realtime PM threads
+- Mark as read (receiver only)
+- Image upload in PM
+- PM inbox dropdown with unread count
+
+SOCIAL:
+- Posts feed room (social_posts, post_likes, post_comments, user_profiles)
+- Like and comment on posts
+
+CALLS:
+- Audio and video WebRTC calls between users
+- Signaling via Supabase call_signals + Realtime
+- Per-member permission: calls_allowed (owner grants)
+
+DJ / MUSIC:
+- Owner plays music in room; all listeners hear synchronized playback
+- DJ state in owner_settings (room_dj_map, dj_library)
+
+STORE & VIP:
+- VIP subscription store (skins, badges, frames)
+- subscription_orders linked to auth user
+- Owner can grant cosmetics (VIP/platinum frames) to members
+
+OWNER / ADMIN PANELS:
+- Ghost mode, spy mode (read PMs), maintenance mode
+- Global mute, mic mute
+- Custom owner background image + per-room backgrounds
+- Custom logo URL
+- Member permissions panel: recording, calls, radio, room creation, images, youtube — per nickname
+- Word wall / ban users
+- Activity logs
+- Stats modal
+- Invite-only mode toggle
+
+AI DESIGN BOT (owner only — room "owner"):
+- Owner types design commands in chat like: "more glass blur", "neon sidebar cards", "dark blue theme", "reset default background"
+- Live preview on entire site before saving
+- Buttons on preview card: "Apply to all" (save to Supabase) and "Cancel" (full rollback)
+- Reset default wallpaper command: "رجّع الخلفية الافterاضية" → back to /MAN.png
+- Design center modal: upload backgrounds, logo, glass presets, column styles, design templates
+- Style saved in owner_settings.universal_style_config (jsonb)
+
+USER PROFILES:
+- Profile modal with bio, avatar upload
+- Friends list, block, ignore
+- User roles: owner, admin, mod, user
+
+PWA:
+- Install prompt, update banner after deploy
+- Shortcuts: Egypt room, Arab room, Radio
+- Share target support
+- Works offline fallback page
+
+=== SUPABASE DATABASE TABLES ===
+messages, pm_messages, banned_users, user_roles, owner_settings (single row id=global), owner_member_permissions, owner_member_cosmetics, owner_activity_logs, nickname_change_requests, vip_subscriptions, subscription_orders, call_signals, guest_sessions, social_posts, post_likes, post_comments, user_profiles
+
+owner_settings fields include: ghost_mode, spy_mode, maintenance_mode, banned_words, owner_bg_image, custom_logo_url, room_bg_map, design_presets, room_dj_map, dj_library, bot rules, universal_style_config, invite_only_mode
+
+Storage bucket: chat-media (public read for images)
+
+Security: Row Level Security on all tables, anonymous auth for guests, server-side identity binding on messages (no UID spoofing), PM receiver cannot edit message text.
+
+=== ENV VARS ===
+VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_APP_URL, VITE_ENABLE_PWA=true in production
+
+=== WHAT TO IMPROVE vs reference site ===
+Same features 100%. Better: cleaner component architecture (split giant chat screen into modules), smoother animations, better mobile keyboard handling, virtualized message list, loading skeletons, polished modals. Do NOT change brand colors or logo concept.
+
+Build the full working app with Supabase schema SQL included.
