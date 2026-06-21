@@ -88,6 +88,7 @@ export interface UserProfileBioPopupProps {
   myCustomBio: string;
   friendsList: string[];
   handlers: UserProfileBioHandlers;
+  isMobile?: boolean;
 }
 
 export function UserProfileBioPopup({
@@ -97,28 +98,53 @@ export function UserProfileBioPopup({
   myCustomBio,
   friendsList,
   handlers,
+  isMobile = false,
 }: UserProfileBioPopupProps) {
+  const panelClass = isMobile
+    ? "fixed inset-x-0 bottom-0 z-[9995] w-full max-h-[90vh] rounded-t-[28px] overflow-hidden flex flex-col text-right lamma-modal-shell lamma-user-overlay border-t border-white/10"
+    : "fixed top-24 left-4 md:left-auto md:right-1/4 w-[300px] rounded-3xl overflow-hidden flex flex-col z-[9995] cursor-move text-right lamma-modal-shell lamma-user-overlay";
+
   return (
     <AnimatePresence>
-      {isOpen && target && (
-        <motion.div
-          drag
-          dragMomentum={false}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.15 }}
-          className="fixed top-24 left-4 md:left-auto md:right-1/4 w-[300px] rounded-3xl overflow-hidden flex flex-col z-[101] cursor-move text-right lamma-modal-shell"
-          style={{
-            resize: "both",
-            overflow: "hidden",
-            minWidth: "260px",
-            minHeight: "365px",
-            maxWidth: "90vw",
-            maxHeight: "90vh",
-          }}
-          dir="rtl"
-        >
+      {isOpen && target ? (
+        <>
+          {isMobile ? (
+            <motion.button
+              type="button"
+              aria-label="إغلاق"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9994] bg-black/65 lamma-user-overlay"
+              onClick={handlers.onClose}
+            />
+          ) : null}
+          <motion.div
+            drag={!isMobile}
+            dragMomentum={false}
+            initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+            animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1 }}
+            exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
+            transition={
+              isMobile
+                ? { type: "spring", damping: 28, stiffness: 320 }
+                : { duration: 0.15 }
+            }
+            className={panelClass}
+            style={
+              isMobile
+                ? undefined
+                : {
+                    resize: "both",
+                    overflow: "hidden",
+                    minWidth: "260px",
+                    minHeight: "365px",
+                    maxWidth: "90vw",
+                    maxHeight: "90vh",
+                  }
+            }
+            dir="rtl"
+          >
           {/* Header */}
           <div className="flex items-center justify-between p-3 select-none lamma-modal-header">
             <div className="flex items-center gap-2">
@@ -271,7 +297,8 @@ export function UserProfileBioPopup({
             </div>
           </div>
         </motion.div>
-      )}
+        </>
+      ) : null}
     </AnimatePresence>
   );
 }

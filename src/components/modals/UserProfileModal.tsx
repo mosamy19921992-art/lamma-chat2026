@@ -139,7 +139,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed top-20 left-4 md:left-auto md:right-32 w-[340px] rounded-3xl overflow-hidden flex flex-col z-[100] cursor-move lamma-modal-shell"
+            className="fixed top-20 left-4 md:left-auto md:right-32 w-[340px] max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:w-full max-md:max-h-[92vh] max-md:rounded-t-[28px] max-md:rounded-b-none rounded-3xl overflow-hidden flex flex-col z-[9995] cursor-move lamma-modal-shell lamma-user-overlay"
             style={{
               resize: "both",
               overflow: "hidden",

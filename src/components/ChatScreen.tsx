@@ -258,6 +258,7 @@ import {
 } from "../services/chat/roomDjService";
 import {
   bindMessageAlertPriming,
+  primeMessageAlerts,
   playMessageAlertSound,
   showBrowserMessageNotification,
 } from "../services/chat/messageAlertService";
@@ -4163,7 +4164,7 @@ export default function ChatScreen({
     }) => {
       pushAppNotification(entry);
       showMessageToast(entry.title, entry.body);
-      void playMessageAlertSound();
+      void playMessageAlertSound(entry.kind === "pm" ? "pm" : "default");
       showBrowserMessageNotification(entry.title, entry.body);
     },
     [pushAppNotification, showMessageToast],
@@ -4365,20 +4366,31 @@ export default function ChatScreen({
     setShowMembersList(isSidebarOpen && activeSidebarTab === "members");
   }, [activeSidebarTab, isSidebarOpen]);
 
+  const closeMobileChrome = useCallback(() => {
+    if (!isMobileAppShell) return;
+    setIsSidebarOpen(false);
+    setShowMembersList(false);
+    setShowRoomsLists(false);
+    closeAllDropdowns();
+  }, [closeAllDropdowns, isMobileAppShell]);
+
   useEffect(() => {
     const handleGlobalClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (
-        !target.closest(".dropdown-container") &&
-        !target.closest(".sidebar-toggle-btn") &&
-        !target.closest(".sidebar-container") &&
-        !target.closest(".lamma-sheet-shell") &&
-        !target.closest(".lamma-popover-shell") &&
-        !target.closest(".lamma-feature-shell") &&
-        !target.closest(".lamma-floating-dropdown") &&
-        !target.closest(".lamma-modal-shell") &&
-        !target.closest(".lamma-list-panel")
-      ) {
+      if (target.closest(".lamma-user-overlay")) return;
+
+      const inProtectedPanel =
+        target.closest(".dropdown-container") ||
+        target.closest(".sidebar-toggle-btn") ||
+        target.closest(".sidebar-container") ||
+        target.closest(".lamma-sheet-shell") ||
+        target.closest(".lamma-popover-shell") ||
+        target.closest(".lamma-feature-shell") ||
+        target.closest(".lamma-floating-dropdown") ||
+        target.closest(".lamma-modal-shell") ||
+        target.closest(".lamma-list-panel");
+
+      if (!inProtectedPanel) {
         setShowNotificationsDropdown(false);
         setShowGamesDropdown(false);
         setShowAttachmentDropdown(false);
@@ -4393,12 +4405,24 @@ export default function ChatScreen({
         setShowPmListDropdown(false);
         setShowRoomsLists(false);
         setShowMembersList(false);
-        setIsSidebarOpen(false);
+        if (
+          !showProfilePageModal &&
+          !showProfileModal &&
+          !showUserProfileBioPop &&
+          !showUserContextPop
+        ) {
+          setIsSidebarOpen(false);
+        }
       }
     };
     document.addEventListener("mousedown", handleGlobalClick);
     return () => document.removeEventListener("mousedown", handleGlobalClick);
-  }, []);
+  }, [
+    showProfileModal,
+    showProfilePageModal,
+    showUserContextPop,
+    showUserProfileBioPop,
+  ]);
 
   useEffect(() => {
     const handleEscapeKey = (e: KeyboardEvent) => {
@@ -4808,9 +4832,18 @@ export default function ChatScreen({
     }
   };
 
-  const openMemberProfile = (nickname: string) => {
+  const openMemberProfile = (nickname: string, options?: { direct?: boolean }) => {
     const member = resolveChatMemberByNickname(nickname);
     if (!member) return;
+
+    if (isMobileAppShell && !options?.direct) {
+      closeMobileChrome();
+      setUserContextTarget(member);
+      setShowUserContextPop(true);
+      return;
+    }
+
+    closeMobileChrome();
 
     const selfNickname = myActiveSession.nickname || currentUser.nickname;
     const isSelf =
@@ -4865,6 +4898,7 @@ export default function ChatScreen({
   const startPrivateChatWithMember = (nickname: string) => {
     const member = resolveChatMemberByNickname(nickname);
     if (!member) return;
+    closeMobileChrome();
     setPmTarget({
       nickname: member.nickname,
       role: normalizePmRole(member.role),
@@ -4872,10 +4906,12 @@ export default function ChatScreen({
       uid: member.id,
     });
     setMobileTab("private");
+    setIsPmOpen(true);
     setActiveModal(null);
-    if (window.innerWidth >= 1280) {
-      setIsPmOpen(true);
-    }
+    setShowUserContextPop(false);
+    setShowUserProfileBioPop(false);
+    setShowProfilePageModal(false);
+    setProfilePageMember(null);
   };
 
   const openOwnProfilePage = () => {
@@ -4891,15 +4927,16 @@ export default function ChatScreen({
       browserSignature: myBrowserSig,
       localStorageId: `local-${currentUser.uid || selfNickname}`,
     };
+    closeMobileChrome();
     setProfilePageMember(member);
     setShowProfilePageModal(true);
   };
 
   const handleMobileNav = (tab: MobileNavId) => {
+    primeMessageAlerts();
     setMobileTab(tab);
     switch (tab) {
       case "chat":
-        setMobileTab("chat");
         setIsSidebarOpen(false);
         break;
       case "members":
@@ -4916,6 +4953,7 @@ export default function ChatScreen({
               nickname: firstThread,
               role: normalizePmRole(member?.role || "user"),
               avatar: member?.avatar || "👤",
+              uid: member?.id,
             });
           }
         }
@@ -4929,7 +4967,7 @@ export default function ChatScreen({
   const handleInlineMemberTap = useCallback(
     (nickname: string) => {
       if (typeof window !== "undefined" && window.innerWidth < 768) return;
-      openMemberProfile(nickname);
+      openMemberProfile(nickname, { direct: true });
     },
     [openMemberProfile],
   );
@@ -8888,7 +8926,7 @@ export default function ChatScreen({
                   </span>
                 </div>
                 <div className="pl-1 space-y-1 font-sans rounded-2xl overflow-hidden bg-white/[0.02] lamma-list-panel p-1.5">
-                  {orderedChatMembers.map((m, idx, arr) => {
+                  {orderedChatMembers.slice(0, 48).map((m, idx, arr) => {
                     const cleanName = getShortenedNickname(m.nickname);
                     const isCurrentUser = m.nickname === myActiveSession.nickname;
                     const isBasicMember =
@@ -11073,9 +11111,9 @@ export default function ChatScreen({
         <motion.aside
           drag={mobileTab !== "private"}
           dragMomentum={false}
-          className={`flex-col justify-between flex-shrink-0 z-50 ${
+          className={`flex-col justify-between flex-shrink-0 z-[9990] ${
             mobileTab === "private"
-              ? "absolute inset-x-0 top-0 w-full flex lamma-panel-shell lamma-mobile-pm-fullscreen"
+              ? "absolute inset-x-0 top-0 bottom-0 w-full flex lamma-panel-shell lamma-mobile-pm-fullscreen"
               : isPmOpen
                 ? "hidden md:flex fixed bottom-6 left-6 w-80 h-[450px] rounded-2xl lamma-modal-shell"
                 : "hidden"
@@ -12455,6 +12493,7 @@ export default function ChatScreen({
       {/* --- User Options Custom Context/Dropdown Menu --- */}
       <UserContextPopup
         isOpen={showUserContextPop}
+        isMobile={isMobileAppShell}
         target={userContextTarget}
         currentUser={currentUser}
         friendsList={friendsList}
@@ -12462,48 +12501,11 @@ export default function ChatScreen({
         blockedUsers={blockedUsers}
         handlers={{
           onSendPM: (target) => {
-            setPmTarget({
-              nickname: target.nickname,
-              role: normalizePmRole(target.role),
-              avatar: target.avatar || "👤",
-            });
-            if (window.innerWidth < 1280) {
-              setMobileTab("private");
-            } else {
-              setShowRoomsLists(false);
-              setShowMembersList(false);
-              setShowFeaturesTray(false);
-              setShowNotificationsDropdown(false);
-              setShowGamesDropdown(false);
-              setShowAttachmentDropdown(false);
-              setShowMusicDropdown(false);
-              setShowEmojiPicker(false);
-              setShowCommandsDropdown(false);
-              setShowPrivacyDropdown(false);
-              setShowSettingsDropdown(false);
-              setShowSearchPop(false);
-              setIsPmOpen(true);
-            }
-            setShowUserContextPop(false);
+            startPrivateChatWithMember(target.nickname);
           },
           onViewProfile: (target) => {
-            const selfNickname =
-              myActiveSession.nickname || currentUser.nickname;
-            if (
-              target.nickname.toLowerCase() === selfNickname.toLowerCase()
-            ) {
-              openOwnProfileCard();
-            } else if (isManagementRole) {
-              setSelectedProfileMember(target);
-              setShowProfileModal(true);
-            } else if (isOwnerChatRole(target.role)) {
-              setSelectedProfileMember(target);
-              setShowProfileModal(true);
-            } else {
-              setUserProfileBioTarget(target);
-              setShowUserProfileBioPop(true);
-            }
             setShowUserContextPop(false);
+            openMemberProfile(target.nickname, { direct: true });
           },
           onToggleFriend: (target) => {
             if (friendsList.includes(target.nickname)) {
@@ -12568,17 +12570,13 @@ export default function ChatScreen({
 
       <UserProfileBioPopup
         isOpen={showUserProfileBioPop}
+        isMobile={isMobileAppShell}
         target={userProfileBioTarget}
         currentUserNickname={currentUser.nickname}
         myCustomBio={myCustomBio}
         friendsList={friendsList}
         handlers={{
           onSendPM: (target) => {
-            setPmTarget({
-              nickname: target.nickname,
-              role: normalizePmRole(target.role),
-              avatar: target.avatar || "👤",
-            });
             if (!pmThreads[target.nickname]) {
               setPmThreads((prev) => ({
                 ...prev,
@@ -12595,24 +12593,7 @@ export default function ChatScreen({
                 ],
               }));
             }
-            if (window.innerWidth < 1280) {
-              setMobileTab("private");
-            } else {
-              setShowRoomsLists(false);
-              setShowMembersList(false);
-              setShowFeaturesTray(false);
-              setShowNotificationsDropdown(false);
-              setShowGamesDropdown(false);
-              setShowAttachmentDropdown(false);
-              setShowMusicDropdown(false);
-              setShowEmojiPicker(false);
-              setShowCommandsDropdown(false);
-              setShowPrivacyDropdown(false);
-              setShowSettingsDropdown(false);
-              setShowSearchPop(false);
-              setIsPmOpen(true);
-            }
-            setShowUserProfileBioPop(false);
+            startPrivateChatWithMember(target.nickname);
             setUserProfileBioTarget(null);
           },
           onBackToContext: (target) => {

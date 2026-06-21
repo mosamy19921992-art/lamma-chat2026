@@ -1,7 +1,8 @@
 let audioCtx: AudioContext | null = null;
 let primed = false;
 let lastSoundAt = 0;
-const SOUND_THROTTLE_MS = 1200;
+const SOUND_THROTTLE_MS = 900;
+const PM_SOUND_THROTTLE_MS = 650;
 
 function getAudioContext(): AudioContext | null {
   const win = window as Window &
@@ -24,22 +25,43 @@ async function resumeAudioContext(): Promise<void> {
   }
 }
 
-function playOscillatorBeep(): void {
+function playTone(
+  frequency: number,
+  startAt: number,
+  duration: number,
+  volume = 0.14,
+): void {
   const ctx = getAudioContext();
   if (!ctx) return;
 
   const o = ctx.createOscillator();
   const g = ctx.createGain();
   o.type = "sine";
-  o.frequency.setValueAtTime(880, ctx.currentTime);
-  o.frequency.exponentialRampToValueAtTime(520, ctx.currentTime + 0.16);
-  g.gain.setValueAtTime(0.0001, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.14, ctx.currentTime + 0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.28);
+  o.frequency.setValueAtTime(frequency, startAt);
+  g.gain.setValueAtTime(0.0001, startAt);
+  g.gain.exponentialRampToValueAtTime(volume, startAt + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
   o.connect(g);
   g.connect(ctx.destination);
-  o.start();
-  o.stop(ctx.currentTime + 0.3);
+  o.start(startAt);
+  o.stop(startAt + duration + 0.02);
+}
+
+function playOscillatorBeep(): void {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  playTone(880, t, 0.26, 0.14);
+  playTone(620, t + 0.08, 0.22, 0.1);
+}
+
+function playPmOscillatorBeep(): void {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  playTone(988, t, 0.18, 0.16);
+  playTone(1174, t + 0.14, 0.2, 0.14);
+  playTone(880, t + 0.32, 0.24, 0.1);
 }
 
 function playFallbackBeep(): void {
@@ -64,14 +86,16 @@ export function primeMessageAlerts(): void {
   }
 }
 
-export async function playMessageAlertSound(): Promise<void> {
+export async function playMessageAlertSound(kind: "pm" | "default" = "default"): Promise<void> {
   const now = Date.now();
-  if (now - lastSoundAt < SOUND_THROTTLE_MS) return;
+  const throttle = kind === "pm" ? PM_SOUND_THROTTLE_MS : SOUND_THROTTLE_MS;
+  if (now - lastSoundAt < throttle) return;
   lastSoundAt = now;
 
   try {
     await resumeAudioContext();
-    playOscillatorBeep();
+    if (kind === "pm") playPmOscillatorBeep();
+    else playOscillatorBeep();
   } catch {
     playFallbackBeep();
   }
@@ -83,7 +107,6 @@ export function showBrowserMessageNotification(
 ): void {
   if (typeof Notification === "undefined") return;
   if (Notification.permission !== "granted") return;
-  if (!document.hidden) return;
 
   try {
     const notification = new Notification(title, {
