@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, Globe, Loader2, Sparkles } from "lucide-react";
+import {
+  Download,
+  Globe,
+  Loader2,
+  RotateCcw,
+  Sparkles,
+  Target,
+  Wand2,
+} from "lucide-react";
 import {
   BUILTIN_DESIGN_IMPORT_PACKS,
   DESIGN_IMPORT_CATEGORY_LABELS,
@@ -13,6 +21,14 @@ import {
   loadImportedDesignPacks,
   resolvePublicImportUrl,
 } from "../../services/design/designNetImportService";
+import {
+  applyUiverseCssToTarget,
+  fetchUiverseCssFromUrl,
+  getActiveUiverseScopedApplies,
+  resetUiverseScopedStyle,
+  type UiverseFetchResult,
+} from "../../services/design/uiverseScopedImportService";
+import { resolveUiverseTargetFromText } from "../../services/design/uiverseTargetResolver";
 import { ThemePackSandbox } from "./ThemePackSandbox";
 
 interface DesignImportLibraryProps {
@@ -89,9 +105,15 @@ export function DesignImportLibrary({
     loadImportedDesignPacks(),
   );
   const [urlInput, setUrlInput] = useState("");
+  const [targetInput, setTargetInput] = useState("");
   const [fetching, setFetching] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [fetchSuccess, setFetchSuccess] = useState<string | null>(null);
+  const [fetchedCss, setFetchedCss] = useState<UiverseFetchResult | null>(null);
+  const [scopedApplies, setScopedApplies] = useState(() =>
+    getActiveUiverseScopedApplies(),
+  );
 
   const categoryPacks = useMemo(
     () => getImportPacksByCategory(category, imported),
@@ -113,23 +135,96 @@ export function DesignImportLibrary({
     }
   }, [categoryPacks, selectedPack?.id]);
 
+  const refreshScopedApplies = useCallback(() => {
+    setScopedApplies(getActiveUiverseScopedApplies());
+  }, []);
+
   const handleFetchUrl = async () => {
     const trimmed = urlInput.trim();
     if (!trimmed) return;
     setFetching(true);
     setFetchError(null);
     setFetchSuccess(null);
-    const { pack, error } = await fetchDesignPackFromUrl(trimmed);
+    setFetchedCss(null);
+
+    const { result, error } = await fetchUiverseCssFromUrl(trimmed);
     setFetching(false);
-    if (error || !pack) {
-      setFetchError(error ?? "فشل الاستيراد");
+
+    if (result?.css) {
+      setFetchedCss(result);
+      setFetchSuccess(
+        `✅ تم اكتشاف CSS من ${result.source === "galaxy" ? "Galaxy" : "UIverse"}${result.title ? ` — ${result.title}` : ""}. اكتب العنصر المستهدف ثم «تطبيق».`,
+      );
       return;
     }
-    const next = addImportedDesignPack(pack);
-    setImported(next);
-    setSelectedPack(pack);
-    setFetchSuccess(`✅ تم استيراد «${pack.title}»`);
+
+    const { pack, error: packError } = await fetchDesignPackFromUrl(trimmed);
+    if (pack) {
+      const next = addImportedDesignPack(pack);
+      setImported(next);
+      setSelectedPack(pack);
+      setFetchSuccess(`✅ تم استيراد «${pack.title}»`);
+      return;
+    }
+
+    setFetchError(error ?? packError ?? "فشل الاستيراد");
   };
+
+  const handleApplyScoped = async () => {
+    const targetTrimmed = targetInput.trim();
+    const urlTrimmed = urlInput.trim();
+    if (!targetTrimmed) {
+      setFetchError("اكتب اسم العنصر المستهدف قبل التطبيق.");
+      return;
+    }
+
+    const preview = resolveUiverseTargetFromText(targetTrimmed);
+    if (!preview.target) {
+      setFetchError(preview.error ?? "عنصر غير معروف.");
+      return;
+    }
+
+    setApplying(true);
+    setFetchError(null);
+
+    let css = fetchedCss?.css ?? "";
+    if (!css.trim()) {
+      const { result, error } = await fetchUiverseCssFromUrl(urlTrimmed);
+      if (!result?.css) {
+        setApplying(false);
+        setFetchError(error ?? "اجلب CSS من UIverse أولًا.");
+        return;
+      }
+      css = result.css;
+      setFetchedCss(result);
+    }
+
+    const applied = applyUiverseCssToTarget(css, targetTrimmed, urlTrimmed);
+    setApplying(false);
+
+    if (!applied.ok) {
+      setFetchError(applied.error ?? "فشل التطبيق.");
+      return;
+    }
+
+    refreshScopedApplies();
+    setFetchSuccess(
+      `✅ طُبّق على «${applied.target?.labelAr}» فقط — ${applied.parsed?.summaryAr ?? ""}`,
+    );
+  };
+
+  const handleResetScoped = () => {
+    resetUiverseScopedStyle();
+    refreshScopedApplies();
+    setFetchedCss(null);
+    setFetchSuccess("↩️ تمت إعادة المظهر الافتراضي للعناصر المستهدفة.");
+    setFetchError(null);
+  };
+
+  const targetPreview = useMemo(() => {
+    if (!targetInput.trim()) return null;
+    return resolveUiverseTargetFromText(targetInput);
+  }, [targetInput]);
 
   const sampleUrls = useMemo(
     () =>
@@ -195,14 +290,18 @@ export function DesignImportLibrary({
           <div className="p-2.5 rounded-xl lamma-section-card space-y-2">
             <div className="text-[9px] font-black text-cyan-300 flex items-center gap-1">
               <Globe size={11} />
-              استيراد من UIverse / رابط JSON
+              جلب ذكي من UIverse — تطبيق على عنصر واحد فقط
             </div>
+            <p className="text-[7px] text-gray-500 font-bold leading-relaxed">
+              الصق رابط UIverse، حدّد العنصر (فقاعات الشات، الأزرار، الخلفية…)،
+              ثم «تطبيق». لن يُمسّ بقية الموقع — و«إعادة تعيين» يلغي أي خطأ.
+            </p>
             <div className="flex gap-1.5">
               <input
                 type="url"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="https://uiverse.io/… أو theme.json"
+                placeholder="https://uiverse.io/username/component-slug"
                 className="flex-1 min-w-0 px-2 py-1.5 rounded-lg text-[9px] font-bold bg-black/30 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-400/40"
                 dir="ltr"
               />
@@ -220,6 +319,65 @@ export function DesignImportLibrary({
                 جلب
               </button>
             </div>
+            <div className="flex gap-1.5">
+              <div className="relative flex-1 min-w-0">
+                <Target
+                  size={10}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-violet-400/70 pointer-events-none"
+                />
+                <input
+                  type="text"
+                  value={targetInput}
+                  onChange={(e) => setTargetInput(e.target.value)}
+                  placeholder="العنصر المستهدف: فقاعات الشات، الأزرار، الخلفية…"
+                  className="w-full pr-7 pl-2 py-1.5 rounded-lg text-[9px] font-bold bg-black/30 border border-violet-500/25 text-white placeholder:text-gray-500 focus:outline-none focus:border-violet-400/50"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={
+                  applying || !targetInput.trim() || (!fetchedCss && !urlInput.trim())
+                }
+                onClick={() => void handleApplyScoped()}
+                className="shrink-0 px-3 py-1.5 rounded-lg text-[9px] font-black bg-violet-600/80 hover:bg-violet-500/90 text-white disabled:opacity-50 flex items-center gap-1 border border-violet-400/30"
+              >
+                {applying ? (
+                  <Loader2 size={11} className="animate-spin" />
+                ) : (
+                  <Wand2 size={11} />
+                )}
+                تطبيق
+              </button>
+              <button
+                type="button"
+                disabled={scopedApplies.length === 0}
+                onClick={handleResetScoped}
+                className="shrink-0 px-2.5 py-1.5 rounded-lg text-[9px] font-black lamma-tab-soft hover:text-white disabled:opacity-40 flex items-center gap-1 border border-white/10"
+                title="إعادة المظهر الافتراضي"
+              >
+                <RotateCcw size={11} />
+                Reset
+              </button>
+            </div>
+            {targetPreview && (
+              <p className="text-[7px] text-violet-300/80 font-bold">
+                {targetPreview.target?.labelAr ?? targetPreview.error}
+              </p>
+            )}
+            {fetchedCss && (
+              <p className="text-[7px] text-cyan-400/90 font-bold">
+                CSS جاهز ({fetchedCss.css.length.toLocaleString()} حرف) — من{" "}
+                {fetchedCss.source}
+              </p>
+            )}
+            {scopedApplies.length > 0 && (
+              <div className="text-[7px] text-emerald-400/90 font-bold space-y-0.5">
+                <div>مطبّق حاليًا على:</div>
+                {scopedApplies.slice(0, 4).map((a) => (
+                  <div key={a.styleId}>• {a.targetLabel}</div>
+                ))}
+              </div>
+            )}
             {fetchError && (
               <p className="text-[8px] font-bold text-red-400">{fetchError}</p>
             )}

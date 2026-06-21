@@ -4,6 +4,7 @@ import { ensureFaceApplied } from "../lib/customFace";
 import { ensureGlassFormApplied } from "../services/design/glassTransparencyService";
 import { ensureColumnCardStyleApplied } from "../services/design/columnCardStyleService";
 import { ensureBubbleShapeApplied } from "../services/design/bubbleShapeService";
+import { restoreUiverseScopedOnLoad } from "../services/design/uiverseScopedImportService";
 import { ensureChaseLightApplied } from "../services/design/chaseLightBarService";
 import { setDesignPreviewActive } from "../services/design/designPreviewDom";
 import { loadUniversalStyleLocal, persistAndApplyUniversalStyle } from "../services/design/universalStyleStorage";
@@ -2588,6 +2589,7 @@ export default function ChatScreen({
     ensureColumnCardStyleApplied();
     ensureBubbleShapeApplied();
     ensureChaseLightApplied();
+    restoreUiverseScopedOnLoad();
   }, []);
 
   useEffect(() => {
