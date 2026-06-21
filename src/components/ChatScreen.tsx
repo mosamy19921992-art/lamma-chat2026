@@ -2894,30 +2894,57 @@ export default function ChatScreen({
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
 
-  useEffect(() => {
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = localStream ?? null;
-      if (localStream) void localVideoRef.current.play().catch(() => {});
-    }
-  }, [localStream]);
+  const bindLocalVideo = useCallback(
+    (node: HTMLVideoElement | null) => {
+      localVideoRef.current = node;
+      if (!node) return;
+      node.muted = true;
+      node.playsInline = true;
+      node.srcObject = localStream ?? null;
+      if (localStream?.getVideoTracks().length) {
+        void node.play().catch(() => {});
+      }
+    },
+    [localStream],
+  );
+
+  const bindRemoteVideo = useCallback(
+    (node: HTMLVideoElement | null) => {
+      remoteVideoRef.current = node;
+      if (!node || !remoteStream) return;
+      void playRemoteMedia(node, remoteStream);
+    },
+    [remoteStream],
+  );
 
   useEffect(() => {
-    const playRemote = async () => {
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = remoteStream ?? null;
-        if (remoteStream) {
-          await playRemoteMedia(remoteVideoRef.current, remoteStream);
-        }
-      }
-      if (remoteAudioRef.current) {
-        remoteAudioRef.current.srcObject = remoteStream ?? null;
-        if (remoteStream) {
-          await playRemoteMedia(remoteAudioRef.current, remoteStream);
-        }
-      }
-    };
-    void playRemote();
-  }, [remoteStream]);
+    const node = localVideoRef.current;
+    if (!node || activeCall?.type !== "video") return;
+    node.srcObject = localStream ?? null;
+    if (localStream?.getVideoTracks().length) {
+      void node.play().catch(() => {});
+    }
+  }, [activeCall?.type, localStream]);
+
+  useEffect(() => {
+    if (activeCall?.type === "video" && remoteVideoRef.current && remoteStream) {
+      void playRemoteMedia(remoteVideoRef.current, remoteStream);
+    }
+    const remoteHasVideo = remoteStream?.getVideoTracks().some((t) => t.enabled);
+    if (
+      remoteAudioRef.current &&
+      remoteStream &&
+      (activeCall?.type !== "video" || !remoteHasVideo)
+    ) {
+      void playRemoteMedia(remoteAudioRef.current, remoteStream);
+    }
+  }, [activeCall?.type, remoteStream]);
+
+  const showVideoCallPanel =
+    activeCall?.type === "video" &&
+    activeCall.status !== "ended" &&
+    activeCall.status !== "failed";
+  const hasLocalVideo = Boolean(localStream?.getVideoTracks().some((t) => t.enabled));
 
   const formatCallDuration = (seconds: number) => {
     const m = Math.floor(seconds / 60)
@@ -12668,27 +12695,41 @@ export default function ChatScreen({
             className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
           >
             <div className="rounded-3xl p-6 w-full max-w-md flex flex-col items-center justify-center space-y-4 lamma-call-shell">
-              {/* Hidden audio element for voice-only calls */}
+              {/* Hidden audio for voice-only calls */}
               <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
 
-              {/* Video streams when connected */}
-              {activeCall.type === "video" &&
-                (activeCall.status === "connected" ||
-                  activeCall.status === "reconnecting") && (
+              {/* Video — show local camera from first ring/connect; remote when available */}
+              {showVideoCallPanel && (
                   <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black border border-white/10">
+                    {remoteStream?.getVideoTracks().some((t) => t.enabled) ? (
+                      <video
+                        ref={bindRemoteVideo}
+                        autoPlay
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-gray-500">
+                        في انتظار كاميرا الطرف الآخر…
+                      </div>
+                    )}
                     <video
-                      ref={remoteVideoRef}
-                      autoPlay
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
-                    <video
-                      ref={localVideoRef}
+                      ref={bindLocalVideo}
                       autoPlay
                       playsInline
                       muted
-                      className="absolute bottom-2 right-2 w-24 h-16 rounded-lg object-cover border border-white/20"
+                      className={`absolute bottom-2 right-2 w-28 h-20 rounded-lg object-cover border-2 shadow-lg ${
+                        hasLocalVideo
+                          ? "border-emerald-400/60"
+                          : "border-red-400/50 bg-gray-900"
+                      }`}
+                      style={{ transform: "scaleX(-1)" }}
                     />
+                    {!hasLocalVideo && (
+                      <span className="absolute bottom-3 right-3 text-[8px] font-black text-red-300 bg-black/70 px-1.5 py-0.5 rounded">
+                        الكاميرا مغلقة
+                      </span>
+                    )}
                   </div>
                 )}
 
