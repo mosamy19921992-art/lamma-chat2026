@@ -97,21 +97,29 @@ function renderCodeFencedText(text: string): React.ReactNode[] {
   return nodes.length > 0 ? nodes : renderInlineFormattedText(text);
 }
 
-function LazyYoutubeEmbed({ videoId }: { videoId: string }) {
+export function LazyYoutubeEmbed({
+  videoId,
+  containerClassName = "mt-2.5 max-w-[280px] overflow-hidden rounded-xl border border-red-500/20 shadow-lg bg-black/80",
+  buttonClassName = "mt-2.5 block w-full max-w-[280px] aspect-video rounded-xl border border-red-500/20 bg-black/80 text-red-300 text-xs font-bold hover:bg-black/90 transition-colors",
+}: {
+  videoId: string;
+  containerClassName?: string;
+  buttonClassName?: string;
+}) {
   const [active, setActive] = useState(false);
   if (!active) {
     return (
       <button
         type="button"
         onClick={() => setActive(true)}
-        className="mt-2.5 block w-full max-w-[280px] aspect-video rounded-xl border border-red-500/20 bg-black/80 text-red-300 text-xs font-bold hover:bg-black/90 transition-colors"
+        className={buttonClassName}
       >
         ▶ تشغيل YouTube
       </button>
     );
   }
   return (
-    <div className="mt-2.5 max-w-[280px] overflow-hidden rounded-xl border border-red-500/20 shadow-lg bg-black/80">
+    <div className={containerClassName}>
       <div className="relative pb-[56.25%] h-0">
         <iframe
           title="YouTube Video Player"

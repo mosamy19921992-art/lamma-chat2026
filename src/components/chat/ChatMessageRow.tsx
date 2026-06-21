@@ -25,7 +25,7 @@ import {
   isPrivateStorageRef,
   type StoreCosmeticsSnapshot,
 } from "../../lib/chatHelpers";
-import { renderTextMessageWithMedia } from "../../lib/chatMessageRender";
+import { renderTextMessageWithMedia, LazyYoutubeEmbed } from "../../lib/chatMessageRender";
 
 function getNameGlassCardClass(options: {
   isSelf?: boolean;
@@ -374,17 +374,11 @@ function ChatMessageRowInner({
           {msg.type === "video" && safeMediaUrl && (
             <div className="mt-2">
               {getYoutubeId(safeMediaUrl) ? (
-                <div className="relative pb-[56.25%] h-0 w-[360px] max-w-full rounded-2xl overflow-hidden border border-red-500/20 shadow-lg">
-                  <iframe
-                    title="Attached YouTube Video Player"
-                    src={`https://www.youtube.com/embed/${getYoutubeId(safeMediaUrl)}`}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    loading="lazy"
-                    className="absolute top-0 left-0 w-full h-full"
-                  />
-                </div>
+                <LazyYoutubeEmbed
+                  videoId={getYoutubeId(safeMediaUrl)!}
+                  containerClassName="max-w-[360px] w-full overflow-hidden rounded-2xl border border-red-500/20 shadow-lg bg-black/80"
+                  buttonClassName="block w-full max-w-[360px] aspect-video rounded-2xl border border-red-500/20 bg-black/80 text-red-300 text-xs font-bold hover:bg-black/90 transition-colors"
+                />
               ) : isPrivateStorageRef(safeMediaUrl) ? (
                 <ResolvedPrivateMedia
                   mediaRef={safeMediaUrl}

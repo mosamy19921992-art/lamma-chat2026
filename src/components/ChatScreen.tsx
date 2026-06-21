@@ -109,6 +109,7 @@ import { MobileBottomSheet } from "./chat/MobileBottomSheet";
 import { HeaderIconButton } from "./chat/HeaderIconButton";
 import { ChatMessageVirtualList } from "./chat/ChatMessageVirtualList";
 import { ChatMessageRow } from "./chat/ChatMessageRow";
+import { PmMessageRow } from "./chat/PmMessageRow";
 import {
   fetchActivePlans,
   fetchMySubscription,
@@ -5880,6 +5881,28 @@ export default function ChatScreen({
     ],
   );
 
+  const renderPmMessage = useCallback(
+    (msg: PMThreadMessage) => {
+      if (!pmTarget) return null;
+      const spyParts = pmTarget.nickname.startsWith("🕵️")
+        ? pmTarget.nickname.replace("🕵️ ", "").split(" -> ")
+        : null;
+      const spySenderLabel = spyParts
+        ? msg.isOwn
+          ? spyParts[0]
+          : spyParts[1]
+        : null;
+      return (
+        <PmMessageRow
+          msg={msg}
+          targetNickname={pmTarget.nickname}
+          spySenderLabel={spySenderLabel}
+        />
+      );
+    },
+    [pmTarget],
+  );
+
   const activeRoomIdRef = useRef(activeRoomId);
   useEffect(() => {
     activeRoomIdRef.current = activeRoomId;
@@ -10989,124 +11012,8 @@ export default function ChatScreen({
                   messages={pmMessages}
                   parentRef={pmViewportRef}
                   estimateSize={88}
-                  renderMessage={(msg, idx) => {
-                  const spyParts = pmTarget.nickname.startsWith("🕵️")
-                    ? pmTarget.nickname.replace("🕵️ ", "").split(" -> ")
-                    : null;
-                  const msgSenderName = spyParts
-                    ? (msg.isOwn ? spyParts[0] : spyParts[1])
-                    : null;
-                  const safePmMediaUrl = filterSafeMediaUrl(msg.mediaUrl);
-                  return (
-                  <div
-                    key={msg.dbId || `${msg.time}-${msg.text}-${idx}`}
-                    className={`flex flex-col max-w-[85%] pb-3 ${msg.isOwn ? "mr-auto items-start" : "ml-auto items-end"}`}
-                  >
-                    {msgSenderName && (
-                      <span className="text-[8px] text-purple-300 font-bold mb-0.5 px-1">{msgSenderName}</span>
-                    )}
-                    <div
-                      className={`p-2.5 text-xs leading-normal lamma-message break-words min-w-0 overflow-wrap-anywhere ${
-                        pmTarget.nickname.startsWith("🕵️")
-                          ? msg.isOwn
-                            ? "lamma-pm-bubble-own bg-blue-500/15 border border-blue-500/20 text-blue-100 rounded-tr-none"
-                            : "lamma-pm-bubble-incoming bg-rose-500/15 border border-rose-500/20 text-rose-100 rounded-tl-none"
-                          : msg.isOwn
-                          ? "lamma-pm-bubble-own lamma-msg-bubble-own bg-white/12 border border-white/10 text-white font-extrabold"
-                          : "lamma-pm-bubble-incoming bg-black/40 border border-white/8 text-gray-100"
-                      }`}
-                    >
-                      {safePmMediaUrl && msg.type === "image" ? (
-                        isPrivateStorageRef(safePmMediaUrl) ? (
-                          <ResolvedPrivateMedia
-                            mediaRef={safePmMediaUrl}
-                            kind="image"
-                          />
-                        ) : (
-                          <img
-                            src={safePmMediaUrl}
-                            alt="مرفق"
-                            className="max-w-[220px] max-h-[220px] rounded-xl mb-1.5 object-cover"
-                            loading="lazy"
-                          />
-                        )
-                      ) : null}
-                      {safePmMediaUrl && msg.type === "video" ? (
-                        getYoutubeId(safePmMediaUrl) ? (
-                          <div className="relative pb-[56.25%] h-0 w-[220px] max-w-full rounded-xl overflow-hidden mb-1.5">
-                            <iframe
-                              title="PM YouTube"
-                              src={`https://www.youtube.com/embed/${getYoutubeId(safePmMediaUrl)}`}
-                              frameBorder="0"
-                              allowFullScreen
-                              loading="lazy"
-                              className="absolute inset-0 w-full h-full"
-                            />
-                          </div>
-                        ) : isPrivateStorageRef(safePmMediaUrl) ? (
-                          <ResolvedPrivateMedia
-                            mediaRef={safePmMediaUrl}
-                            kind="video"
-                          />
-                        ) : (
-                          <video
-                            src={safePmMediaUrl}
-                            controls
-                            preload="none"
-                            playsInline
-                            className="max-w-[220px] rounded-xl mb-1.5 border border-white/10"
-                          />
-                        )
-                      ) : null}
-                      {(() => {
-                        const legacyUrl = filterSafeMediaUrl(msg.mediaUrl);
-                        return legacyUrl && !msg.type ? (
-                          isPrivateStorageRef(legacyUrl) ? (
-                            <ResolvedPrivateMedia
-                              mediaRef={legacyUrl}
-                              kind="image"
-                            />
-                          ) : (
-                            <img
-                              src={legacyUrl}
-                              alt="مرفق"
-                              className="max-w-[220px] max-h-[220px] rounded-xl mb-1.5 object-cover"
-                              loading="lazy"
-                            />
-                          )
-                        ) : null;
-                      })()}
-                      {msg.text ? (
-                        <div className="m-0 text-right">
-                          {renderTextMessageWithMedia(msg.text)}
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span className="text-[8px] text-gray-500 font-mono">
-                        {msg.time}
-                      </span>
-                      {msg.isOwn && (
-                        <span
-                          className={`text-[10px] ${
-                            msg.status === "read"
-                              ? "text-blue-400"
-                              : msg.status === "delivered"
-                                ? "text-gray-300"
-                                : "text-gray-500"
-                          }`}
-                        >
-                          {msg.status === "read"
-                            ? "✓✓"
-                            : msg.status === "delivered"
-                              ? "✓✓"
-                              : "✓"}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  );
-                }}
+                  renderMessage={renderPmMessage}
+                  getItemKey={(msg) => msg.dbId || msg.clientId || `${msg.time}-${msg.text}`}
                 />
                 {/* Typing indicator — hidden for spy threads */}
                 {!pmTarget.nickname.startsWith("🕵️") && (
