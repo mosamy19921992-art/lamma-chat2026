@@ -11,7 +11,7 @@ import {
   WebRTCCallEngine,
   type CallMediaType,
 } from "../services/calls/webrtcCallEngine";
-import { describeMediaError, playRemoteMedia } from "../services/calls/callMediaUtils";
+import { describeMediaError, describeCallFailure, playRemoteMedia, type CallFailureReason } from "../services/calls/callMediaUtils";
 import {
   startIncomingCallRingtone,
   stopIncomingCallRingtone,
@@ -34,6 +34,7 @@ export interface ActiveCallState {
   callDuration: number;
   isFallback: boolean;
   isIncoming: boolean;
+  failureReason?: CallFailureReason;
 }
 
 export interface IncomingCallState {
@@ -69,6 +70,7 @@ export function useWebRTCCalls({
   const peerNickRef = useRef<string>("");
   const callIdRef = useRef<string>("");
   const isCallerRef = useRef(false);
+  const durationStartedRef = useRef(false);
 
   const [activeCall, setActiveCall] = useState<ActiveCallState | null>(null);
   const [incomingCall, setIncomingCall] = useState<IncomingCallState | null>(
@@ -134,6 +136,8 @@ export function useWebRTCCalls({
   );
 
   const startDurationTimer = useCallback(() => {
+    if (durationStartedRef.current) return;
+    durationStartedRef.current = true;
     if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
     durationIntervalRef.current = setInterval(() => {
       setActiveCall((prev) =>
@@ -141,6 +145,18 @@ export function useWebRTCCalls({
       );
     }, 1000);
   }, []);
+
+  const markConnected = useCallback(() => {
+    patchCall({ status: "connected", failureReason: undefined });
+    startDurationTimer();
+  }, [patchCall, startDurationTimer]);
+
+  const markFailed = useCallback(
+    (reason: CallFailureReason = "network") => {
+      patchCall({ status: "failed", failureReason: reason });
+    },
+    [patchCall],
+  );
 
   const wireEngine = useCallback(
     (engine: WebRTCCallEngine, callId: string, peerUid: string) => {
@@ -161,13 +177,36 @@ export function useWebRTCCalls({
 
       engine.onConnectionState = (state) => {
         if (state === "connected") {
-          patchCall({ status: "connected" });
-          startDurationTimer();
+          markConnected();
         } else if (state === "failed") {
-          patchCall({ status: "failed" });
+          markFailed("network");
         } else if (state === "disconnected") {
           patchCall({ status: "reconnecting" });
         }
+      };
+
+      engine.onIceConnectionState = (state) => {
+        if (state === "connected" || state === "completed") {
+          markConnected();
+        }
+      };
+
+      engine.onRecoverableError = (kind) => {
+        if (kind !== "ice_restart") return;
+        void (async () => {
+          const offer = await engine.restartIce();
+          if (!offer) return;
+          await sendCallSignal({
+            call_id: callId,
+            from_uid: myUid,
+            from_nickname: myNick,
+            to_uid: peerUid,
+            to_nickname: peerNickRef.current,
+            call_type: callTypeRef.current,
+            signal_type: "offer",
+            payload: { sdp: offer, iceRestart: true },
+          });
+        })();
       };
 
       engine.onServerSwitch = (name, index) => {
@@ -182,13 +221,13 @@ export function useWebRTCCalls({
             try {
               const eng = engineRef.current;
               if (!eng || eng.getServerIndex() >= 1) {
-                patchCall({ status: "failed" });
+                markFailed("turn");
                 return;
               }
               patchCall({ status: "reconnecting" });
               const switched = await eng.switchToFallbackServer();
               if (!switched) {
-                patchCall({ status: "failed" });
+                markFailed("turn");
                 return;
               }
               void sendCallSignal({
@@ -220,17 +259,18 @@ export function useWebRTCCalls({
               }
             } catch (err) {
               console.warn("Call failover failed:", err);
-              patchCall({ status: "failed" });
+              markFailed("turn");
             }
           })();
         }, ICE_FAILOVER_DELAY_MS);
       };
     },
-    [myNick, myUid, patchCall, startDurationTimer],
+    [markConnected, markFailed, myNick, myUid, patchCall, startDurationTimer],
   );
 
   const cleanupCall = useCallback(() => {
     clearTimers();
+    durationStartedRef.current = false;
     engineRef.current?.destroy();
     engineRef.current = null;
     setLocalStream(null);
@@ -352,7 +392,10 @@ export function useWebRTCCalls({
         patchCall({ status: "ringing" });
 
         ringTimeoutRef.current = setTimeout(() => {
-          if (callIdRef.current === callId) endCall();
+          if (callIdRef.current === callId) {
+            markFailed("timeout");
+            endCall();
+          }
         }, CALL_RING_TIMEOUT_MS);
       } catch (err) {
         console.error("Call start failed:", err);
@@ -369,6 +412,7 @@ export function useWebRTCCalls({
       endCall,
       getEngine,
       incomingCall,
+      markFailed,
       myNick,
       myUid,
       patchCall,
@@ -608,7 +652,11 @@ export function useWebRTCCalls({
           const candidate = signal.payload.candidate as RTCIceCandidateInit;
           if (callIdRef.current === signal.call_id) {
             const engine = getEngine();
-            await engine.addIceCandidate(candidate);
+            try {
+              await engine.addIceCandidate(candidate);
+            } catch (err) {
+              console.warn("ICE candidate skipped:", err);
+            }
           } else if (
             incomingCallRef.current?.callId === signal.call_id ||
             pendingOffersRef.current[signal.call_id]
@@ -665,14 +713,23 @@ export function useWebRTCCalls({
       }
       } catch (err) {
         console.error("Call signal handling failed:", signal.signal_type, err);
+        const critical =
+          signal.signal_type === "offer" ||
+          signal.signal_type === "answer" ||
+          signal.signal_type === "accept";
         if (
-          callIdRef.current === signal.call_id ||
-          incomingCallRef.current?.callId === signal.call_id
+          critical &&
+          (callIdRef.current === signal.call_id ||
+            incomingCallRef.current?.callId === signal.call_id)
         ) {
-          patchCall({ status: "failed" });
+          markFailed("signal");
           cleanupCall();
           setIncomingCall(null);
-          setActiveCall(null);
+          setActiveCall((prev) =>
+            prev?.callId === signal.call_id
+              ? { ...prev, status: "failed", failureReason: "signal" }
+              : prev,
+          );
         }
       }
     });
@@ -682,6 +739,7 @@ export function useWebRTCCalls({
     currentUser.authProvider,
     flushPendingIce,
     getEngine,
+    markFailed,
     myNick,
     myUid,
     patchCall,

@@ -23,8 +23,8 @@ export interface CallSignalRow {
   payload: Record<string, unknown>;
 }
 
-const ICE_SIGNAL_WINDOW_MS = 1000;
-const MAX_ICE_SIGNALS_PER_WINDOW = 24;
+const ICE_SIGNAL_WINDOW_MS = 2000;
+const MAX_ICE_SIGNALS_PER_WINDOW = 120;
 let iceSignalWindowStart = 0;
 let iceSignalsInWindow = 0;
 
@@ -43,7 +43,7 @@ export async function sendCallSignal(
 ): Promise<{ error: string | null }> {
   if (!supabase) return { error: "Supabase غير متصل" };
   if (signal.signal_type === "ice" && !allowIceSignal()) {
-    return { error: "rate_limited" };
+    return { error: null };
   }
   const { error } = await supabase.from("call_signals").insert([signal]);
   return { error: error?.message ?? null };

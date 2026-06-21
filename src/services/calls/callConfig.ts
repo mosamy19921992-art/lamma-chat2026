@@ -94,11 +94,16 @@ export function getIceServerBundles(): IceServerBundle[] {
 
   const primary: RTCIceServer[] = [...primaryStun];
   if (envTurn1) primary.push(envTurn1);
-  else if (!hasCustomTurn) primary.push(PUBLIC_TURN_RELAY);
+  if (!hasCustomTurn || !envTurn1 || !isOpenRelayTurn(envTurn1)) {
+    primary.push(PUBLIC_TURN_RELAY);
+  }
 
   const fallback: RTCIceServer[] = [...fallbackStun];
   if (envTurn2) fallback.push(envTurn2);
-  else if (!hasCustomTurn) fallback.push(PUBLIC_TURN_TCP);
+  else if (envTurn1 && hasCustomTurn) fallback.push(envTurn1);
+  if (!hasCustomTurn || !envTurn2 || !isOpenRelayTurn(envTurn2)) {
+    fallback.push(PUBLIC_TURN_TCP);
+  }
 
   const turn1Label = envTurn1
     ? isOpenRelayTurn(envTurn1)
@@ -131,4 +136,4 @@ export const ICE_CANDIDATE_POOL_SIZE = 10;
 
 export const CALL_RING_TIMEOUT_MS = 45_000;
 /** Fail over to 2nd bundle sooner when relay is congested. */
-export const ICE_FAILOVER_DELAY_MS = 2_500;
+export const ICE_FAILOVER_DELAY_MS = 4_000;

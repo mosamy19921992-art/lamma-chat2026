@@ -88,6 +88,31 @@ export function describeMediaError(error: unknown, type: CallMediaType): string 
     : "⚠️ تعذر فتح المايك. تأكد من السماح للمتصفح بالوصول ثم أعد المحاولة.";
 }
 
+export type CallFailureReason =
+  | "network"
+  | "mic"
+  | "signal"
+  | "timeout"
+  | "turn";
+
+export function describeCallFailure(
+  reason?: CallFailureReason | null,
+): string {
+  switch (reason) {
+    case "mic":
+      return "فشل الوصول للمايك — افتح إعدادات الموقع في المتصفح واسمح بالمايك ثم أعد المحاولة.";
+    case "signal":
+      return "انقطع تبادل إشارات المكالمة — تحقق من الاتصال بالإنترنت وأعد تحميل الصفحة.";
+    case "timeout":
+      return "لم يرد الطرف الآخر — حاول مرة أخرى.";
+    case "turn":
+      return "تعذّر عبر الشبكة (NAT/TURN) — تأكد من إعدادات TURN على Vercel أو جرّب شبكة أخرى.";
+    case "network":
+    default:
+      return "فشل الاتصال — تحقق من الشبكة، اسمح بالمايك، أو جرّب Wi‑Fi/4G مختلف.";
+  }
+}
+
 export async function playRemoteMedia(
   element: HTMLMediaElement | null,
   stream: MediaStream | null,

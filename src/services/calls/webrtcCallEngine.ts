@@ -12,6 +12,8 @@ export class WebRTCCallEngine {
   private serverIndex = 0;
   private readonly bundles = getIceServerBundles();
   private failoverInProgress = false;
+  private pendingRemoteCandidates: RTCIceCandidateInit[] = [];
+  private iceRestartAttempts = 0;
 
   onRemoteStream?: (stream: MediaStream) => void;
   onIceCandidate?: (candidate: RTCIceCandidateInit) => void;
@@ -19,6 +21,7 @@ export class WebRTCCallEngine {
   onIceConnectionState?: (state: RTCIceConnectionState) => void;
   onServerSwitch?: (name: string, index: number) => void;
   onFailoverNeeded?: () => void;
+  onRecoverableError?: (message: string) => void;
 
   getLocalStream() {
     return this.localStream;
@@ -48,6 +51,8 @@ export class WebRTCCallEngine {
 
   createPeerConnection() {
     this.closePeerConnection(false);
+    this.pendingRemoteCandidates = [];
+    this.iceRestartAttempts = 0;
     const bundle = this.bundles[this.serverIndex] ?? this.bundles[0];
     if (!bundle) {
       throw new Error("No ICE server bundle configured");
@@ -83,9 +88,32 @@ export class WebRTCCallEngine {
       if (!state) return;
       this.onIceConnectionState?.(state);
       if (state === "failed" && !this.failoverInProgress) {
+        if (this.iceRestartAttempts < 1) {
+          this.iceRestartAttempts += 1;
+          void this.restartIce().then((offer) => {
+            if (offer) {
+              this.onRecoverableError?.("ice_restart");
+            } else {
+              this.onFailoverNeeded?.();
+            }
+          });
+          return;
+        }
         this.onFailoverNeeded?.();
       }
     };
+  }
+
+  private async flushPendingRemoteCandidates(): Promise<void> {
+    if (!this.pc?.remoteDescription) return;
+    const batch = this.pendingRemoteCandidates.splice(0);
+    for (const candidate of batch) {
+      try {
+        await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch {
+        // stale candidate after renegotiation — safe to ignore
+      }
+    }
   }
 
   async createOffer(iceRestart = false): Promise<RTCSessionDescriptionInit> {
@@ -105,10 +133,15 @@ export class WebRTCCallEngine {
   async setRemoteDescription(desc: RTCSessionDescriptionInit) {
     if (!this.pc) throw new Error("PeerConnection not ready");
     await this.pc.setRemoteDescription(new RTCSessionDescription(desc));
+    await this.flushPendingRemoteCandidates();
   }
 
   async addIceCandidate(candidate: RTCIceCandidateInit) {
-    if (!this.pc || !candidate) return;
+    if (!this.pc || !candidate?.candidate) return;
+    if (!this.pc.remoteDescription) {
+      this.pendingRemoteCandidates.push(candidate);
+      return;
+    }
     try {
       await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
     } catch {
@@ -121,6 +154,8 @@ export class WebRTCCallEngine {
     if (this.serverIndex >= this.bundles.length - 1) return false;
     this.failoverInProgress = true;
     this.serverIndex++;
+    this.pendingRemoteCandidates = [];
+    this.iceRestartAttempts = 0;
     this.onServerSwitch?.(
       this.bundles[this.serverIndex]?.name ?? "fallback",
       this.serverIndex,

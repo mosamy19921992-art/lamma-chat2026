@@ -261,7 +261,7 @@ import {
   playMessageAlertSound,
   showBrowserMessageNotification,
 } from "../services/chat/messageAlertService";
-import { describeMediaError, playRemoteMedia } from "../services/calls/callMediaUtils";
+import { describeMediaError, describeCallFailure, playRemoteMedia } from "../services/calls/callMediaUtils";
 import { OwnerMemberFeaturesPanel } from "./modals/OwnerMemberFeaturesPanel";
 import { OwnerMemberCosmeticsPanel } from "./modals/OwnerMemberCosmeticsPanel";
 import { useRoomComposer } from "../hooks/useRoomComposer";
@@ -12754,8 +12754,8 @@ export default function ChatScreen({
                   </div>
                 )}
                 {activeCall.status === "failed" && (
-                  <span className="text-sm font-bold text-red-400">
-                    فشل الاتصال — تحقق من الشبكة أو صلاحيات المايك
+                  <span className="text-sm font-bold text-red-400 leading-relaxed">
+                    {describeCallFailure(activeCall.failureReason)}
                   </span>
                 )}
                 {activeCall.status === "ended" && (
