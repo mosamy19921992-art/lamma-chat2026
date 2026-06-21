@@ -100,7 +100,14 @@ export async function uploadPrivateMediaFile(
     });
 
   if (uploadError) {
-    return { path: objectPath, signedUrl: null, error: uploadError.message };
+    const hint = uploadError.message.includes("Bucket not found")
+      ? " — أنشئ bucket «chat-media-private» من Supabase أو شغّل: node scripts/apply-private-media-bucket.mjs"
+      : "";
+    return {
+      path: objectPath,
+      signedUrl: null,
+      error: `${uploadError.message}${hint}`,
+    };
   }
 
   const signedUrl = await signPrivatePath(objectPath);

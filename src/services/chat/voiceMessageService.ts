@@ -37,7 +37,13 @@ export async function uploadVoiceNoteBlob(
   const { path, error } = await uploadToPrivateBucket(file, userId, subfolder);
 
   if (error || !path) {
-    return { url: null, error: error || "فشل رفع المقطع الصوتي." };
+    const msg = error || "فشل رفع المقطع الصوتي.";
+    return {
+      url: null,
+      error: msg.includes("Bucket not found") || msg.includes("chat-media-private")
+        ? "❌ bucket التخزين الخاص غير موجود. تواصل مع المالك لتفعيل chat-media-private على Supabase."
+        : msg,
+    };
   }
 
   return { url: formatPrivateMediaRef(path), error: null };
