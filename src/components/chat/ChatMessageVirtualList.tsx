@@ -1,32 +1,33 @@
-import { useRef, type ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 export type ChatMessageVirtualListProps<T> = {
   messages: T[];
-  parentRef: React.RefObject<HTMLDivElement | null>;
+  parentRef: RefObject<HTMLDivElement | null>;
   estimateSize?: number;
+  /** Below this count, render all rows without virtualization overhead. */
+  minVirtualCount?: number;
+  getItemKey?: (item: T, index: number) => string | number;
   renderMessage: (msg: T, index: number) => ReactNode;
 };
 
-/** Windowed message list — renders only visible rows for large rooms. */
-export function ChatMessageVirtualList<T>({
+function VirtualizedMessageRows<T>({
   messages,
   parentRef,
-  estimateSize = 72,
+  estimateSize,
   renderMessage,
-}: ChatMessageVirtualListProps<T>) {
+}: Required<
+  Pick<ChatMessageVirtualListProps<T>, "messages" | "parentRef" | "renderMessage">
+> &
+  Pick<ChatMessageVirtualListProps<T>, "estimateSize">) {
   const virtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => estimateSize,
+    estimateSize: () => estimateSize ?? 72,
     overscan: 8,
   });
 
   const items = virtualizer.getVirtualItems();
-
-  if (messages.length === 0) {
-    return null;
-  }
 
   return (
     <div
@@ -57,5 +58,40 @@ export function ChatMessageVirtualList<T>({
         );
       })}
     </div>
+  );
+}
+
+/** Windowed message list — renders only visible rows for large rooms. */
+export function ChatMessageVirtualList<T>({
+  messages,
+  parentRef,
+  estimateSize = 72,
+  minVirtualCount = 30,
+  getItemKey,
+  renderMessage,
+}: ChatMessageVirtualListProps<T>) {
+  if (messages.length === 0) {
+    return null;
+  }
+
+  if (messages.length < minVirtualCount) {
+    return (
+      <>
+        {messages.map((msg, index) => (
+          <div key={getItemKey?.(msg, index) ?? index}>
+            {renderMessage(msg, index)}
+          </div>
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <VirtualizedMessageRows
+      messages={messages}
+      parentRef={parentRef}
+      estimateSize={estimateSize}
+      renderMessage={renderMessage}
+    />
   );
 }

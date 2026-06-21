@@ -1,6 +1,6 @@
 // Helper component for rendering text messages with embedded media (YouTube, images, videos).
 
-import React from "react";
+import React, { useState } from "react";
 import { getYoutubeId, isSafeHttpUrl, sanitizeHexColor } from "./chatHelpers.ts";
 
 const INLINE_FORMAT_REGEX =
@@ -97,6 +97,36 @@ function renderCodeFencedText(text: string): React.ReactNode[] {
   return nodes.length > 0 ? nodes : renderInlineFormattedText(text);
 }
 
+function LazyYoutubeEmbed({ videoId }: { videoId: string }) {
+  const [active, setActive] = useState(false);
+  if (!active) {
+    return (
+      <button
+        type="button"
+        onClick={() => setActive(true)}
+        className="mt-2.5 block w-full max-w-[280px] aspect-video rounded-xl border border-red-500/20 bg-black/80 text-red-300 text-xs font-bold hover:bg-black/90 transition-colors"
+      >
+        ▶ تشغيل YouTube
+      </button>
+    );
+  }
+  return (
+    <div className="mt-2.5 max-w-[280px] overflow-hidden rounded-xl border border-red-500/20 shadow-lg bg-black/80">
+      <div className="relative pb-[56.25%] h-0">
+        <iframe
+          title="YouTube Video Player"
+          src={`https://www.youtube.com/embed/${videoId}`}
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          loading="lazy"
+          className="absolute top-0 left-0 w-full h-full rounded-xl"
+        />
+      </div>
+    </div>
+  );
+}
+
 export function renderTextMessageWithMedia(text: string) {
   if (!text) return null;
 
@@ -143,21 +173,7 @@ export function renderTextMessageWithMedia(text: string) {
       const yid = getYoutubeId(url);
       if (yid) {
         mediaPreviews.push(
-          <div
-            key={`yt-${idx}`}
-            className="mt-2.5 max-w-[280px] overflow-hidden rounded-xl border border-red-500/20 shadow-lg bg-black/80"
-          >
-            <div className="relative pb-[56.25%] h-0">
-              <iframe
-                title="YouTube Video Player"
-                src={`https://www.youtube.com/embed/${yid}`}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="absolute top-0 left-0 w-full h-full rounded-xl"
-              />
-            </div>
-          </div>,
+          <LazyYoutubeEmbed key={`yt-${idx}`} videoId={yid} />,
         );
         return;
       }

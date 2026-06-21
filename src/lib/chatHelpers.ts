@@ -12,11 +12,24 @@ export function isSafeHttpUrl(url: string): boolean {
   }
 }
 
-/** Returns a safe http(s) media URL or null. */
+const PRIVATE_STORAGE_REF =
+  /^chat-media-private\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/.+/i;
+
+/** Private bucket object ref stored in DB (re-signed on playback). */
+export function isPrivateStorageRef(ref: string): boolean {
+  return PRIVATE_STORAGE_REF.test(ref.trim());
+}
+
+export function isSafeMediaReference(ref: string): boolean {
+  const trimmed = ref.trim();
+  return isSafeHttpUrl(trimmed) || isPrivateStorageRef(trimmed);
+}
+
+/** Returns a safe http(s) URL, private storage ref, or null. */
 export function filterSafeMediaUrl(url: string | undefined | null): string | null {
   if (!url) return null;
   const trimmed = url.trim().slice(0, 2048);
-  return isSafeHttpUrl(trimmed) ? trimmed : null;
+  return isSafeMediaReference(trimmed) ? trimmed : null;
 }
 
 /** Strict hex color for inline [color=#...] tags. */

@@ -3,7 +3,11 @@ import { supabase } from "../../lib/supabase";
 export const PRIVATE_MEDIA_BUCKET = "chat-media-private";
 export const PUBLIC_MEDIA_BUCKET = "chat-media";
 
-const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
+const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24; // 24 hours (playback re-signs via resolveMediaUrl)
+
+export function formatPrivateMediaRef(objectPath: string): string {
+  return `${PRIVATE_MEDIA_BUCKET}/${objectPath}`;
+}
 
 /** Resolve a stored media URL — signed for private bucket paths. */
 export async function resolveMediaUrl(

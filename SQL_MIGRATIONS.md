@@ -17,6 +17,7 @@ Apply **only** via `scripts/apply-production-setup.mjs` (requires `SUPABASE_ACCE
 12. supabase-moderation-p1.sql             ← P1: kick + layout server tweaks
 13. supabase-p2-owner-settings-public.sql  ← P2: public settings mirror + admin-only owner_settings
 14. supabase-moderation-p2.sql             ← P2: shadow ban server + system messages RPC
+15. supabase-media-performance-fix.sql     ← media URL RLS + storage bucket limits
 ```
 
 **Do not** run `supabase-storage.sql` after step 4 — it overwrites folder-scoped upload policies.
@@ -82,4 +83,10 @@ SUPABASE_ACCESS_TOKEN=... node scripts/apply-p2-owner-settings-public.mjs
 
 ```bash
 SUPABASE_ACCESS_TOKEN=... node scripts/apply-moderation-p2.mjs
+```
+
+## Media performance fix (URL RLS + bucket limits)
+
+```bash
+SUPABASE_ACCESS_TOKEN=... node scripts/apply-media-performance-fix.mjs
 ```

@@ -177,8 +177,11 @@ import {
   canShareYoutube,
   getRoomCreationQuotaRemaining,
   filterSafeMediaUrl,
+  isPrivateStorageRef,
   type StoreCosmeticsSnapshot,
 } from "../lib/chatHelpers.ts";
+import { compressImageForChat } from "../lib/imageCompression";
+import { ResolvedPrivateMedia } from "./chat/ResolvedPrivateMedia";
 import { attachWindowPointerDrag } from "../lib/pointerDrag";
 import { renderTextMessageWithMedia } from "../lib/chatMessageRender.tsx";
 import { createPortal } from "react-dom";
@@ -290,6 +293,7 @@ import {
 import type { SocialPost } from "../lib/socialTypes";
 
 const OWNER_SETTINGS_ROW_ID = "global";
+const USE_ROOM_VIRTUAL_THRESHOLD = 30;
 
 function hydrateUniversalStyleFromSettings(
   raw: unknown,
@@ -2759,30 +2763,34 @@ export default function ChatScreen({
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-      void localVideoRef.current.play().catch(() => {});
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream ?? null;
+      if (localStream) void localVideoRef.current.play().catch(() => {});
     }
   }, [localStream]);
 
   useEffect(() => {
     const playRemote = async () => {
-      if (remoteVideoRef.current && remoteStream) {
-        remoteVideoRef.current.srcObject = remoteStream;
-        remoteVideoRef.current.muted = false;
-        try {
-          await remoteVideoRef.current.play();
-        } catch {
-          /* retry after user gesture if needed */
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = remoteStream ?? null;
+        if (remoteStream) {
+          remoteVideoRef.current.muted = false;
+          try {
+            await remoteVideoRef.current.play();
+          } catch {
+            /* retry after user gesture if needed */
+          }
         }
       }
-      if (remoteAudioRef.current && remoteStream) {
-        remoteAudioRef.current.srcObject = remoteStream;
-        remoteAudioRef.current.muted = false;
-        try {
-          await remoteAudioRef.current.play();
-        } catch {
-          /* retry after user gesture if needed */
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = remoteStream ?? null;
+        if (remoteStream) {
+          remoteAudioRef.current.muted = false;
+          try {
+            await remoteAudioRef.current.play();
+          } catch {
+            /* retry after user gesture if needed */
+          }
         }
       }
     };
@@ -3712,6 +3720,18 @@ export default function ChatScreen({
       window.removeEventListener("beforeunload", stopAllAudio);
     };
   }, [isOwnerRole, syncOwnerRoomDj]);
+
+  useEffect(() => {
+    return () => {
+      [radioAudioRef, musicAudioRef, djBroadcastAudioRef].forEach((ref) => {
+        const el = ref.current;
+        if (!el) return;
+        el.pause();
+        el.removeAttribute("src");
+        el.load();
+      });
+    };
+  }, []);
 
   const ensureImagesAccess = () => {
     if (canSendImages(currentUser, memberCustomPermissions, isOnlyVIPCanSendImages))
@@ -5193,6 +5213,20 @@ export default function ChatScreen({
 
   // Audio elements for the in-extras call widget (decorative, not wired to WebRTC)
   const [isMuted, setIsMuted] = useState(false);
+
+  const toggleCallMute = useCallback(() => {
+    setIsMuted((prev) => {
+      const next = !prev;
+      localStream?.getAudioTracks().forEach((track) => {
+        track.enabled = !next;
+      });
+      return next;
+    });
+  }, [localStream]);
+
+  useEffect(() => {
+    if (!activeCall) setIsMuted(false);
+  }, [activeCall]);
   const showSidebarCall =
     Boolean(activeCall) &&
     activeCall!.status !== "ended" &&
@@ -5379,7 +5413,9 @@ export default function ChatScreen({
       const el = feedViewportRef.current;
       if (!el) return;
       chatStickToBottomRef.current = true;
-      el.scrollTo({ top: el.scrollHeight, behavior });
+      requestAnimationFrame(() => {
+        el.scrollTo({ top: el.scrollHeight, behavior });
+      });
     },
     [],
   );
@@ -5427,8 +5463,9 @@ export default function ChatScreen({
       chatStickToBottomRef.current = true;
     }
     if (!chatStickToBottomRef.current) return;
-    scrollChatToBottom("smooth");
-  }, [isPostsRoom, messages, scrollChatToBottom]);
+    const t = window.setTimeout(() => scrollChatToBottom("auto"), 16);
+    return () => window.clearTimeout(t);
+  }, [isPostsRoom, messages.length, scrollChatToBottom]);
 
   useEffect(() => {
     pmEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -5959,7 +5996,16 @@ export default function ChatScreen({
 
     const targetNickname = pmTarget.nickname;
     const textToSend = pmInputText.trim();
+    const clientId = `opt-pm-${crypto.randomUUID()}`;
     setPmInputText("");
+
+    setPmThreads((prev) => ({
+      ...prev,
+      [targetNickname]: appendPmThreadMessage(
+        prev[targetNickname] || [],
+        createOptimisticPmMessage(textToSend, { clientId, pending: true }),
+      ),
+    }));
 
     try {
       const persistedMessage = await persistPrivateMessage({
@@ -5972,25 +6018,43 @@ export default function ChatScreen({
       setPmThreads((prev) => {
         const thread = prev[targetNickname] || [];
         if (hasPmMessageWithDbId(thread, persistedMessage.id)) {
-          return prev;
+          return {
+            ...prev,
+            [targetNickname]: thread.filter((m) => m.clientId !== clientId),
+          };
         }
         return {
           ...prev,
-          [targetNickname]: appendPmThreadMessage(thread, {
-            ...createOptimisticPmMessage(textToSend),
-            time: persistedMessage.created_at
-              ? new Date(persistedMessage.created_at).toLocaleTimeString("ar-EG", {
-                  hour: "numeric",
-                  minute: "numeric",
-                  hour12: true,
-                })
-              : createOptimisticPmMessage(textToSend).time,
-            dbId: persistedMessage.id,
-          }),
+          [targetNickname]: thread.map((m) =>
+            m.clientId === clientId
+              ? {
+                  ...m,
+                  pending: false,
+                  status: "delivered" as const,
+                  dbId: persistedMessage.id,
+                  time: persistedMessage.created_at
+                    ? new Date(persistedMessage.created_at).toLocaleTimeString(
+                        "ar-EG",
+                        {
+                          hour: "numeric",
+                          minute: "numeric",
+                          hour12: true,
+                        },
+                      )
+                    : m.time,
+                }
+              : m,
+          ),
         };
       });
     } catch (error) {
       console.error("PM insert error:", error);
+      setPmThreads((prev) => ({
+        ...prev,
+        [targetNickname]: (prev[targetNickname] || []).filter(
+          (m) => m.clientId !== clientId,
+        ),
+      }));
       setPmInputText(textToSend);
       alert(
         error instanceof Error
@@ -6203,7 +6267,8 @@ export default function ChatScreen({
 
     try {
       setIsUploadingImage(true);
-      const safeName = file.name.replace(/[^\w.-]+/g, "_").slice(0, 80);
+      const compressed = await compressImageForChat(file);
+      const safeName = compressed.name.replace(/[^\w.-]+/g, "_").slice(0, 80);
       const objectPath = userStoragePath(
         currentUser.uid || senderUid,
         "rooms",
@@ -6213,9 +6278,9 @@ export default function ChatScreen({
 
       const { error: uploadError } = await supabase.storage
         .from("chat-media")
-        .upload(objectPath, file, {
+        .upload(objectPath, compressed, {
           cacheControl: "3600",
-          contentType: file.type,
+          contentType: compressed.type || file.type,
           upsert: false,
         });
 
@@ -6367,33 +6432,69 @@ export default function ChatScreen({
     }
 
     const targetNickname = pmTarget.nickname;
-    const persisted = await persistPrivateMessage({
-      currentUser,
-      targetNickname,
-      text,
-      type,
-      mediaUrl,
-      members: rawChatMembers,
-    });
+    const clientId = `opt-pm-${crypto.randomUUID()}`;
 
-    setPmThreads((prev) => {
-      const thread = prev[targetNickname] || [];
-      if (hasPmMessageWithDbId(thread, persisted.id)) return prev;
-      return {
-        ...prev,
-        [targetNickname]: appendPmThreadMessage(thread, {
-          ...createOptimisticPmMessage(text, { type, mediaUrl }),
-          time: persisted.created_at
-            ? new Date(persisted.created_at).toLocaleTimeString("ar-EG", {
-                hour: "numeric",
-                minute: "numeric",
-                hour12: true,
-              })
-            : createOptimisticPmMessage(text, { type, mediaUrl }).time,
-          dbId: persisted.id,
+    setPmThreads((prev) => ({
+      ...prev,
+      [targetNickname]: appendPmThreadMessage(
+        prev[targetNickname] || [],
+        createOptimisticPmMessage(text, {
+          type,
+          mediaUrl,
+          clientId,
+          pending: true,
         }),
-      };
-    });
+      ),
+    }));
+
+    try {
+      const persisted = await persistPrivateMessage({
+        currentUser,
+        targetNickname,
+        text,
+        type,
+        mediaUrl,
+        members: rawChatMembers,
+      });
+
+      setPmThreads((prev) => {
+        const thread = prev[targetNickname] || [];
+        if (hasPmMessageWithDbId(thread, persisted.id)) {
+          return {
+            ...prev,
+            [targetNickname]: thread.filter((m) => m.clientId !== clientId),
+          };
+        }
+        return {
+          ...prev,
+          [targetNickname]: thread.map((m) =>
+            m.clientId === clientId
+              ? {
+                  ...m,
+                  pending: false,
+                  status: "delivered" as const,
+                  dbId: persisted.id,
+                  time: persisted.created_at
+                    ? new Date(persisted.created_at).toLocaleTimeString("ar-EG", {
+                        hour: "numeric",
+                        minute: "numeric",
+                        hour12: true,
+                      })
+                    : m.time,
+                }
+              : m,
+          ),
+        };
+      });
+    } catch (error) {
+      setPmThreads((prev) => ({
+        ...prev,
+        [targetNickname]: (prev[targetNickname] || []).filter(
+          (m) => m.clientId !== clientId,
+        ),
+      }));
+      throw error;
+    }
   };
 
   const handlePmImageUploadChange = async (
@@ -6426,7 +6527,8 @@ export default function ChatScreen({
     }
     try {
       setIsUploadingImage(true);
-      const publicUrl = await uploadPrivateMediaFile(file, pmTarget.nickname);
+      const compressed = await compressImageForChat(file);
+      const publicUrl = await uploadPrivateMediaFile(compressed, pmTarget.nickname);
       await sendPrivateMediaMessage("image", publicUrl);
     } catch (error) {
       alert(
@@ -8929,7 +9031,7 @@ export default function ChatScreen({
                           </div>
                           <div className="flex items-center justify-center gap-3">
                             <button
-                              onClick={() => setIsMuted(!isMuted)}
+                              onClick={() => toggleCallMute()}
                               className={`p-1.5 rounded-full border transition-all ${isMuted ? "bg-red-500/20 border-red-500/40 text-red-400" : "bg-green-500/20 border-green-500/40 text-green-400"}`}
                               title="كتم الصوت"
                             >
@@ -8997,7 +9099,7 @@ export default function ChatScreen({
                         ))}
                       </div>
                       <div className="flex items-center justify-center gap-3 mt-1">
-                        <button type="button" onClick={() => setIsMuted(!isMuted)}
+                        <button type="button" onClick={() => toggleCallMute()}
                           className={`p-2 rounded-full border transition-all ${isMuted ? "bg-red-500/20 border-red-500/40 text-red-400" : "bg-green-500/20 border-green-500/40 text-green-400"}`}
                           title="كتم الصوت"><Mic size={14} /></button>
                         <button type="button" onClick={() => endCall()}
@@ -9630,6 +9732,9 @@ export default function ChatScreen({
                   <ChatMessageVirtualList
                     messages={messages}
                     parentRef={feedViewportRef}
+                    minVirtualCount={USE_ROOM_VIRTUAL_THRESHOLD}
+                    getItemKey={(msg) => msg.id}
+                    estimateSize={messages.length > 30 ? 72 : 96}
                     renderMessage={(msg, index) => {
                   const isSystem = msg.type === "system";
                   const safeMediaUrl = filterSafeMediaUrl(msg.mediaUrl);
@@ -9981,12 +10086,20 @@ export default function ChatScreen({
 
                           {msg.type === "image" && safeMediaUrl && (
                             <div className="mt-2">
-                              <img
-                                loading="lazy"
-                                src={safeMediaUrl}
-                                alt="Attachment"
-                                className="rounded-xl max-w-[180px] max-h-[120px] object-cover border border-white/10 bg-black/10"
-                              />
+                              {isPrivateStorageRef(safeMediaUrl) ? (
+                                <ResolvedPrivateMedia
+                                  mediaRef={safeMediaUrl}
+                                  kind="image"
+                                  imgClassName="rounded-xl max-w-[180px] max-h-[120px] object-cover border border-white/10 bg-black/10"
+                                />
+                              ) : (
+                                <img
+                                  loading="lazy"
+                                  src={safeMediaUrl}
+                                  alt="Attachment"
+                                  className="rounded-xl max-w-[180px] max-h-[120px] object-cover border border-white/10 bg-black/10"
+                                />
+                              )}
                             </div>
                           )}
 
@@ -10003,10 +10116,18 @@ export default function ChatScreen({
                                     className="absolute top-0 left-0 w-full h-full"
                                   />
                                 </div>
+                              ) : isPrivateStorageRef(safeMediaUrl) ? (
+                                <ResolvedPrivateMedia
+                                  mediaRef={safeMediaUrl}
+                                  kind="video"
+                                  className="rounded-2xl max-w-[360px] border border-white/10"
+                                />
                               ) : (
                                 <video
                                   src={safeMediaUrl}
                                   controls
+                                  preload="none"
+                                  playsInline
                                   className="rounded-2xl max-w-[360px] border border-white/10"
                                 />
                               )}
@@ -10482,6 +10603,7 @@ export default function ChatScreen({
                 {isVoiceRecording && (
                   <VoiceRecorderBar
                     durationSec={voiceRecordingSec}
+                    maxDurationSec={120}
                     onCancel={() => cancelVoiceRecording()}
                     onSend={() => void sendRecordedVoiceMessage()}
                     isUploading={isUploadingVoice}
@@ -11237,12 +11359,19 @@ export default function ChatScreen({
                       }`}
                     >
                       {safePmMediaUrl && msg.type === "image" ? (
-                        <img
-                          src={safePmMediaUrl}
-                          alt="مرفق"
-                          className="max-w-[220px] max-h-[220px] rounded-xl mb-1.5 object-cover"
-                          loading="lazy"
-                        />
+                        isPrivateStorageRef(safePmMediaUrl) ? (
+                          <ResolvedPrivateMedia
+                            mediaRef={safePmMediaUrl}
+                            kind="image"
+                          />
+                        ) : (
+                          <img
+                            src={safePmMediaUrl}
+                            alt="مرفق"
+                            className="max-w-[220px] max-h-[220px] rounded-xl mb-1.5 object-cover"
+                            loading="lazy"
+                          />
+                        )
                       ) : null}
                       {safePmMediaUrl && msg.type === "video" ? (
                         getYoutubeId(safePmMediaUrl) ? (
@@ -11252,25 +11381,43 @@ export default function ChatScreen({
                               src={`https://www.youtube.com/embed/${getYoutubeId(safePmMediaUrl)}`}
                               frameBorder="0"
                               allowFullScreen
+                              loading="lazy"
                               className="absolute inset-0 w-full h-full"
                             />
                           </div>
+                        ) : isPrivateStorageRef(safePmMediaUrl) ? (
+                          <ResolvedPrivateMedia
+                            mediaRef={safePmMediaUrl}
+                            kind="video"
+                          />
                         ) : (
                           <video
                             src={safePmMediaUrl}
                             controls
+                            preload="none"
+                            playsInline
                             className="max-w-[220px] rounded-xl mb-1.5 border border-white/10"
                           />
                         )
                       ) : null}
-                      {msg.mediaUrl && !msg.type ? (
-                        <img
-                          src={msg.mediaUrl}
-                          alt="مرفق"
-                          className="max-w-[220px] max-h-[220px] rounded-xl mb-1.5 object-cover"
-                          loading="lazy"
-                        />
-                      ) : null}
+                      {(() => {
+                        const legacyUrl = filterSafeMediaUrl(msg.mediaUrl);
+                        return legacyUrl && !msg.type ? (
+                          isPrivateStorageRef(legacyUrl) ? (
+                            <ResolvedPrivateMedia
+                              mediaRef={legacyUrl}
+                              kind="image"
+                            />
+                          ) : (
+                            <img
+                              src={legacyUrl}
+                              alt="مرفق"
+                              className="max-w-[220px] max-h-[220px] rounded-xl mb-1.5 object-cover"
+                              loading="lazy"
+                            />
+                          )
+                        ) : null;
+                      })()}
                       {msg.text ? (
                         <div className="m-0 text-right">
                           {renderTextMessageWithMedia(msg.text)}

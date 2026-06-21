@@ -1,5 +1,6 @@
 import { supabase } from "../../lib/supabase";
-import { isSafeHttpUrl } from "../../lib/chatHelpers";
+import { isSafeMediaReference } from "../../lib/chatHelpers";
+import { formatPrivateMediaRef } from "../storage/mediaStorageService";
 import { requireAuthenticatedUid } from "../auth/guestAuthService";
 import { userStoragePath } from "../storage/storagePaths";
 import {
@@ -21,15 +22,22 @@ function formatComposerTime(): string {
 
 export function createOptimisticPmMessage(
   text: string,
-  options?: { type?: PrivateMessageType; mediaUrl?: string },
+  options?: {
+    type?: PrivateMessageType;
+    mediaUrl?: string;
+    clientId?: string;
+    pending?: boolean;
+  },
 ): PMThreadMessage {
   return {
     text,
     isOwn: true,
     time: formatComposerTime(),
-    status: "delivered",
+    status: options?.pending ? "sent" : "delivered",
     type: options?.type || "text",
     mediaUrl: options?.mediaUrl,
+    clientId: options?.clientId,
+    pending: options?.pending,
   };
 }
 
@@ -90,7 +98,7 @@ export async function persistPrivateMessage({
 
   const senderUid = await requireAuthenticatedUid();
   const safeMedia =
-    mediaUrl && isSafeHttpUrl(mediaUrl) ? mediaUrl.slice(0, 2048) : null;
+    mediaUrl && isSafeMediaReference(mediaUrl) ? mediaUrl.slice(0, 2048) : null;
 
   const { data, error } = await supabase
     .from("pm_messages")
@@ -145,11 +153,11 @@ export async function uploadPrivateMediaFile(
   const target = targetNickname.replace(/[^\w.-]+/g, "_") || "unknown";
   const subfolder = `pm/${target}`;
 
-  const { signedUrl, error } = await uploadToPrivateBucket(file, uid, subfolder);
+  const { path, error } = await uploadToPrivateBucket(file, uid, subfolder);
 
-  if (error || !signedUrl) {
+  if (error || !path) {
     throw new Error(error || "تعذر رفع الوسائط الخاصة.");
   }
 
-  return signedUrl;
+  return formatPrivateMediaRef(path);
 }

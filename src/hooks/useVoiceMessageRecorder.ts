@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { pickVoiceRecorderMimeType } from "../services/chat/voiceMessageService";
 
+export const MAX_VOICE_RECORD_SECONDS = 120;
+
 export function useVoiceMessageRecorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [durationSec, setDurationSec] = useState(0);
@@ -21,6 +23,38 @@ export function useVoiceMessageRecorder() {
     mediaRecorderRef.current = null;
     setIsRecording(false);
   }, []);
+
+  const finalizeBlob = useCallback((): Blob | null => {
+    const chunks = chunksRef.current;
+    if (!chunks.length) return null;
+    return new Blob(chunks, { type: mimeTypeRef.current });
+  }, []);
+
+  const stopRecorderInternal = useCallback(
+    (resolve: (blob: Blob | null) => void) => {
+      const recorder = mediaRecorderRef.current;
+      if (!recorder || recorder.state === "inactive") {
+        const blob = finalizeBlob();
+        cleanupStream();
+        resolve(blob && blob.size > 0 ? blob : null);
+        return;
+      }
+
+      recorder.onstop = () => {
+        const blob = finalizeBlob();
+        cleanupStream();
+        resolve(blob && blob.size > 0 ? blob : null);
+      };
+
+      try {
+        recorder.stop();
+      } catch {
+        cleanupStream();
+        resolve(null);
+      }
+    },
+    [cleanupStream, finalizeBlob],
+  );
 
   const startRecording = useCallback(async () => {
     if (isRecording) return;
@@ -57,9 +91,19 @@ export function useVoiceMessageRecorder() {
     setIsRecording(true);
 
     timerRef.current = setInterval(() => {
-      setDurationSec((s) => s + 1);
+      setDurationSec((s) => {
+        const next = s + 1;
+        if (next >= MAX_VOICE_RECORD_SECONDS) {
+          const active = mediaRecorderRef.current;
+          if (active && active.state === "recording") {
+            stopRecorderInternal(() => {});
+          }
+          return MAX_VOICE_RECORD_SECONDS;
+        }
+        return next;
+      });
     }, 1000);
-  }, [isRecording]);
+  }, [isRecording, stopRecorderInternal]);
 
   useEffect(() => {
     return () => {
@@ -67,38 +111,16 @@ export function useVoiceMessageRecorder() {
     };
   }, [cleanupStream]);
 
-  const finalizeBlob = useCallback((): Blob | null => {
-    const chunks = chunksRef.current;
-    if (!chunks.length) return null;
-    return new Blob(chunks, { type: mimeTypeRef.current });
-  }, []);
-
   const stopRecording = useCallback((): Promise<Blob | null> => {
     return new Promise((resolve) => {
-      const recorder = mediaRecorderRef.current;
-      if (!recorder || recorder.state === "inactive") {
-        cleanupStream();
-        resolve(null);
-        return;
-      }
-
-      recorder.onstop = () => {
-        const blob = finalizeBlob();
-        cleanupStream();
-        resolve(blob && blob.size > 0 ? blob : null);
-      };
-
-      try {
-        recorder.stop();
-      } catch {
-        cleanupStream();
-        resolve(null);
-      }
+      stopRecorderInternal(resolve);
     });
-  }, [cleanupStream, finalizeBlob]);
+  }, [stopRecorderInternal]);
 
   const cancelRecording = useCallback(() => {
     const recorder = mediaRecorderRef.current;
+    chunksRef.current = [];
+    setDurationSec(0);
     if (recorder && recorder.state !== "inactive") {
       recorder.onstop = () => cleanupStream();
       try {
@@ -109,13 +131,12 @@ export function useVoiceMessageRecorder() {
     } else {
       cleanupStream();
     }
-    chunksRef.current = [];
-    setDurationSec(0);
   }, [cleanupStream]);
 
   return {
     isRecording,
     durationSec,
+    maxDurationSec: MAX_VOICE_RECORD_SECONDS,
     startRecording,
     stopRecording,
     cancelRecording,

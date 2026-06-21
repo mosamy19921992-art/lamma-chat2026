@@ -184,7 +184,11 @@ export function useWebRTCCalls({
                   to_nickname: peerNickRef.current,
                   call_type: callTypeRef.current,
                   signal_type: "offer",
-                  payload: { sdp: offer, iceRestart: true },
+                  payload: {
+                    sdp: offer,
+                    iceRestart: true,
+                    serverIndex: eng.getServerIndex(),
+                  },
                 });
               }
             } catch (err) {
@@ -501,9 +505,16 @@ export function useWebRTCCalls({
             }, 60_000);
             pendingOfferTimersRef.current.push(offerTimer);
           } else if (callIdRef.current === signal.call_id) {
-            // Renegotiation / failover from peer
-            if (typeof signal.payload.serverIndex === "number") {
-              engine.setServerIndex(signal.payload.serverIndex as number);
+            const engine = getEngine();
+            const sdp = signal.payload.sdp as RTCSessionDescriptionInit;
+            const iceRestart = Boolean(signal.payload.iceRestart);
+            if (
+              iceRestart ||
+              typeof signal.payload.serverIndex === "number"
+            ) {
+              if (typeof signal.payload.serverIndex === "number") {
+                engine.setServerIndex(signal.payload.serverIndex as number);
+              }
               engine.createPeerConnection();
               wireEngine(engine, signal.call_id, signal.from_uid);
               const stream = engine.getLocalStream();
@@ -551,6 +562,10 @@ export function useWebRTCCalls({
           const engine = getEngine();
           const idx = signal.payload.serverIndex as number;
           engine.setServerIndex(idx);
+          engine.createPeerConnection();
+          wireEngine(engine, signal.call_id, peerUidRef.current || signal.from_uid);
+          const stream = engine.getLocalStream();
+          if (stream) setLocalStream(stream);
           patchCall({
             serverIndex: idx,
             isFallback: idx > 0,

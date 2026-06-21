@@ -101,6 +101,9 @@ export interface PMThreadMessage {
   type?: "text" | "image" | "video" | "audio";
   status?: "sent" | "delivered" | "read";
   dbId?: string;
+  /** Optimistic UI — reconciled after server persist */
+  clientId?: string;
+  pending?: boolean;
 }
 
 export interface MemberCustomPermissions {

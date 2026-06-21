@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, Pause, Play } from "lucide-react";
+import { resolveMediaUrl } from "../services/storage/mediaStorageService";
 
 function formatDuration(totalSec: number) {
   const m = Math.floor(totalSec / 60)
@@ -11,18 +12,35 @@ function formatDuration(totalSec: number) {
 
 export function VoiceNoteBubble({ src }: { src: string }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastUiRef = useRef(0);
+  const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
+    void resolveMediaUrl(src).then((url) => {
+      if (!cancelled) setPlayUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [src]);
+
+  useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !playUrl) return;
 
     const onLoaded = () => {
       if (Number.isFinite(audio.duration)) setDuration(audio.duration);
     };
-    const onTime = () => setCurrent(audio.currentTime);
+    const onTime = () => {
+      const now = performance.now();
+      if (now - lastUiRef.current < 250) return;
+      lastUiRef.current = now;
+      setCurrent(audio.currentTime);
+    };
     const onEnded = () => {
       setPlaying(false);
       setCurrent(0);
@@ -36,11 +54,11 @@ export function VoiceNoteBubble({ src }: { src: string }) {
       audio.removeEventListener("timeupdate", onTime);
       audio.removeEventListener("ended", onEnded);
     };
-  }, [src]);
+  }, [playUrl]);
 
   const toggle = async () => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !playUrl) return;
     if (playing) {
       audio.pause();
       setPlaying(false);
@@ -58,12 +76,23 @@ export function VoiceNoteBubble({ src }: { src: string }) {
   const progress =
     duration > 0 ? Math.min(100, (current / duration) * 100) : 0;
 
+  if (!playUrl) {
+    return (
+      <div
+        className="mt-2 inline-flex items-center gap-2 rounded-2xl px-3 py-2 min-w-[200px] max-w-[320px] lamma-admin-card border border-emerald-500/20 bg-emerald-500/5 animate-pulse"
+        dir="rtl"
+      >
+        <span className="text-[10px] text-gray-400">جاري تحميل الصوت…</span>
+      </div>
+    );
+  }
+
   return (
     <div
       className="mt-2 inline-flex items-center gap-2 rounded-2xl px-3 py-2 min-w-[200px] max-w-[320px] lamma-admin-card border border-emerald-500/20 bg-emerald-500/5"
       dir="rtl"
     >
-      <audio ref={audioRef} src={src} preload="metadata" playsInline />
+      <audio ref={audioRef} src={playUrl} preload="none" playsInline />
       <button
         type="button"
         onClick={() => void toggle()}
@@ -105,11 +134,13 @@ export function VoiceNoteBubble({ src }: { src: string }) {
 
 export function VoiceRecorderBar({
   durationSec,
+  maxDurationSec = 120,
   onCancel,
   onSend,
   isUploading,
 }: {
   durationSec: number;
+  maxDurationSec?: number;
   onCancel: () => void;
   onSend: () => void;
   isUploading: boolean;
@@ -118,6 +149,10 @@ export function VoiceRecorderBar({
     .toString()
     .padStart(2, "0");
   const s = (durationSec % 60).toString().padStart(2, "0");
+  const maxM = Math.floor(maxDurationSec / 60)
+    .toString()
+    .padStart(2, "0");
+  const maxS = (maxDurationSec % 60).toString().padStart(2, "0");
 
   return (
     <div
@@ -128,7 +163,7 @@ export function VoiceRecorderBar({
         <span className="w-2 h-2 rounded-full bg-red-500" />
         <span className="text-xs font-black">جاري التسجيل…</span>
         <span className="text-[11px] font-mono text-gray-300">
-          {m}:{s}
+          {m}:{s} / {maxM}:{maxS}
         </span>
       </div>
       <div className="flex items-center gap-2">

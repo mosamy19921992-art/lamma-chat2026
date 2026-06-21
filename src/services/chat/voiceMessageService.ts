@@ -1,5 +1,11 @@
 import { supabase } from "../../lib/supabase";
-import { uploadPrivateMediaFile as uploadToPrivateBucket } from "../storage/mediaStorageService";
+import {
+  formatPrivateMediaRef,
+  uploadPrivateMediaFile as uploadToPrivateBucket,
+} from "../storage/mediaStorageService";
+
+export const MAX_VOICE_NOTE_BYTES = 5 * 1024 * 1024;
+export const MAX_VOICE_NOTE_SECONDS = 120;
 
 export async function uploadVoiceNoteBlob(
   blob: Blob,
@@ -7,6 +13,13 @@ export async function uploadVoiceNoteBlob(
   userId: string,
 ): Promise<{ url: string | null; error: string | null }> {
   if (!supabase) return { url: null, error: "Supabase غير متصل" };
+
+  if (blob.size > MAX_VOICE_NOTE_BYTES) {
+    return {
+      url: null,
+      error: "حجم الرسالة الصوتية كبير. الحد الأقصى 5MB.",
+    };
+  }
 
   const ext = blob.type.includes("webm")
     ? "webm"
@@ -21,13 +34,13 @@ export async function uploadVoiceNoteBlob(
     type: blob.type || "audio/webm",
   });
 
-  const { signedUrl, error } = await uploadToPrivateBucket(file, userId, subfolder);
+  const { path, error } = await uploadToPrivateBucket(file, userId, subfolder);
 
-  if (error || !signedUrl) {
+  if (error || !path) {
     return { url: null, error: error || "فشل رفع المقطع الصوتي." };
   }
 
-  return { url: signedUrl, error: null };
+  return { url: formatPrivateMediaRef(path), error: null };
 }
 
 export function pickVoiceRecorderMimeType(): string | undefined {
