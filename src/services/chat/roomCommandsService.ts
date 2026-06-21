@@ -1,4 +1,5 @@
 import { supabase } from "../../lib/supabase";
+import { pingChatBackend } from "./ownerSettingsService";
 
 interface HandleRoomChatCommandOptions {
   text: string;
@@ -80,21 +81,17 @@ async function runPingCommand(
     return;
   }
 
-  const { error } = await supabase
-    .from("owner_settings")
-    .select("id")
-    .eq("id", ownerSettingsRowId)
-    .maybeSingle();
+  const ok = await pingChatBackend();
 
   const elapsed =
     typeof performance !== "undefined"
       ? performance.now() - started
       : Date.now() - started;
 
-  if (error) {
+  if (!ok) {
     onSystemWarning(
       roomId,
-      `🏓 Pong — ${Math.round(elapsed)}ms (مع تحذير)\nتعذر التحقق من اتصال قاعدة البيانات: ${error.message}`,
+      `🏓 Pong — ${Math.round(elapsed)}ms (مع تحذير)\nتعذر التحقق من اتصال قاعدة البيانات`,
     );
     return;
   }

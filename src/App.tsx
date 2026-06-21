@@ -5,6 +5,7 @@ import { useServiceWorker } from './hooks/useServiceWorker';
 import UpdateBanner from './components/pwa/UpdateBanner';
 import OnlineStatus from './components/pwa/OnlineStatus';
 import { startSilentAutoHeal } from './services/chat/maintenanceBot';
+import { fetchPublicChatSettings } from './services/chat/ownerSettingsService';
 import { supabase, getClientUid, isSupabaseConfigured } from './lib/supabase';
 import type { UserSession } from './lib/chatTypes';
 import {
@@ -237,20 +238,21 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!supabase) return;
     let cancelled = false;
 
     const loadInvitePolicy = async () => {
-      const { data } = await supabase
-        .from('owner_settings')
-        .select('invite_only_mode')
-        .eq('id', 'global')
-        .maybeSingle();
+      const payload = await fetchPublicChatSettings();
       if (cancelled) return;
-      setInviteOnlyMode(Boolean(data?.invite_only_mode));
+      setInviteOnlyMode(Boolean(payload?.invite_only_mode));
     };
 
     void loadInvitePolicy();
+
+    if (!supabase) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const channel = supabase
       .channel('app_invite_policy')
@@ -259,11 +261,12 @@ export default function App() {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'owner_settings',
+          table: 'public_chat_settings',
           filter: 'id=eq.global',
         },
         (payload) => {
-          const next = (payload.new as { invite_only_mode?: boolean }).invite_only_mode;
+          const row = payload.new as { payload?: { invite_only_mode?: boolean } };
+          const next = row.payload?.invite_only_mode;
           if (next !== undefined) {
             setInviteOnlyMode(Boolean(next));
           }

@@ -131,6 +131,7 @@ import {
   type OwnerMemberCosmeticsRow,
   type OwnerSettingsRow,
 } from "../lib/supabase.ts";
+import type { PublicChatSettingsPayload } from "../services/chat/ownerSettingsService";
 import { userStoragePath } from "../services/storage/storagePaths";
 import {
   ROOMS_DEF,
@@ -2818,6 +2819,59 @@ export default function ChatScreen({
 
   const canPersistOwnerSettings = isOwnerRole && ownerWriteAccessOk === true;
 
+  const syncPublicOwnerSettings = useCallback(
+    (settings: PublicChatSettingsPayload) => {
+      if (settings.maintenance_mode !== undefined) {
+        setIsMaintenanceMode(Boolean(settings.maintenance_mode));
+      }
+      if (settings.global_mute !== undefined) {
+        setIsGlobalMute(Boolean(settings.global_mute));
+      }
+      if (settings.global_mic_mute !== undefined) {
+        setIsGlobalMicMute(Boolean(settings.global_mic_mute));
+      }
+      if (settings.vip_only_images !== undefined) {
+        setIsOnlyVIPCanSendImages(Boolean(settings.vip_only_images));
+      }
+      if (settings.bot_silent !== undefined) {
+        setIsBotSilent(Boolean(settings.bot_silent));
+      }
+      if (settings.ads_enabled !== undefined) {
+        setIsAdsEnabled(settings.ads_enabled !== false);
+      }
+      if (settings.greetings_enabled !== undefined) {
+        setIsWelcomeToastEnabled(settings.greetings_enabled !== false);
+      }
+      if (settings.invite_only_mode !== undefined) {
+        setIsInviteOnlyMode(Boolean(settings.invite_only_mode));
+      }
+      if (settings.owner_bg_image !== undefined) {
+        setOwnerBgImage((prev) => settings.owner_bg_image?.trim() || prev);
+      }
+      if (settings.custom_logo_url !== undefined) {
+        const nextLogo = settings.custom_logo_url?.trim() || null;
+        setBrandLogoUrl((prev) => nextLogo || prev);
+        setDesignLogoInput((prev) => nextLogo || prev);
+      }
+      if (settings.room_bg_map !== undefined) {
+        setRoomBgMap((prev) => {
+          const fromServer = sanitizeRoomBgMap(settings.room_bg_map);
+          return Object.keys(fromServer).length > 0 ? { ...prev, ...fromServer } : prev;
+        });
+      }
+      if (settings.room_dj_map !== undefined) {
+        setRoomDjMap(parseRoomDjMap(settings.room_dj_map));
+      }
+      if (Array.isArray(settings.design_presets)) {
+        setDesignPresets(settings.design_presets as DesignPreset[]);
+      }
+      if (settings.universal_style_config !== undefined) {
+        hydrateUniversalStyleFromSettings(settings.universal_style_config);
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!isOwnerRole) {
       setOwnerWriteAccessOk(null);
@@ -2835,57 +2889,78 @@ export default function ChatScreen({
   useEffect(() => {
     if (!supabase) return;
     let isCancelled = false;
+
+    if (isManagementRole) {
+      const unsubscribe = subscribeChannelWithRetry(() =>
+        supabase
+          .channel("owner_settings_sync")
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "owner_settings",
+              filter: "id=eq.global",
+            },
+            (payload) => {
+              if (isCancelled) return;
+              const settings = payload.new as OwnerSettingsRow;
+              if (settings.ghost_mode !== undefined && isCurrentUserOwner) {
+                setIsGhostMode(!!settings.ghost_mode);
+              }
+              if (settings.spy_mode !== undefined && isCurrentUserOwner) {
+                setIsSpyMode(!!settings.spy_mode);
+              }
+              syncPublicOwnerSettings(settings);
+              if (settings.banned_words) {
+                setBannedWords(
+                  Array.isArray(settings.banned_words)
+                    ? settings.banned_words.filter(
+                        (word): word is string =>
+                          typeof word === "string" && word.trim().length > 0,
+                      )
+                    : [],
+                );
+              }
+              if (settings.dj_library !== undefined) {
+                setDjLibrary(parseDjLibrary(settings.dj_library));
+              }
+              if (settings.bot_enabled !== undefined) {
+                setIsBotEnabled(!!settings.bot_enabled);
+              }
+              if (settings.bot_rule_anti_links !== undefined) {
+                setBotRuleAntiLinks(!!settings.bot_rule_anti_links);
+              }
+              if (settings.bot_rule_anti_spam !== undefined) {
+                setBotRuleAntiSpam(!!settings.bot_rule_anti_spam);
+              }
+              if (settings.bot_rule_swear_filter !== undefined) {
+                setBotRuleSwearFilter(!!settings.bot_rule_swear_filter);
+              }
+            },
+          ),
+      );
+      return () => {
+        isCancelled = true;
+        unsubscribe();
+      };
+    }
+
     const unsubscribe = subscribeChannelWithRetry(() =>
       supabase
-        .channel('owner_settings_sync')
+        .channel("public_chat_settings_sync")
         .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'owner_settings', filter: 'id=eq.global' },
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "public_chat_settings",
+            filter: "id=eq.global",
+          },
           (payload) => {
             if (isCancelled) return;
-            const settings = payload.new;
-            if (settings.ghost_mode !== undefined && isCurrentUserOwner) {
-              setIsGhostMode(!!settings.ghost_mode);
-            }
-            if (settings.spy_mode !== undefined && isCurrentUserOwner) {
-              setIsSpyMode(!!settings.spy_mode);
-            }
-            if (settings.maintenance_mode !== undefined) setIsMaintenanceMode(!!settings.maintenance_mode);
-            if (settings.global_mute !== undefined) setIsGlobalMute(!!settings.global_mute);
-            if (settings.global_mic_mute !== undefined) setIsGlobalMicMute(!!settings.global_mic_mute);
-            if (settings.vip_only_images !== undefined) setIsOnlyVIPCanSendImages(!!settings.vip_only_images);
-            if (settings.bot_silent !== undefined) setIsBotSilent(!!settings.bot_silent);
-            if (settings.ads_enabled !== undefined) setIsAdsEnabled(!!settings.ads_enabled);
-            if (settings.greetings_enabled !== undefined) setIsWelcomeToastEnabled(!!settings.greetings_enabled);
-            if (settings.invite_only_mode !== undefined) setIsInviteOnlyMode(!!settings.invite_only_mode);
-            if (settings.banned_words) setBannedWords(settings.banned_words);
-            if (settings.owner_bg_image !== undefined) {
-              setOwnerBgImage((prev) => settings.owner_bg_image?.trim() || prev);
-            }
-            if (settings.custom_logo_url !== undefined) {
-              const nextLogo = settings.custom_logo_url?.trim() || null;
-              setBrandLogoUrl((prev) => nextLogo || prev);
-              setDesignLogoInput((prev) => nextLogo || prev);
-            }
-            if (settings.room_bg_map !== undefined) {
-              setRoomBgMap((prev) => {
-                const fromServer = sanitizeRoomBgMap(settings.room_bg_map);
-                return Object.keys(fromServer).length > 0 ? { ...prev, ...fromServer } : prev;
-              });
-            }
-            if (settings.room_dj_map !== undefined) {
-              setRoomDjMap(parseRoomDjMap(settings.room_dj_map));
-            }
-            if (settings.dj_library !== undefined) {
-              setDjLibrary(parseDjLibrary(settings.dj_library));
-            }
-            if (settings.bot_enabled !== undefined) setIsBotEnabled(!!settings.bot_enabled);
-            if (settings.bot_rule_anti_links !== undefined) setBotRuleAntiLinks(!!settings.bot_rule_anti_links);
-            if (settings.bot_rule_anti_spam !== undefined) setBotRuleAntiSpam(!!settings.bot_rule_anti_spam);
-            if (settings.bot_rule_swear_filter !== undefined) setBotRuleSwearFilter(!!settings.bot_rule_swear_filter);
-            if (settings.universal_style_config !== undefined) {
-              hydrateUniversalStyleFromSettings(settings.universal_style_config);
-            }
+            const row = payload.new as { payload?: PublicChatSettingsPayload };
+            if (row.payload) syncPublicOwnerSettings(row.payload);
           },
         ),
     );
@@ -2893,7 +2968,7 @@ export default function ChatScreen({
       isCancelled = true;
       unsubscribe();
     };
-  }, [isCurrentUserOwner]);
+  }, [isCurrentUserOwner, isManagementRole, syncPublicOwnerSettings]);
 
   useEffect(() => {
     if (!supabase || !isManagementRole) return;
@@ -3014,11 +3089,17 @@ export default function ChatScreen({
       }
 
       try {
-        const settingsRequest = supabase
-          .from("owner_settings")
-          .select("*")
-          .eq("id", OWNER_SETTINGS_ROW_ID)
-          .maybeSingle<OwnerSettingsRow>();
+        const settingsRequest = isManagementRole
+          ? supabase
+              .from("owner_settings")
+              .select("*")
+              .eq("id", OWNER_SETTINGS_ROW_ID)
+              .maybeSingle<OwnerSettingsRow>()
+          : supabase
+              .from("public_chat_settings")
+              .select("payload")
+              .eq("id", OWNER_SETTINGS_ROW_ID)
+              .maybeSingle<{ payload: PublicChatSettingsPayload }>();
         const permissionsRequest = supabase
           .from("owner_member_permissions")
           .select("*");
@@ -3045,49 +3126,44 @@ export default function ChatScreen({
         if (cancelled) return;
 
         if (settingsResult.data) {
-          const settings = settingsResult.data;
-          if (isCurrentUserOwner) {
-            setIsGhostMode(Boolean(settings.ghost_mode));
-            setIsSpyMode(Boolean(settings.spy_mode));
+          if (isManagementRole) {
+            const settings = settingsResult.data as OwnerSettingsRow;
+            if (isCurrentUserOwner) {
+              setIsGhostMode(Boolean(settings.ghost_mode));
+              setIsSpyMode(Boolean(settings.spy_mode));
+            }
+            syncPublicOwnerSettings(settings);
+            setBannedWords(
+              Array.isArray(settings.banned_words)
+                ? settings.banned_words.filter(
+                    (word): word is string =>
+                      typeof word === "string" && word.trim().length > 0,
+                  )
+                : [],
+            );
+            if (settings.room_dj_map !== undefined) {
+              setRoomDjMap(parseRoomDjMap(settings.room_dj_map));
+            }
+            if (settings.dj_library !== undefined) {
+              setDjLibrary(parseDjLibrary(settings.dj_library));
+            }
+            if (settings.bot_enabled !== undefined) {
+              setIsBotEnabled(Boolean(settings.bot_enabled));
+            }
+            if (settings.bot_rule_anti_links !== undefined) {
+              setBotRuleAntiLinks(Boolean(settings.bot_rule_anti_links));
+            }
+            if (settings.bot_rule_anti_spam !== undefined) {
+              setBotRuleAntiSpam(Boolean(settings.bot_rule_anti_spam));
+            }
+            if (settings.bot_rule_swear_filter !== undefined) {
+              setBotRuleSwearFilter(Boolean(settings.bot_rule_swear_filter));
+            }
+          } else {
+            const settings = (settingsResult.data as { payload: PublicChatSettingsPayload })
+              .payload;
+            if (settings) syncPublicOwnerSettings(settings);
           }
-          setIsMaintenanceMode(Boolean(settings.maintenance_mode));
-          setIsGlobalMute(Boolean(settings.global_mute));
-          setIsGlobalMicMute(Boolean(settings.global_mic_mute));
-          setIsOnlyVIPCanSendImages(Boolean(settings.vip_only_images));
-          setIsBotSilent(Boolean(settings.bot_silent));
-          setIsAdsEnabled(settings.ads_enabled !== false);
-          setIsWelcomeToastEnabled(settings.greetings_enabled !== false);
-          setIsInviteOnlyMode(Boolean(settings.invite_only_mode));
-          setBannedWords(
-            Array.isArray(settings.banned_words)
-              ? settings.banned_words.filter(
-                  (word): word is string =>
-                    typeof word === "string" && word.trim().length > 0,
-                )
-              : [],
-          );
-          setOwnerBgImage((prev) => settings.owner_bg_image?.trim() || prev);
-          setBrandLogoUrl((prev) => settings.custom_logo_url?.trim() || prev);
-          setRoomBgMap((prev) => {
-            const fromServer = sanitizeRoomBgMap(settings.room_bg_map);
-            return Object.keys(fromServer).length > 0 ? { ...prev, ...fromServer } : prev;
-          });
-          if (settings.room_dj_map !== undefined) {
-            setRoomDjMap(parseRoomDjMap(settings.room_dj_map));
-          }
-          if (settings.dj_library !== undefined) {
-            setDjLibrary(parseDjLibrary(settings.dj_library));
-          }
-          if (Array.isArray((settings as any).design_presets)) {
-            setDesignPresets((settings as any).design_presets as DesignPreset[]);
-          }
-          if (settings.universal_style_config !== undefined) {
-            hydrateUniversalStyleFromSettings(settings.universal_style_config);
-          }
-          if (settings.bot_enabled !== undefined) setIsBotEnabled(Boolean(settings.bot_enabled));
-          if (settings.bot_rule_anti_links !== undefined) setBotRuleAntiLinks(Boolean(settings.bot_rule_anti_links));
-          if (settings.bot_rule_anti_spam !== undefined) setBotRuleAntiSpam(Boolean(settings.bot_rule_anti_spam));
-          if (settings.bot_rule_swear_filter !== undefined) setBotRuleSwearFilter(Boolean(settings.bot_rule_swear_filter));
         }
 
         if (Array.isArray(permissionsResult.data)) {
@@ -3158,7 +3234,7 @@ export default function ChatScreen({
     return () => {
       cancelled = true;
     };
-  }, [currentUser.authProvider, currentUser.role, currentUser.uid]);
+  }, [currentUser.authProvider, currentUser.role, currentUser.uid, isManagementRole, isCurrentUserOwner, syncPublicOwnerSettings]);
 
   const fetchNicknameRequests = async () => {
     if (
@@ -5104,6 +5180,7 @@ export default function ChatScreen({
 
   const messageEndRef = useRef<HTMLDivElement>(null);
   const feedViewportRef = useRef<HTMLDivElement>(null);
+  const pmViewportRef = useRef<HTMLDivElement>(null);
   const pmEndRef = useRef<HTMLDivElement>(null);
   const chatStickToBottomRef = useRef(true);
   const roomRateLimitRef = useRef<number[]>([]);
@@ -11075,15 +11152,18 @@ export default function ChatScreen({
               </div>
 
               {/* PM conversation log viewport */}
-              <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
+              <div ref={pmViewportRef} className="flex-1 overflow-y-auto p-3.5">
                 {/* Spy mode banner */}
                 {pmTarget.nickname.startsWith("🕵️") && (
-                  <div className="text-center py-2 px-3 bg-purple-500/10 border border-purple-500/20 rounded-xl text-[9px] text-purple-300 font-bold">
+                  <div className="text-center py-2 px-3 mb-3 bg-purple-500/10 border border-purple-500/20 rounded-xl text-[9px] text-purple-300 font-bold">
                     🕵️ أنت تشاهد محادثة خاصة بين مستخدمين — وضع المراقبة السرية
                   </div>
                 )}
-                {pmMessages.map((msg, idx) => {
-                  // For spy threads: detect the two participants from thread key
+                <ChatMessageVirtualList
+                  messages={pmMessages}
+                  parentRef={pmViewportRef}
+                  estimateSize={88}
+                  renderMessage={(msg, idx) => {
                   const spyParts = pmTarget.nickname.startsWith("🕵️")
                     ? pmTarget.nickname.replace("🕵️ ", "").split(" -> ")
                     : null;
@@ -11094,7 +11174,7 @@ export default function ChatScreen({
                   return (
                   <div
                     key={msg.dbId || `${msg.time}-${msg.text}-${idx}`}
-                    className={`flex flex-col max-w-[85%] ${msg.isOwn ? "mr-auto items-start" : "ml-auto items-end"}`}
+                    className={`flex flex-col max-w-[85%] pb-3 ${msg.isOwn ? "mr-auto items-start" : "ml-auto items-end"}`}
                   >
                     {msgSenderName && (
                       <span className="text-[8px] text-purple-300 font-bold mb-0.5 px-1">{msgSenderName}</span>
@@ -11175,7 +11255,8 @@ export default function ChatScreen({
                     </div>
                   </div>
                   );
-                })}
+                }}
+                />
                 {/* Typing indicator — hidden for spy threads */}
                 {!pmTarget.nickname.startsWith("🕵️") && (
                   <AnimatePresence>

@@ -15,6 +15,7 @@ Apply **only** via `scripts/apply-production-setup.mjs` (requires `SUPABASE_ACCE
 10. supabase-private-rooms.sql            ← password rooms + creation quota
 11. supabase-moderation-hardening.sql     ← P0: typed bans + moderation RPC
 12. supabase-moderation-p1.sql             ← P1: kick + layout server tweaks
+13. supabase-p2-owner-settings-public.sql  ← P2: public settings mirror + admin-only owner_settings
 ```
 
 **Do not** run `supabase-storage.sql` after step 4 — it overwrites folder-scoped upload policies.
@@ -68,4 +69,10 @@ Or paste `supabase-moderation-hardening.sql` in Supabase SQL Editor.
 
 ```bash
 SUPABASE_ACCESS_TOKEN=... node scripts/apply-moderation-p1.mjs
+```
+
+## P2 owner settings public mirror
+
+```bash
+SUPABASE_ACCESS_TOKEN=... node scripts/apply-p2-owner-settings-public.mjs
 ```

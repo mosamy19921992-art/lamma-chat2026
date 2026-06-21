@@ -6,6 +6,7 @@
 // Fixes:  corrupted JSON keys, stale caches, service worker update.
 
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
+import { pingChatBackend } from "./ownerSettingsService";
 
 export type MaintenanceStatus = "ok" | "warn" | "fail";
 
@@ -98,21 +99,16 @@ async function checkDatabase(): Promise<MaintenanceCheck> {
   }
   const started = typeof performance !== "undefined" ? performance.now() : Date.now();
   try {
-    const { error } = await withTimeout(
-      Promise.resolve(
-        supabase.from("owner_settings").select("id").limit(1),
-      ) as unknown as Promise<{ error: { message: string } | null }>,
-      6000,
-    );
+    const ok = await withTimeout(pingChatBackend(), 6000);
     const elapsed = Math.round(
       (typeof performance !== "undefined" ? performance.now() : Date.now()) - started,
     );
-    if (error) {
+    if (!ok) {
       return {
         id: "db",
         label: "اتصال قاعدة البيانات (Supabase)",
         status: "warn",
-        detail: `وصل للسيرفر لكن رجع تحذير (${elapsed}ms): ${error.message}`,
+        detail: `وصل للسيرفر لكن رجع تحذير (${elapsed}ms)`,
       };
     }
     return {
