@@ -139,6 +139,8 @@ const REGION_TERMS: Record<ChatDesignRegion, string[]> = {
     "side column",
     "العمود الجانبي",
     "الاعمدة الجانبيه",
+    "الاعمدة",
+    "الأعمدة الجانبية",
   ],
   "column-cards": [
     "بطاق",
@@ -146,9 +148,28 @@ const REGION_TERMS: Record<ChatDesignRegion, string[]> = {
     "card",
     "vip",
     "راديو",
+    "الراديو",
+    "راديو dj",
     "dj",
     "بطاقة vip",
     "بطاقات",
+    "موسيقى",
+    "الموسيقى",
+    "music",
+    "player",
+    "مشغل",
+    "مشغل موسيقى",
+    "audio",
+    "sound",
+    "wave",
+    "equalizer",
+    "loader",
+    "لودر",
+    "تحميل",
+    "spinner",
+    "toggle",
+    "switch",
+    "checkbox",
   ],
   "message-bubbles": [
     "فقاع",
@@ -257,11 +278,11 @@ export function detectDesignRegion(text: string): DetectedDesignCommand | null {
     return buildCommand(region, scoreTerms(text, REGION_TERMS[region]), actions);
   }
 
-  // Column cards: cards + column context
+  // Column cards: VIP / radio / music widgets in side columns
   if (
     scoreTerms(text, REGION_TERMS["column-cards"]) > 0 &&
     (scoreTerms(text, REGION_TERMS["side-columns"]) > 0 ||
-      scoreTerms(text, REGION_TERMS["column-cards"]) >= 2)
+      scoreTerms(text, REGION_TERMS["column-cards"]) >= 1)
   ) {
     return buildCommand(
       "column-cards",

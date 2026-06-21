@@ -17,6 +17,16 @@ import {
 } from "../services/design/universalStyleApply";
 import { parseOwnerStylePrompt } from "../services/design/universalStyleEngine";
 import {
+  applyUiverseCssToTarget,
+  fetchUiverseCssFromUrl,
+} from "../services/design/uiverseScopedImportService";
+import {
+  extractUiversePromptParts,
+  inferUiverseTargetFromUrl,
+  resolveUiverseTargetFromText,
+  UIVERSE_TARGET_HINTS_AR,
+} from "../services/design/uiverseTargetResolver";
+import {
   isDefaultWallpaperConfig,
   loadUniversalStyleFromSupabase,
   loadUniversalStyleLocal,
@@ -125,6 +135,91 @@ export function useUniversalStyleEngine({
         return true;
       }
       stylePromptCooldownRef.current = now;
+
+      const uiverseParts = extractUiversePromptParts(trimmed);
+      if (uiverseParts) {
+        void (async () => {
+          const { result, error } = await fetchUiverseCssFromUrl(uiverseParts.url);
+          const baseConfig = previewMemoryRef.current || committedConfig || createDefaultUniversalStyle();
+
+          if (!result?.css) {
+            appendStyleSandboxMessage(
+              activeRoomId,
+              {
+                id: `uiverse-${now}`,
+                createdAt: now,
+                prompt: trimmed,
+                summary: `❌ ${error ?? "تعذّر جلب UIverse"}`,
+                config: normalizeUniversalStyleConfig(baseConfig),
+                applied: false,
+              },
+              `❌ ${error ?? "تعذّر جلب UIverse"}\n\n💡 تأكد من الرابط أو جرّب من **مركز التصميم → مكتبة الثيمات**.`,
+            );
+            return;
+          }
+
+          const targetText = uiverseParts.targetText;
+          if (!targetText) {
+            const inferred = inferUiverseTargetFromUrl(uiverseParts.url);
+            const suggested = inferred
+              ? resolveUiverseTargetFromText(
+                  inferred.region === "column-cards" ? "بطاقة الراديو" : "الأزرار",
+                  { urlHint: uiverseParts.url, allowDefault: true },
+                ).target?.labelAr
+              : "بطاقة الراديو";
+            appendStyleSandboxMessage(
+              activeRoomId,
+              {
+                id: `uiverse-${now}`,
+                createdAt: now,
+                prompt: trimmed,
+                summary: `🔗 تم جلب CSS (${result.css.length.toLocaleString()} حرف) — ${result.title ?? "UIverse"}`,
+                config: normalizeUniversalStyleConfig(baseConfig),
+                applied: false,
+              },
+              `🔗 **تم جلب المكوّن من UIverse** (${result.source})\n${result.title ? `\`${result.title}\`\n` : ""}\n👀 افتح **مركز التصميم → مكتبة الثيمات** لمعاينة الشكل الحقيقي.\n\n💡 اكتب في نفس السطر الهدف، مثل:\n\`${uiverseParts.url} على ${suggested ?? "بطاقة الراديو"}\`\n\nأو جرّب: ${UIVERSE_TARGET_HINTS_AR.slice(0, 3).join("، ")}`,
+            );
+            return;
+          }
+
+          const applied = applyUiverseCssToTarget(
+            result.css,
+            targetText,
+            uiverseParts.url,
+            { allowDefault: true },
+          );
+
+          if (!applied.ok) {
+            appendStyleSandboxMessage(
+              activeRoomId,
+              {
+                id: `uiverse-${now}`,
+                createdAt: now,
+                prompt: trimmed,
+                summary: applied.error ?? "فشل التطبيق",
+                config: normalizeUniversalStyleConfig(baseConfig),
+                applied: false,
+              },
+              `❌ ${applied.error ?? "فشل التطبيق"}\n\n💡 جرّب: ${UIVERSE_TARGET_HINTS_AR.join("، ")}`,
+            );
+            return;
+          }
+
+          appendStyleSandboxMessage(
+            activeRoomId,
+            {
+              id: `uiverse-${now}`,
+              createdAt: now,
+              prompt: trimmed,
+              summary: `✅ UIverse → ${applied.target?.labelAr}`,
+              config: normalizeUniversalStyleConfig(baseConfig),
+              applied: true,
+            },
+            `✅ **طُبّق شكل UIverse** على «${applied.target?.labelAr}»\n${applied.parsed?.summaryAr ? `\n${applied.parsed.summaryAr}\n` : ""}\n👀 شوف التغيير مباشرة في الموقع.\n↩️ **Reset** من مكتبة الثيمات يلغي التطبيق.`,
+          );
+        })();
+        return true;
+      }
 
       const previous = previewMemoryRef.current || committedConfig;
       const parsed = parseOwnerStylePrompt(trimmed, previous);

@@ -41,6 +41,72 @@ const SUB_TARGET_TERMS: Record<UiverseSubTarget, string[]> = {
   all: [],
 };
 
+/** Common target hints shown in UI and bot replies. */
+export const UIVERSE_TARGET_HINTS_AR = [
+  "بطاقة الراديو / الموسيقى",
+  "بطاقات الأعمدة (VIP، DJ)",
+  "فقاعات الشات",
+  "الأزرار",
+  "شريط الكتابة",
+  "خلفية الشات",
+] as const;
+
+const SLUG_REGION_HINTS: { pattern: RegExp; region: ChatDesignRegion; subTarget?: UiverseSubTarget }[] = [
+  { pattern: /\/buttons?\b|\/radio-buttons?\b/i, region: "global", subTarget: "buttons" },
+  { pattern: /\/loaders?\b/i, region: "column-cards" },
+  { pattern: /\/cards?\b/i, region: "column-cards" },
+  { pattern: /\/inputs?\b|\/forms?\b/i, region: "composer" },
+  { pattern: /\/toggle|\/switch|\/checkbox/i, region: "column-cards" },
+  { pattern: /music|radio|player|audio|sound|wave|equalizer|dj|vinyl|disc|spotify/i, region: "column-cards" },
+  { pattern: /loader|spinner|spin|loading|penguin|hungry/i, region: "column-cards" },
+  { pattern: /button|btn|cta|click/i, region: "global", subTarget: "buttons" },
+  { pattern: /card|badge|ticket|panel/i, region: "column-cards" },
+  { pattern: /bubble|message|chat/i, region: "message-bubbles" },
+];
+
+export interface UiverseTargetResolveOptions {
+  /** When target text is vague, infer region from the fetched UIverse URL. */
+  urlHint?: string;
+  /** Allow a sensible default instead of hard failure (Design Center apply flow). */
+  allowDefault?: boolean;
+}
+
+export function inferUiverseTargetFromUrl(
+  url: string,
+): { region: ChatDesignRegion; subTarget: UiverseSubTarget } | null {
+  const trimmed = url.trim();
+  let haystack = trimmed.toLowerCase();
+  try {
+    const parsed = new URL(trimmed);
+    haystack = `${parsed.pathname} ${parsed.hostname} ${haystack}`.toLowerCase();
+  } catch {
+    // keep haystack
+  }
+
+  const uiverse = parseUiverseUrl(trimmed);
+  if (uiverse) {
+    haystack += ` ${uiverse.author} ${uiverse.slug}`;
+  }
+
+  for (const hint of SLUG_REGION_HINTS) {
+    if (hint.pattern.test(haystack)) {
+      return { region: hint.region, subTarget: hint.subTarget ?? "all" };
+    }
+  }
+  return null;
+}
+
+export function extractUiversePromptParts(
+  text: string,
+): { url: string; targetText: string | null } | null {
+  const urlMatch = text.match(/https?:\/\/[^\s<>"']+/i);
+  if (!urlMatch?.[0]) return null;
+  const url = urlMatch[0].replace(/[.,;:!?)]+$/, "");
+  if (!parseUiverseUrl(url)) return null;
+  const targetText = text.replace(urlMatch[0], " ").replace(/\s+/g, " ").trim();
+  return { url, targetText: targetText || null };
+}
+
 const CHAT_ROOT = ".lamma-neutral-glass";
 
 function scoreSubTarget(text: string): UiverseSubTarget {
@@ -131,13 +197,14 @@ function buildSelectors(
 
 export function resolveUiverseTargetFromText(
   text: string,
+  options?: UiverseTargetResolveOptions,
 ): { target: ResolvedUiverseTarget | null; error: string | null } {
   const trimmed = text.trim();
   if (!trimmed) {
     return { target: null, error: "اكتب اسم العنصر المستهدف (مثل: فقاعات الشات، الأزرار، الخلفية)." };
   }
 
-  const subTarget = scoreSubTarget(trimmed);
+  let subTarget = scoreSubTarget(trimmed);
   const detected = detectDesignRegion(trimmed);
 
   let region: ChatDesignRegion = detected?.region ?? "global";
@@ -147,10 +214,22 @@ export function resolveUiverseTargetFromText(
   }
 
   if (region === "global" && subTarget === "all" && !detected) {
+    const fromUrl = options?.urlHint
+      ? inferUiverseTargetFromUrl(options.urlHint)
+      : null;
+    if (fromUrl) {
+      region = fromUrl.region;
+      if (fromUrl.subTarget !== "all") subTarget = fromUrl.subTarget;
+    } else if (options?.allowDefault) {
+      region = "column-cards";
+    }
+  }
+
+  if (region === "global" && subTarget === "all" && !detected && !options?.allowDefault) {
+    const hint = UIVERSE_TARGET_HINTS_AR.slice(0, 4).join("، ");
     return {
       target: null,
-      error:
-        "لم أتعرف على العنصر. جرّب: فقاعات الشات، شريط الكتابة، الأزرار، الأيقونات، خلفية الشات، بطاقات الأعمدة.",
+      error: `لم أتعرف على العنصر. جرّب: ${hint}.`,
     };
   }
 

@@ -1,10 +1,13 @@
 import { isSafeHttpUrl } from "../../lib/chatHelpers";
 import {
   extractCssFromHtml,
+  extractPreviewMarkupFromHtml,
+  buildFallbackPreviewMarkup,
   parseAndScopeUiverseCss,
   type ParsedUiverseCss,
 } from "./uiverseCssParser";
 import {
+  inferUiverseTargetFromUrl,
   parseUiverseUrl,
   resolveUiverseTargetFromText,
   type ResolvedUiverseTarget,
@@ -30,6 +33,35 @@ export interface UiverseFetchResult {
   css: string;
   source: "uiverse-page" | "galaxy";
   title?: string;
+  previewMarkup?: string;
+  suggestedTargetAr?: string;
+}
+
+function buildFetchResult(
+  css: string,
+  source: UiverseFetchResult["source"],
+  title: string,
+  rawHtml?: string | null,
+  url?: string,
+): UiverseFetchResult {
+  const previewMarkup =
+    (rawHtml ? extractPreviewMarkupFromHtml(rawHtml) : null) ??
+    buildFallbackPreviewMarkup(css);
+  const inferred = url ? inferUiverseTargetFromUrl(url) : null;
+  const suggestedTargetAr = inferred
+    ? resolveUiverseTargetFromText(
+        inferred.region === "column-cards" ? "بطاقة الراديو" : "الأزرار",
+        { urlHint: url, allowDefault: true },
+      ).target?.labelAr
+    : undefined;
+
+  return {
+    css,
+    source,
+    title,
+    previewMarkup,
+    suggestedTargetAr,
+  };
 }
 
 export interface UiverseApplyResult {
@@ -176,11 +208,13 @@ export async function fetchUiverseCssFromUrl(
   }
   if (proxy.css?.trim()) {
     return {
-      result: {
-        css: proxy.css,
-        source: proxy.source === "galaxy" ? "galaxy" : "uiverse-page",
-        title: `${uiverse.author}/${uiverse.slug}`,
-      },
+      result: buildFetchResult(
+        proxy.css,
+        proxy.source === "galaxy" ? "galaxy" : "uiverse-page",
+        `${uiverse.author}/${uiverse.slug}`,
+        proxy.html,
+        trimmed,
+      ),
       error: null,
     };
   }
@@ -212,11 +246,13 @@ export async function fetchUiverseCssFromUrl(
   }
 
   return {
-    result: {
+    result: buildFetchResult(
       css,
       source,
-      title: `${uiverse.author}/${uiverse.slug}`,
-    },
+      `${uiverse.author}/${uiverse.slug}`,
+      html,
+      trimmed,
+    ),
     error: null,
   };
 }
@@ -225,12 +261,16 @@ export function applyUiverseCssToTarget(
   css: string,
   targetText: string,
   sourceUrl: string,
+  options?: { allowDefault?: boolean },
 ): UiverseApplyResult {
   if (typeof document === "undefined") {
     return { ok: false, error: "التطبيق متاح في المتصفح فقط." };
   }
 
-  const { target, error: targetError } = resolveUiverseTargetFromText(targetText);
+  const { target, error: targetError } = resolveUiverseTargetFromText(
+    targetText,
+    { urlHint: sourceUrl, allowDefault: options?.allowDefault },
+  );
   if (!target) {
     return { ok: false, error: targetError ?? "عنصر غير معروف." };
   }

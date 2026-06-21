@@ -30,6 +30,7 @@ import {
 } from "../../services/design/uiverseScopedImportService";
 import { resolveUiverseTargetFromText } from "../../services/design/uiverseTargetResolver";
 import { ThemePackSandbox } from "./ThemePackSandbox";
+import { UiverseCssPreview } from "./UiverseCssPreview";
 
 interface DesignImportLibraryProps {
   /** Apply pack to live site (after isolated sandbox review) */
@@ -152,8 +153,17 @@ export function DesignImportLibrary({
 
     if (result?.css) {
       setFetchedCss(result);
+      const suggested =
+        result.suggestedTargetAr === "بطاقات الأعمدة"
+          ? "بطاقة الراديو"
+          : result.suggestedTargetAr?.includes("زر")
+            ? "الأزرار"
+            : "بطاقة الراديو";
+      if (!targetInput.trim()) {
+        setTargetInput(suggested);
+      }
       setFetchSuccess(
-        `✅ تم اكتشاف CSS من ${result.source === "galaxy" ? "Galaxy" : "UIverse"}${result.title ? ` — ${result.title}` : ""}. اكتب العنصر المستهدف ثم «تطبيق».`,
+        `✅ تم جلب CSS من ${result.source === "galaxy" ? "Galaxy" : "UIverse"}${result.title ? ` — ${result.title}` : ""}. شوف المعاينة على اليمين ← ثم «تطبيق».`,
       );
       return;
     }
@@ -173,12 +183,16 @@ export function DesignImportLibrary({
   const handleApplyScoped = async () => {
     const targetTrimmed = targetInput.trim();
     const urlTrimmed = urlInput.trim();
-    if (!targetTrimmed) {
-      setFetchError("اكتب اسم العنصر المستهدف قبل التطبيق.");
+    if (!targetTrimmed && !urlTrimmed) {
+      setFetchError("اكتب اسم العنصر المستهدف أو الصق رابط UIverse.");
       return;
     }
 
-    const preview = resolveUiverseTargetFromText(targetTrimmed);
+    const effectiveTarget = targetTrimmed || "بطاقة الراديو";
+    const preview = resolveUiverseTargetFromText(effectiveTarget, {
+      urlHint: urlTrimmed || undefined,
+      allowDefault: true,
+    });
     if (!preview.target) {
       setFetchError(preview.error ?? "عنصر غير معروف.");
       return;
@@ -199,7 +213,12 @@ export function DesignImportLibrary({
       setFetchedCss(result);
     }
 
-    const applied = applyUiverseCssToTarget(css, targetTrimmed, urlTrimmed);
+    const applied = applyUiverseCssToTarget(
+      css,
+      effectiveTarget,
+      urlTrimmed,
+      { allowDefault: true },
+    );
     setApplying(false);
 
     if (!applied.ok) {
@@ -222,9 +241,12 @@ export function DesignImportLibrary({
   };
 
   const targetPreview = useMemo(() => {
-    if (!targetInput.trim()) return null;
-    return resolveUiverseTargetFromText(targetInput);
-  }, [targetInput]);
+    const text = targetInput.trim() || "بطاقة الراديو";
+    return resolveUiverseTargetFromText(text, {
+      urlHint: urlInput.trim() || undefined,
+      allowDefault: Boolean(fetchedCss || urlInput.trim()),
+    });
+  }, [targetInput, urlInput, fetchedCss]);
 
   const sampleUrls = useMemo(
     () =>
@@ -336,7 +358,9 @@ export function DesignImportLibrary({
               <button
                 type="button"
                 disabled={
-                  applying || !targetInput.trim() || (!fetchedCss && !urlInput.trim())
+                  applying ||
+                  (!targetInput.trim() && !urlInput.trim()) ||
+                  (!fetchedCss && !urlInput.trim())
                 }
                 onClick={() => void handleApplyScoped()}
                 className="shrink-0 px-3 py-1.5 rounded-lg text-[9px] font-black bg-violet-600/80 hover:bg-violet-500/90 text-white disabled:opacity-50 flex items-center gap-1 border border-violet-400/30"
@@ -398,13 +422,20 @@ export function DesignImportLibrary({
           </div>
         </div>
 
-        <ThemePackSandbox
-          pack={selectedPack}
-          isPending={Boolean(selectedPack && pendingPackId === selectedPack.id)}
-          onApplyToSite={
-            selectedPack ? () => onApplyToSite(selectedPack) : undefined
-          }
-        />
+        {fetchedCss ? (
+          <UiverseCssPreview
+            result={fetchedCss}
+            targetLabel={targetPreview?.target?.labelAr ?? null}
+          />
+        ) : (
+          <ThemePackSandbox
+            pack={selectedPack}
+            isPending={Boolean(selectedPack && pendingPackId === selectedPack.id)}
+            onApplyToSite={
+              selectedPack ? () => onApplyToSite(selectedPack) : undefined
+            }
+          />
+        )}
       </div>
     </div>
   );

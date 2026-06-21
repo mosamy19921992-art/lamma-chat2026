@@ -87,6 +87,29 @@ export function extractCssFromHtml(html: string): string {
   return "";
 }
 
+/** First HTML fragment before `<style>` — used for isolated UIverse preview. */
+export function extractPreviewMarkupFromHtml(html: string): string | null {
+  const withoutScripts = html.replace(/<script[\s\S]*?<\/script>/gi, "");
+  const bodyMatch = withoutScripts.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const fragment = (bodyMatch?.[1] ?? withoutScripts).split(/<style/i)[0]?.trim();
+  if (!fragment || fragment.length < 3) return null;
+
+  const cleaned = fragment
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/javascript:/gi, "")
+    .trim();
+
+  return cleaned.length >= 3 ? cleaned.slice(0, 12_000) : null;
+}
+
+export function buildFallbackPreviewMarkup(css: string): string {
+  const rootClass = findRootClass(css);
+  if (rootClass) {
+    return `<button type="button" class="${rootClass}"><span>معاينة</span></button>`;
+  }
+  return `<div class="uv-preview-fallback">●</div>`;
+}
+
 function findCssInObject(obj: unknown, depth = 0): string | null {
   if (depth > 12 || !obj || typeof obj !== "object") return null;
   const rec = obj as Record<string, unknown>;
@@ -115,6 +138,10 @@ export function sanitizeCss(css: string): { css: string; blocked: string[] } {
   out = out.replace(/\b(html|body|:root|\*)\s*\{/gi, "/* blocked-global */{");
 
   return { css: out, blocked };
+}
+
+export function getRootClassFromCss(css: string): string | null {
+  return findRootClass(css);
 }
 
 function findRootClass(css: string): string | null {
