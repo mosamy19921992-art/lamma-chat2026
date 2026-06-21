@@ -1,5 +1,5 @@
 import { supabase } from "../../lib/supabase";
-import type { CustomRoomEntry } from "../lib/chatTypes";
+import type { CustomRoomEntry } from "../../lib/chatTypes";
 
 export type PrivateRoomPublic = {
   room_id: string;
