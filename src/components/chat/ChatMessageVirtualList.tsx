@@ -48,6 +48,7 @@ export function ChatMessageVirtualList<T>({
               top: 0,
               left: 0,
               width: "100%",
+              minWidth: 0,
               transform: `translateY(${virtualRow.start}px)`,
             }}
           >

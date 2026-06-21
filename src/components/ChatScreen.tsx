@@ -1312,7 +1312,8 @@ export default function ChatScreen({
       if (
         serverAction === "mute" ||
         serverAction === "room_ban" ||
-        serverAction === "megaban"
+        serverAction === "megaban" ||
+        serverAction === "kick"
       ) {
         const result = await applyModerationAction({
           action: serverAction,
@@ -1390,7 +1391,8 @@ export default function ChatScreen({
       if (
         serverAction === "unmute" ||
         serverAction === "unroom_ban" ||
-        serverAction === "unmegaban"
+        serverAction === "unmegaban" ||
+        serverAction === "unkick"
       ) {
         const result = await applyModerationAction({
           action: serverAction,
@@ -2894,7 +2896,7 @@ export default function ChatScreen({
   }, [isCurrentUserOwner]);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || !isManagementRole) return;
     let isCancelled = false;
     const unsubscribe = subscribeChannelWithRetry(() =>
       supabase
@@ -2941,10 +2943,10 @@ export default function ChatScreen({
       isCancelled = true;
       unsubscribe();
     };
-  }, []);
+  }, [isManagementRole]);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || !isManagementRole) return;
     let isCancelled = false;
     const unsubscribe = subscribeChannelWithRetry(() =>
       supabase
@@ -2994,7 +2996,7 @@ export default function ChatScreen({
       isCancelled = true;
       unsubscribe();
     };
-  }, []);
+  }, [isManagementRole]);
 
   useEffect(() => {
     let cancelled = false;
@@ -4729,7 +4731,7 @@ export default function ChatScreen({
     const isBanned = bannedUsersList.some(
       (b) =>
         b.nickname.toLowerCase() === currentUser.nickname.toLowerCase() &&
-        b.type === "room" &&
+        (b.type === "room" || b.type === "kick") &&
         b.roomId === roomId,
     );
     if (isBanned) {
@@ -11098,7 +11100,7 @@ export default function ChatScreen({
                       <span className="text-[8px] text-purple-300 font-bold mb-0.5 px-1">{msgSenderName}</span>
                     )}
                     <div
-                      className={`p-2.5 text-xs leading-normal lamma-message ${
+                      className={`p-2.5 text-xs leading-normal lamma-message break-words min-w-0 overflow-wrap-anywhere ${
                         pmTarget.nickname.startsWith("🕵️")
                           ? msg.isOwn
                             ? "lamma-pm-bubble-own bg-blue-500/15 border border-blue-500/20 text-blue-100 rounded-tr-none"

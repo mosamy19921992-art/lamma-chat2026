@@ -98,6 +98,12 @@
     z-index: 1;
   }
 
+  .lamma-chat-feed-viewport .lamma-message,
+  .lamma-chat-feed-viewport .lamma-code-block {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
   .lamma-pwa-composer-stack {
     flex: 0 0 auto;
     z-index: 2;

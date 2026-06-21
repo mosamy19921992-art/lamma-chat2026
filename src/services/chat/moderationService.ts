@@ -8,7 +8,9 @@ export type ModerationAction =
   | "room_ban"
   | "unroom_ban"
   | "megaban"
-  | "unmegaban";
+  | "unmegaban"
+  | "kick"
+  | "unkick";
 
 export type ApplyModerationInput = {
   action: ModerationAction;
@@ -157,5 +159,6 @@ export function banActionForType(
   if (type === "mute") return enabled ? "unmute" : "mute";
   if (type === "room") return enabled ? "unroom_ban" : "room_ban";
   if (type === "megaban") return enabled ? "unmegaban" : "megaban";
+  if (type === "kick") return enabled ? "unkick" : "kick";
   return null;
 }

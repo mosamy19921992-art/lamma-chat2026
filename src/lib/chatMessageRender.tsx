@@ -60,6 +60,43 @@ function renderInlineFormattedText(
   return nodes;
 }
 
+const CODE_FENCE_REGEX = /(```[\s\S]*?```)/g;
+
+function renderCodeFencedText(text: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  CODE_FENCE_REGEX.lastIndex = 0;
+
+  while ((match = CODE_FENCE_REGEX.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(
+        <span key={`t-${lastIndex}`}>
+          {renderInlineFormattedText(text.slice(lastIndex, match.index))}
+        </span>,
+      );
+    }
+    const raw = match[1];
+    const code = raw.replace(/^```[\w-]*\n?/, "").replace(/```$/, "");
+    nodes.push(
+      <pre key={`c-${match.index}`} className="lamma-code-block">
+        {code}
+      </pre>,
+    );
+    lastIndex = match.index + raw.length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(
+      <span key={`t-${lastIndex}`}>
+        {renderInlineFormattedText(text.slice(lastIndex))}
+      </span>,
+    );
+  }
+
+  return nodes.length > 0 ? nodes : renderInlineFormattedText(text);
+}
+
 export function renderTextMessageWithMedia(text: string) {
   if (!text) return null;
 
@@ -94,7 +131,7 @@ export function renderTextMessageWithMedia(text: string) {
         </a>
       );
     }
-    return <span key={index}>{renderInlineFormattedText(part)}</span>;
+    return <span key={index}>{renderCodeFencedText(part)}</span>;
   });
 
   const mediaPreviews: React.ReactNode[] = [];

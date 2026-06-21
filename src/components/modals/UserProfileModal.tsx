@@ -634,6 +634,27 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                         {/* 3. Kick */}
                         <button
                           onClick={() => {
+                            const kickBan: BanInfo = {
+                              id: `kick-${Date.now()}`,
+                              nickname: selectedProfileMember.nickname,
+                              email: selectedProfileMember.email,
+                              fingerprint: selectedProfileMember.fingerprint,
+                              browserSignature:
+                                selectedProfileMember.browserSignature,
+                              ip: selectedProfileMember.ip,
+                              localStorageId:
+                                selectedProfileMember.id ||
+                                selectedProfileMember.localStorageId,
+                              type: "kick",
+                              roomId: activeRoomId,
+                              banner: currentUser.nickname,
+                              reason: "طرد مؤقت من الغرفة (30 دقيقة)",
+                              time: new Date().toLocaleTimeString("ar-EG", {
+                                hour: "numeric",
+                                minute: "numeric",
+                              }),
+                            };
+                            void addBanEntry(kickBan, { sync: true });
                             const sysText = `🚪 [طرد أمني عاجل] من المشرف لـ [${selectedProfileMember.nickname}]: تم الطرد فوراً لتنظيم الغرفة! 👋`;
                             setRoomMessages((prev) => ({
                               ...prev,
