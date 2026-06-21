@@ -261,7 +261,7 @@ import {
   playMessageAlertSound,
   showBrowserMessageNotification,
 } from "../services/chat/messageAlertService";
-import { describeMediaError } from "../services/calls/callMediaUtils";
+import { describeMediaError, playRemoteMedia } from "../services/calls/callMediaUtils";
 import { OwnerMemberFeaturesPanel } from "./modals/OwnerMemberFeaturesPanel";
 import { OwnerMemberCosmeticsPanel } from "./modals/OwnerMemberCosmeticsPanel";
 import { useRoomComposer } from "../hooks/useRoomComposer";
@@ -2813,15 +2813,36 @@ export default function ChatScreen({
 
   const canMakeCall = useCallback(
     (type: "audio" | "video") => {
+      if (currentUser.authProvider !== "supabase" || !currentUser.uid) {
+        return false;
+      }
       const role = (currentUser.role || "").toLowerCase();
-      if (role === "owner" || role === "admin" || role === "المالك" || role === "أدمن") {
+      if (role === "guest" || role === "زائر") {
+        return false;
+      }
+      if (
+        role === "owner" ||
+        role === "admin" ||
+        role === "المالك" ||
+        role === "أدمن"
+      ) {
         return true;
       }
       const perms = memberCustomPermissions[currentUser.nickname];
-      if (type === "video") return !!perms?.videoCallsAllowed;
-      return !!perms?.callsAllowed;
+      // No owner row → default allow (matches Supabase can_place_call)
+      if (!perms) {
+        return true;
+      }
+      if (type === "video") return !!perms.videoCallsAllowed;
+      return !!perms.callsAllowed;
     },
-    [currentUser.nickname, currentUser.role, memberCustomPermissions],
+    [
+      currentUser.authProvider,
+      currentUser.nickname,
+      currentUser.role,
+      currentUser.uid,
+      memberCustomPermissions,
+    ],
   );
 
   const registeredMemberNames = useMemo(() => {
@@ -2881,23 +2902,13 @@ export default function ChatScreen({
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = remoteStream ?? null;
         if (remoteStream) {
-          remoteVideoRef.current.muted = false;
-          try {
-            await remoteVideoRef.current.play();
-          } catch {
-            /* retry after user gesture if needed */
-          }
+          await playRemoteMedia(remoteVideoRef.current, remoteStream);
         }
       }
       if (remoteAudioRef.current) {
         remoteAudioRef.current.srcObject = remoteStream ?? null;
         if (remoteStream) {
-          remoteAudioRef.current.muted = false;
-          try {
-            await remoteAudioRef.current.play();
-          } catch {
-            /* retry after user gesture if needed */
-          }
+          await playRemoteMedia(remoteAudioRef.current, remoteStream);
         }
       }
     };

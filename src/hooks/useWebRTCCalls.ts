@@ -11,7 +11,11 @@ import {
   WebRTCCallEngine,
   type CallMediaType,
 } from "../services/calls/webrtcCallEngine";
-import { describeMediaError } from "../services/calls/callMediaUtils";
+import { describeMediaError, playRemoteMedia } from "../services/calls/callMediaUtils";
+import {
+  startIncomingCallRingtone,
+  stopIncomingCallRingtone,
+} from "../services/calls/callRingtone";
 
 export interface ActiveCallState {
   callId: string;
@@ -73,6 +77,7 @@ export function useWebRTCCalls({
   const activeCallRef = useRef<ActiveCallState | null>(null);
   const incomingCallRef = useRef<IncomingCallState | null>(null);
   const pendingOffersRef = useRef<Record<string, RTCSessionDescriptionInit>>({});
+  const pendingIceRef = useRef<Record<string, RTCIceCandidateInit[]>>({});
   const pendingOfferTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -98,6 +103,28 @@ export function useWebRTCCalls({
     if (!engineRef.current) engineRef.current = new WebRTCCallEngine();
     return engineRef.current;
   }, []);
+
+  const flushPendingIce = useCallback(
+    async (callId: string, engine: WebRTCCallEngine) => {
+      const batch = pendingIceRef.current[callId];
+      if (!batch?.length) return;
+      delete pendingIceRef.current[callId];
+      for (const candidate of batch) {
+        await engine.addIceCandidate(candidate);
+      }
+    },
+    [],
+  );
+
+  const bufferIncomingIce = useCallback(
+    (callId: string, candidate: RTCIceCandidateInit) => {
+      if (!pendingIceRef.current[callId]) {
+        pendingIceRef.current[callId] = [];
+      }
+      pendingIceRef.current[callId].push(candidate);
+    },
+    [],
+  );
 
   const patchCall = useCallback(
     (patch: Partial<ActiveCallState>) => {
@@ -352,6 +379,7 @@ export function useWebRTCCalls({
 
   const acceptIncoming = useCallback(async () => {
     if (!incomingCall || !myUid) return;
+    stopIncomingCallRingtone();
     const { callId, fromUid, fromNickname, type, offer: storedOffer } = incomingCall;
     setIncomingCall(null);
 
@@ -391,6 +419,7 @@ export function useWebRTCCalls({
       }
 
       await engine.setRemoteDescription(offer);
+      await flushPendingIce(callId, engine);
       const answer = await engine.createAnswer();
       await sendCallSignal({
         call_id: callId,
@@ -430,16 +459,16 @@ export function useWebRTCCalls({
     }
   }, [
     cleanupCall,
+    flushPendingIce,
     getEngine,
     incomingCall,
     myNick,
     myUid,
-    patchCall,
-    startDurationTimer,
     wireEngine,
   ]);
 
   const rejectIncoming = useCallback(async () => {
+    stopIncomingCallRingtone();
     if (!incomingCall || !myUid) return;
     await sendCallSignal({
       call_id: incomingCall.callId,
@@ -453,6 +482,7 @@ export function useWebRTCCalls({
     });
     setIncomingCall(null);
     delete pendingOffersRef.current[incomingCall.callId];
+    delete pendingIceRef.current[incomingCall.callId];
   }, [incomingCall, myNick, myUid]);
 
   // Handle incoming signals
@@ -473,7 +503,11 @@ export function useWebRTCCalls({
       try {
       switch (signal.signal_type) {
         case "ring": {
-          if (activeCallRef.current || incomingCallRef.current) {
+          if (
+            activeCallRef.current ||
+            (incomingCallRef.current &&
+              incomingCallRef.current.callId !== signal.call_id)
+          ) {
             await sendCallSignal({
               call_id: signal.call_id,
               from_uid: myUid,
@@ -486,18 +520,21 @@ export function useWebRTCCalls({
             });
             return;
           }
-          setIncomingCall({
-            callId: signal.call_id,
-            fromNickname: signal.from_nickname,
-            fromUid: signal.from_uid,
-            type: signal.call_type,
-            offer: pendingOffersRef.current[signal.call_id],
+          setIncomingCall((prev) => {
+            if (prev?.callId === signal.call_id) return prev;
+            return {
+              callId: signal.call_id,
+              fromNickname: signal.from_nickname,
+              fromUid: signal.from_uid,
+              type: signal.call_type,
+              offer:
+                prev?.offer ?? pendingOffersRef.current[signal.call_id],
+            };
           });
           break;
         }
 
         case "offer": {
-          const engine = getEngine();
           const sdp = signal.payload.sdp as RTCSessionDescriptionInit;
           if (incomingCallRef.current?.callId === signal.call_id) {
             setIncomingCall((prev) =>
@@ -509,15 +546,22 @@ export function useWebRTCCalls({
             signal.to_uid === myUid
           ) {
             pendingOffersRef.current[signal.call_id] = sdp;
+            setIncomingCall({
+              callId: signal.call_id,
+              fromNickname: signal.from_nickname,
+              fromUid: signal.from_uid,
+              type: signal.call_type,
+              offer: sdp,
+            });
             const offerTimer = setTimeout(() => {
               delete pendingOffersRef.current[signal.call_id];
+              delete pendingIceRef.current[signal.call_id];
               pendingOfferTimersRef.current =
                 pendingOfferTimersRef.current.filter((id) => id !== offerTimer);
             }, 60_000);
             pendingOfferTimersRef.current.push(offerTimer);
           } else if (callIdRef.current === signal.call_id) {
             const engine = getEngine();
-            const sdp = signal.payload.sdp as RTCSessionDescriptionInit;
             const iceRestart = Boolean(signal.payload.iceRestart);
             if (
               iceRestart ||
@@ -555,16 +599,22 @@ export function useWebRTCCalls({
           const engine = getEngine();
           const sdp = signal.payload.sdp as RTCSessionDescriptionInit;
           await engine.setRemoteDescription(sdp);
+          await flushPendingIce(signal.call_id, engine);
           if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
           break;
         }
 
         case "ice": {
-          if (callIdRef.current !== signal.call_id) break;
-          const engine = getEngine();
-          await engine.addIceCandidate(
-            signal.payload.candidate as RTCIceCandidateInit,
-          );
+          const candidate = signal.payload.candidate as RTCIceCandidateInit;
+          if (callIdRef.current === signal.call_id) {
+            const engine = getEngine();
+            await engine.addIceCandidate(candidate);
+          } else if (
+            incomingCallRef.current?.callId === signal.call_id ||
+            pendingOffersRef.current[signal.call_id]
+          ) {
+            bufferIncomingIce(signal.call_id, candidate);
+          }
           break;
         }
 
@@ -595,6 +645,8 @@ export function useWebRTCCalls({
         case "reject":
         case "hangup": {
           delete pendingOffersRef.current[signal.call_id];
+          delete pendingIceRef.current[signal.call_id];
+          stopIncomingCallRingtone();
           if (
             callIdRef.current === signal.call_id ||
             incomingCallRef.current?.callId === signal.call_id
@@ -625,15 +677,25 @@ export function useWebRTCCalls({
       }
     });
   }, [
+    bufferIncomingIce,
     cleanupCall,
     currentUser.authProvider,
+    flushPendingIce,
     getEngine,
     myNick,
     myUid,
     patchCall,
-    startDurationTimer,
     wireEngine,
   ]);
+
+  useEffect(() => {
+    if (incomingCall && !activeCall) {
+      void startIncomingCallRingtone();
+    } else {
+      stopIncomingCallRingtone();
+    }
+    return () => stopIncomingCallRingtone();
+  }, [activeCall, incomingCall]);
 
   useEffect(() => {
     return () => {
