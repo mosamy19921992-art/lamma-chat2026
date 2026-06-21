@@ -3,6 +3,8 @@ import type { ChatScreenProps, OwnerMusicTrack, RoomDjState } from "../lib/chatT
 import { ensureFaceApplied } from "../lib/customFace";
 import { ensureGlassFormApplied } from "../services/design/glassTransparencyService";
 import { ensureColumnCardStyleApplied } from "../services/design/columnCardStyleService";
+import { ensureBubbleShapeApplied } from "../services/design/bubbleShapeService";
+import { ensureChaseLightApplied } from "../services/design/chaseLightBarService";
 import { setDesignPreviewActive } from "../services/design/designPreviewDom";
 import { loadUniversalStyleLocal, persistAndApplyUniversalStyle } from "../services/design/universalStyleStorage";
 import type { UniversalStyleConfig } from "../services/design/universalStyleTypes";
@@ -2133,6 +2135,8 @@ export default function ChatScreen({
     ensureFaceApplied();
     ensureGlassFormApplied();
     ensureColumnCardStyleApplied();
+    ensureBubbleShapeApplied();
+    ensureChaseLightApplied();
   }, []);
 
   useEffect(() => {
@@ -4956,6 +4960,7 @@ export default function ChatScreen({
     cancelStyleSandbox,
     resetChatBackgroundToDefault,
     previewDesignPrompt,
+    previewDesignConfig,
     commitPendingDesignPreview,
     cancelPendingDesignPreview,
     hasPendingDesignPreview,
@@ -10596,14 +10601,14 @@ export default function ChatScreen({
                       <span className="text-[8px] text-purple-300 font-bold mb-0.5 px-1">{msgSenderName}</span>
                     )}
                     <div
-                      className={`p-2.5 rounded-2xl text-xs leading-normal ${
+                      className={`p-2.5 text-xs leading-normal lamma-message ${
                         pmTarget.nickname.startsWith("🕵️")
                           ? msg.isOwn
-                            ? "bg-blue-500/15 border border-blue-500/20 text-blue-100 rounded-tr-none"
-                            : "bg-rose-500/15 border border-rose-500/20 text-rose-100 rounded-tl-none"
+                            ? "lamma-pm-bubble-own bg-blue-500/15 border border-blue-500/20 text-blue-100 rounded-tr-none"
+                            : "lamma-pm-bubble-incoming bg-rose-500/15 border border-rose-500/20 text-rose-100 rounded-tl-none"
                           : msg.isOwn
-                          ? "lamma-pm-bubble-own bg-white/12 border border-white/10 text-white font-extrabold rounded-tr-none"
-                          : "lamma-pm-bubble-incoming bg-black/40 border border-white/8 text-gray-100 rounded-tl-none"
+                          ? "lamma-pm-bubble-own lamma-msg-bubble-own bg-white/12 border border-white/10 text-white font-extrabold"
+                          : "lamma-pm-bubble-incoming bg-black/40 border border-white/8 text-gray-100"
                       }`}
                     >
                       {msg.mediaUrl && msg.type === "image" ? (
@@ -11493,6 +11498,7 @@ export default function ChatScreen({
                     uploadDesignImage={uploadDesignAsset}
                     onStartInspectMode={handleStartDesignInspect}
                     previewDesignPrompt={previewDesignPrompt}
+                    previewDesignConfig={previewDesignConfig}
                     commitPendingDesignPreview={commitPendingDesignPreview}
                     cancelPendingDesignPreview={cancelPendingDesignPreview}
                     ownerWriteAccessOk={ownerWriteAccessOk}

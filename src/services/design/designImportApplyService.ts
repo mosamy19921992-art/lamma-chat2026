@@ -1,5 +1,6 @@
 import type { DesignImportPack } from "./designImportCatalog";
 import type { DesignAssistantProposalId } from "../../lib/chatTypes";
+import { buildPackStyleConfig } from "./designPackStylePresets";
 import {
   previewGlassForm,
   commitGlassForm,
@@ -21,7 +22,11 @@ export function getImportPackTint(pack: DesignImportPack): string {
     : DEFAULT_TINT;
 }
 
-/** Preview glass + column parts of an import pack (style prompt handled separately). */
+export function resolveImportPackStyleConfig(pack: DesignImportPack) {
+  return buildPackStyleConfig(pack);
+}
+
+/** Preview glass + column parts of an import pack (colors via resolveImportPackStyleConfig). */
 export function previewImportPackVisuals(pack: DesignImportPack): void {
   const tint = getImportPackTint(pack);
   if (pack.glassFormId) {

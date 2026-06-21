@@ -10,6 +10,7 @@ import {
   cancelImportPackVisualPreview,
   describeImportPackLayers,
   getImportPackTint,
+  resolveImportPackStyleConfig,
 } from '../../services/design/designImportApplyService';
 import { applyFace, loadFace, saveFace, FACE_PRESETS, cancelFacePreview, commitFacePreset, getFacePresetLabel, previewFacePreset } from '../../lib/customFace';
 import type { DesignAssistantProposalId } from '../../lib/chatTypes';
@@ -34,11 +35,30 @@ import {
   getColumnCardStyleLabel,
   type ColumnCardStyleId,
 } from '../../services/design/columnCardStyleService';
+import {
+  previewBubbleShape,
+  commitBubbleShape,
+  cancelBubbleShapePreview,
+  loadBubbleShapeId,
+  getBubbleShapeLabel,
+  type BubbleShapeId,
+} from '../../services/design/bubbleShapeService';
+import {
+  previewChaseLightForTarget,
+  previewChaseLightPatch,
+  commitChaseLightSettings,
+  cancelChaseLightPreview,
+  loadChaseLightSettings,
+  updateChaseLightTintPreview,
+  type ChaseLightSettings,
+  type ChaseLightStyleId,
+  type ChaseLightTarget,
+} from '../../services/design/chaseLightBarService';
 
 type DesignSection = "uploads" | "studio" | "library" | "assistant";
 
-export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode, previewDesignPrompt, cancelPendingDesignPreview, commitPendingDesignPreview, ownerWriteAccessOk }: any) => {
-  type PreviewKind = "glass" | "face" | "template" | "column" | "import-pack" | null;
+export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode, previewDesignPrompt, previewDesignConfig, cancelPendingDesignPreview, commitPendingDesignPreview, ownerWriteAccessOk }: any) => {
+  type PreviewKind = "glass" | "face" | "template" | "column" | "import-pack" | "bubble" | "chase" | null;
 
   const [section, setSection] = useState<DesignSection>("uploads");
   const [previewKind, setPreviewKind] = useState<PreviewKind>(null);
@@ -61,6 +81,14 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
   const [columnUploading, setColumnUploading] = useState<string | null>(null);
   const [pendingImportPack, setPendingImportPack] = useState<DesignImportPack | null>(null);
   const [activeImportPackId, setActiveImportPackId] = useState<string | null>(null);
+  const [pendingBubbleShapeId, setPendingBubbleShapeId] = useState<BubbleShapeId | null>(null);
+  const [activeBubbleShapeId, setActiveBubbleShapeId] = useState<BubbleShapeId>(() =>
+    loadBubbleShapeId(),
+  );
+  const [chaseSettings, setChaseSettings] = useState<ChaseLightSettings>(() =>
+    loadChaseLightSettings(),
+  );
+  const [pendingChaseSummary, setPendingChaseSummary] = useState("");
   const rightColUploadRef = useRef<HTMLInputElement>(null);
   const centerColUploadRef = useRef<HTMLInputElement>(null);
   const leftColUploadRef = useRef<HTMLInputElement>(null);
@@ -121,6 +149,16 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
       cancelPendingDesignPreview?.();
       setPendingImportPack(null);
     }
+    if (previewKind === "bubble") {
+      cancelBubbleShapePreview();
+      setPendingBubbleShapeId(null);
+      setActiveBubbleShapeId(loadBubbleShapeId());
+    }
+    if (previewKind === "chase") {
+      cancelChaseLightPreview();
+      setChaseSettings(loadChaseLightSettings());
+      setPendingChaseSummary("");
+    }
     setPreviewKind(null);
     setDesignPreviewActive(false);
   };
@@ -144,6 +182,64 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     setColumnTintColor(hex);
     if (pendingColumnStyleId) {
       previewColumnCardStyle(pendingColumnStyleId, hex);
+    }
+    if (previewKind === "chase") {
+      updateChaseLightTintPreview(hex);
+      setChaseSettings((s) => ({ ...s, tintHex: hex }));
+    }
+  };
+
+  const handlePreviewBubbleShape = (shapeId: BubbleShapeId) => {
+    cancelAllPreviews();
+    setPreviewKind("bubble");
+    setPendingBubbleShapeId(shapeId);
+    previewBubbleShape(shapeId);
+    setDesignPreviewActive(true);
+  };
+
+  const handleCommitBubbleShape = () => {
+    if (!pendingBubbleShapeId) return;
+    const label = getBubbleShapeLabel(pendingBubbleShapeId);
+    if (commitBubbleShape(pendingBubbleShapeId)) {
+      setActiveBubbleShapeId(pendingBubbleShapeId);
+      setPendingBubbleShapeId(null);
+      setPreviewKind(null);
+      setDesignPreviewActive(false);
+      alert(`✅ تم تطبيق شكل الفقاعات «${label}».`);
+    } else {
+      alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
+    }
+  };
+
+  const handlePreviewChaseLight = (
+    target: ChaseLightTarget,
+    styleId: ChaseLightStyleId,
+  ) => {
+    if (previewKind !== "chase") {
+      cancelAllPreviews();
+    }
+    setPreviewKind("chase");
+    previewChaseLightForTarget(target, styleId);
+    setChaseSettings((prev) => {
+      const base = previewKind === "chase" ? prev : loadChaseLightSettings();
+      return { ...base, [target]: styleId };
+    });
+    const targetLabel =
+      target === "columns" ? "الأعمدة" : target === "composer" ? "الكتابة" : "الهيدر";
+    setPendingChaseSummary(`${targetLabel}: ${styleId}`);
+    setDesignPreviewActive(true);
+  };
+
+  const handleCommitChaseLight = () => {
+    previewChaseLightPatch(chaseSettings);
+    if (commitChaseLightSettings(chaseSettings)) {
+      setChaseSettings(loadChaseLightSettings());
+      setPendingChaseSummary("");
+      setPreviewKind(null);
+      setDesignPreviewActive(false);
+      alert("✅ تم تطبيق أشرطة النور.");
+    } else {
+      alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
     }
   };
 
@@ -244,15 +340,18 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     setPreviewKind("import-pack");
     setPendingImportPack(pack);
     previewImportPackVisuals(pack);
+    const styleConfig = resolveImportPackStyleConfig(pack);
+    if (previewDesignConfig) {
+      previewDesignConfig(styleConfig);
+    } else if (previewDesignPrompt && pack.stylePrompt) {
+      previewDesignPrompt(pack.stylePrompt);
+    }
     if (pack.templateId) {
       const info = previewAssistantPreset?.(pack.templateId);
       if (info) {
         setPendingTemplateId(info.id);
         setPendingTemplateSummary(info.summary);
       }
-    }
-    if (pack.stylePrompt && previewDesignPrompt) {
-      previewDesignPrompt(pack.stylePrompt);
     }
     setDesignPreviewActive(true);
   };
@@ -295,6 +394,8 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     else if (previewKind === "face") handleCommitFacePreset();
     else if (previewKind === "template") handleCommitTemplate();
     else if (previewKind === "column") handleCommitColumnStyle();
+    else if (previewKind === "bubble") handleCommitBubbleShape();
+    else if (previewKind === "chase") handleCommitChaseLight();
     else if (previewKind === "import-pack") void handleCommitImportPack();
   };
 
@@ -314,6 +415,8 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
       cancelAssistantPreview?.();
       cancelColumnCardPreview();
       cancelImportPackVisualPreview();
+      cancelBubbleShapePreview();
+      cancelChaseLightPreview();
       cancelPendingDesignPreview?.();
       setDesignPreviewActive(false);
     };
@@ -591,7 +694,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           />
                         )}
                         <DesignImportLibrary
-                          onPreviewPack={handlePreviewImportPack}
+                          onApplyToSite={handlePreviewImportPack}
                           pendingPackId={pendingImportPack?.id}
                           activePackId={activeImportPackId}
                         />
@@ -600,6 +703,8 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           onPreviewFacePreset={handlePreviewFacePreset}
                           onPreviewGlassForm={handlePreviewGlassForm}
                           onPreviewColumnStyle={handlePreviewColumnStyle}
+                          onPreviewBubbleShape={handlePreviewBubbleShape}
+                          onPreviewChaseLight={handlePreviewChaseLight}
                           onCommitPreview={handleCommitPreview}
                           onCancelPreview={handleCancelPreview}
                           onTintChange={(hex: string) => {
@@ -613,6 +718,10 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           tintColor={glassTintColor}
                           pendingColumnStyleId={pendingColumnStyleId}
                           activeColumnStyleId={activeColumnStyleId}
+                          pendingBubbleShapeId={pendingBubbleShapeId}
+                          activeBubbleShapeId={activeBubbleShapeId}
+                          chaseSettings={chaseSettings}
+                          pendingChaseSummary={pendingChaseSummary}
                           pendingFacePresetId={pendingFacePresetId}
                           activeFacePresetId={activeFacePresetId}
                           pendingTemplateId={pendingTemplateId}

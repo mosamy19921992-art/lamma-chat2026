@@ -286,6 +286,21 @@ export function useUniversalStyleEngine({
     [activeRoomId, addLammaBotMessage, rollbackLivePreview],
   );
 
+  const previewDesignConfig = useCallback(
+    (config: UniversalStyleConfig): { summary: string; config: UniversalStyleConfig } | null => {
+      if (!isOwner) return null;
+      previewMemoryRef.current = config;
+      if (!previewSnapshotRef.current) {
+        previewSnapshotRef.current = captureRollbackSnapshot();
+      }
+      beginLivePreview(config);
+      setHasPendingDesignPreview(true);
+      setDesignPreviewActive(true);
+      return { summary: config.label, config };
+    },
+    [beginLivePreview, captureRollbackSnapshot, isOwner],
+  );
+
   const previewDesignPrompt = useCallback(
     (rawPrompt: string): { summary: string; config: UniversalStyleConfig } | null => {
       if (!isOwner) return null;
@@ -339,6 +354,7 @@ export function useUniversalStyleEngine({
     cancelStyleSandbox,
     resetChatBackgroundToDefault,
     previewDesignPrompt,
+    previewDesignConfig,
     commitPendingDesignPreview,
     cancelPendingDesignPreview,
     hasPendingDesignPreview,

@@ -20,13 +20,17 @@ export default async function handler(req, res) {
     return;
   }
 
-  const supabaseUrl = process.env.VITE_SUPABASE_URL?.trim();
+  const supabaseUrl =
+    process.env.SUPABASE_URL?.trim() ||
+    process.env.VITE_SUPABASE_URL?.trim() ||
+    "https://detvapbvkabvdjsdttfy.supabase.co";
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
-  if (!supabaseUrl || !serviceKey) {
+  if (!serviceKey) {
     res.status(503).json({
       error: "missing_env",
-      need: ["VITE_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
+      need: ["SUPABASE_SERVICE_ROLE_KEY"],
+      hint: "Add in Vercel → Project Settings → Environment Variables (Production)",
     });
     return;
   }

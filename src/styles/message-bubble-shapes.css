@@ -1,0 +1,105 @@
+/* Message bubble shapes — room + PM (data-bubble-shape on .lamma-neutral-glass) */
+
+.lamma-neutral-glass[data-bubble-shape="whatsapp"] .lamma-message.lamma-msg-bubble-own,
+.lamma-neutral-glass[data-bubble-shape="whatsapp"] .lamma-pm-bubble-own {
+  border-radius: 14px 14px 14px 4px !important;
+  position: relative;
+}
+
+.lamma-neutral-glass[data-bubble-shape="whatsapp"] .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system),
+.lamma-neutral-glass[data-bubble-shape="whatsapp"] .lamma-pm-bubble-incoming {
+  border-radius: 14px 14px 4px 14px !important;
+  position: relative;
+}
+
+.lamma-neutral-glass[data-bubble-shape="whatsapp"] .lamma-message.lamma-msg-bubble-own::after,
+.lamma-neutral-glass[data-bubble-shape="whatsapp"] .lamma-pm-bubble-own::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  inset-inline-start: -6px;
+  width: 10px;
+  height: 12px;
+  background: inherit;
+  clip-path: polygon(100% 0, 0 100%, 100% 100%);
+  opacity: 0.85;
+}
+
+.lamma-neutral-glass[data-bubble-shape="whatsapp"] .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system)::after,
+.lamma-neutral-glass[data-bubble-shape="whatsapp"] .lamma-pm-bubble-incoming::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  inset-inline-end: -6px;
+  width: 10px;
+  height: 12px;
+  background: inherit;
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+  opacity: 0.85;
+}
+
+/* Facebook / Messenger */
+.lamma-neutral-glass[data-bubble-shape="facebook"] .lamma-message.lamma-msg-bubble-own,
+.lamma-neutral-glass[data-bubble-shape="facebook"] .lamma-pm-bubble-own {
+  border-radius: 20px 20px 20px 6px !important;
+  padding-inline: 14px !important;
+}
+
+.lamma-neutral-glass[data-bubble-shape="facebook"] .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system),
+.lamma-neutral-glass[data-bubble-shape="facebook"] .lamma-pm-bubble-incoming {
+  border-radius: 20px 20px 6px 20px !important;
+  padding-inline: 14px !important;
+}
+
+.lamma-neutral-glass[data-bubble-shape="facebook"] .lamma-msg-bubble-own {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--us-accent, #0084ff) 88%, #fff),
+    color-mix(in srgb, var(--us-accent-2, #006aff) 75%, #000)
+  ) !important;
+}
+
+/* iOS Messages */
+.lamma-neutral-glass[data-bubble-shape="ios"] .lamma-message.lamma-msg-bubble-own,
+.lamma-neutral-glass[data-bubble-shape="ios"] .lamma-pm-bubble-own {
+  border-radius: 18px !important;
+  border-bottom-right-radius: 6px !important;
+}
+
+.lamma-neutral-glass[data-bubble-shape="ios"] .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system),
+.lamma-neutral-glass[data-bubble-shape="ios"] .lamma-pm-bubble-incoming {
+  border-radius: 18px !important;
+  border-bottom-left-radius: 6px !important;
+}
+
+.lamma-neutral-glass[data-bubble-shape="ios"] .lamma-msg-bubble-own {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--us-accent, #34c759) 90%, #fff),
+    color-mix(in srgb, var(--us-accent, #34c759) 70%, #000)
+  ) !important;
+}
+
+/* Telegram */
+.lamma-neutral-glass[data-bubble-shape="telegram"] .lamma-message.lamma-msg-bubble-own,
+.lamma-neutral-glass[data-bubble-shape="telegram"] .lamma-pm-bubble-own {
+  border-radius: 16px 16px 4px 16px !important;
+}
+
+.lamma-neutral-glass[data-bubble-shape="telegram"] .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system),
+.lamma-neutral-glass[data-bubble-shape="telegram"] .lamma-pm-bubble-incoming {
+  border-radius: 16px 16px 16px 4px !important;
+}
+
+.lamma-neutral-glass[data-bubble-shape]:not([data-bubble-shape="default"]) .lamma-pm-bubble-own,
+.lamma-neutral-glass[data-bubble-shape]:not([data-bubble-shape="default"]) .lamma-pm-bubble-incoming {
+  border-radius: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lamma-neutral-glass[data-bubble-shape] .lamma-message::after,
+  .lamma-neutral-glass[data-bubble-shape] .lamma-pm-bubble-own::after,
+  .lamma-neutral-glass[data-bubble-shape] .lamma-pm-bubble-incoming::after {
+    display: none;
+  }
+}

@@ -20,12 +20,25 @@ import {
   getColumnCardStyleLabel,
   type ColumnCardStyleId,
 } from "../../services/design/columnCardStyleService";
+import {
+  BUBBLE_SHAPE_PRESETS,
+  getBubbleShapeLabel,
+  type BubbleShapeId,
+} from "../../services/design/bubbleShapeService";
+import {
+  CHASE_LIGHT_PRESETS,
+  type ChaseLightSettings,
+  type ChaseLightStyleId,
+  type ChaseLightTarget,
+} from "../../services/design/chaseLightBarService";
 
 interface DesignTemplateGalleryProps {
   onPreviewTemplate: (id: DesignAssistantProposalId) => void;
   onPreviewFacePreset: (presetId: string) => void;
   onPreviewGlassForm: (id: GlassFormId) => void;
   onPreviewColumnStyle: (id: ColumnCardStyleId) => void;
+  onPreviewBubbleShape: (id: BubbleShapeId) => void;
+  onPreviewChaseLight: (target: ChaseLightTarget, styleId: ChaseLightStyleId) => void;
   onCommitPreview: () => void;
   onCancelPreview: () => void;
   onTintChange: (hex: string) => void;
@@ -36,6 +49,10 @@ interface DesignTemplateGalleryProps {
   tintColor?: string;
   pendingColumnStyleId?: ColumnCardStyleId | null;
   activeColumnStyleId?: ColumnCardStyleId | null;
+  pendingBubbleShapeId?: BubbleShapeId | null;
+  activeBubbleShapeId?: BubbleShapeId;
+  chaseSettings?: ChaseLightSettings;
+  pendingChaseSummary?: string;
   pendingFacePresetId?: string | null;
   activeFacePresetId?: string | null;
   pendingTemplateId?: DesignAssistantProposalId | null;
@@ -295,6 +312,8 @@ function getPreviewBarLabel(
   pendingFacePresetId: string | null | undefined,
   pendingTemplateId: DesignAssistantProposalId | null | undefined,
   pendingColumnStyleId: ColumnCardStyleId | null | undefined,
+  pendingBubbleShapeId: BubbleShapeId | null | undefined,
+  pendingChaseSummary?: string,
 ): string {
   if (previewKind === "glass" && pendingGlassFormId) {
     return getGlassFormLabel(pendingGlassFormId);
@@ -309,6 +328,12 @@ function getPreviewBarLabel(
   if (previewKind === "column" && pendingColumnStyleId) {
     return getColumnCardStyleLabel(pendingColumnStyleId);
   }
+  if (previewKind === "bubble" && pendingBubbleShapeId) {
+    return getBubbleShapeLabel(pendingBubbleShapeId);
+  }
+  if (previewKind === "chase" && pendingChaseSummary) {
+    return pendingChaseSummary;
+  }
   return "تصميم";
 }
 
@@ -317,6 +342,8 @@ export function DesignTemplateGallery({
   onPreviewFacePreset,
   onPreviewGlassForm,
   onPreviewColumnStyle,
+  onPreviewBubbleShape,
+  onPreviewChaseLight,
   onCommitPreview,
   onCancelPreview,
   onTintChange,
@@ -327,6 +354,10 @@ export function DesignTemplateGallery({
   tintColor = "#6ee7b7",
   pendingColumnStyleId = null,
   activeColumnStyleId = null,
+  pendingBubbleShapeId = null,
+  activeBubbleShapeId = "default",
+  chaseSettings,
+  pendingChaseSummary = "",
   pendingFacePresetId = null,
   activeFacePresetId = null,
   pendingTemplateId = null,
@@ -361,22 +392,104 @@ export function DesignTemplateGallery({
             pendingFacePresetId,
             pendingTemplateId,
             pendingColumnStyleId,
+            pendingBubbleShapeId,
+            pendingChaseSummary,
           )}
           detail={
             previewKind === "template" && pendingTemplateSummary
               ? pendingTemplateSummary
-              : previewKind === "glass" || previewKind === "column"
-                ? "اختار لون البطاقة ثم اضغط تطبيق نهائي"
-                : undefined
+              : previewKind === "glass" || previewKind === "column" || previewKind === "chase"
+                ? "اختار اللون ثم اضغط تطبيق نهائي"
+                : previewKind === "bubble"
+                  ? "شوف فقاعات الشات والخاص — ثم تطبيق"
+                  : undefined
           }
           tintHex={tintColor}
           onTintChange={
-            previewKind === "glass" || previewKind === "column" ? onTintChange : undefined
+            previewKind === "glass" || previewKind === "column" || previewKind === "chase"
+              ? onTintChange
+              : undefined
           }
           onCommit={onCommitPreview}
           onCancel={onCancelPreview}
         />
       )}
+
+      <div>
+        <div className="text-[11px] font-black text-sky-300 mb-2">
+          💬 أشكال فقاعات الشات والخاص
+        </div>
+        <div className="text-[9px] text-gray-500 font-bold mb-2 leading-relaxed">
+          WhatsApp · Facebook · iOS · Telegram — للرسائل العامة والخاصة.
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          {BUBBLE_SHAPE_PRESETS.map((shape) => (
+            <GlassDesignCard
+              key={shape.id}
+              emoji={shape.emoji}
+              title={shape.title}
+              subtitle={shape.subtitle}
+              previewGradient={
+                shape.id === "whatsapp"
+                  ? "linear-gradient(145deg, #075e54, #25d366)"
+                  : shape.id === "facebook"
+                    ? "linear-gradient(145deg, #0084ff, #006aff)"
+                    : shape.id === "ios"
+                      ? "linear-gradient(145deg, #34c759, #30d158)"
+                      : shape.id === "telegram"
+                        ? "linear-gradient(145deg, #0088cc, #229ed9)"
+                        : "linear-gradient(145deg, #1e293b, #64748b)"
+              }
+              isActive={activeBubbleShapeId === shape.id && previewKind !== "bubble"}
+              isPending={pendingBubbleShapeId === shape.id && previewKind === "bubble"}
+              onClick={() => onPreviewBubbleShape(shape.id)}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="text-[11px] font-black text-pink-300">
+          ✨ أشرطة النور — دوران وتوهج
+        </div>
+        {(
+          [
+            ["columns", "🃏 بطاقات الأعمدة"],
+            ["composer", "⌨️ شريط الكتابة"],
+            ["header", "📌 هيدر الشات"],
+          ] as const
+        ).map(([target, label]) => (
+          <div key={target}>
+            <div className="text-[9px] font-black text-gray-400 mb-1.5">{label}</div>
+            <div className="grid grid-cols-3 md:grid-cols-7 gap-1.5">
+              {CHASE_LIGHT_PRESETS.map((style) => {
+                const activeId =
+                  chaseSettings?.[target as ChaseLightTarget] ?? "conic-spin";
+                const isSelected = activeId === style.id;
+                return (
+                  <button
+                    key={`${target}-${style.id}`}
+                    type="button"
+                    onClick={() => onPreviewChaseLight(target, style.id)}
+                    className={`p-2 rounded-xl border text-center transition-all ${
+                      previewKind === "chase" && isSelected
+                        ? "border-amber-400/60 ring-1 ring-amber-400/40 bg-amber-500/10"
+                        : isSelected && previewKind !== "chase"
+                          ? "border-emerald-400/40 bg-emerald-500/10"
+                          : "border-white/10 hover:border-white/25 bg-white/[0.04]"
+                    }`}
+                  >
+                    <div className="text-base">{style.emoji}</div>
+                    <div className="text-[7px] font-black text-white truncate">
+                      {style.title}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
 
       <div>
         <div className="text-[11px] font-black text-emerald-300 mb-2">

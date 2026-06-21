@@ -4,7 +4,7 @@ import {
   GLASS_TINT_SWATCHES,
 } from "../../services/design/glassTransparencyService";
 
-export type DesignPreviewKind = "glass" | "face" | "template" | "column" | "import-pack";
+export type DesignPreviewKind = "glass" | "face" | "template" | "column" | "import-pack" | "bubble" | "chase";
 
 interface DesignPreviewBarProps {
   kind: DesignPreviewKind;
@@ -27,7 +27,7 @@ export function DesignPreviewBar({
 }: DesignPreviewBarProps) {
   const stopDrag = (event: React.PointerEvent) => event.stopPropagation();
   const showColorPicker =
-    (kind === "glass" || kind === "column") && onTintChange;
+    (kind === "glass" || kind === "column" || kind === "chase") && onTintChange;
 
   return (
     <div

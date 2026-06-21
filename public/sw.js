@@ -5,7 +5,7 @@
 //  - Network-First  for HTML / routes
 //  - Offline fallback page
 
-const VERSION = "lamma-178199537628";
+const VERSION = "lamma-178202797841";
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const IMAGE_CACHE = `${VERSION}-images`;

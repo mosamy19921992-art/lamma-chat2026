@@ -1,33 +1,48 @@
 import {
   BUILTIN_DESIGN_IMPORT_PACKS,
-  type DesignImportPack,
+  DESIGN_IMPORT_CATEGORY_LABELS,
   findImportPackById,
+  type DesignImportCategory,
+  type DesignImportPack,
 } from "./designImportCatalog";
 
 function normalize(text: string): string {
   return text.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+const CATEGORY_ORDER: DesignImportCategory[] = [
+  "colors",
+  "uiverse",
+  "ios",
+  "glass-card",
+  "columns",
+  "theme",
+];
+
 export function formatDesignImportLibrarySummary(
   extra: DesignImportPack[] = [],
 ): string {
   const merged = [...BUILTIN_DESIGN_IMPORT_PACKS, ...extra];
-  const ios = merged.filter((p) => p.category === "ios");
-  const themes = merged.filter((p) => p.category === "theme");
   const lines: string[] = [
-    "📚 مكتبة ثيمات مهندس التصميم — اختر من مركز التصميم → مكتبة الثيمات، أو اكتب اسم الثيم:",
+    "📚 مكتبة الثيمات — اختر تصنيفًا في مركز التصميم:",
     "",
-    "🍎 iOS:",
-    ...ios.map((p) => `• ${p.emoji} ${p.title} — «${p.id}»`),
-    "",
-    "🎨 ثيمات:",
-    ...themes.slice(0, 4).map((p) => `• ${p.emoji} ${p.title} — «${p.id}»`),
-    "",
-    "🔗 استيراد من النت: الصق رابط JSON في المكتبة، أو اكتب:",
-    "استورد من https://…/theme.json",
-    "",
-    "أمثلة: «liquid glass» · «ios vibrancy» · «طبّق ios-liquid-glass»",
   ];
+
+  for (const cat of CATEGORY_ORDER) {
+    const packs = merged.filter((p) => p.category === cat);
+    if (packs.length === 0) continue;
+    lines.push(`${DESIGN_IMPORT_CATEGORY_LABELS[cat]} (${packs.length})`);
+    for (const p of packs.slice(0, 3)) {
+      lines.push(`  • ${p.emoji} ${p.title} — «${p.id}»`);
+    }
+    if (packs.length > 3) lines.push(`  … +${packs.length - 3} أخرى`);
+    lines.push("");
+  }
+
+  lines.push(
+    "🔗 استيراد JSON: مركز التصميم → مكتبة الثيمات → الصق رابط",
+    "⚡ تطبيق سريع: «طبّق uiverse-neon-glow» أو «طبّق colors-midnight-blue»",
+  );
   return lines.join("\n");
 }
 
@@ -50,17 +65,18 @@ export function matchImportPackFromPrompt(
     .map((pack) => {
       let score = 0;
       const idNorm = pack.id.replace(/-/g, " ");
-      if (lower.includes(pack.id) || lower.includes(idNorm)) score += 8;
+      if (lower.includes(pack.id) || lower.includes(idNorm)) score += 10;
+      if (lower.includes(pack.title.toLowerCase())) score += 6;
       for (const tag of pack.tags) {
         if (lower.includes(tag.toLowerCase())) score += 3;
       }
-      if (lower.includes("liquid") && pack.id.includes("liquid")) score += 6;
-      if (lower.includes("vibrancy") && pack.id.includes("vibrancy")) score += 6;
-      if (lower.includes("ios") && pack.category === "ios") score += 4;
-      if (lower.includes(pack.title.toLowerCase())) score += 5;
+      if (lower.includes("uiverse") && pack.category === "uiverse") score += 5;
+      if (lower.includes("liquid") && pack.id.includes("liquid")) score += 5;
+      if (lower.includes("neon") && pack.tags.some((t) => t.includes("neon")))
+        score += 4;
       return { pack, score };
     })
-    .filter((r) => r.score >= 4)
+    .filter((r) => r.score >= 5)
     .sort((a, b) => b.score - a.score);
 
   return ranked[0]?.pack ?? null;
@@ -68,9 +84,9 @@ export function matchImportPackFromPrompt(
 
 export function describeImportPackApply(pack: DesignImportPack): string {
   const parts: string[] = [`${pack.emoji} ${pack.title}`];
-  if (pack.glassFormId) parts.push(`فورم زجاج: ${pack.glassFormId}`);
-  if (pack.columnCardStyleId) parts.push(`بطاقات: ${pack.columnCardStyleId}`);
+  if (pack.glassFormId) parts.push(`زجاج: ${pack.glassFormId}`);
+  if (pack.columnCardStyleId) parts.push(`بطاقة: ${pack.columnCardStyleId}`);
   if (pack.templateId) parts.push(`قالب: ${pack.templateId}`);
-  if (pack.stylePrompt) parts.push(`ألوان/مظهر: ${pack.stylePrompt.slice(0, 48)}…`);
+  parts.push(DESIGN_IMPORT_CATEGORY_LABELS[pack.category]);
   return parts.join(" · ");
 }
