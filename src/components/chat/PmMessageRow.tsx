@@ -7,6 +7,7 @@ import {
   isPrivateStorageRef,
 } from "../../lib/chatHelpers";
 import { LazyYoutubeEmbed, renderTextMessageWithMedia } from "../../lib/chatMessageRender";
+import { VoiceNoteBubble } from "../VoiceNoteBubble";
 
 export type PmMessageRowProps = {
   msg: PMThreadMessage;
@@ -56,6 +57,10 @@ function PmMessageRowInner({
               decoding="async"
             />
           )
+        ) : null}
+
+        {safePmMediaUrl && msg.type === "audio" ? (
+          <VoiceNoteBubble src={safePmMediaUrl} />
         ) : null}
 
         {safePmMediaUrl && msg.type === "video" ? (

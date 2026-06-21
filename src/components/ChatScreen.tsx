@@ -288,7 +288,7 @@ import {
   uploadPrivateMediaFile,
 } from "../services/chat/privateMessagesService";
 import { subscribeChannelWithRetry } from "../services/chat/realtimeUtils";
-import { upsertCurrentUserProfile } from "../services/social/userProfileService";
+import { upsertCurrentUserProfile, fetchUserProfileByNickname } from "../services/social/userProfileService";
 import { deleteSocialPost } from "../services/social/socialPostsService";
 import { SocialFeedPanel } from "./social/SocialFeedPanel";
 import { UserProfilePageModal } from "./modals/UserProfilePageModal";
@@ -2781,20 +2781,42 @@ export default function ChatScreen({
   }, [memberCosmeticGrants]);
 
   // WebRTC calls — real peer connection with dual-server auto-failover
+  const pmTargetNicknameRef = useRef<string | null>(null);
+  const pmTargetUidRef = useRef<string | null>(null);
+
   const resolveMemberUid = useCallback(
-    (nickname: string) => {
-      const member = rawChatMembers.find(
-        (m) => m.nickname.toLowerCase() === nickname.toLowerCase(),
-      );
-      if (!member?.id || !/^[0-9a-f-]{36}$/i.test(member.id)) return null;
-      return member.id;
+    async (nickname: string): Promise<string | null> => {
+      const normalized = nickname.trim().toLowerCase();
+      const uuidPattern = /^[0-9a-f-]{36}$/i;
+
+      if (pmTargetNicknameRef.current?.trim().toLowerCase() === normalized) {
+        const uid = pmTargetUidRef.current;
+        if (uid && uuidPattern.test(uid)) {
+          return uid;
+        }
+      }
+
+      for (const list of [rawChatMembers, chatMembers]) {
+        const member = list.find(
+          (m) => m.nickname.trim().toLowerCase() === normalized,
+        );
+        if (member?.id && uuidPattern.test(member.id)) {
+          return member.id;
+        }
+      }
+
+      const profile = await fetchUserProfileByNickname(nickname.trim());
+      return profile?.userUid ?? null;
     },
-    [rawChatMembers],
+    [chatMembers, rawChatMembers],
   );
 
   const canMakeCall = useCallback(
     (type: "audio" | "video") => {
-      if (currentUser.role === "owner") return true;
+      const role = (currentUser.role || "").toLowerCase();
+      if (role === "owner" || role === "admin" || role === "المالك" || role === "أدمن") {
+        return true;
+      }
       const perms = memberCustomPermissions[currentUser.nickname];
       if (type === "video") return !!perms?.videoCallsAllowed;
       return !!perms?.callsAllowed;
@@ -2841,6 +2863,7 @@ export default function ChatScreen({
     cancelRecording: cancelVoiceRecording,
   } = useVoiceMessageRecorder();
   const [isUploadingVoice, setIsUploadingVoice] = useState(false);
+  const voiceRecordingScopeRef = useRef<"room" | "pm">("room");
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -4047,7 +4070,6 @@ export default function ChatScreen({
     { id: string; title: string; body: string }[]
   >([]);
   const isPmOpenRef = useRef(false);
-  const pmTargetNicknameRef = useRef<string | null>(null);
   const mobileTabRef = useRef(mobileTab);
 
   useEffect(() => {
@@ -5203,7 +5225,8 @@ export default function ChatScreen({
 
   useEffect(() => {
     pmTargetNicknameRef.current = pmTarget?.nickname ?? null;
-  }, [pmTarget?.nickname]);
+    pmTargetUidRef.current = pmTarget?.uid ?? null;
+  }, [pmTarget?.nickname, pmTarget?.uid]);
 
   const {
     posts: socialPosts,
@@ -6592,7 +6615,7 @@ export default function ChatScreen({
   };
 
   const sendPrivateMediaMessage = async (
-    type: "image" | "video",
+    type: "image" | "video" | "audio",
     mediaUrl: string,
     text = "",
   ) => {
@@ -6864,11 +6887,14 @@ export default function ChatScreen({
   };
 
   const canSendVoiceMessages = () => {
-    if (currentUser.role === "owner") return true;
+    const role = (currentUser.role || "").toLowerCase();
+    if (role === "owner" || role === "admin" || role === "المالك" || role === "أدمن") {
+      return true;
+    }
     return !!memberCustomPermissions[currentUser.nickname]?.recordingAllowed;
   };
 
-  const beginVoiceMessageRecording = async () => {
+  const beginVoiceMessageRecording = async (scope: "room" | "pm" = "room") => {
     if (!canSendVoiceMessages()) {
       alert(
         "⚠️ ميزة الرسائل الصوتية غير مفعلة لحسابك. اطلب التفعيل من المالك 🎙️",
@@ -6879,6 +6905,10 @@ export default function ChatScreen({
       alert("🎙️ الرسائل الصوتية متاحة للحسابات المسجلة فقط.");
       return;
     }
+    if (scope === "pm" && !pmTarget) {
+      alert("⚠️ اختر محادثة خاصة أولاً.");
+      return;
+    }
     const isOwnerOrAdmin =
       currentUser.role === "owner" || currentUser.role === "admin";
     if (isGlobalMicMute && !isOwnerOrAdmin) {
@@ -6886,6 +6916,7 @@ export default function ChatScreen({
       return;
     }
     if (isVoiceRecording) return;
+    voiceRecordingScopeRef.current = scope;
     try {
       await startVoiceRecording();
     } catch (err) {
@@ -6906,6 +6937,31 @@ export default function ChatScreen({
     try {
       const blob = await stopVoiceRecording();
       if (!blob || !currentUser.uid) return;
+
+      if (voiceRecordingScopeRef.current === "pm") {
+        if (!pmTarget) {
+          alert("⚠️ اختر محادثة خاصة أولاً.");
+          return;
+        }
+        const ext = blob.type.includes("webm")
+          ? "webm"
+          : blob.type.includes("mp4") || blob.type.includes("aac")
+            ? "m4a"
+            : blob.type.includes("ogg")
+              ? "ogg"
+              : "webm";
+        const file = new File([blob], `voice.${ext}`, {
+          type: blob.type || "audio/webm",
+        });
+        const mediaRef = await uploadPrivateMediaFile(
+          file,
+          pmTarget.nickname,
+          pmTarget.uid,
+        );
+        await sendPrivateMediaMessage("audio", mediaRef);
+        return;
+      }
+
       const { url, error } = await uploadVoiceNoteBlob(
         blob,
         activeRoomId,
@@ -6916,8 +6972,15 @@ export default function ChatScreen({
         return;
       }
       sendMediaMessage("audio", url);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? `❌ فشل إرسال الرسالة الصوتية: ${error.message}`
+          : "❌ فشل إرسال الرسالة الصوتية.",
+      );
     } finally {
       setIsUploadingVoice(false);
+      voiceRecordingScopeRef.current = "room";
     }
   };
 
@@ -10373,7 +10436,7 @@ export default function ChatScreen({
               </div>
 
               <div className="relative">
-                {isVoiceRecording && (
+                {isVoiceRecording && voiceRecordingScopeRef.current === "room" && (
                   <VoiceRecorderBar
                     durationSec={voiceRecordingSec}
                     maxDurationSec={120}
@@ -11023,15 +11086,6 @@ export default function ChatScreen({
                   <button
                     type="button"
                     onClick={() => {
-                      const isOwner = currentUser.role === "owner";
-                      const perm =
-                        memberCustomPermissions[currentUser.nickname]?.callsAllowed;
-                      if (!isOwner && !perm) {
-                        alert(
-                          "⚠️ ميزة المكالمات الصوتية غير مفعلة لحسابك من قبل المالك 📞",
-                        );
-                        return;
-                      }
                       const normalizedRole = currentUser.role.toLowerCase();
                       if (
                         normalizedRole === "guest" ||
@@ -11042,7 +11096,7 @@ export default function ChatScreen({
                         );
                         return;
                       }
-                      initiateCall(pmTarget.nickname, "audio");
+                      void initiateCall(pmTarget.nickname, "audio");
                     }}
                     className="w-7 h-7 rounded-lg text-green-300 flex items-center justify-center lamma-quiet-power-btn"
                     title="الاتصال الهاتفي"
@@ -11052,15 +11106,6 @@ export default function ChatScreen({
                   <button
                     type="button"
                     onClick={() => {
-                      const isOwner = currentUser.role === "owner";
-                      const perm =
-                        memberCustomPermissions[currentUser.nickname]?.videoCallsAllowed;
-                      if (!isOwner && !perm) {
-                        alert(
-                          "⚠️ ميزة مكالمات الفيديو/الكاميرا غير مفعلة لحسابك من قبل المالك 📹",
-                        );
-                        return;
-                      }
                       const normalizedRole = currentUser.role.toLowerCase();
                       if (
                         normalizedRole === "guest" ||
@@ -11071,7 +11116,7 @@ export default function ChatScreen({
                         );
                         return;
                       }
-                      initiateCall(pmTarget.nickname, "video");
+                      void initiateCall(pmTarget.nickname, "video");
                     }}
                     className="w-7 h-7 rounded-lg text-[#c1d86a] flex items-center justify-center lamma-quiet-power-btn"
                     title="مكالمة الفيديو"
@@ -11241,6 +11286,19 @@ export default function ChatScreen({
                   )}
                 </AnimatePresence>
 
+                {isVoiceRecording && voiceRecordingScopeRef.current === "pm" && (
+                  <VoiceRecorderBar
+                    durationSec={voiceRecordingSec}
+                    maxDurationSec={120}
+                    onCancel={() => {
+                      cancelVoiceRecording();
+                      voiceRecordingScopeRef.current = "room";
+                    }}
+                    onSend={() => void sendRecordedVoiceMessage()}
+                    isUploading={isUploadingVoice}
+                  />
+                )}
+
                 <div className="flex items-center lamma-composer-cluster bg-black/60 rounded-xl px-2.5 py-1.5 border border-green-500/10">
                   <button
                     type="button"
@@ -11276,6 +11334,18 @@ export default function ChatScreen({
                     title="تغيير لون الخط"
                   >
                     <Palette size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void beginVoiceMessageRecording("pm")}
+                    className={`flex items-center justify-center transition-all lamma-composer-tool ${
+                      isVoiceRecording && voiceRecordingScopeRef.current === "pm"
+                        ? "text-red-400 animate-pulse"
+                        : "text-gray-500 hover:bg-white/10 hover:text-[#a3e635]"
+                    }`}
+                    title="رسالة صوتية"
+                  >
+                    <Mic size={16} />
                   </button>
 
                   <input

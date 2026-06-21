@@ -42,7 +42,7 @@ export interface IncomingCallState {
 
 interface UseWebRTCCallsOptions {
   currentUser: UserSession;
-  resolveUid: (nickname: string) => string | null;
+  resolveUid: (nickname: string) => string | null | Promise<string | null>;
   canMakeCall: (type: CallMediaType) => boolean;
 }
 
@@ -255,10 +255,10 @@ export function useWebRTCCalls({
       }
       if (activeCall || incomingCall) return;
 
-      const targetUid = resolveUid(targetNickname);
+      const targetUid = await Promise.resolve(resolveUid(targetNickname));
       if (!targetUid) {
         alert(
-          "⚠️ تعذر الاتصال — العضو لازم يكون مسجل دخول بحساب حقيقي ومتصل الآن.",
+          "⚠️ تعذر الاتصال — تأكد أن العضو مسجّل بحساب حقيقي. جرّب فتح محادثة خاصة معه أولاً.",
         );
         return;
       }
@@ -290,7 +290,7 @@ export function useWebRTCCalls({
         wireEngine(engine, callId, targetUid);
 
         const offer = await engine.createOffer();
-        await sendCallSignal({
+        const ringResult = await sendCallSignal({
           call_id: callId,
           from_uid: myUid,
           from_nickname: myNick,
@@ -300,7 +300,15 @@ export function useWebRTCCalls({
           signal_type: "ring",
           payload: {},
         });
-        await sendCallSignal({
+        if (ringResult.error) {
+          throw new Error(
+            ringResult.error.includes("permission") ||
+              ringResult.error.includes("policy")
+              ? "صلاحية المكالمات غير مفعّلة لحسابك. اطلب التفعيل من المالك."
+              : ringResult.error,
+          );
+        }
+        const offerResult = await sendCallSignal({
           call_id: callId,
           from_uid: myUid,
           from_nickname: myNick,
@@ -310,6 +318,9 @@ export function useWebRTCCalls({
           signal_type: "offer",
           payload: { sdp: offer },
         });
+        if (offerResult.error) {
+          throw new Error(offerResult.error);
+        }
 
         patchCall({ status: "ringing" });
 
