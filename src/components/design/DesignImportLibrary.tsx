@@ -301,7 +301,7 @@ export function DesignImportLibrary({
                 type="url"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="https://uiverse.io/username/component-slug"
+                placeholder="https://uiverse.io/0x-Sarthak/hungry-penguin-30"
                 className="flex-1 min-w-0 px-2 py-1.5 rounded-lg text-[9px] font-bold bg-black/30 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-400/40"
                 dir="ltr"
               />

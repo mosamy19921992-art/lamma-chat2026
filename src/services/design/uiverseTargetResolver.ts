@@ -181,12 +181,35 @@ export function parseUiverseUrl(
   const trimmed = url.trim();
   try {
     const parsed = new URL(trimmed);
-    if (!parsed.hostname.includes("uiverse.io")) return null;
+    const host = parsed.hostname.replace(/^www\./, "");
+    if (!host.endsWith("uiverse.io")) return null;
+
     const parts = parsed.pathname.split("/").filter(Boolean);
+    const skip = new Set([
+      "elements",
+      "buttons",
+      "cards",
+      "checkboxes",
+      "switches",
+      "loaders",
+      "inputs",
+      "radio-buttons",
+      "forms",
+      "patterns",
+      "tooltips",
+      "profile",
+      "blog",
+      "design",
+    ]);
+
+    while (parts.length > 2 && skip.has(parts[0].toLowerCase())) {
+      parts.shift();
+    }
+
     if (parts.length < 2) return null;
     return { author: parts[0], slug: parts[1] };
   } catch {
-    const short = trimmed.match(/^([\w-]+)\/([\w-]+)$/);
+    const short = trimmed.match(/^([\w.-]+)\/([\w.-]+)$/);
     if (short) return { author: short[1], slug: short[2] };
     return null;
   }

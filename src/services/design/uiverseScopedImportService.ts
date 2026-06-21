@@ -18,12 +18,12 @@ const GALAXY_FOLDERS = [
   "Checkboxes",
   "Forms",
   "Inputs",
-  "Loaders",
+  "loaders",
+  "Notifications",
   "Patterns",
   "Radio-buttons",
-  "Switches",
+  "Toggle-switches",
   "Tooltips",
-  "Other",
 ];
 
 export interface UiverseFetchResult {
@@ -89,30 +89,65 @@ async function fetchFromGalaxy(
   author: string,
   slug: string,
 ): Promise<string | null> {
-  const fileName = `${author}_${slug}.html`;
+  const fileNames = [
+    `${author}_${slug}.html`,
+    `${author.toLowerCase()}_${slug}.html`,
+    `${author}_${slug.toLowerCase()}.html`,
+  ];
+
   for (const folder of GALAXY_FOLDERS) {
-    const url = `https://raw.githubusercontent.com/uiverse-io/galaxy/main/${folder}/${encodeURIComponent(fileName)}`;
-    try {
-      const res = await fetch(url, { cache: "no-store" });
-      if (res.ok) return await res.text();
-    } catch {
-      // try next folder
+    for (const fileName of fileNames) {
+      const url = `https://raw.githubusercontent.com/uiverse-io/galaxy/main/${folder}/${encodeURIComponent(fileName)}`;
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (res.ok) {
+          const text = await res.text();
+          if (text.trim()) return text;
+        }
+      } catch {
+        // try next folder
+      }
     }
   }
   return null;
 }
 
-async function fetchViaProxy(url: string): Promise<string | null> {
+async function fetchViaProxy(
+  url: string,
+): Promise<{ html: string | null; css: string | null; source?: string; error?: string }> {
   try {
     const proxyUrl = `/api/fetch-uiverse?url=${encodeURIComponent(url)}`;
     const res = await fetch(proxyUrl, { cache: "no-store" });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { html?: string; css?: string };
-    if (data.css) return `<style>${data.css}</style>`;
-    if (data.html) return data.html;
-    return null;
+    const data = (await res.json()) as {
+      html?: string;
+      css?: string;
+      source?: string;
+      error?: string;
+      hint?: string;
+    };
+
+    if (!res.ok) {
+      return {
+        html: null,
+        css: null,
+        error:
+          data.hint ||
+          data.error ||
+          (res.status === 502
+            ? "تعذّر جلب المكوّن — UIverse يحجب بعض الطلبات. جرّب رابطًا آخر."
+            : `فشل الجلب (HTTP ${res.status})`),
+      };
+    }
+
+    if (data.css?.trim()) {
+      return { html: null, css: data.css, source: data.source };
+    }
+    if (data.html) {
+      return { html: data.html, css: null, source: data.source };
+    }
+    return { html: null, css: null, error: data.hint || "لم يُرجع الخادم CSS." };
   } catch {
-    return null;
+    return { html: null, css: null, error: "تعذّر الاتصال بخادم الجلب." };
   }
 }
 
@@ -133,11 +168,27 @@ export async function fetchUiverseCssFromUrl(
   }
   let html: string | null = null;
   let source: UiverseFetchResult["source"] = "uiverse-page";
+  let fetchError: string | null = null;
 
-  html = await fetchHtml(trimmed);
-  if (!html) {
-    html = await fetchViaProxy(trimmed);
+  const proxy = await fetchViaProxy(trimmed);
+  if (proxy.error && !proxy.css && !proxy.html) {
+    fetchError = proxy.error;
   }
+  if (proxy.css?.trim()) {
+    return {
+      result: {
+        css: proxy.css,
+        source: proxy.source === "galaxy" ? "galaxy" : "uiverse-page",
+        title: `${uiverse.author}/${uiverse.slug}`,
+      },
+      error: null,
+    };
+  }
+  if (proxy.html) {
+    html = proxy.html;
+    if (proxy.source === "galaxy") source = "galaxy";
+  }
+
   if (!html) {
     html = await fetchFromGalaxy(uiverse.author, uiverse.slug);
     if (html) source = "galaxy";
@@ -147,7 +198,8 @@ export async function fetchUiverseCssFromUrl(
     return {
       result: null,
       error:
-        "تعذّر جلب المكوّن من UIverse. تأكد من الرابط أو جرّب لاحقًا.",
+        fetchError ||
+        "تعذّر جلب المكوّن من UIverse. تأكد من الرابط (مثال: https://uiverse.io/user/slug) أو جرّب مكوّنًا أقدم من الأرشيف.",
     };
   }
 
