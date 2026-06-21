@@ -66,8 +66,9 @@ export function resolveEffectiveMemberRole(
 export function resolveGranterEffectiveRole(
   globalRole: string | undefined,
   roomRole: string | undefined | null,
+  tempRole: string | undefined | null = null,
 ): MemberRole {
-  return resolveEffectiveMemberRole(globalRole, roomRole, null, "user");
+  return resolveEffectiveMemberRole(globalRole, roomRole, tempRole, "user");
 }
 
 export function getDefaultRolePolicy(): RoleGrantsPolicy {

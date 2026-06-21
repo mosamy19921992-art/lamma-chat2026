@@ -15,6 +15,32 @@ using (
   and (storage.foldername(name))[1] = auth.uid()::text
 );
 
+-- Room voice notes: any authenticated member can read (path: {uid}/voice/{room}/…)
+drop policy if exists "Auth read room voice notes" on storage.objects;
+create policy "Auth read room voice notes"
+on storage.objects
+for select
+to authenticated
+using (
+  bucket_id = 'chat-media-private'
+  and (storage.foldername(name))[2] = 'voice'
+);
+
+-- PM media: sender or recipient UID in path (path: {sender}/pm/{recipientUid}/…)
+drop policy if exists "Auth read pm shared media" on storage.objects;
+create policy "Auth read pm shared media"
+on storage.objects
+for select
+to authenticated
+using (
+  bucket_id = 'chat-media-private'
+  and (storage.foldername(name))[2] = 'pm'
+  and (
+    (storage.foldername(name))[1] = auth.uid()::text
+    or (storage.foldername(name))[3] = auth.uid()::text
+  )
+);
+
 drop policy if exists "Auth upload own private media" on storage.objects;
 create policy "Auth upload own private media"
 on storage.objects

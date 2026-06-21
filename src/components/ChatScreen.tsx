@@ -230,6 +230,9 @@ import {
   fetchMyActiveSanctions,
   mapBannedUserRowToBanInfo,
 } from "../services/chat/moderationService";
+import { deleteRoomMessagesByMember } from "../services/chat/roomMessagesModerationService";
+import { formatSupabaseUserError, isRlsDenied } from "../lib/supabaseErrors";
+import { estimateMessageRowHeight } from "../lib/messageLayoutUtils";
 import {
   parseDjLibrary,
   persistDjLibrary,
@@ -1315,7 +1318,7 @@ export default function ChatScreen({
     options?: {
       sync?: boolean;
     },
-  ) => {
+  ): Promise<{ ok: boolean; error?: string }> => {
     if (options?.sync && supabase && currentUser.authProvider === "supabase") {
       const serverAction = banActionForType(ban.type, false);
       if (
@@ -1333,20 +1336,24 @@ export default function ChatScreen({
           reason: ban.reason,
         });
         if (!result.ok) {
-          alert(
-            `تعذر تنفيذ الإجراء على السيرفر: ${result.error || "unknown"}`,
-          );
-          return;
+          return {
+            ok: false,
+            error: result.error || "تعذر تنفيذ الإجراء على السيرفر.",
+          };
         }
         setBannedUsersList((prev) => mergeBanLists(prev, [ban]));
-        return;
+        return { ok: true };
       }
     }
 
-    setBannedUsersList((prev) => mergeBanLists(prev, [ban]));
+    if (!options?.sync) {
+      setBannedUsersList((prev) => mergeBanLists(prev, [ban]));
+      return { ok: true };
+    }
 
-    if (!options?.sync || !supabase || !canSyncModerationToSupabase) {
-      return;
+    if (!supabase || !canSyncModerationToSupabase) {
+      setBannedUsersList((prev) => mergeBanLists(prev, [ban]));
+      return { ok: true };
     }
 
     const payload: BannedUserRow = {
@@ -1370,14 +1377,20 @@ export default function ChatScreen({
 
     if (error) {
       console.warn("Failed to sync ban entry to Supabase", error);
-      return;
+      return {
+        ok: false,
+        error: formatSupabaseUserError(error, "تعذر مزامنة الحظر مع السيرفر."),
+      };
     }
 
     if (data) {
       setBannedUsersList((prev) =>
         mergeBanLists(prev, [parseBannedUserRow(data as BannedUserRow)]),
       );
+    } else {
+      setBannedUsersList((prev) => mergeBanLists(prev, [ban]));
     }
+    return { ok: true };
   };
 
   const removeBanEntries = async (
@@ -1385,15 +1398,19 @@ export default function ChatScreen({
     options?: {
       sync?: boolean;
     },
-  ) => {
+  ): Promise<{ ok: boolean; error?: string }> => {
     let removedEntries: BanInfo[] = [];
     setBannedUsersList((prev) => {
       removedEntries = prev.filter(matcher);
-      return prev.filter((ban) => !matcher(ban));
+      return options?.sync ? prev : prev.filter((ban) => !matcher(ban));
     });
 
     if (!options?.sync || !supabase) {
-      return;
+      if (!options?.sync) {
+        return { ok: true };
+      }
+      setBannedUsersList((prev) => prev.filter((ban) => !matcher(ban)));
+      return { ok: true };
     }
 
     for (const ban of removedEntries) {
@@ -1413,30 +1430,73 @@ export default function ChatScreen({
           reason: ban.reason,
         });
         if (!result.ok) {
-          console.warn("Failed to reverse moderation on server", result.error);
+          return {
+            ok: false,
+            error: result.error || "تعذر إلغاء الإجراء على السيرفر.",
+          };
         }
         continue;
       }
     }
 
-    if (!canSyncModerationToSupabase) {
-      return;
+    if (canSyncModerationToSupabase) {
+      const remoteIds = removedEntries
+        .map((ban) => ban.id)
+        .filter((id): id is string => isUuidLike(id));
+
+      if (remoteIds.length > 0) {
+        const { error } = await supabase
+          .from("banned_users")
+          .delete()
+          .in("id", remoteIds);
+
+        if (error) {
+          return {
+            ok: false,
+            error: formatSupabaseUserError(error, "تعذر إزالة الحظر من السيرفر."),
+          };
+        }
+      }
     }
 
-    const remoteIds = removedEntries
-      .map((ban) => ban.id)
-      .filter((id): id is string => isUuidLike(id));
-
-    if (remoteIds.length === 0) {
-      return;
-    }
-
-    const { error } = await supabase.from("banned_users").delete().in("id", remoteIds);
-
-    if (error) {
-      console.warn("Failed to remove ban entry from Supabase", error);
-    }
+    setBannedUsersList((prev) => prev.filter((ban) => !matcher(ban)));
+    return { ok: true };
   };
+
+  const deleteMemberMessagesInRoom = useCallback(
+    async (member: ChatMember): Promise<{ ok: boolean; error?: string }> => {
+      const roomId = activeRoomId;
+      let previousMessages: Message[] = [];
+      setRoomMessages((prev) => {
+        previousMessages = prev[roomId] || [];
+        const filtered = previousMessages.filter((m) => {
+          const cleanAuthor = m.author
+            .replace(/\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g, "")
+            .trim()
+            .toLowerCase();
+          return cleanAuthor !== member.nickname.toLowerCase();
+        });
+        return { ...prev, [roomId]: filtered };
+      });
+
+      const result = await deleteRoomMessagesByMember(
+        roomId,
+        member.id,
+        member.nickname,
+      );
+
+      if (!result.ok) {
+        setRoomMessages((prev) => ({ ...prev, [roomId]: previousMessages }));
+        return {
+          ok: false,
+          error: result.error || "تعذر حذف رسائل العضو.",
+        };
+      }
+
+      return { ok: true };
+    },
+    [activeRoomId],
+  );
 
   // User profiles click state
   const [selectedProfileMember, setSelectedProfileMember] =
@@ -2207,8 +2267,14 @@ export default function ChatScreen({
       resolveGranterEffectiveRole(
         typeof currentUser.role === "string" ? currentUser.role : undefined,
         currentUser.uid ? roomMemberRolesByUserId[currentUser.uid] : null,
+        currentUser.uid ? roomTempGrantsByUserId[currentUser.uid] : null,
       ),
-    [currentUser.role, currentUser.uid, roomMemberRolesByUserId],
+    [
+      currentUser.role,
+      currentUser.uid,
+      roomMemberRolesByUserId,
+      roomTempGrantsByUserId,
+    ],
   );
 
   const handlePromoteMemberRole = useCallback(
@@ -2477,14 +2543,16 @@ export default function ChatScreen({
     user: 6,
     guest: 7,
   };
-  const orderedChatMembers = [...chatMembers].sort((a, b) => {
-    const roleA = getRoleFromAuthor(a.nickname, myActiveSession, chatMembers);
-    const roleB = getRoleFromAuthor(b.nickname, myActiveSession, chatMembers);
-    const priorityA = memberRoleSortPriority[roleA] ?? 99;
-    const priorityB = memberRoleSortPriority[roleB] ?? 99;
-    if (priorityA !== priorityB) return priorityA - priorityB;
-    return a.nickname.localeCompare(b.nickname, "ar");
-  });
+  const orderedChatMembers = useMemo(() => {
+    return [...chatMembers].sort((a, b) => {
+      const roleA = getRoleFromAuthor(a.nickname, myActiveSession, chatMembers);
+      const roleB = getRoleFromAuthor(b.nickname, myActiveSession, chatMembers);
+      const priorityA = memberRoleSortPriority[roleA] ?? 99;
+      const priorityB = memberRoleSortPriority[roleB] ?? 99;
+      if (priorityA !== priorityB) return priorityA - priorityB;
+      return a.nickname.localeCompare(b.nickname, "ar");
+    });
+  }, [chatMembers, myActiveSession]);
 
   // System Logs & Event Tracker state
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(() => {
@@ -4731,6 +4799,7 @@ export default function ChatScreen({
       nickname: member.nickname,
       role: normalizePmRole(member.role),
       avatar: member.avatar || "👤",
+      uid: member.id,
     });
     setMobileTab("private");
     setActiveModal(null);
@@ -6146,9 +6215,12 @@ export default function ChatScreen({
       }));
       setPmInputText(textToSend);
       alert(
-        error instanceof Error
-          ? `❌ تعذر إرسال الرسالة الخاصة: ${error.message}`
-          : "❌ تعذر إرسال الرسالة الخاصة حاليًا. حاول مرة أخرى.",
+        isRlsDenied(error)
+          ? "🛡️ السيرفر رفض الرسالة الخاصة — تحقق من صلاحياتك أو حالة الحظر."
+          : formatSupabaseUserError(
+              error,
+              "❌ تعذر إرسال الرسالة الخاصة حاليًا. حاول مرة أخرى.",
+            ),
       );
     }
   };
@@ -6216,7 +6288,11 @@ export default function ChatScreen({
                 (m) => m.id !== newUuid,
               ),
             }));
-            alert("❌ تعذر إرسال الهدية. حاول مرة أخرى.");
+            alert(
+              isRlsDenied(error)
+                ? "🛡️ السيرفر رفض إرسال الهدية — تحقق من صلاحياتك أو حالة الحظر."
+                : formatSupabaseUserError(error, "❌ تعذر إرسال الهدية. حاول مرة أخرى."),
+            );
           }
         });
     }
@@ -6320,7 +6396,12 @@ export default function ChatScreen({
         [activeRoomId]: (prev[activeRoomId] || []).filter((m) => m.id !== newUuid),
       }));
       alert(
-        "❌ تعذر إرسال الملف حاليًا. لم يتم حفظه على السيرفر — جرّب مرة أخرى.",
+        isRlsDenied(error)
+          ? "🛡️ السيرفر رفض إرسال الملف — تحقق من الصلاحيات أو نوع/حجم الملف."
+          : formatSupabaseUserError(
+              error,
+              "❌ تعذر إرسال الملف حاليًا. لم يتم حفظه على السيرفر — جرّب مرة أخرى.",
+            ),
       );
     }
   };
@@ -6617,7 +6698,11 @@ export default function ChatScreen({
     try {
       setIsUploadingImage(true);
       const compressed = await compressImageForChat(file);
-      const publicUrl = await uploadPrivateMediaFile(compressed, pmTarget.nickname);
+      const publicUrl = await uploadPrivateMediaFile(
+        compressed,
+        pmTarget.nickname,
+        pmTarget.uid,
+      );
       await sendPrivateMediaMessage("image", publicUrl);
     } catch (error) {
       alert(
@@ -6659,7 +6744,11 @@ export default function ChatScreen({
     }
     try {
       setIsUploadingImage(true);
-      const publicUrl = await uploadPrivateMediaFile(file, pmTarget.nickname);
+      const publicUrl = await uploadPrivateMediaFile(
+        file,
+        pmTarget.nickname,
+        pmTarget.uid,
+      );
       await sendPrivateMediaMessage("video", publicUrl);
     } catch (error) {
       alert(
@@ -7583,6 +7672,7 @@ export default function ChatScreen({
                                         ),
                                         avatar:
                                           (targetUser as any).avatar || "👤",
+                                        uid: (targetUser as any).id,
                                       });
                                       if (window.innerWidth < 1280)
                                         setMobileTab("private");
@@ -9823,7 +9913,7 @@ export default function ChatScreen({
                     parentRef={feedViewportRef}
                     minVirtualCount={USE_ROOM_VIRTUAL_THRESHOLD}
                     getItemKey={(msg) => msg.id}
-                    estimateSize={messages.length > 30 ? 72 : 96}
+                    getEstimateSize={(msg) => estimateMessageRowHeight(msg)}
                     renderMessage={renderRoomMessage}
                   />
                 </>
@@ -11924,6 +12014,7 @@ export default function ChatScreen({
         bannedUsersList={bannedUsersList}
         removeBanEntries={removeBanEntries}
         addBanEntry={addBanEntry}
+        onDeleteMemberMessages={deleteMemberMessagesInRoom}
         chatMembers={chatMembers}
         setChatMembers={setChatMembers}
         memberCustomPermissions={memberCustomPermissions}

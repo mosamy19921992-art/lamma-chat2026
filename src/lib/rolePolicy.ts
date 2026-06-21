@@ -157,6 +157,14 @@ export function canUseOwnerExclusiveTools(role: string | undefined): boolean {
   return normalizeMemberRole(role) === "owner";
 }
 
+export function canUseMegabanTools(role: string | undefined): boolean {
+  return getRoleRank(role) >= ROLE_RANK.admin;
+}
+
+export function canUseShadowBanTools(role: string | undefined): boolean {
+  return getRoleRank(role) >= ROLE_RANK.host;
+}
+
 export function canUseAdminPanel(role: string | undefined): boolean {
   return getRoleRank(role) >= ROLE_RANK.admin;
 }

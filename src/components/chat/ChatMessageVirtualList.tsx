@@ -5,6 +5,7 @@ export type ChatMessageVirtualListProps<T> = {
   messages: T[];
   parentRef: RefObject<HTMLDivElement | null>;
   estimateSize?: number;
+  getEstimateSize?: (item: T, index: number) => number;
   /** Below this count, render all rows without virtualization overhead. */
   minVirtualCount?: number;
   getItemKey?: (item: T, index: number) => string | number;
@@ -15,15 +16,17 @@ function VirtualizedMessageRows<T>({
   messages,
   parentRef,
   estimateSize,
+  getEstimateSize,
   renderMessage,
 }: Required<
   Pick<ChatMessageVirtualListProps<T>, "messages" | "parentRef" | "renderMessage">
 > &
-  Pick<ChatMessageVirtualListProps<T>, "estimateSize">) {
+  Pick<ChatMessageVirtualListProps<T>, "estimateSize" | "getEstimateSize">) {
   const virtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => estimateSize ?? 72,
+    estimateSize: (index) =>
+      getEstimateSize?.(messages[index], index) ?? estimateSize ?? 72,
     overscan: 8,
   });
 
@@ -66,6 +69,7 @@ export function ChatMessageVirtualList<T>({
   messages,
   parentRef,
   estimateSize = 72,
+  getEstimateSize,
   minVirtualCount = 30,
   getItemKey,
   renderMessage,
@@ -91,6 +95,7 @@ export function ChatMessageVirtualList<T>({
       messages={messages}
       parentRef={parentRef}
       estimateSize={estimateSize}
+      getEstimateSize={getEstimateSize}
       renderMessage={renderMessage}
     />
   );

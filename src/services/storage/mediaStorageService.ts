@@ -4,6 +4,28 @@ export const PRIVATE_MEDIA_BUCKET = "chat-media-private";
 export const PUBLIC_MEDIA_BUCKET = "chat-media";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24; // 24 hours (playback re-signs via resolveMediaUrl)
+const SIGNED_URL_CACHE = new Map<string, { url: string; expiresAt: number }>();
+
+function getCachedSignedUrl(objectPath: string): string | null {
+  const hit = SIGNED_URL_CACHE.get(objectPath);
+  if (!hit) return null;
+  if (hit.expiresAt <= Date.now() + 60_000) {
+    SIGNED_URL_CACHE.delete(objectPath);
+    return null;
+  }
+  return hit.url;
+}
+
+function rememberSignedUrl(objectPath: string, url: string): void {
+  SIGNED_URL_CACHE.set(objectPath, {
+    url,
+    expiresAt: Date.now() + SIGNED_URL_TTL_SECONDS * 1000,
+  });
+  if (SIGNED_URL_CACHE.size > 256) {
+    const oldest = SIGNED_URL_CACHE.keys().next().value;
+    if (oldest) SIGNED_URL_CACHE.delete(oldest);
+  }
+}
 
 export function formatPrivateMediaRef(objectPath: string): string {
   return `${PRIVATE_MEDIA_BUCKET}/${objectPath}`;
@@ -45,11 +67,15 @@ function extractPrivateObjectPath(publicUrl: string): string | null {
 }
 
 async function signPrivatePath(objectPath: string): Promise<string | null> {
+  const cached = getCachedSignedUrl(objectPath);
+  if (cached) return cached;
+
   if (!supabase) return null;
   const { data, error } = await supabase.storage
     .from(PRIVATE_MEDIA_BUCKET)
     .createSignedUrl(objectPath, SIGNED_URL_TTL_SECONDS);
   if (error || !data?.signedUrl) return null;
+  rememberSignedUrl(objectPath, data.signedUrl);
   return data.signedUrl;
 }
 

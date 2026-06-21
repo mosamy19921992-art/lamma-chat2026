@@ -14,7 +14,9 @@ import { postRoomSystemMessage } from "../../services/chat/moderationService";
 import {
   canGrantRole,
   canPromoteMembers,
+  canUseMegabanTools,
   canUseOwnerExclusiveTools,
+  canUseShadowBanTools,
   canUseStaffTools,
   getGrantableRoles,
   ROLE_CHIP_CLASS,
@@ -35,7 +37,7 @@ const PROMOTE_ERROR_MESSAGES: Record<string, string> = {
   cannot_grant_role: "رتبتك لا تسمح بمنح هذه الرتبة للعضو.",
 };
 
-export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setShowProfileModal, setSelectedProfileMember, myActiveSession, currentUser, isOwnerRole, isRegisteredAccount, tempEntryTopicInput, setTempEntryTopicInput, setTempEntryTopicStatusText, tempEntryTopicEnabled, setTempEntryTopicEnabled, handleSaveTempEntryTopic, tempEntryTopicStatusText, nicknameRequestInput, setNicknameRequestInput, nicknameRequestLoading, handleSubmitNicknameChangeRequest, nicknameRequestStatusText, nicknameRequests, setRoomMessages, activeRoomId, addSystemActivityLog, addLammaBotMessage, bannedUsersList, removeBanEntries, addBanEntry, chatMembers, setChatMembers, memberCustomPermissions, setMemberCustomPermissions, myCustomBio, setMyCustomBio, handleSelectProfileEmoji, handleProfileAvatarUploadChange, profileAvatarInputRef, profileAvatarSaving, profileAvatarStatus, onSendPrivateMessage, onPromoteMemberRole, roomLabel, myEffectiveRole, roleGrantsPolicy, roomTempGrantsByUserId }: any) => {
+export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setShowProfileModal, setSelectedProfileMember, myActiveSession, currentUser, isOwnerRole, isRegisteredAccount, tempEntryTopicInput, setTempEntryTopicInput, setTempEntryTopicStatusText, tempEntryTopicEnabled, setTempEntryTopicEnabled, handleSaveTempEntryTopic, tempEntryTopicStatusText, nicknameRequestInput, setNicknameRequestInput, nicknameRequestLoading, handleSubmitNicknameChangeRequest, nicknameRequestStatusText, nicknameRequests, setRoomMessages, activeRoomId, addSystemActivityLog, addLammaBotMessage, bannedUsersList, removeBanEntries, addBanEntry, onDeleteMemberMessages, chatMembers, setChatMembers, memberCustomPermissions, setMemberCustomPermissions, myCustomBio, setMyCustomBio, handleSelectProfileEmoji, handleProfileAvatarUploadChange, profileAvatarInputRef, profileAvatarSaving, profileAvatarStatus, onSendPrivateMessage, onPromoteMemberRole, roomLabel, myEffectiveRole, roleGrantsPolicy, roomTempGrantsByUserId }: any) => {
   const [rolePromoteLoading, setRolePromoteLoading] = useState(false);
   const [grantTemporary, setGrantTemporary] = useState(false);
   const isOwnProfile =
@@ -561,6 +563,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                         {/* 2. Mute toggle */}
                         <button
                           onClick={() => {
+                            void (async () => {
                             const isCurrentlyMuted = bannedUsersList.some(
                               (b) =>
                                 b.nickname.toLowerCase() ===
@@ -568,13 +571,17 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                 b.type === "mute",
                             );
                             if (isCurrentlyMuted) {
-                              void removeBanEntries(
+                              const result = await removeBanEntries(
                                 (ban) =>
                                   ban.nickname.toLowerCase() ===
                                     selectedProfileMember.nickname.toLowerCase() &&
                                   ban.type === "mute",
                                 { sync: true },
                               );
+                              if (!result.ok) {
+                                alert(`❌ ${result.error || "تعذر إلغاء الكتم."}`);
+                                return;
+                              }
                               addSystemActivityLog(
                                 "promote",
                                 selectedProfileMember.nickname,
@@ -601,7 +608,11 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                   minute: "numeric",
                                 }),
                               };
-                              void addBanEntry(muteBan, { sync: true });
+                              const result = await addBanEntry(muteBan, { sync: true });
+                              if (!result.ok) {
+                                alert(`❌ ${result.error || "تعذر كتم العضو."}`);
+                                return;
+                              }
                               addSystemActivityLog(
                                 "ban",
                                 selectedProfileMember.nickname,
@@ -612,6 +623,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                               );
                             }
                             setShowProfileModal(false);
+                            })();
                           }}
                           className="py-2 px-3 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 font-bold text-[10px] rounded-xl border border-purple-500/20 text-center transition-all cursor-pointer flex items-center justify-center gap-1"
                         >
@@ -628,6 +640,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                         {/* 3. Kick */}
                         <button
                           onClick={() => {
+                            void (async () => {
                             const kickBan: BanInfo = {
                               id: `kick-${Date.now()}`,
                               nickname: selectedProfileMember.nickname,
@@ -648,7 +661,11 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                 minute: "numeric",
                               }),
                             };
-                            void addBanEntry(kickBan, { sync: true });
+                            const result = await addBanEntry(kickBan, { sync: true });
+                            if (!result.ok) {
+                              alert(`❌ ${result.error || "تعذر طرد العضو."}`);
+                              return;
+                            }
                             const sysText = `🚪 [طرد أمني عاجل] من المشرف لـ [${selectedProfileMember.nickname}]: تم الطرد فوراً لتنظيم الغرفة! 👋`;
                             void postRoomSystemMessage({
                               roomId: activeRoomId,
@@ -672,6 +689,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                               `تم إخضاع العضو للطرد الفوري خارج الغرفة بالتأكيد!`,
                             );
                             setShowProfileModal(false);
+                            })();
                           }}
                           className="py-2 px-3 text-orange-300 font-bold text-[10px] rounded-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1 lamma-soft-warn"
                         >
@@ -681,38 +699,109 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                         {/* 4. Delete messages */}
                         <button
                           onClick={() => {
-                            setRoomMessages((prev) => {
-                              const activeMsgs = prev[activeRoomId] || [];
-                              const filtered = activeMsgs.filter(
-                                (m) =>
-                                  m.author
-                                    .replace(
-                                      /\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g,
-                                      "",
-                                    )
-                                    .trim()
-                                    .toLowerCase() !==
-                                  selectedProfileMember.nickname.toLowerCase(),
+                            void (async () => {
+                              if (!onDeleteMemberMessages) {
+                                alert("❌ حذف الرسائل غير متاح حالياً.");
+                                return;
+                              }
+                              const result = await onDeleteMemberMessages(
+                                selectedProfileMember,
                               );
-                              return {
-                                ...prev,
-                                [activeRoomId]: filtered,
-                              };
-                            });
-                            addSystemActivityLog(
-                              "demote",
-                              selectedProfileMember.nickname,
-                              `تم مسح وسحب جميع رسائل العضو في غرفة [${activeRoomId}]`,
-                            );
-                            alert(
-                              `تم تصفية ومسح جميع رسائل العضو [${selectedProfileMember.nickname}] من شات الغرفة بنجاح!`,
-                            );
-                            setShowProfileModal(false);
+                              if (!result.ok) {
+                                alert(`❌ ${result.error || "تعذر حذف رسائل العضو."}`);
+                                return;
+                              }
+                              addSystemActivityLog(
+                                "demote",
+                                selectedProfileMember.nickname,
+                                `تم مسح رسائل العضو في غرفة [${activeRoomId}] من السيرفر.`,
+                              );
+                              alert(
+                                `تم حذف رسائل العضو [${selectedProfileMember.nickname}] من الشات والسيرفر بنجاح!`,
+                              );
+                              setShowProfileModal(false);
+                            })();
                           }}
                           className="py-2 px-3 text-red-400 font-bold text-[10px] rounded-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1 lamma-danger-btn"
                         >
                           🗑️ حذف رسائله
                         </button>
+
+                        {canUseShadowBanTools(granterRole) && (
+                        <button
+                          onClick={() => {
+                            void (async () => {
+                            const isShadow = bannedUsersList.some(
+                              (b) =>
+                                b.nickname.toLowerCase() ===
+                                  selectedProfileMember.nickname.toLowerCase() &&
+                                b.type === "shadow",
+                            );
+                            if (isShadow) {
+                              const result = await removeBanEntries(
+                                (ban) =>
+                                  ban.nickname.toLowerCase() ===
+                                    selectedProfileMember.nickname.toLowerCase() &&
+                                  ban.type === "shadow",
+                                { sync: true },
+                              );
+                              if (!result.ok) {
+                                alert(`❌ ${result.error || "تعذر إلغاء الحظر الخفي."}`);
+                                return;
+                              }
+                              addSystemActivityLog(
+                                "promote",
+                                selectedProfileMember.nickname,
+                                `تم إلغاء الحظر الخفي (Shadow Ban) عن العضو ${selectedProfileMember.nickname}.`,
+                              );
+                              alert(`تم إلغاء الحظر الخفي.`);
+                            } else {
+                              const sb: BanInfo = {
+                                id: `shadow-${Date.now()}`,
+                                nickname: selectedProfileMember.nickname,
+                                email: selectedProfileMember.email,
+                                fingerprint: selectedProfileMember.fingerprint,
+                                browserSignature:
+                                  selectedProfileMember.browserSignature,
+                                ip: selectedProfileMember.ip,
+                                localStorageId:
+                                  selectedProfileMember.id ||
+                                  selectedProfileMember.localStorageId,
+                                type: "shadow",
+                                banner: currentUser.nickname,
+                                reason: "تطبيق حظر خفي من الطاقم",
+                                time: new Date().toLocaleTimeString("ar-EG", {
+                                  hour: "numeric",
+                                  minute: "numeric",
+                                }),
+                              };
+                              const result = await addBanEntry(sb, { sync: true });
+                              if (!result.ok) {
+                                alert(`❌ ${result.error || "تعذر تطبيق الحظر الخفي."}`);
+                                return;
+                              }
+                              addSystemActivityLog(
+                                "ban",
+                                selectedProfileMember.nickname,
+                                `تطبيق الحظر الخفي الشبح (Shadow Ban) للعضو.`,
+                              );
+                              alert(`تم تفعيل الحظر الشبح (Shadow Ban) بنجاح.`);
+                            }
+                            setShowProfileModal(false);
+                            })();
+                          }}
+                          className="py-2 px-3 bg-gray-500/10 hover:bg-gray-500/20 text-gray-400 font-bold text-[10px] rounded-xl border border-gray-500/20 text-center transition-all cursor-pointer flex items-center justify-center gap-1 col-span-2"
+                        >
+                          {bannedUsersList.some(
+                            (b) =>
+                              b.nickname.toLowerCase() ===
+                                selectedProfileMember.nickname.toLowerCase() &&
+                              b.type === "shadow",
+                          )
+                            ? "👻 إلغاء حظر شبحي"
+                            : "👻 حظر خفي (Shadow)"}
+                        </button>
+                        )}
                       </div>
 
                       {/* Rank promotions — Kalamngy-style hierarchy */}
@@ -724,6 +813,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                               granterRole === "mod") && (
                             <button
                               onClick={() => {
+                                void (async () => {
                                 const rb: BanInfo = {
                                   id: `roomban-${Date.now()}`,
                                   nickname: selectedProfileMember.nickname,
@@ -746,7 +836,11 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                     minute: "numeric",
                                   }),
                                 };
-                                void addBanEntry(rb, { sync: true });
+                                const result = await addBanEntry(rb, { sync: true });
+                                if (!result.ok) {
+                                  alert(`❌ ${result.error || "تعذر حظر الغرفة."}`);
+                                  return;
+                                }
                                 addSystemActivityLog(
                                   "ban",
                                   selectedProfileMember.nickname,
@@ -756,6 +850,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                   `تم حظر العضو بنجاح من دخول الغرفة الحالية [${activeRoomId}].`,
                                 );
                                 setShowProfileModal(false);
+                                })();
                               }}
                               className="py-2 px-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 font-bold text-[9.5px] rounded-xl border border-pink-500/20 text-center transition-all cursor-pointer"
                             >
@@ -1194,13 +1289,15 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                 </div>
                               </div>
 
+                              {canUseMegabanTools(granterRole) && (
+                              <>
                               <div className="text-[8.5px] font-black text-red-500 select-none pr-1">
-                                💥 حظر المالك الأعلى المطلق:
+                                💥 حظر شامل (Admin+):
                               </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                {/* Mega Ban */}
+                              <div className="grid grid-cols-1 gap-2">
                                 <button
                                   onClick={() => {
+                                    void (async () => {
                                     const mb: BanInfo = {
                                       id: `megaban-${Date.now()}`,
                                       nickname: selectedProfileMember.nickname,
@@ -1222,14 +1319,18 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                         { hour: "numeric", minute: "numeric" },
                                       ),
                                     };
-                                    void addBanEntry(mb, { sync: true });
+                                    const result = await addBanEntry(mb, { sync: true });
+                                    if (!result.ok) {
+                                      alert(`❌ ${result.error || "تعذر تطبيق Mega Ban."}`);
+                                      return;
+                                    }
                                     addSystemActivityLog(
                                       "ban",
                                       selectedProfileMember.nickname,
                                       `حظر كامل شامل ومطلق (Mega Ban) طمس وتجميد بصمته رقم: [${selectedProfileMember.fingerprint}]`,
                                     );
 
-                                    const mbText = `🚨 [Mega Ban Lockdown]: أصدر المالك قراراً بالبتر الفني التام والمؤبد للعضو [${selectedProfileMember.nickname}] وتجميد بصمة جهازه والـ IP والحظر التلقائي لكافة الكوكيز والبيانات المحلية لديه! 🛑`;
+                                    const mbText = `🚨 [Mega Ban Lockdown]: أصدر المشرف قراراً بالبتر الفني التام والمؤبد للعضو [${selectedProfileMember.nickname}] وتجميد بصمة جهازه والـ IP والحظر التلقائي لكافة الكوكيز والبيانات المحلية لديه! 🛑`;
                                     setRoomMessages((prev) => ({
                                       ...prev,
                                       [activeRoomId]: [
@@ -1263,83 +1364,15 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                       `تم إخضاع العضو المشاغب فوراً للحظر المطلق Mega Ban وتجميد كافة بيانات اتصاله!`,
                                     );
                                     setShowProfileModal(false);
+                                    })();
                                   }}
                                   className="py-2.5 bg-red-600/25 hover:bg-red-600/35 text-red-400 font-extrabold text-[9.5px] rounded-xl border border-red-500/30 text-center transition-all cursor-pointer"
                                 >
                                   🚨 حظر شامل (Mega Ban)
                                 </button>
-
-                                {/* Shadow Ban */}
-                                <button
-                                  onClick={() => {
-                                    const isShadow = bannedUsersList.some(
-                                      (b) =>
-                                        b.nickname.toLowerCase() ===
-                                          selectedProfileMember.nickname.toLowerCase() &&
-                                        b.type === "shadow",
-                                    );
-                                    if (isShadow) {
-                                      void removeBanEntries(
-                                        (ban) =>
-                                          ban.nickname.toLowerCase() ===
-                                            selectedProfileMember.nickname.toLowerCase() &&
-                                          ban.type === "shadow",
-                                        { sync: true },
-                                      );
-                                      addSystemActivityLog(
-                                        "promote",
-                                        selectedProfileMember.nickname,
-                                        `تم إلغاء الحظر الخفي (Shadow Ban) عن العضو ${selectedProfileMember.nickname}.`,
-                                      );
-                                      alert(`تم إلغاء الحظر الخفي.`);
-                                    } else {
-                                      const sb: BanInfo = {
-                                        id: `shadow-${Date.now()}`,
-                                        nickname:
-                                          selectedProfileMember.nickname,
-                                        email: selectedProfileMember.email,
-                                        fingerprint:
-                                          selectedProfileMember.fingerprint,
-                                        browserSignature:
-                                          selectedProfileMember.browserSignature,
-                                        ip: selectedProfileMember.ip,
-                                        localStorageId:
-                                          selectedProfileMember.localStorageId,
-                                        type: "shadow",
-                                        banner: currentUser.nickname,
-                                        reason: "تطبيق حظر خفي شبكي من المالك",
-                                        time: new Date().toLocaleTimeString(
-                                          "ar-EG",
-                                          {
-                                            hour: "numeric",
-                                            minute: "numeric",
-                                          },
-                                        ),
-                                      };
-                                      void addBanEntry(sb, { sync: true });
-                                      addSystemActivityLog(
-                                        "ban",
-                                        selectedProfileMember.nickname,
-                                        `تطبيق الحظر الخفي الشبح (Shadow Ban) للعضو.`,
-                                      );
-                                      alert(
-                                        `تم تفعيل الحظر الشبح (Shadow Ban) بنجاح.`,
-                                      );
-                                    }
-                                    setShowProfileModal(false);
-                                  }}
-                                  className="py-2.5 bg-gray-500/10 hover:bg-gray-500/20 text-gray-400 font-extrabold text-[9.5px] rounded-xl border border-gray-500/20 text-center transition-all cursor-pointer"
-                                >
-                                  {bannedUsersList.some(
-                                    (b) =>
-                                      b.nickname.toLowerCase() ===
-                                        selectedProfileMember.nickname.toLowerCase() &&
-                                      b.type === "shadow",
-                                  )
-                                    ? "👻 إلغاء حظر شبحي"
-                                    : "👻 حظر خفي (Shadow)"}
-                                </button>
                               </div>
+                              </>
+                              )}
                             </div>
                           )}
                     </div>

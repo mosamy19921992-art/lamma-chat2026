@@ -23,10 +23,28 @@ export interface CallSignalRow {
   payload: Record<string, unknown>;
 }
 
+const ICE_SIGNAL_WINDOW_MS = 1000;
+const MAX_ICE_SIGNALS_PER_WINDOW = 24;
+let iceSignalWindowStart = 0;
+let iceSignalsInWindow = 0;
+
+function allowIceSignal(): boolean {
+  const now = Date.now();
+  if (now - iceSignalWindowStart > ICE_SIGNAL_WINDOW_MS) {
+    iceSignalWindowStart = now;
+    iceSignalsInWindow = 0;
+  }
+  iceSignalsInWindow += 1;
+  return iceSignalsInWindow <= MAX_ICE_SIGNALS_PER_WINDOW;
+}
+
 export async function sendCallSignal(
   signal: Omit<CallSignalRow, "id" | "created_at">,
 ): Promise<{ error: string | null }> {
   if (!supabase) return { error: "Supabase غير متصل" };
+  if (signal.signal_type === "ice" && !allowIceSignal()) {
+    return { error: "rate_limited" };
+  }
   const { error } = await supabase.from("call_signals").insert([signal]);
   return { error: error?.message ?? null };
 }

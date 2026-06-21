@@ -290,4 +290,5 @@ export type PMTargetState = {
   nickname: string;
   role: string;
   avatar: string;
+  uid?: string;
 };

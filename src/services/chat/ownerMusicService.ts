@@ -4,7 +4,7 @@ import type { OwnerMusicTrack } from "../../lib/chatTypes";
 import { fetchServerUserRole } from "../auth/userRoleService";
 import { normalizeAuthRole } from "../../lib/authProfile";
 
-const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
 const AUDIO_TYPES = /^audio\//;
 
 /** Storage keys must be ASCII-only (Supabase rejects Arabic/spaces in paths). */
@@ -78,7 +78,7 @@ export async function uploadOwnerMusicFile(
   }
 
   if (file.size > MAX_AUDIO_BYTES) {
-    return { error: "حجم الملف كبير. الحد الأقصى 20MB." };
+    return { error: "حجم الملف كبير. الحد الأقصى 5MB." };
   }
 
   const storageFileName = buildMusicStorageFileName(file.name);

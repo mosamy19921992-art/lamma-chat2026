@@ -144,14 +144,18 @@ export async function markPrivateMessagesAsRead(
 export async function uploadPrivateMediaFile(
   file: File,
   targetNickname: string,
+  targetUserId?: string | null,
 ): Promise<string> {
   if (!supabase) {
     throw new Error("Supabase غير متصل.");
   }
 
   const uid = await requireAuthenticatedUid();
-  const target = targetNickname.replace(/[^\w.-]+/g, "_") || "unknown";
-  const subfolder = `pm/${target}`;
+  const recipientKey =
+    targetUserId?.replace(/[^\w-]/g, "") ||
+    targetNickname.replace(/[^\w.-]+/g, "_") ||
+    "unknown";
+  const subfolder = `pm/${recipientKey}`;
 
   const { path, error } = await uploadToPrivateBucket(file, uid, subfolder);
 
