@@ -1138,21 +1138,22 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                   </div>
 
                                   {/* 6. Room Creation */}
-                                  <div className="flex items-center justify-between text-[10px] font-bold text-gray-300">
-                                    <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center justify-between text-[10px] font-bold text-gray-300 gap-2">
+                                    <div className="flex items-center gap-1.5 shrink-0">
                                       <Compass
                                         size={14}
                                         className="text-yellow-300"
                                       />
-                                      <span>إتاحة إنشاء غرف خاصة:</span>
+                                      <span>إنشاء غرف خاصة:</span>
                                     </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const currentVal =
-                                          memberCustomPermissions[
-                                            selectedProfileMember.nickname
-                                          ]?.roomCreationAllowed || false;
+                                    <select
+                                      value={
+                                        memberCustomPermissions[
+                                          selectedProfileMember.nickname
+                                        ]?.roomCreationQuota ?? 0
+                                      }
+                                      onChange={(e) => {
+                                        const quota = Number(e.target.value);
                                         setMemberCustomPermissions((prev) => ({
                                           ...prev,
                                           [selectedProfileMember.nickname]: {
@@ -1163,30 +1164,28 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                               callsAllowed: false,
                                               musicRadioAllowed: false,
                                               roomCreationAllowed: false,
+                                              roomCreationQuota: 0,
                                             }),
-                                            roomCreationAllowed: !currentVal,
+                                            roomCreationAllowed: quota > 0,
+                                            roomCreationQuota: quota,
                                           },
                                         }));
                                         addSystemActivityLog(
                                           "promote",
                                           selectedProfileMember.nickname,
-                                          `${!currentVal ? "تنشيط" : "إلغاء"} صلاحية إنشاء الغرف لـ ${selectedProfileMember.nickname}`,
+                                          quota > 0
+                                            ? `منح ${quota} غرفة/غرف لـ ${selectedProfileMember.nickname}`
+                                            : `إلغاء صلاحية إنشاء الغرف لـ ${selectedProfileMember.nickname}`,
                                         );
                                       }}
-                                      className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all border ${
-                                        memberCustomPermissions[
-                                          selectedProfileMember.nickname
-                                        ]?.roomCreationAllowed
-                                          ? "bg-green-500/15 border-green-500/30 text-green-400"
-                                          : "bg-red-500/15 border-red-500/30 text-red-400"
-                                      }`}
+                                      className="px-2 py-1 rounded-lg text-[9px] font-extrabold bg-black/40 border border-white/10 text-white"
                                     >
-                                      {memberCustomPermissions[
-                                        selectedProfileMember.nickname
-                                      ]?.roomCreationAllowed
-                                        ? "مفعلة بنجاح ✅"
-                                        : "معطلة ❌"}
-                                    </button>
+                                      <option value={0}>معطّل</option>
+                                      <option value={1}>غرفة واحدة 🔒</option>
+                                      <option value={2}>غرفتين 🔒</option>
+                                      <option value={3}>3 غرف 🔒</option>
+                                      <option value={5}>5 غرف 🔒</option>
+                                    </select>
                                   </div>
                                 </div>
                               </div>

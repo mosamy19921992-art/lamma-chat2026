@@ -222,6 +222,7 @@ export const EMPTY_MEMBER_PERMISSIONS: MemberCustomPermissions = {
   videoCallsAllowed: false,
   musicRadioAllowed: false,
   roomCreationAllowed: false,
+  roomCreationQuota: 0,
   imagesAllowed: false,
   youtubeAllowed: false,
 };
@@ -271,4 +272,23 @@ export function canShareYoutube(
 
 export function textContainsYoutubeUrl(text: string): boolean {
   return /youtu\.be\/|youtube\.com\/|youtube\.com\/watch/i.test(text);
+}
+
+export function getRoomCreationQuotaRemaining(
+  user: Pick<UserSession, "nickname" | "role">,
+  perms: Record<string, MemberCustomPermissions>,
+  myRoomCount: number,
+): { allowed: boolean; quota: number; used: number; remaining: number } {
+  if (isOwnerOrAdminRole(user.role)) {
+    return { allowed: true, quota: 9999, used: myRoomCount, remaining: 9999 };
+  }
+  const member = getMemberPermissions(perms, user.nickname);
+  const quota = Math.max(0, member.roomCreationQuota || 0);
+  const allowed = member.roomCreationAllowed && quota > 0;
+  return {
+    allowed,
+    quota,
+    used: myRoomCount,
+    remaining: Math.max(0, quota - myRoomCount),
+  };
 }

@@ -114,6 +114,8 @@ export interface MemberCustomPermissions {
   musicRadioAllowed: boolean;
   /** إنشاء غرف مخصصة */
   roomCreationAllowed: boolean;
+  /** عدد الغرف التي يمكن للعضو إنشاؤها (0 = معطّل) */
+  roomCreationQuota: number;
   /** رفع الصور ومشاركة روابط الصور */
   imagesAllowed: boolean;
   /** مشاركة يوتيوب / فيديو في الرسائل */
@@ -277,6 +279,8 @@ export type CustomRoomEntry = {
   category: "private";
   createdBy: string;
   password?: string;
+  isLocked?: boolean;
+  ownerUid?: string;
 };
 
 export type PMTargetState = {

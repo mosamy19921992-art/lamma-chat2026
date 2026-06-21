@@ -1,7 +1,4 @@
-// CreateRoomModal — lets admins / owners create a new private room.
-// Extracted from ChatScreen.tsx — pure refactor, no behavior change.
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
 export interface NewRoomDetails {
@@ -12,7 +9,12 @@ export interface NewRoomDetails {
 export interface CreateRoomModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (details: NewRoomDetails) => void;
+  onCreate: (details: NewRoomDetails) => void | Promise<void>;
+  passwordRequired?: boolean;
+  quotaRemaining?: number;
+  quotaTotal?: number;
+  isUnlimited?: boolean;
+  creating?: boolean;
 }
 
 const EMPTY_DETAILS: NewRoomDetails = { name: "", password: "" };
@@ -21,17 +23,26 @@ export function CreateRoomModal({
   isOpen,
   onClose,
   onCreate,
+  passwordRequired = false,
+  quotaRemaining = 0,
+  quotaTotal = 0,
+  isUnlimited = false,
+  creating = false,
 }: CreateRoomModalProps) {
   const [details, setDetails] = useState<NewRoomDetails>(EMPTY_DETAILS);
 
+  useEffect(() => {
+    if (!isOpen) setDetails(EMPTY_DETAILS);
+  }, [isOpen]);
+
   const handleClose = () => {
+    if (creating) return;
     setDetails(EMPTY_DETAILS);
     onClose();
   };
 
   const handleCreate = () => {
-    onCreate(details);
-    setDetails(EMPTY_DETAILS);
+    void onCreate(details);
   };
 
   return (
@@ -45,8 +56,17 @@ export function CreateRoomModal({
         >
           <div className="p-6 rounded-3xl w-full max-w-sm space-y-4 lamma-modal-shell">
             <h2 className="text-sm font-black text-white">
-              إنشاء غرفة جديدة
+              إنشاء غرفة خاصة جديدة
             </h2>
+            {isUnlimited ? (
+              <p className="text-[10px] text-lime-300/90 font-bold">
+                لديك صلاحية غير محدودة لإنشاء الغرف.
+              </p>
+            ) : (
+              <p className="text-[10px] text-yellow-300/90 font-bold">
+                المتبقي من حصتك: {quotaRemaining} / {quotaTotal} غرف
+              </p>
+            )}
             <input
               type="text"
               id="createRoomName"
@@ -54,6 +74,7 @@ export function CreateRoomModal({
               autoComplete="off"
               placeholder="اسم الغرفة"
               value={details.name}
+              disabled={creating}
               onChange={(e) =>
                 setDetails((prev) => ({ ...prev, name: e.target.value }))
               }
@@ -63,29 +84,40 @@ export function CreateRoomModal({
               type="password"
               id="createRoomPassword"
               name="createRoomPassword"
-              autoComplete="off"
-              placeholder="كلمة المرور ستتوفر لاحقاً"
+              autoComplete="new-password"
+              placeholder={
+                passwordRequired
+                  ? "كلمة مرور الغرفة (4 أحرف على الأقل)"
+                  : "كلمة مرور الغرفة (اختياري للمالك/الأدمن)"
+              }
               value={details.password}
-              disabled
-              title="قفل الغرف بكلمة مرور لم يتم تفعيله بعد"
-              className="w-full p-3 rounded-xl text-white text-xs lamma-input-shell opacity-60 cursor-not-allowed"
+              disabled={creating}
+              onChange={(e) =>
+                setDetails((prev) => ({ ...prev, password: e.target.value }))
+              }
+              className="w-full p-3 rounded-xl text-white text-xs lamma-input-shell"
             />
             <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
-              سيتم تفعيل كلمة مرور الغرفة في تحديث لاحق. حالياً الغرف الجديدة
-              تُنشأ بدون قفل فعلي حتى لا تظهر الميزة كأنها شغالة وهي غير مفعلة.
+              {passwordRequired
+                ? "الغرف التي ينشئها الأعضاء يجب أن تكون مقفولة بكلمة مرور. شارك كلمة المرور مع من تريد دعوتهم."
+                : "يمكنك ترك كلمة المرور فارغة لغرفة مفتوحة، أو وضع كلمة مرور لحماية الدخول."}
             </p>
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={handleClose}
+                disabled={creating}
                 className="flex-1 p-2 rounded-xl text-red-400 text-xs font-bold lamma-danger-btn"
               >
                 إلغاء
               </button>
               <button
+                type="button"
                 onClick={handleCreate}
-                className="flex-1 p-2 rounded-xl text-xs font-bold lamma-feature-primary"
+                disabled={creating}
+                className="flex-1 p-2 rounded-xl text-xs font-bold lamma-feature-primary disabled:opacity-60"
               >
-                إنشاء
+                {creating ? "جاري الإنشاء…" : "إنشاء"}
               </button>
             </div>
           </div>

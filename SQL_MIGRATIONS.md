@@ -12,6 +12,7 @@ Apply **only** via `scripts/apply-production-setup.mjs` (requires `SUPABASE_ACCE
 7. supabase-private-media.sql             ← private PM bucket
 8. supabase-room-member-roles.sql         ← per-room mod/vip + promote RPC
 9. supabase-role-policy-v2.sql            ← host + temp grants + grant matrix
+10. supabase-private-rooms.sql            ← password rooms + creation quota
 ```
 
 **Do not** run `supabase-storage.sql` after step 4 — it overwrites folder-scoped upload policies.
@@ -44,3 +45,11 @@ SUPABASE_ACCESS_TOKEN=... node scripts/apply-room-member-roles.mjs
 ```
 
 Or paste `supabase-room-member-roles.sql` in Supabase SQL Editor.
+
+## Private password rooms
+
+```bash
+SUPABASE_ACCESS_TOKEN=... node scripts/apply-private-rooms.mjs
+```
+
+Or paste `supabase-private-rooms.sql` in Supabase SQL Editor.

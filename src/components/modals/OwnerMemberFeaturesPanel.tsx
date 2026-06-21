@@ -49,7 +49,7 @@ const FEATURE_META: Record<
   },
   roomCreation: {
     label: "إنشاء غرف",
-    desc: "إنشاء غرف مخصصة جديدة في الشات.",
+    desc: "إنشاء غرف خاصة بكلمة مرور — حدد عدد الغرف لكل عضو (1، 2، 3…).",
     permKey: "roomCreationAllowed",
   },
   imageUpload: {
@@ -73,6 +73,15 @@ const FEATURE_ICONS: Record<OwnerFeatureKey, typeof Mic> = {
   imageUpload: Image,
   youtubeShare: Tv,
 };
+
+const ROOM_CREATION_QUOTA_CYCLE = [0, 1, 2, 3, 5] as const;
+
+function quotaLabel(quota: number): string {
+  if (quota <= 0) return "⛔ موقوف";
+  if (quota === 1) return "🔒 غرفة واحدة";
+  if (quota === 2) return "🔒 غرفتين";
+  return `🔒 ${quota} غرف`;
+}
 
 interface OwnerMemberFeaturesPanelProps {
   registeredMemberNames: string[];
@@ -120,6 +129,9 @@ export function OwnerMemberFeaturesPanel({
       [nickname]: {
         ...(prev[nickname] || defaultPerms()),
         [permKey]: enabled,
+        ...(activeFeature === "roomCreation"
+          ? { roomCreationQuota: enabled ? 1 : 0 }
+          : {}),
       },
     }));
 
@@ -131,7 +143,39 @@ export function OwnerMemberFeaturesPanel({
     );
   };
 
+  const cycleRoomCreationQuota = (nickname: string) => {
+    const current =
+      memberCustomPermissions[nickname]?.roomCreationQuota ??
+      (memberCustomPermissions[nickname]?.roomCreationAllowed ? 1 : 0);
+    const idx = ROOM_CREATION_QUOTA_CYCLE.indexOf(
+      current as (typeof ROOM_CREATION_QUOTA_CYCLE)[number],
+    );
+    const next =
+      ROOM_CREATION_QUOTA_CYCLE[
+        (idx >= 0 ? idx + 1 : 1) % ROOM_CREATION_QUOTA_CYCLE.length
+      ];
+
+    setMemberCustomPermissions((prev) => ({
+      ...prev,
+      [nickname]: {
+        ...(prev[nickname] || defaultPerms()),
+        roomCreationAllowed: next > 0,
+        roomCreationQuota: next,
+      },
+    }));
+
+    addSystemActivityLog(
+      "promote",
+      nickname,
+      `تعديل حصة إنشاء الغرف لـ ${nickname}: ${quotaLabel(next)}`,
+      currentUserNickname,
+    );
+  };
+
   const isFeatureEnabled = (nickname: string, key: OwnerFeatureKey) => {
+    if (key === "roomCreation") {
+      return (memberCustomPermissions[nickname]?.roomCreationQuota || 0) > 0;
+    }
     const permKey = FEATURE_META[key].permKey;
     return !!memberCustomPermissions[nickname]?.[permKey];
   };
@@ -195,7 +239,9 @@ export function OwnerMemberFeaturesPanel({
                 {FEATURE_META[activeFeature].label}
               </div>
               <div className="text-[10px] text-gray-500">
-                اضغط على الاسم للتفعيل أو الإيقاف
+                {activeFeature === "roomCreation"
+                  ? "اضغط على الاسم لتغيير عدد الغرف المسموح بها"
+                  : "اضغط على الاسم للتفعيل أو الإيقاف"}
               </div>
             </div>
             <button
@@ -231,11 +277,17 @@ export function OwnerMemberFeaturesPanel({
             <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
               {filteredNames.map((nickname) => {
                 const on = isFeatureEnabled(nickname, activeFeature);
+                const roomQuota =
+                  memberCustomPermissions[nickname]?.roomCreationQuota || 0;
                 return (
                   <button
                     key={nickname}
                     type="button"
-                    onClick={() => toggleMemberFeature(nickname, !on)}
+                    onClick={() =>
+                      activeFeature === "roomCreation"
+                        ? cycleRoomCreationQuota(nickname)
+                        : toggleMemberFeature(nickname, !on)
+                    }
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-bold transition-all border ${
                       on
                         ? "bg-green-500/10 border-green-500/30 text-green-300"
@@ -244,7 +296,11 @@ export function OwnerMemberFeaturesPanel({
                   >
                     <span>{nickname}</span>
                     <span className="text-[9px]">
-                      {on ? "✅ مفعّل" : "⛔ موقوف"}
+                      {activeFeature === "roomCreation"
+                        ? quotaLabel(roomQuota)
+                        : on
+                          ? "✅ مفعّل"
+                          : "⛔ موقوف"}
                     </span>
                   </button>
                 );

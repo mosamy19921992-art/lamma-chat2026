@@ -118,6 +118,7 @@ export interface OwnerMemberPermissionRow {
   video_calls_allowed?: boolean;
   music_radio_allowed?: boolean;
   room_creation_allowed?: boolean;
+  room_creation_quota?: number;
   images_allowed?: boolean;
   youtube_allowed?: boolean;
 }

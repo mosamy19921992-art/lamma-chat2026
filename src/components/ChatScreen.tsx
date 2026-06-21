@@ -90,6 +90,7 @@ import { OwnerAvatarAura } from "./OwnerPrestige.tsx";
 import { OWNER_ID_CARD_IMAGE, isOwnerChatRole, resolveOwnerDisplayAvatar, OWNER_DISPLAY_BADGE } from "../lib/ownerIdentity";
 import ShareModal from "./modals/ShareModal.tsx";
 import CreateRoomModal from "./modals/CreateRoomModal.tsx";
+import RoomPasswordModal from "./modals/RoomPasswordModal.tsx";
 import UserContextPopup from "./modals/UserContextPopup.tsx";
 import UserProfileBioPopup from "./modals/UserProfileBioPopup.tsx";
 import {
@@ -173,6 +174,7 @@ import {
   isSafeHttpUrl,
   canSendImages,
   canShareYoutube,
+  getRoomCreationQuotaRemaining,
   type StoreCosmeticsSnapshot,
 } from "../lib/chatHelpers.ts";
 import { renderTextMessageWithMedia } from "../lib/chatMessageRender.tsx";
@@ -205,6 +207,14 @@ import { useVoiceMessageRecorder } from "../hooks/useVoiceMessageRecorder";
 import { VoiceNoteBubble, VoiceRecorderBar } from "../components/VoiceNoteBubble";
 import { FloatingDropdownPortal } from "../components/FloatingDropdownPortal";
 import { uploadVoiceNoteBlob } from "../services/chat/voiceMessageService";
+import {
+  createPrivateChatRoom,
+  fetchPrivateChatRooms,
+  isRoomUnlockedLocally,
+  markRoomUnlocked,
+  privateRoomToEntry,
+  verifyPrivateRoomPassword,
+} from "../services/chat/privateRoomService";
 import {
   parseDjLibrary,
   persistDjLibrary,
@@ -719,6 +729,17 @@ export default function ChatScreen({
     () => [...ROOMS_DEF, ...customRooms],
     [customRooms],
   );
+
+  const refreshPrivateRooms = useCallback(async () => {
+    const rows = await fetchPrivateChatRooms();
+    const entries = rows.map(privateRoomToEntry);
+    setCustomRooms(entries);
+    if (currentUser.uid) {
+      setMyPrivateRoomCount(
+        rows.filter((row) => row.owner_uid === currentUser.uid).length,
+      );
+    }
+  }, [currentUser.uid]);
   useEffect(() => {
     const requestedRoomExists = availableRooms.some((room) => room.id === activeRoomId);
     if (!requestedRoomExists) {
@@ -794,6 +815,31 @@ export default function ChatScreen({
   useEffect(() => {
     localStorage.setItem(customRoomsStorageKey, JSON.stringify(customRooms));
   }, [customRooms, customRoomsStorageKey]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    void refreshPrivateRooms();
+  }, [refreshPrivateRooms]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let isCancelled = false;
+    const unsubscribe = subscribeChannelWithRetry(() =>
+      supabase
+        .channel("private_chat_rooms_sync")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "private_chat_rooms" },
+          () => {
+            if (!isCancelled) void refreshPrivateRooms();
+          },
+        ),
+    );
+    return () => {
+      isCancelled = true;
+      unsubscribe();
+    };
+  }, [refreshPrivateRooms]);
 
   useEffect(() => {
     setDesignLogoInput(brandLogoUrl || "");
@@ -1208,6 +1254,12 @@ export default function ChatScreen({
     /* State for Create Room */
   }
   const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false);
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [isRoomPasswordModalOpen, setIsRoomPasswordModalOpen] = useState(false);
+  const [pendingRoomSwitchId, setPendingRoomSwitchId] = useState<string | null>(
+    null,
+  );
+  const [myPrivateRoomCount, setMyPrivateRoomCount] = useState(0);
   const [userStatus, setUserStatus] = useState("");
   const [isStatusHidden, setIsStatusHidden] = useState(false);
 
@@ -2575,6 +2627,22 @@ export default function ChatScreen({
     );
   }, [memberCustomPermissions]);
 
+  const roomCreationQuotaInfo = useMemo(
+    () =>
+      getRoomCreationQuotaRemaining(
+        currentUser,
+        memberCustomPermissions,
+        myPrivateRoomCount,
+      ),
+    [currentUser, memberCustomPermissions, myPrivateRoomCount],
+  );
+  const canShowCreateRoomButton =
+    isRegisteredAccount &&
+    (isManagementRole || roomCreationQuotaInfo.allowed);
+  const pendingPasswordRoom = pendingRoomSwitchId
+    ? customRooms.find((room) => room.id === pendingRoomSwitchId)
+    : null;
+
   const [memberCosmeticGrants, setMemberCosmeticGrants] = useState<
     Record<string, MemberCosmeticGrant>
   >(() => {
@@ -2825,6 +2893,7 @@ export default function ChatScreen({
                     videoCallsAllowed: !!p.video_calls_allowed,
                     musicRadioAllowed: !!p.music_radio_allowed,
                     roomCreationAllowed: !!p.room_creation_allowed,
+                    roomCreationQuota: Number(p.room_creation_quota) || 0,
                     imagesAllowed: !!p.images_allowed,
                     youtubeAllowed: !!p.youtube_allowed,
                   },
@@ -3008,6 +3077,7 @@ export default function ChatScreen({
               videoCallsAllowed: Boolean(row.video_calls_allowed),
               musicRadioAllowed: Boolean(row.music_radio_allowed),
               roomCreationAllowed: Boolean(row.room_creation_allowed),
+              roomCreationQuota: Number(row.room_creation_quota) || 0,
               imagesAllowed: Boolean(row.images_allowed),
               youtubeAllowed: Boolean(row.youtube_allowed),
             };
@@ -3310,6 +3380,7 @@ export default function ChatScreen({
         video_calls_allowed: permissions.videoCallsAllowed,
         music_radio_allowed: permissions.musicRadioAllowed,
         room_creation_allowed: permissions.roomCreationAllowed,
+        room_creation_quota: permissions.roomCreationQuota,
         images_allowed: permissions.imagesAllowed,
         youtube_allowed: permissions.youtubeAllowed,
       }));
@@ -4644,6 +4715,17 @@ export default function ChatScreen({
     if (roomId === "owner" && !isOwner) {
       alert("🎨 غرفة بوت التصميم متاحة للمالك فقط.");
       return;
+    }
+
+    const privateRoom = customRooms.find((room) => room.id === roomId);
+    if (privateRoom?.isLocked) {
+      const isRoomOwner = privateRoom.ownerUid === currentUser.uid;
+      const isPrivileged = isOwner || isAdmin || isRoomOwner;
+      if (!isPrivileged && !isRoomUnlockedLocally(roomId)) {
+        setPendingRoomSwitchId(roomId);
+        setIsRoomPasswordModalOpen(true);
+        return;
+      }
     }
 
     setActiveRoomId(roomId);
@@ -8150,12 +8232,21 @@ export default function ChatScreen({
             {activeSidebarTab === "rooms" && (
               <div className="space-y-3">
                 {/* Feature: Create room button */}
-                {(isOwnerRole ||
-                  memberCustomPermissions[currentUser.nickname]
-                    ?.roomCreationAllowed) && (
+                {canShowCreateRoomButton && (
                   <button
                     type="button"
-                    onClick={() => setIsCreateRoomModalOpen(true)}
+                    onClick={() => {
+                      if (
+                        !isManagementRole &&
+                        roomCreationQuotaInfo.remaining <= 0
+                      ) {
+                        alert(
+                          `استنفدت حصة إنشاء الغرف (${roomCreationQuotaInfo.used}/${roomCreationQuotaInfo.quota}).`,
+                        );
+                        return;
+                      }
+                      setIsCreateRoomModalOpen(true);
+                    }}
                     className="w-full p-2.5 rounded-xl flex items-center justify-center gap-2 text-green-300 font-extrabold text-[11px] transition-all cursor-pointer lamma-primary-btn"
                   >
                     <Plus size={14} />
@@ -10533,12 +10624,21 @@ export default function ChatScreen({
                   </span>
                 </div>
                 <div className="flex-1 overflow-y-auto pr-1 pl-2 space-y-3 lamma-fire-scroll">
-                  {(isOwnerRole ||
-                    memberCustomPermissions[currentUser.nickname]
-                      ?.roomCreationAllowed) && (
+                  {canShowCreateRoomButton && (
                     <button
                       type="button"
-                      onClick={() => setIsCreateRoomModalOpen(true)}
+                      onClick={() => {
+                        if (
+                          !isManagementRole &&
+                          roomCreationQuotaInfo.remaining <= 0
+                        ) {
+                          alert(
+                            `استنفدت حصة إنشاء الغرف (${roomCreationQuotaInfo.used}/${roomCreationQuotaInfo.quota}).`,
+                          );
+                          return;
+                        }
+                        setIsCreateRoomModalOpen(true);
+                      }}
                       className="w-full p-2.5 bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.25)] rounded-2xl flex items-center justify-center gap-2 text-[color:var(--accent-primary)] font-extrabold text-[11px] hover:bg-[rgba(16,185,129,0.18)] transition-all cursor-pointer"
                     >
                       <Plus size={14} />
@@ -11967,53 +12067,126 @@ export default function ChatScreen({
       <CreateRoomModal
         isOpen={isCreateRoomModalOpen}
         onClose={() => setIsCreateRoomModalOpen(false)}
-        onCreate={(details) => {
+        passwordRequired={!isManagementRole}
+        isUnlimited={isManagementRole}
+        quotaRemaining={roomCreationQuotaInfo.remaining}
+        quotaTotal={roomCreationQuotaInfo.quota}
+        creating={isCreatingRoom}
+        onCreate={async (details) => {
           const roomName = details.name.trim();
           if (!roomName) {
             alert("اكتب اسم الغرفة أولاً.");
             return;
           }
+
+          if (
+            !isManagementRole &&
+            roomCreationQuotaInfo.remaining <= 0
+          ) {
+            alert(
+              `استنفدت حصة إنشاء الغرف (${roomCreationQuotaInfo.used}/${roomCreationQuotaInfo.quota}).`,
+            );
+            return;
+          }
+
+          const password = details.password.trim();
+          if (!isManagementRole && password.length < 4) {
+            alert("يجب وضع كلمة مرور (4 أحرف على الأقل) للغرفة الخاصة.");
+            return;
+          }
+
           const roomIdBase = roomName
             .toLowerCase()
             .replace(/\s+/g, "-")
             .replace(/[^a-z0-9\u0600-\u06FF_-]/g, "")
             .replace(/-+/g, "-")
             .replace(/^-|-$/g, "");
-          const roomId = roomIdBase || `room-${Date.now()}`;
-          const roomExists = availableRooms.some(
-            (room) =>
-              room.id === roomId ||
-              room.name.trim().toLowerCase() === roomName.toLowerCase(),
-          );
-          if (roomExists) {
-            alert("الغرفة موجودة بالفعل، اختر اسمًا مختلفًا.");
-            return;
+          const roomId = roomIdBase || `pr-${Date.now()}`;
+
+          setIsCreatingRoom(true);
+          try {
+            const result = await createPrivateChatRoom({
+              name: roomName,
+              password,
+              operatorNickname: currentUser.nickname,
+              roomId,
+            });
+
+            if (!result.ok) {
+              const errorMessages: Record<string, string> = {
+                not_authenticated: "يجب تسجيل الدخول أولاً.",
+                name_too_short: "اسم الغرفة قصير جداً.",
+                room_creation_not_granted:
+                  "ليس لديك صلاحية إنشاء غرف. اطلبها من المالك.",
+                quota_exceeded: `استنفدت حصتك (${result.used ?? "?"}/${result.quota ?? "?"} غرف).`,
+                password_required:
+                  "يجب وضع كلمة مرور (4 أحرف على الأقل) للغرفة.",
+                room_exists: "الغرفة موجودة بالفعل، اختر اسماً مختلفاً.",
+              };
+              alert(
+                errorMessages[result.error || ""] ||
+                  `تعذر إنشاء الغرفة: ${result.error || "خطأ غير معروف"}`,
+              );
+              return;
+            }
+
+            await refreshPrivateRooms();
+
+            const createdId = result.roomId || roomId;
+            if (result.isLocked) {
+              markRoomUnlocked(createdId);
+            }
+
+            setOpenRooms((prev) =>
+              prev.some((room) => room.id === createdId)
+                ? prev
+                : [
+                    ...prev,
+                    {
+                      id: createdId,
+                      name: result.name || roomName,
+                      flag: result.isLocked ? "🔒" : "✨",
+                    },
+                  ],
+            );
+            setRoomTopics((prev) => ({
+              ...prev,
+              [createdId]: `غرفة خاصة: ${result.name || roomName} ${result.isLocked ? "🔒" : "✨"}`,
+            }));
+            setActiveRoomId(createdId);
+            setIsCreateRoomModalOpen(false);
+            addSystemActivityLog(
+              "promote",
+              currentUser.nickname,
+              `إنشاء غرفة خاصة [${createdId}] ${result.isLocked ? "🔒" : "✨"}`,
+            );
+            alert(`تم إنشاء الغرفة: ${result.name || roomName}`);
+          } finally {
+            setIsCreatingRoom(false);
           }
-          const newRoom: CustomRoomEntry = {
-            id: roomId,
-            name: roomName,
-            icon: details.password.trim() ? "🔒" : "✨",
-            count: 0,
-            category: "private",
-            createdBy: currentUser.nickname,
-            password: details.password.trim() || undefined,
-          };
-          setCustomRooms((prev) => [...prev, newRoom]);
-          setOpenRooms((prev) =>
-            prev.some((room) => room.id === newRoom.id)
-              ? prev
-              : [
-                  ...prev,
-                  { id: newRoom.id, name: newRoom.name, flag: newRoom.icon },
-                ],
+        }}
+      />
+
+      <RoomPasswordModal
+        isOpen={isRoomPasswordModalOpen}
+        roomName={pendingPasswordRoom?.name || pendingRoomSwitchId || ""}
+        onClose={() => {
+          setIsRoomPasswordModalOpen(false);
+          setPendingRoomSwitchId(null);
+        }}
+        onSubmit={async (password) => {
+          if (!pendingRoomSwitchId) return false;
+          const verified = await verifyPrivateRoomPassword(
+            pendingRoomSwitchId,
+            password,
           );
-          setRoomTopics((prev) => ({
-            ...prev,
-            [newRoom.id]: `غرفة خاصة: ${newRoom.name} ${newRoom.password ? "🔒" : "✨"}`,
-          }));
-          setActiveRoomId(newRoom.id);
-          setIsCreateRoomModalOpen(false);
-          alert(`تم إنشاء الغرفة: ${roomName}`);
+          if (!verified.ok) return false;
+          markRoomUnlocked(pendingRoomSwitchId);
+          setActiveRoomId(pendingRoomSwitchId);
+          setShowRoomsLists(false);
+          setIsRoomPasswordModalOpen(false);
+          setPendingRoomSwitchId(null);
+          return true;
         }}
       />
 
