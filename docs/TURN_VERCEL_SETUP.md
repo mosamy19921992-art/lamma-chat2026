@@ -1,50 +1,31 @@
 # إعداد TURN للمكالمات على Vercel
 
-المكالمات الصوتية/المرئية تحتاج **STUN + TURN** للعمل خلف NAT وشبكات الجوال. بدون TURN إنتاجي، المكالمات قد تفشل لجزء من المستخدمين.
+> **بدون دفع؟** راجع [`FREE_CALLS_AR.md`](./FREE_CALLS_AR.md) — Open Relay مجاني مضبوط على Production.
 
-## 1) احصل على خادم TURN
+المكالمات تحتاج **STUN + TURN** خلف NAT. **STUN مجاني دائماً**؛ **TURN** إما relay مجاني (Open Relay) أو سيرفرك (coturn).
 
-خيارات شائعة:
+## الخيار المجاني (مفعّل حالياً على Production)
 
-- [Metered.ca Open Relay](https://www.metered.ca/tools/openrelay/) — مجاني للتجربة (محدود)
-- [Metered.ca TURN](https://www.metered.ca/stun-turn) — مدفوع للإنتاج
-- Twilio Network Traversal / Cloudflare Calls TURN — حسب ميزانيتك
+| Variable | القيمة |
+|----------|--------|
+| `VITE_TURN_URL` | `turn:openrelay.metered.ca:443,turn:openrelay.metered.ca:80` |
+| `VITE_TURN_USERNAME` | `openrelayproject` |
+| `VITE_TURN_CREDENTIAL` | `openrelayproject` |
 
-سجّل **URL + username + credential** من لوحة المزود.
+حد تقريبي ~50 GB/شهر — كافي لمعظم التطبيقات الصغيرة/المتوسطة.
 
-## 2) أضف المتغيرات في Vercel
+## ترقية مجانية (أفضل جودة — coturn)
 
-1. افتح [Vercel Dashboard](https://vercel.com) → مشروع **lamma-arabic-chat-room**
-2. **Settings** → **Environment Variables**
-3. أضف للبيئات **Production** و **Preview**:
+Oracle Always Free + coturn — خطوات كاملة في **`FREE_CALLS_AR.md`**.
 
-| Variable | مثال | Sensitive |
-|----------|------|-----------|
-| `VITE_TURN_URL` | `turn:global.relay.metered.ca:443` | No |
-| `VITE_TURN_USERNAME` | من لوحة Metered | **Yes** |
-| `VITE_TURN_CREDENTIAL` | من لوحة Metered | **Yes** |
-| `VITE_TURN_URL_2` | (اختياري) خادم احتياطي | No |
-| `VITE_TURN_USERNAME_2` | (اختياري) | **Yes** |
-| `VITE_TURN_CREDENTIAL_2` | (اختياري) | **Yes** |
+## ترقية مدفوعة (اختياري)
 
-4. **Redeploy** المشروع (Deployments → ⋮ → Redeploy) — متغيرات `VITE_*` تُدمَج وقت البناء فقط.
+- [Metered.ca TURN](https://www.metered.ca/stun-turn) — عند تجاوز حدود المجاني
 
-## 3) CLI (بديل)
+## Redeploy
 
-```bash
-vercel env add VITE_TURN_URL production
-vercel env add VITE_TURN_USERNAME production
-vercel env add VITE_TURN_CREDENTIAL production
-vercel --prod
-```
+متغيرات `VITE_*` تُدمَج وقت الـ build فقط → بعد أي تغيير: **Redeploy**.
 
-## 4) تحقق
+## تحقق
 
-بعد النشر، افتح المكالمة من جهازين على شبكات مختلفة (مثلاً Wi‑Fi + 4G). في واجهة المكالمة يظهر اسم السيرفر — إذا رأيت **`+ TURN-1`** فالإعداد يعمل.
-
-## 5) السلوك في الكود
-
-- إذا **`VITE_TURN_URL`** موجود → يُستخدم TURN الإنتاجي و**لا** يُستخدم relay العام المشترك.
-- إذا غير موجود → fallback على relay عام (مناسب للتطوير فقط).
-
-راجع أيضاً `.env.example` للتطوير المحلي.
+مكالمة من Wi‑Fi + 4G — في الواجهة: **`Google STUN + relay مجاني`** أو **`+ TURN-1`** إذا coturn خاص.

@@ -1,4 +1,4 @@
-import { getIceServerBundles } from "./callConfig";
+import { getIceServerBundles, ICE_CANDIDATE_POOL_SIZE } from "./callConfig";
 import {
   requestCallMedia,
   type CallMediaType,
@@ -52,7 +52,12 @@ export class WebRTCCallEngine {
     if (!bundle) {
       throw new Error("No ICE server bundle configured");
     }
-    this.pc = new RTCPeerConnection({ iceServers: bundle.iceServers });
+    this.pc = new RTCPeerConnection({
+      iceServers: bundle.iceServers,
+      iceCandidatePoolSize: ICE_CANDIDATE_POOL_SIZE,
+      bundlePolicy: "max-bundle",
+      rtcpMuxPolicy: "require",
+    });
 
     if (this.localStream) {
       this.localStream.getTracks().forEach((track) => {
