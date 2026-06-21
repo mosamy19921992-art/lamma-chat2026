@@ -10,7 +10,9 @@ export type ModerationAction =
   | "megaban"
   | "unmegaban"
   | "kick"
-  | "unkick";
+  | "unkick"
+  | "shadow"
+  | "unshadow";
 
 export type ApplyModerationInput = {
   action: ModerationAction;
@@ -160,5 +162,38 @@ export function banActionForType(
   if (type === "room") return enabled ? "unroom_ban" : "room_ban";
   if (type === "megaban") return enabled ? "unmegaban" : "megaban";
   if (type === "kick") return enabled ? "unkick" : "kick";
+  if (type === "shadow") return enabled ? "unshadow" : "shadow";
   return null;
+}
+
+export async function postRoomSystemMessage(input: {
+  roomId: string;
+  text: string;
+  color?: string;
+  author?: string;
+}): Promise<{ ok: boolean; error?: string; messageId?: string }> {
+  if (!supabase) return { ok: false, error: "supabase_not_configured" };
+
+  const { data, error } = await supabase.rpc("post_room_system_message", {
+    p_room_id: input.roomId,
+    p_text: input.text,
+    p_color: input.color || "#f59e0b",
+    p_author: input.author || "LC-Fire 🔥",
+  });
+
+  if (error) return { ok: false, error: error.message };
+
+  const payload = (data ?? {}) as Record<string, unknown>;
+  if (payload.ok === false) {
+    return {
+      ok: false,
+      error: typeof payload.error === "string" ? payload.error : "post_failed",
+    };
+  }
+
+  return {
+    ok: true,
+    messageId:
+      typeof payload.message_id === "string" ? payload.message_id : undefined,
+  };
 }

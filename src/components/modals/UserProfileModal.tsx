@@ -10,6 +10,7 @@ import {
   isGlobalPromotionRole,
   rolePromotionScopeLabel,
 } from "../../lib/memberRoleResolution";
+import { postRoomSystemMessage } from "../../services/chat/moderationService";
 import {
   canGrantRole,
   canPromoteMembers,
@@ -530,34 +531,27 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                         <button
                           onClick={() => {
                             const textMsg = `🔥 [تنبيه أمني رسمي] من LC-Fire لـ [${selectedProfileMember.nickname}]: يرجى التقيد بالآداب والأخلاق العامة للشات وعدم الخروج عن إطار الحديث المتزن وإلا سيتم الطرد التلقائي 🛡️.`;
-                            setRoomMessages((prev) => ({
-                              ...prev,
-                              [activeRoomId]: [
-                                ...(prev[activeRoomId] || []),
-                                {
-                                  id: `sys-warn-${Date.now()}`,
-                                  author: "LC-Fire 🔥",
-                                  text: textMsg,
-                                  color: "#f59e0b",
-                                  isOwn: false,
-                                  time: new Date().toLocaleTimeString("ar-EG", {
-                                    hour: "numeric",
-                                    minute: "numeric",
-                                    hour12: true,
-                                  }),
-                                  type: "system",
-                                },
-                              ],
-                            }));
-                            addSystemActivityLog(
-                              "demote",
-                              selectedProfileMember.nickname,
-                              `تم إصدار إنذار وتحذير أمني علني للعضو في غرفة [${activeRoomId}]`,
-                            );
-                            alert(
-                              `تم إرسال التحذير بنجاح كرسالة نظام في الغرفة.`,
-                            );
-                            setShowProfileModal(false);
+                            void postRoomSystemMessage({
+                              roomId: activeRoomId,
+                              text: textMsg,
+                              color: "#f59e0b",
+                            }).then((result) => {
+                              if (!result.ok) {
+                                alert(
+                                  `تعذر إرسال التحذير على السيرفر: ${result.error || "unknown"}`,
+                                );
+                                return;
+                              }
+                              addSystemActivityLog(
+                                "demote",
+                                selectedProfileMember.nickname,
+                                `تم إصدار إنذار وتحذير أمني علني للعضو في غرفة [${activeRoomId}]`,
+                              );
+                              alert(
+                                `تم إرسال التحذير بنجاح كرسالة نظام في الغرفة.`,
+                              );
+                              setShowProfileModal(false);
+                            });
                           }}
                           className="py-2 px-3 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 font-bold text-[10px] rounded-xl border border-yellow-500/20 text-center transition-all cursor-pointer flex items-center justify-center gap-1"
                         >
@@ -656,25 +650,12 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                             };
                             void addBanEntry(kickBan, { sync: true });
                             const sysText = `🚪 [طرد أمني عاجل] من المشرف لـ [${selectedProfileMember.nickname}]: تم الطرد فوراً لتنظيم الغرفة! 👋`;
-                            setRoomMessages((prev) => ({
-                              ...prev,
-                              [activeRoomId]: [
-                                ...(prev[activeRoomId] || []),
-                                {
-                                  id: `sys-kick-${Date.now()}`,
-                                  author: "بوابة الطرد 🚪",
-                                  text: sysText,
-                                  color: "#ef4444",
-                                  isOwn: false,
-                                  time: new Date().toLocaleTimeString("ar-EG", {
-                                    hour: "numeric",
-                                    minute: "numeric",
-                                    hour12: true,
-                                  }),
-                                  type: "system",
-                                },
-                              ],
-                            }));
+                            void postRoomSystemMessage({
+                              roomId: activeRoomId,
+                              text: sysText,
+                              color: "#ef4444",
+                              author: "بوابة الطرد 🚪",
+                            });
                             setChatMembers((prev) =>
                               prev.filter(
                                 (m) =>

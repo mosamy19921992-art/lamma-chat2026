@@ -54,14 +54,16 @@ function mapSupabaseMessage(
   sMsg: SupabaseMessage,
   currentUserNickname: string,
 ): Message {
+  const isOwn = sMsg.author === currentUserNickname;
+  const isShadow = Boolean(sMsg.is_shadow);
   return {
     id: sMsg.id || Date.now().toString(),
     author: sMsg.author,
     text: sMsg.text,
     color: sMsg.color,
-    isOwn: sMsg.author === currentUserNickname,
+    isOwn,
     time: formatArabicTime(sMsg.created_at),
-    type: (sMsg.type as Message["type"]) || "text",
+    type: isShadow && isOwn ? "shadow_msg" : (sMsg.type as Message["type"]) || "text",
     mediaUrl: sMsg.media_url,
     giftIcon: sMsg.gift_icon,
     giftName: sMsg.gift_name,

@@ -76,6 +76,7 @@ export interface SupabaseMessage {
   gift_name?: string;
   youtube_id?: string;
   reactions?: Record<string, number>;
+  is_shadow?: boolean;
 }
 
 export interface OwnerSettingsRow {

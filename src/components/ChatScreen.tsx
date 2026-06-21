@@ -531,10 +531,10 @@ export default function ChatScreen({
   };
 
   const [ownerBgImage, setOwnerBgImage] = useState<string | null>(() =>
-    localStorage.getItem("lamma_owner_bg_image"),
+    filterSafeMediaUrl(localStorage.getItem("lamma_owner_bg_image")),
   );
   const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(() =>
-    localStorage.getItem("lamma_custom_logo_url"),
+    filterSafeMediaUrl(localStorage.getItem("lamma_custom_logo_url")),
   );
   const [designLogoInput, setDesignLogoInput] = useState<string>(() =>
     localStorage.getItem("lamma_custom_logo_url") || "",
@@ -545,7 +545,7 @@ export default function ChatScreen({
     try {
       const parsed = JSON.parse(raw);
       if (!parsed || typeof parsed !== "object") return {};
-      return parsed;
+      return sanitizeRoomBgMap(parsed);
     } catch {
       return {};
     }
@@ -1314,7 +1314,8 @@ export default function ChatScreen({
         serverAction === "mute" ||
         serverAction === "room_ban" ||
         serverAction === "megaban" ||
-        serverAction === "kick"
+        serverAction === "kick" ||
+        serverAction === "shadow"
       ) {
         const result = await applyModerationAction({
           action: serverAction,
@@ -1393,7 +1394,8 @@ export default function ChatScreen({
         serverAction === "unmute" ||
         serverAction === "unroom_ban" ||
         serverAction === "unmegaban" ||
-        serverAction === "unkick"
+        serverAction === "unkick" ||
+        serverAction === "unshadow"
       ) {
         const result = await applyModerationAction({
           action: serverAction,
@@ -2846,10 +2848,10 @@ export default function ChatScreen({
         setIsInviteOnlyMode(Boolean(settings.invite_only_mode));
       }
       if (settings.owner_bg_image !== undefined) {
-        setOwnerBgImage((prev) => settings.owner_bg_image?.trim() || prev);
+        setOwnerBgImage((prev) => filterSafeMediaUrl(settings.owner_bg_image) || prev);
       }
       if (settings.custom_logo_url !== undefined) {
-        const nextLogo = settings.custom_logo_url?.trim() || null;
+        const nextLogo = filterSafeMediaUrl(settings.custom_logo_url);
         setBrandLogoUrl((prev) => nextLogo || prev);
         setDesignLogoInput((prev) => nextLogo || prev);
       }
@@ -4271,6 +4273,31 @@ export default function ChatScreen({
       cancelled = true;
     };
   }, [currentUser.uid, currentUser.authProvider]);
+
+  useEffect(() => {
+    const nick = currentUser.nickname.toLowerCase();
+    const uid = currentUser.uid;
+    const kickedFromActiveRoom = bannedUsersList.some(
+      (ban) =>
+        (ban.type === "kick" || ban.type === "room") &&
+        ban.roomId === activeRoomId &&
+        (ban.nickname.toLowerCase() === nick ||
+          ban.fingerprint === uid ||
+          ban.localStorageId === uid),
+    );
+    if (!kickedFromActiveRoom || activeRoomId === "egypt") return;
+    endCall();
+    setActiveRoomId("egypt");
+    alert(
+      "🚪 تم طردك من هذه الغرفة لمدة 30 دقيقة. تم نقلك للغرفة الرئيسية.",
+    );
+  }, [
+    activeRoomId,
+    bannedUsersList,
+    currentUser.nickname,
+    currentUser.uid,
+    endCall,
+  ]);
 
   useEffect(() => {
     localStorage.setItem("lamma_banned_list", JSON.stringify(bannedUsersList));

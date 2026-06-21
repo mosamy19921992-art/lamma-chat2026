@@ -68,10 +68,6 @@ export async function persistRoomMessage({
   message,
   roomId,
 }: PersistRoomMessageOptions): Promise<void> {
-  if (message.type === "shadow_msg") {
-    return;
-  }
-
   if (!supabase) {
     throw new Error("تعذر إرسال الرسالة لأن اتصال Supabase غير متاح.");
   }
@@ -89,7 +85,7 @@ export async function persistRoomMessage({
     room_id: roomId,
     text: safeText,
     color: message.color || "#10b981",
-    type: message.type || "text",
+    type: message.type === "shadow_msg" ? "text" : message.type || "text",
     sender_uid: senderUid,
   };
 

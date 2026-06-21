@@ -26,10 +26,15 @@ export const PROFILE_AVATAR_EMOJIS = [
   "🎯",
 ] as const;
 
+import { isSafeHttpUrl } from "./chatHelpers";
+
 export function isAvatarImageUrl(avatar?: string | null): boolean {
   if (!avatar) return false;
   const value = avatar.trim();
-  return /^https?:\/\//i.test(value) || value.startsWith("/");
+  if (value.startsWith("/")) {
+    return !value.includes("..") && !value.includes("\\");
+  }
+  return isSafeHttpUrl(value);
 }
 
 export function normalizeAvatarValue(avatar?: string | null): string {

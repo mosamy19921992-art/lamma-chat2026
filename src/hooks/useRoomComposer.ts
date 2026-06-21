@@ -310,8 +310,10 @@ export function useRoomComposer({
 
     const isShadowed = bannedUsersList.some(
       (ban) =>
-        ban.nickname.toLowerCase() === currentUser.nickname.toLowerCase() &&
-        ban.type === "shadow",
+        ban.type === "shadow" &&
+        (ban.nickname.toLowerCase() === currentUser.nickname.toLowerCase() ||
+          ban.fingerprint === currentUser.uid ||
+          ban.localStorageId === currentUser.uid),
     );
 
     const newMessage = createOutgoingRoomMessage({
