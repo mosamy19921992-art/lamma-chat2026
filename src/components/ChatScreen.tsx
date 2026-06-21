@@ -179,6 +179,7 @@ import {
   filterSafeMediaUrl,
   type StoreCosmeticsSnapshot,
 } from "../lib/chatHelpers.ts";
+import { attachWindowPointerDrag } from "../lib/pointerDrag";
 import { renderTextMessageWithMedia } from "../lib/chatMessageRender.tsx";
 import { createPortal } from "react-dom";
 import { useChatMessages } from "../hooks/useChatMessages";
@@ -5192,8 +5193,11 @@ export default function ChatScreen({
 
   // Audio elements for the in-extras call widget (decorative, not wired to WebRTC)
   const [isMuted, setIsMuted] = useState(false);
-  const [isCalling, setIsCalling] = useState(false);
-  const [callingSeconds, setCallingSeconds] = useState(0);
+  const showSidebarCall =
+    Boolean(activeCall) &&
+    activeCall!.status !== "ended" &&
+    activeCall!.status !== "failed";
+  const sidebarCallSeconds = activeCall?.callDuration ?? 0;
 
   // Audio visualizer wave heights
   const [waveHeights, setWaveHeights] = useState([
@@ -5207,6 +5211,7 @@ export default function ChatScreen({
 
   const messageEndRef = useRef<HTMLDivElement>(null);
   const feedViewportRef = useRef<HTMLDivElement>(null);
+  const pointerDragCleanupRef = useRef<(() => void) | null>(null);
   const pmViewportRef = useRef<HTMLDivElement>(null);
   const pmEndRef = useRef<HTMLDivElement>(null);
   const chatStickToBottomRef = useRef(true);
@@ -5429,20 +5434,27 @@ export default function ChatScreen({
     pmEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [pmMessages]);
 
-  // Call timer simulation
   useEffect(() => {
-    let callTimer: any;
-    if (isCalling) {
-      callTimer = setInterval(() => {
-        setCallingSeconds((prev) => prev + 1);
-        // Randomize call visual waves
-        setWaveHeights((prev) =>
-          prev.map(() => Math.floor(Math.random() * 38) + 12),
-        );
-      }, 1000);
+    if (
+      activeCall?.status !== "connected" &&
+      activeCall?.status !== "reconnecting"
+    ) {
+      return;
     }
-    return () => clearInterval(callTimer);
-  }, [isCalling]);
+    const waveTimer = setInterval(() => {
+      setWaveHeights((prev) =>
+        prev.map(() => Math.floor(Math.random() * 38) + 12),
+      );
+    }, 1000);
+    return () => clearInterval(waveTimer);
+  }, [activeCall?.status]);
+
+  useEffect(() => {
+    return () => {
+      pointerDragCleanupRef.current?.();
+      pointerDragCleanupRef.current = null;
+    };
+  }, []);
 
   // Simulated bot chat reactions
   const addBotSystemWarning = (roomId: string, text: string) => {
@@ -7995,12 +8007,14 @@ export default function ChatScreen({
                     music: music * scale,
                   });
                 };
-                const onUp = () => {
-                  window.removeEventListener("pointermove", onMove);
-                  window.removeEventListener("pointerup", onUp);
-                };
-                window.addEventListener("pointermove", onMove);
-                window.addEventListener("pointerup", onUp);
+                pointerDragCleanupRef.current?.();
+                let dragCleanup: () => void;
+                dragCleanup = attachWindowPointerDrag(onMove, () => {
+                  if (pointerDragCleanupRef.current === dragCleanup) {
+                    pointerDragCleanupRef.current = null;
+                  }
+                });
+                pointerDragCleanupRef.current = dragCleanup;
               }}
             />
 
@@ -8135,12 +8149,14 @@ export default function ChatScreen({
                     music: music * scale,
                   });
                 };
-                const onUp = () => {
-                  window.removeEventListener("pointermove", onMove);
-                  window.removeEventListener("pointerup", onUp);
-                };
-                window.addEventListener("pointermove", onMove);
-                window.addEventListener("pointerup", onUp);
+                pointerDragCleanupRef.current?.();
+                let dragCleanup: () => void;
+                dragCleanup = attachWindowPointerDrag(onMove, () => {
+                  if (pointerDragCleanupRef.current === dragCleanup) {
+                    pointerDragCleanupRef.current = null;
+                  }
+                });
+                pointerDragCleanupRef.current = dragCleanup;
               }}
             />
 
@@ -8893,13 +8909,13 @@ export default function ChatScreen({
                         <AchievementsBlock role={currentUser.role} compact />
 
                         {/* Block 3: Active call indicator — only show when a call is running */}
-                        {isCalling && (
+                        {showSidebarCall && (
                         <div className="p-2.5 rounded-xl flex flex-col justify-between relative overflow-hidden text-right lamma-admin-card">
                           <div className="flex justify-between items-center text-[10px] font-bold text-gray-300">
                             <span>مكالمة نشطة</span>
                             <span className="text-green-400 font-mono text-[9px] font-black tracking-wider flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
-                              <span>{formatSecs(callingSeconds)}</span>
+                              <span>{formatSecs(sidebarCallSeconds)}</span>
                             </span>
                           </div>
                           <div className="flex items-end justify-center gap-1 h-8 my-1.5">
@@ -8920,7 +8936,7 @@ export default function ChatScreen({
                               <Mic size={11} />
                             </button>
                             <button
-                              onClick={() => { setIsCalling(false); setCallingSeconds(0); }}
+                              onClick={() => endCall()}
                               className="p-1.5 rounded-full bg-red-600 hover:bg-red-500 text-white transition-all border border-red-500/30"
                               title="إنهاء المكالمة"
                             >
@@ -8966,13 +8982,13 @@ export default function ChatScreen({
                     <AchievementsBlock role={currentUser.role} />
 
                     {/* Block 3: Active call indicator — only when a call is running */}
-                    {isCalling && (
+                    {showSidebarCall && (
                     <div className="p-3 rounded-xl flex flex-col justify-between relative overflow-hidden text-right lamma-admin-card bg-black/25">
                       <div className="flex justify-between items-center text-[11px] font-bold text-gray-300 mb-1">
                         <span>مكالمة نشطة</span>
                         <span className="text-green-400 font-mono text-[10px] font-black tracking-wider flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
-                          <span>{formatSecs(callingSeconds)}</span>
+                          <span>{formatSecs(sidebarCallSeconds)}</span>
                         </span>
                       </div>
                       <div className="flex items-end justify-center gap-1 h-8 my-2">
@@ -8984,7 +9000,7 @@ export default function ChatScreen({
                         <button type="button" onClick={() => setIsMuted(!isMuted)}
                           className={`p-2 rounded-full border transition-all ${isMuted ? "bg-red-500/20 border-red-500/40 text-red-400" : "bg-green-500/20 border-green-500/40 text-green-400"}`}
                           title="كتم الصوت"><Mic size={14} /></button>
-                        <button type="button" onClick={() => { setIsCalling(false); setCallingSeconds(0); }}
+                        <button type="button" onClick={() => endCall()}
                           className="p-2 rounded-full bg-red-600 hover:bg-red-500 text-white transition-all border border-red-500/30"
                           title="إنهاء المكالمة"><Phone size={14} className="rotate-[135deg]" /></button>
                       </div>
@@ -9534,6 +9550,7 @@ export default function ChatScreen({
               {isPostsRoom ? (
                 <SocialFeedPanel
                   posts={combinedFeedPosts}
+                  scrollParentRef={feedViewportRef}
                   currentSession={myActiveSession}
                   chatMembers={chatMembers}
                   storeSnapshot={subscription}
@@ -10884,12 +10901,14 @@ export default function ChatScreen({
                     members: members * scale,
                   });
                 };
-                const onUp = () => {
-                  window.removeEventListener("pointermove", onMove);
-                  window.removeEventListener("pointerup", onUp);
-                };
-                window.addEventListener("pointermove", onMove);
-                window.addEventListener("pointerup", onUp);
+                pointerDragCleanupRef.current?.();
+                let dragCleanup: () => void;
+                dragCleanup = attachWindowPointerDrag(onMove, () => {
+                  if (pointerDragCleanupRef.current === dragCleanup) {
+                    pointerDragCleanupRef.current = null;
+                  }
+                });
+                pointerDragCleanupRef.current = dragCleanup;
               }}
             />
 

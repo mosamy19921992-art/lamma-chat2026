@@ -73,6 +73,7 @@ export function useWebRTCCalls({
   const activeCallRef = useRef<ActiveCallState | null>(null);
   const incomingCallRef = useRef<IncomingCallState | null>(null);
   const pendingOffersRef = useRef<Record<string, RTCSessionDescriptionInit>>({});
+  const pendingOfferTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
@@ -493,9 +494,12 @@ export function useWebRTCCalls({
             signal.to_uid === myUid
           ) {
             pendingOffersRef.current[signal.call_id] = sdp;
-            setTimeout(() => {
+            const offerTimer = setTimeout(() => {
               delete pendingOffersRef.current[signal.call_id];
+              pendingOfferTimersRef.current =
+                pendingOfferTimersRef.current.filter((id) => id !== offerTimer);
             }, 60_000);
+            pendingOfferTimersRef.current.push(offerTimer);
           } else if (callIdRef.current === signal.call_id) {
             // Renegotiation / failover from peer
             if (typeof signal.payload.serverIndex === "number") {
@@ -607,6 +611,10 @@ export function useWebRTCCalls({
 
   useEffect(() => {
     return () => {
+      for (const timerId of pendingOfferTimersRef.current) {
+        clearTimeout(timerId);
+      }
+      pendingOfferTimersRef.current = [];
       cleanupCall();
     };
   }, [cleanupCall]);

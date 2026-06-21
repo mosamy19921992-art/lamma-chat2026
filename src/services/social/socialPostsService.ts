@@ -41,6 +41,57 @@ function mapPostRow(
   };
 }
 
+export function mapCommentRow(row: {
+  id: string;
+  post_id: string;
+  author_uid: string;
+  author_nickname: string;
+  text: string;
+  created_at: string;
+}): PostComment {
+  return {
+    id: row.id,
+    postId: row.post_id,
+    authorUid: row.author_uid,
+    authorNickname: row.author_nickname,
+    text: row.text,
+    createdAt: row.created_at,
+  };
+}
+
+export function mapSocialPostInsertRow(
+  row: {
+    id?: string;
+    created_at?: string;
+    author_uid?: string;
+    author_nickname?: string;
+    text?: string | null;
+    type?: string | null;
+    media_url?: string | null;
+    color?: string | null;
+  },
+  currentUserUid: string,
+): SocialPost | null {
+  if (!row.id || !row.created_at || !row.author_uid || !row.author_nickname) {
+    return null;
+  }
+  return mapPostRow(
+    {
+      id: row.id,
+      created_at: row.created_at,
+      author_uid: row.author_uid,
+      author_nickname: row.author_nickname,
+      text: row.text,
+      type: row.type,
+      media_url: row.media_url,
+      color: row.color,
+    },
+    0,
+    row.author_uid === currentUserUid,
+    [],
+  );
+}
+
 export async function fetchSocialFeed(
   currentUserUid: string,
   options?: { authorUid?: string; limit?: number },
@@ -86,14 +137,7 @@ export async function fetchSocialFeed(
 
   const commentsByPost = new Map<string, PostComment[]>();
   (comments || []).forEach((comment) => {
-    const mapped: PostComment = {
-      id: comment.id,
-      postId: comment.post_id,
-      authorUid: comment.author_uid,
-      authorNickname: comment.author_nickname,
-      text: comment.text,
-      createdAt: comment.created_at,
-    };
+    const mapped = mapCommentRow(comment);
     const list = commentsByPost.get(comment.post_id) || [];
     list.push(mapped);
     commentsByPost.set(comment.post_id, list);
@@ -205,14 +249,7 @@ export async function addPostComment(
     throw error || new Error("تعذر إضافة التعليق.");
   }
 
-  return {
-    id: data.id,
-    postId: data.post_id,
-    authorUid: data.author_uid,
-    authorNickname: data.author_nickname,
-    text: data.text,
-    createdAt: data.created_at,
-  };
+  return mapCommentRow(data);
 }
 
 export async function deleteSocialPost(postId: string): Promise<void> {

@@ -1,18 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { UserSession } from "../lib/chatTypes";
-import type { SocialPost } from "../lib/socialTypes";
+import type { PostComment, SocialPost } from "../lib/socialTypes";
 import { subscribeChannelWithRetry } from "../services/chat/realtimeUtils";
 import {
   addPostComment,
   createSocialPost,
   fetchSocialFeed,
+  mapCommentRow,
+  mapSocialPostInsertRow,
   togglePostLike,
 } from "../services/social/socialPostsService";
 
 interface UseSocialFeedOptions {
   currentUser: UserSession;
   enabled?: boolean;
+}
+
+function appendComment(posts: SocialPost[], comment: PostComment): SocialPost[] {
+  return posts.map((post) => {
+    if (post.id !== comment.postId) return post;
+    if (post.comments.some((row) => row.id === comment.id)) return post;
+    return { ...post, comments: [...post.comments, comment] };
+  });
 }
 
 export function useSocialFeed({
@@ -58,14 +68,25 @@ export function useSocialFeed({
       return;
     }
 
-    const unsubPosts = subscribeChannelWithRetry(() =>
+    const unsub = subscribeChannelWithRetry(() =>
       supabase
-        .channel(`social_posts_feed_${myUid}`)
+        .channel(`social_feed_${myUid}`)
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "social_posts" },
-          () => {
-            void reloadRef.current();
+          (payload) => {
+            const created = mapSocialPostInsertRow(
+              payload.new as Parameters<typeof mapSocialPostInsertRow>[0],
+              myUid,
+            );
+            if (!created) {
+              void reloadRef.current();
+              return;
+            }
+            setPosts((prev) => {
+              if (prev.some((post) => post.id === created.id)) return prev;
+              return [created, ...prev];
+            });
           },
         )
         .on(
@@ -76,17 +97,12 @@ export function useSocialFeed({
             if (!deletedId) return;
             setPosts((prev) => prev.filter((post) => post.id !== deletedId));
           },
-        ),
-    );
-
-    const unsubLikes = subscribeChannelWithRetry(() =>
-      supabase
-        .channel(`social_likes_feed_${myUid}`)
+        )
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "post_likes" },
           (payload) => {
-            const row = payload.new as { post_id?: string; user_id?: string };
+            const row = payload.new as { post_id?: string; user_uid?: string };
             if (!row.post_id) return;
             setPosts((prev) =>
               prev.map((post) =>
@@ -95,7 +111,7 @@ export function useSocialFeed({
                       ...post,
                       likeCount: post.likeCount + 1,
                       likedByMe:
-                        row.user_id === myUid ? true : post.likedByMe,
+                        row.user_uid === myUid ? true : post.likedByMe,
                     }
                   : post,
               ),
@@ -106,7 +122,7 @@ export function useSocialFeed({
           "postgres_changes",
           { event: "DELETE", schema: "public", table: "post_likes" },
           (payload) => {
-            const row = payload.old as { post_id?: string; user_id?: string };
+            const row = payload.old as { post_id?: string; user_uid?: string };
             if (!row.post_id) return;
             setPosts((prev) =>
               prev.map((post) =>
@@ -115,31 +131,57 @@ export function useSocialFeed({
                       ...post,
                       likeCount: Math.max(0, post.likeCount - 1),
                       likedByMe:
-                        row.user_id === myUid ? false : post.likedByMe,
+                        row.user_uid === myUid ? false : post.likedByMe,
                     }
                   : post,
               ),
             );
           },
-        ),
-    );
-
-    const unsubComments = subscribeChannelWithRetry(() =>
-      supabase
-        .channel(`social_comments_feed_${myUid}`)
+        )
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "post_comments" },
-          () => {
-            void reloadRef.current();
+          (payload) => {
+            const row = payload.new as {
+              id?: string;
+              post_id?: string;
+              author_uid?: string;
+              author_nickname?: string;
+              text?: string;
+              created_at?: string;
+            };
+            if (
+              !row.id ||
+              !row.post_id ||
+              !row.author_uid ||
+              !row.author_nickname ||
+              !row.created_at ||
+              row.text == null
+            ) {
+              return;
+            }
+            const comment = mapCommentRow({
+              id: row.id,
+              post_id: row.post_id,
+              author_uid: row.author_uid,
+              author_nickname: row.author_nickname,
+              text: row.text,
+              created_at: row.created_at,
+            });
+            setPosts((prev) => {
+              const hasPost = prev.some((post) => post.id === comment.postId);
+              if (!hasPost) {
+                void reloadRef.current();
+                return prev;
+              }
+              return appendComment(prev, comment);
+            });
           },
         ),
     );
 
     return () => {
-      unsubPosts();
-      unsubLikes();
-      unsubComments();
+      unsub();
     };
   }, [currentUser.authProvider, enabled, myUid]);
 
@@ -191,13 +233,7 @@ export function useSocialFeed({
   const commentOnPost = useCallback(
     async (postId: string, text: string) => {
       const comment = await addPostComment(postId, currentUser, text);
-      setPosts((prev) =>
-        prev.map((post) =>
-          post.id === postId
-            ? { ...post, comments: [...post.comments, comment] }
-            : post,
-        ),
-      );
+      setPosts((prev) => appendComment(prev, comment));
       return comment;
     },
     [currentUser],
