@@ -5,6 +5,7 @@ export type AuthRole =
   | "user"
   | "vip"
   | "platinum_vip"
+  | "host"
   | "mod";
 
 type SupabaseLikeUser = {
@@ -57,6 +58,7 @@ export function normalizeAuthRole(rawRole?: string): AuthRole {
     role === "user" ||
     role === "vip" ||
     role === "platinum_vip" ||
+    role === "host" ||
     role === "mod"
   ) {
     return role;

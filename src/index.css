@@ -3506,6 +3506,20 @@ body {
     0 0 5px rgba(96, 165, 250, 0.8) !important;
 }
 
+/* 🎤 ROOM HOST (Kalamngy-style) */
+.lamma-role-host {
+  color: #2dd4bf !important;
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.35) 0%, rgba(45, 212, 191, 0.08) 100%) !important;
+  border: 1px solid rgba(45, 212, 191, 0.45) !important;
+  border-top: 1.5px solid rgba(94, 234, 212, 0.85) !important;
+  box-shadow:
+    0 0 8px rgba(45, 212, 191, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.95),
+    0 0 5px rgba(45, 212, 191, 0.75) !important;
+}
+
 /* ✨ CHAT MODERATOR */
 .lamma-role-mod {
   color: #d5a6ff !important;

@@ -11,6 +11,7 @@ Apply **only** via `scripts/apply-production-setup.mjs` (requires `SUPABASE_ACCE
 6. supabase-participation-hardening.sql   ← ban / invite-only / call permissions
 7. supabase-private-media.sql             ← private PM bucket
 8. supabase-room-member-roles.sql         ← per-room mod/vip + promote RPC
+9. supabase-role-policy-v2.sql            ← host + temp grants + grant matrix
 ```
 
 **Do not** run `supabase-storage.sql` after step 4 — it overwrites folder-scoped upload policies.

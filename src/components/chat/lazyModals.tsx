@@ -26,6 +26,11 @@ export const LazyOwnerPanelModal = lazyModal(
   () => import("../modals/OwnerPanelModal") as unknown as Promise<ModalModule>,
   "OwnerPanelModal",
 );
+export const LazyOwnerRoleManagementPanel = lazyModal(
+  () =>
+    import("../modals/OwnerRoleManagementPanel") as unknown as Promise<ModalModule>,
+  "OwnerRoleManagementPanel",
+);
 export const LazyAdminPanelModal = lazyModal(
   () => import("../modals/AdminPanelModal") as unknown as Promise<ModalModule>,
   "AdminPanelModal",

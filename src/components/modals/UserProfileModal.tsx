@@ -10,6 +10,16 @@ import {
   isGlobalPromotionRole,
   rolePromotionScopeLabel,
 } from "../../lib/memberRoleResolution";
+import {
+  canGrantRole,
+  canPromoteMembers,
+  canUseOwnerExclusiveTools,
+  canUseStaffTools,
+  getGrantableRoles,
+  ROLE_CHIP_CLASS,
+  ROLE_LABELS,
+  type RoleGrantsPolicy,
+} from "../../lib/rolePolicy";
 
 const PROMOTE_ERROR_MESSAGES: Record<string, string> = {
   not_authenticated: "يجب تسجيل الدخول أولاً.",
@@ -20,31 +30,33 @@ const PROMOTE_ERROR_MESSAGES: Record<string, string> = {
   only_owner_can_demote_admin: "المالك فقط يمكنه تخفيض الأدمن.",
   invalid_target_id: "لا يمكن حفظ الرتبة — العضو يحتاج حساباً مسجلاً متصلاً.",
   promote_failed: "فشل حفظ الرتبة على السيرفر.",
+  role_disabled: "هذه الرتبة موقوفة من المالك في لوحة نظام الرتب.",
+  cannot_grant_role: "رتبتك لا تسمح بمنح هذه الرتبة للعضو.",
 };
 
-export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setShowProfileModal, setSelectedProfileMember, myActiveSession, currentUser, isOwnerRole, isRegisteredAccount, tempEntryTopicInput, setTempEntryTopicInput, setTempEntryTopicStatusText, tempEntryTopicEnabled, setTempEntryTopicEnabled, handleSaveTempEntryTopic, tempEntryTopicStatusText, nicknameRequestInput, setNicknameRequestInput, nicknameRequestLoading, handleSubmitNicknameChangeRequest, nicknameRequestStatusText, nicknameRequests, setRoomMessages, activeRoomId, addSystemActivityLog, addLammaBotMessage, bannedUsersList, removeBanEntries, addBanEntry, chatMembers, setChatMembers, memberCustomPermissions, setMemberCustomPermissions, myCustomBio, setMyCustomBio, handleSelectProfileEmoji, handleProfileAvatarUploadChange, profileAvatarInputRef, profileAvatarSaving, profileAvatarStatus, onSendPrivateMessage, onPromoteMemberRole, roomLabel }: any) => {
+export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setShowProfileModal, setSelectedProfileMember, myActiveSession, currentUser, isOwnerRole, isRegisteredAccount, tempEntryTopicInput, setTempEntryTopicInput, setTempEntryTopicStatusText, tempEntryTopicEnabled, setTempEntryTopicEnabled, handleSaveTempEntryTopic, tempEntryTopicStatusText, nicknameRequestInput, setNicknameRequestInput, nicknameRequestLoading, handleSubmitNicknameChangeRequest, nicknameRequestStatusText, nicknameRequests, setRoomMessages, activeRoomId, addSystemActivityLog, addLammaBotMessage, bannedUsersList, removeBanEntries, addBanEntry, chatMembers, setChatMembers, memberCustomPermissions, setMemberCustomPermissions, myCustomBio, setMyCustomBio, handleSelectProfileEmoji, handleProfileAvatarUploadChange, profileAvatarInputRef, profileAvatarSaving, profileAvatarStatus, onSendPrivateMessage, onPromoteMemberRole, roomLabel, myEffectiveRole, roleGrantsPolicy, roomTempGrantsByUserId }: any) => {
   const [rolePromoteLoading, setRolePromoteLoading] = useState(false);
+  const [grantTemporary, setGrantTemporary] = useState(false);
   const isOwnProfile =
     selectedProfileMember?.nickname === myActiveSession.nickname;
-  const isStaffViewer =
-    currentUser.role === "owner" ||
-    currentUser.role === "admin" ||
-    currentUser.role === "mod";
-  const showStaffTools = isStaffViewer && !isOwnProfile;
+  const granterRole = (myEffectiveRole || currentUser.role) as MemberRole;
+  const showStaffTools = canUseStaffTools(granterRole) && !isOwnProfile;
+  const showPromoteTools = canPromoteMembers(granterRole) && !isOwnProfile && !!onPromoteMemberRole;
   const isOwnerProfile = isOwnerChatRole(selectedProfileMember?.role);
-  const canGrantGlobalRoles = currentUser.role === "owner";
   const promotionRoomId = roomLabel || activeRoomId;
+  const policy: RoleGrantsPolicy = roleGrantsPolicy;
+  const grantableRoles = getGrantableRoles(granterRole, policy);
+  const isTempGrant =
+    selectedProfileMember?.id &&
+    roomTempGrantsByUserId?.[selectedProfileMember.id];
 
   const handleRolePromotion = async (targetRole: MemberRole) => {
     if (!selectedProfileMember || !onPromoteMemberRole) return;
     const prevRole = selectedProfileMember.role as MemberRole;
     if (targetRole === prevRole) return;
 
-    if (
-      isGlobalPromotionRole(targetRole) &&
-      !canGrantGlobalRoles
-    ) {
-      alert("المالك فقط يمكنه منح رتب المالك والأدمن.");
+    if (!canGrantRole(granterRole, targetRole, policy)) {
+      alert(PROMOTE_ERROR_MESSAGES.cannot_grant_role);
       return;
     }
 
@@ -55,9 +67,14 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
         targetNickname: selectedProfileMember.nickname,
         newRole: targetRole,
         previousRole: prevRole,
+        temporary: grantTemporary && targetRole !== "user" && targetRole !== "guest",
       });
 
-      const scopeLabel = rolePromotionScopeLabel(targetRole, promotionRoomId);
+      const scopeLabel = rolePromotionScopeLabel(
+        targetRole,
+        promotionRoomId,
+        grantTemporary,
+      );
       addSystemActivityLog(
         "promote",
         selectedProfileMember.nickname,
@@ -68,32 +85,32 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
         owner: "👑 مالك",
         admin: "🛡️ أدمن",
         mod: "🔰 مشرف",
+        host: "🎤 هوست",
         platinum_vip: "💎 VIP بلاتيني",
         vip: "💎 VIP",
         user: "👤 عضو",
         guest: "👤 زائر",
       };
       const isStaffUpgrade =
-        ["admin", "mod", "owner"].includes(targetRole) &&
-        !["admin", "mod", "owner"].includes(prevRole);
-      const isStaffDowngrade =
-        ["admin", "mod", "owner"].includes(prevRole) &&
-        !["admin", "mod", "owner"].includes(targetRole);
+        ["admin", "mod", "host", "owner"].includes(targetRole) &&
+        !["admin", "mod", "host", "owner"].includes(prevRole);
 
-      if (isStaffUpgrade) {
+      if (isStaffUpgrade || grantTemporary) {
         addLammaBotMessage(
           "admin",
-          `🎉 تمت ترقية [${selectedProfileMember.nickname}] إلى ${roleLabel[targetRole] || targetRole} بواسطة ${currentUser.nickname}. (${scopeLabel})`,
+          grantTemporary
+            ? `⏳ منح مؤقت لـ [${selectedProfileMember.nickname}] → ${roleLabel[targetRole] || targetRole} بواسطة ${currentUser.nickname}. (${scopeLabel})`
+            : `🎉 تمت ترقية [${selectedProfileMember.nickname}] إلى ${roleLabel[targetRole] || targetRole} بواسطة ${currentUser.nickname}. (${scopeLabel})`,
         );
-      } else if (isStaffDowngrade || targetRole === "user" || targetRole === "guest") {
+      } else if (targetRole === "user" || targetRole === "guest") {
         addLammaBotMessage(
           "admin",
-          `📋 تم تغيير رتبة [${selectedProfileMember.nickname}] إلى ${roleLabel[targetRole] || targetRole} بواسطة ${currentUser.nickname}. (${scopeLabel})`,
+          `📋 تم تغيير رتبة [${selectedProfileMember.nickname}] إلى ${roleLabel[targetRole] || targetRole} بواسطة ${currentUser.nickname}.`,
         );
       }
 
       alert(
-        `تم حفظ الرتبة [${roleLabel[targetRole] || targetRole}] بنجاح — ${scopeLabel}`,
+        `تم حفظ الرتبة [${roleLabel[targetRole] || targetRole}] — ${scopeLabel}`,
       );
       setSelectedProfileMember((prev: typeof selectedProfileMember) =>
         prev ? { ...prev, role: targetRole } : null,
@@ -203,32 +220,18 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                       <span>{selectedProfileMember.nickname}</span>
                       <span
                         className={`text-[8px] px-1.5 py-0.5 rounded font-black tracking-wider lamma-role-chip ${
-                          selectedProfileMember.role === "platinum_vip"
-                            ? "lamma-role-plat"
-                            : selectedProfileMember.role === "owner"
-                              ? "lamma-role-owner"
-                              : selectedProfileMember.role === "admin"
-                                ? "lamma-role-admin"
-                                : selectedProfileMember.role === "mod"
-                                  ? "lamma-role-mod"
-                                  : selectedProfileMember.role === "vip"
-                                    ? "lamma-role-vip"
-                                    : ""
-                        }`}
+                          ROLE_CHIP_CLASS[selectedProfileMember.role as MemberRole] ||
+                          "lamma-role-chip"
+                        } ${isTempGrant ? "ring-1 ring-amber-400/60" : ""}`}
                       >
-                        {selectedProfileMember.role === "platinum_vip"
-                          ? "PLATINUM VIP"
-                          : selectedProfileMember.role === "owner"
-                            ? "OWNER"
-                            : selectedProfileMember.role === "admin"
-                              ? "ADMIN"
-                              : selectedProfileMember.role === "mod"
-                                ? "MODERATOR"
-                                : selectedProfileMember.role === "vip"
-                                  ? "VIP"
-                                  : selectedProfileMember.role === "user"
-                                    ? "MEMBER"
-                                    : "GUEST"}
+                        {isTempGrant ? "⏳ " : ""}
+                        {(selectedProfileMember.role as MemberRole) === "host"
+                          ? "HOST"
+                          : (selectedProfileMember.role as MemberRole) === "platinum_vip"
+                            ? "PLATINUM VIP"
+                            : (selectedProfileMember.role as MemberRole) === "owner"
+                              ? "BOSS"
+                              : (selectedProfileMember.role as string).toUpperCase()}
                       </span>
                     </div>
                     <div className="text-[10px] text-gray-500 font-bold font-mono">
@@ -519,11 +522,8 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                     Block)
                   </div>
 
-                  {/* Permissions check block */}
-                  {currentUser.role === "owner" ||
-                  currentUser.role === "admin" ||
-                  currentUser.role === "mod" ? (
-                    <div className="space-y-3.5">
+                  {/* Staff moderation block (host / mod / admin / owner) */}
+                  <div className="space-y-3.5">
                       {/* Grid 1: Basic controls */}
                       <div className="grid grid-cols-2 gap-2">
                         {/* 1. Warn */}
@@ -712,13 +712,13 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                         </button>
                       </div>
 
-                      {/* Extended Admin / Owner features */}
-                      {(currentUser.role === "owner" ||
-                        currentUser.role === "admin") && (
+                      {/* Rank promotions — Kalamngy-style hierarchy */}
+                      {showPromoteTools && (
                         <div className="space-y-3 pt-2 border-t border-white/5 font-sans">
-                          {/* Room specific bans and Rank promotions */}
                           <div className="grid grid-cols-2 gap-2">
-                            {/* Room ban button */}
+                            {(granterRole === "owner" ||
+                              granterRole === "admin" ||
+                              granterRole === "mod") && (
                             <button
                               onClick={() => {
                                 const rb: BanInfo = {
@@ -757,20 +757,29 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                             >
                               🚫 حظر غرف (Room Ban)
                             </button>
+                            )}
 
-                            {/* Dropdown for role changes */}
-                            <div className="flex flex-col gap-1 text-right">
+                            <div className={`flex flex-col gap-1 text-right ${granterRole === "host" ? "col-span-2" : ""}`}>
                               <span className="text-[8.5px] text-gray-500 font-extrabold pr-1">
-                                ترقية ومنح الصلاحيات:
+                                ترقية ومنح ({ROLE_LABELS[granterRole]}):
                               </span>
                               <span className="text-[7.5px] text-emerald-400/80 font-bold pr-1">
-                                mod/vip = غرفة «{promotionRoomId}» · admin/owner = كل الغرف
+                                host/mod/vip = غرفة «{promotionRoomId}» · admin/owner = كل الغرف
                               </span>
+                              <label className="flex items-center gap-1.5 text-[8px] text-amber-200/90 cursor-pointer pr-1">
+                                <input
+                                  type="checkbox"
+                                  checked={grantTemporary}
+                                  onChange={(e) => setGrantTemporary(e.target.checked)}
+                                  className="accent-amber-400"
+                                />
+                                ⏳ تاج/رتبة مؤقتة (تنتهي عند خروج العضو)
+                              </label>
                               <select
                                 id="profile-role-select"
                                 name="profileRoleSelect"
                                 value={selectedProfileMember.role}
-                                disabled={rolePromoteLoading || !onPromoteMemberRole}
+                                disabled={rolePromoteLoading}
                                 onChange={(e) => {
                                   void handleRolePromotion(
                                     e.target.value as MemberRole,
@@ -778,21 +787,13 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                 }}
                                 className="bg-black/60 border border-green-500/25 p-1 rounded-xl text-[9px] text-[#a3e635] font-black focus:ring-0 focus:outline-none focus:border-green-500 disabled:opacity-50"
                               >
-                                <option value="guest">👤 GUEST</option>
-                                <option value="user">👨 MEMBER</option>
-                                <option value="vip">💎 VIP MEMBER</option>
-                                <option value="platinum_vip">💎 VIP PLATINUM</option>
-                                <option value="mod">🛡️ CHAT MODERATOR</option>
-                                {canGrantGlobalRoles && (
-                                  <>
-                                    <option value="admin">
-                                      🛡️ SYSTEM ADMIN (كل الغرف)
-                                    </option>
-                                    <option value="owner">
-                                      👑 SYSTEM OWNER (كل الغرف)
-                                    </option>
-                                  </>
-                                )}
+                                <option value="user">👨 MEMBER (إزالة)</option>
+                                {grantableRoles.map((r) => (
+                                  <option key={r} value={r}>
+                                    {ROLE_LABELS[r]}
+                                    {isGlobalPromotionRole(r) ? " (كل الغرف)" : ""}
+                                  </option>
+                                ))}
                               </select>
                               {rolePromoteLoading && (
                                 <span className="text-[8px] text-amber-300 font-bold pr-1 inline-flex items-center gap-1">
@@ -802,9 +803,11 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                               )}
                             </div>
                           </div>
+                        </div>
+                      )}
 
                           {/* Owner absolute Superbans */}
-                          {currentUser.role === "owner" && (
+                          {canUseOwnerExclusiveTools(granterRole) && (
                             <div className="pt-2.5 border-t border-white/5 space-y-3">
                               {/* Custom Permissions Controls exclusively handled by owner */}
                               <div className="p-3 bg-black/60 border border-green-500/25 rounded-2xl space-y-2.5">
@@ -1335,16 +1338,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                               </div>
                             </div>
                           )}
-                        </div>
-                      )}
                     </div>
-                  ) : (
-                    <div className="p-3 bg-red-950/20 border border-red-500/30 rounded-2xl text-[9.5px] text-red-400 leading-relaxed font-sans font-semibold">
-                      🔒 هذه المنطقة الرقابية محمية ومقيدة للأدمنية والمشرفين
-                      وملاك الشات وتأسيسيه فقط. رتبتك غير مصرحة لتطبيق العقوبات
-                      أو التعديلات.
-                    </div>
-                  )}
                 </div>
                 )}
               </div>

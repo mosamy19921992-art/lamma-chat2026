@@ -76,6 +76,11 @@ export function MemberPrestigeBadges({
           ADMIN
         </span>
       )}
+      {!ownerRow && member.role === "host" && (
+        <span className={`${textSize} lamma-role-chip lamma-role-host shrink-0`}>
+          HOST
+        </span>
+      )}
       {!ownerRow && member.role === "mod" && (
         <span className={`${textSize} lamma-role-chip lamma-role-mod shrink-0`}>
           MOD

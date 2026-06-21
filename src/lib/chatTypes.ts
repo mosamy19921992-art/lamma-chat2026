@@ -6,6 +6,7 @@ export type MemberRole =
   | "user"
   | "vip"
   | "platinum_vip"
+  | "host"
   | "mod"
   | "admin"
   | "owner";

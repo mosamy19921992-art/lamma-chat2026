@@ -94,6 +94,7 @@ import UserContextPopup from "./modals/UserContextPopup.tsx";
 import UserProfileBioPopup from "./modals/UserProfileBioPopup.tsx";
 import {
   LazyOwnerPanelModal,
+  LazyOwnerRoleManagementPanel,
   LazyAdminPanelModal,
   LazyGuardPanelModal,
   LazyStorePanelModal,
@@ -181,12 +182,20 @@ import { usePrivateMessages, hasPmMessageWithDbId } from "../hooks/usePrivateMes
 import { useSocialFeed } from "../hooks/useSocialFeed";
 import { useWebRTCCalls } from "../hooks/useWebRTCCalls";
 import { useOnlinePresence, type PresenceUpdateEvent } from "../hooks/useOnlinePresence";
-import { resolveEffectiveMemberRole } from "../lib/memberRoleResolution";
+import { resolveEffectiveMemberRole, resolveGranterEffectiveRole } from "../lib/memberRoleResolution";
 import {
   fetchRoomMemberRoles,
   promoteMemberRole,
   isPersistableMemberId,
 } from "../services/auth/memberRoleService";
+import {
+  fetchRoleGrantsPolicy,
+  fetchRoomTempGrants,
+  revokeMyTempGrants,
+} from "../services/auth/rolePolicyService";
+import { getOrCreateChatSessionId } from "../lib/chatSessionId";
+import { canUseStaffTools, type RoleGrantsPolicy } from "../lib/rolePolicy";
+import { getDefaultRolePolicy } from "../lib/memberRoleResolution";
 import { fetchServerUserRole } from "../services/auth/userRoleService";
 import type { MemberRole } from "../lib/chatTypes";
 import { useIsMobileViewport } from "../hooks/useIsMobileViewport";
@@ -1079,7 +1088,7 @@ export default function ChatScreen({
   >(null);
 
   const [leadershipTab, setLeadershipTab] = useState<
-    "quick" | "features" | "cosmetics" | "guard" | "store" | "design" | "stats" | "owner_store"
+    "quick" | "features" | "cosmetics" | "guard" | "store" | "design" | "stats" | "owner_store" | "roles"
   >("quick");
   const [designInspectActive, setDesignInspectActive] = useState(false);
   const [inspectSelectedRegion, setInspectSelectedRegion] =
@@ -1838,6 +1847,7 @@ export default function ChatScreen({
         case "user":
         case "vip":
         case "platinum_vip":
+        case "host":
         case "mod":
         case "admin":
         case "owner":
@@ -1882,6 +1892,108 @@ export default function ChatScreen({
   >({});
   const [globalRoleOverridesByUserId, setGlobalRoleOverridesByUserId] =
     useState<Record<string, MemberRole>>({});
+  const [roomTempGrantsByUserId, setRoomTempGrantsByUserId] = useState<
+    Record<string, MemberRole>
+  >({});
+  const [roleGrantsPolicy, setRoleGrantsPolicy] = useState<RoleGrantsPolicy>(
+    getDefaultRolePolicy(),
+  );
+
+  useEffect(() => {
+    void fetchRoleGrantsPolicy().then(setRoleGrantsPolicy);
+  }, []);
+
+  useEffect(() => {
+    if (!activeRoomId) {
+      setRoomTempGrantsByUserId({});
+      return;
+    }
+    let cancelled = false;
+    void fetchRoomTempGrants(activeRoomId).then((map) => {
+      if (!cancelled) setRoomTempGrantsByUserId(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRoomId]);
+
+  useEffect(() => {
+    if (!supabase || !activeRoomId) return;
+    let cancelled = false;
+    const unsubscribe = subscribeChannelWithRetry(() =>
+      supabase
+        .channel(`room_temp_grants_${activeRoomId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "room_temp_grants",
+            filter: `room_id=eq.${activeRoomId}`,
+          },
+          (payload) => {
+            if (cancelled) return;
+            if (payload.eventType === "DELETE") {
+              const row = payload.old as { user_id?: string };
+              if (!row?.user_id) return;
+              setRoomTempGrantsByUserId((prev) => {
+                const next = { ...prev };
+                delete next[row.user_id as string];
+                return next;
+              });
+              return;
+            }
+            const row = payload.new as {
+              user_id?: string;
+              role?: MemberRole;
+              expires_at?: string | null;
+            };
+            if (!row?.user_id || !row?.role) return;
+            if (row.expires_at && row.expires_at < new Date().toISOString()) {
+              return;
+            }
+            setRoomTempGrantsByUserId((prev) => ({
+              ...prev,
+              [row.user_id as string]: row.role as MemberRole,
+            }));
+          },
+        ),
+    );
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [activeRoomId]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    const unsubscribe = subscribeChannelWithRetry(() =>
+      supabase
+        .channel("role_grants_policy_sync")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "role_grants_policy" },
+          () => {
+            void fetchRoleGrantsPolicy().then(setRoleGrantsPolicy);
+          },
+        ),
+    );
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    getOrCreateChatSessionId();
+    const onLeave = () => {
+      void revokeMyTempGrants();
+    };
+    window.addEventListener("beforeunload", onLeave);
+    window.addEventListener("pagehide", onLeave);
+    return () => {
+      window.removeEventListener("beforeunload", onLeave);
+      window.removeEventListener("pagehide", onLeave);
+      void revokeMyTempGrants();
+    };
+  }, []);
 
   useEffect(() => {
     if (!activeRoomId) {
@@ -1983,6 +2095,7 @@ export default function ChatScreen({
         globalRoleOverridesByUserId[currentUser.uid || ""] ||
           (typeof currentUser.role === "string" ? currentUser.role : undefined),
         currentUser.uid ? roomMemberRolesByUserId[currentUser.uid] : null,
+        currentUser.uid ? roomTempGrantsByUserId[currentUser.uid] : null,
         currentUser.authProvider === "guest" ? "guest" : "user",
       ),
     [
@@ -1991,7 +2104,17 @@ export default function ChatScreen({
       currentUser.uid,
       globalRoleOverridesByUserId,
       roomMemberRolesByUserId,
+      roomTempGrantsByUserId,
     ],
+  );
+
+  const myGranterRole = useMemo(
+    () =>
+      resolveGranterEffectiveRole(
+        typeof currentUser.role === "string" ? currentUser.role : undefined,
+        currentUser.uid ? roomMemberRolesByUserId[currentUser.uid] : null,
+      ),
+    [currentUser.role, currentUser.uid, roomMemberRolesByUserId],
   );
 
   const handlePromoteMemberRole = useCallback(
@@ -2000,6 +2123,8 @@ export default function ChatScreen({
       targetNickname: string;
       newRole: MemberRole;
       previousRole: MemberRole;
+      temporary?: boolean;
+      durationMinutes?: number | null;
     }) => {
       if (!isPersistableMemberId(input.targetUserId)) {
         throw new Error("invalid_target_id");
@@ -2010,6 +2135,8 @@ export default function ChatScreen({
         targetNickname: input.targetNickname,
         newRole: input.newRole,
         operatorNickname: currentDisplayNickname,
+        temporary: input.temporary,
+        durationMinutes: input.durationMinutes,
       });
       if (!result.ok) {
         throw new Error(result.error || "promote_failed");
@@ -2023,6 +2150,14 @@ export default function ChatScreen({
         if (input.targetUserId === currentUser.uid) {
           onUserSessionUpdate?.({ role: input.newRole });
         }
+      } else if (result.scope === "temp" && result.role && input.targetUserId) {
+        setRoomTempGrantsByUserId((prev) => ({
+          ...prev,
+          [input.targetUserId]: result.role as MemberRole,
+        }));
+        if (input.targetUserId === currentUser.uid) {
+          onUserSessionUpdate?.({ role: result.role as MemberRole });
+        }
       } else if (
         result.scope === "room" &&
         result.role &&
@@ -2032,8 +2167,18 @@ export default function ChatScreen({
           ...prev,
           [input.targetUserId]: result.role as MemberRole,
         }));
+        setRoomTempGrantsByUserId((prev) => {
+          const next = { ...prev };
+          delete next[input.targetUserId];
+          return next;
+        });
       } else if (result.scope === "room_clear") {
         setRoomMemberRolesByUserId((prev) => {
+          const next = { ...prev };
+          delete next[input.targetUserId];
+          return next;
+        });
+        setRoomTempGrantsByUserId((prev) => {
           const next = { ...prev };
           delete next[input.targetUserId];
           return next;
@@ -2211,6 +2356,7 @@ export default function ChatScreen({
       role: resolveEffectiveMemberRole(
         globalRoleOverridesByUserId[member.id] || member.role,
         roomMemberRolesByUserId[member.id],
+        roomTempGrantsByUserId[member.id],
         member.role === "guest" ? "guest" : "user",
       ),
     }));
@@ -2220,15 +2366,17 @@ export default function ChatScreen({
     isGhostMode,
     rawChatMembers,
     roomMemberRolesByUserId,
+    roomTempGrantsByUserId,
   ]);
   const memberRoleSortPriority: Record<string, number> = {
     owner: 0,
     admin: 1,
     mod: 2,
-    platinum_vip: 3,
-    vip: 4,
-    user: 5,
-    guest: 6,
+    host: 3,
+    platinum_vip: 4,
+    vip: 5,
+    user: 6,
+    guest: 7,
   };
   const orderedChatMembers = [...chatMembers].sort((a, b) => {
     const roleA = getRoleFromAuthor(a.nickname, myActiveSession, chatMembers);
@@ -11468,6 +11616,20 @@ export default function ChatScreen({
                       </button>
                       <button
                         type="button"
+                        onClick={() => setLeadershipTab("roles")}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
+                          leadershipTab === "roles"
+                            ? "bg-teal-500/15 text-teal-300 border border-teal-500/25"
+                            : "lamma-tab-soft text-gray-400 hover:text-white"
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          <Shield size={12} />
+                          نظام الرتب
+                        </span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setLeadershipTab("stats")}
                         className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
                           leadershipTab === "stats"
@@ -11502,6 +11664,17 @@ export default function ChatScreen({
                     addSystemActivityLog={addSystemActivityLog}
                     currentUserNickname={currentUser.nickname}
                   />
+                )}
+
+                {activeModal === "leadership" && leadershipTab === "roles" && isOwnerRole && (
+                  <ModalSuspense>
+                    <LazyOwnerRoleManagementPanel
+                      activeRoomId={activeRoomId}
+                      currentUserNickname={currentUser.nickname}
+                      chatMembers={chatMembers}
+                      addSystemActivityLog={addSystemActivityLog}
+                    />
+                  </ModalSuspense>
                 )}
 
                 <ModalSuspense>
@@ -11782,6 +11955,9 @@ export default function ChatScreen({
         }}
         onPromoteMemberRole={handlePromoteMemberRole}
         roomLabel={activeRoomId}
+        myEffectiveRole={myGranterRole}
+        roleGrantsPolicy={roleGrantsPolicy}
+        roomTempGrantsByUserId={roomTempGrantsByUserId}
           />
         </ModalSuspense>
         )}

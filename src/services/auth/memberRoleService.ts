@@ -10,9 +10,10 @@ export type RoomMemberRoleRow = {
 
 export type PromoteMemberRoleResult = {
   ok: boolean;
-  scope?: "global" | "room" | "room_clear";
+  scope?: "global" | "room" | "room_clear" | "temp";
   roomId?: string;
   role?: string;
+  temporary?: boolean;
   error?: string;
 };
 
@@ -53,6 +54,8 @@ export async function promoteMemberRole(input: {
   targetNickname: string;
   newRole: MemberRole | string;
   operatorNickname: string;
+  temporary?: boolean;
+  durationMinutes?: number | null;
 }): Promise<PromoteMemberRoleResult> {
   if (!supabase) {
     return { ok: false, error: "supabase_not_configured" };
@@ -67,6 +70,8 @@ export async function promoteMemberRole(input: {
     p_target_nickname: input.targetNickname,
     p_new_role: input.newRole,
     p_operator_nickname: input.operatorNickname,
+    p_is_temporary: !!input.temporary,
+    p_duration_minutes: input.durationMinutes ?? null,
   });
 
   if (error) {
@@ -88,13 +93,6 @@ export async function promoteMemberRole(input: {
     roomId:
       typeof payload.room_id === "string" ? payload.room_id : input.roomId,
     role: typeof payload.role === "string" ? payload.role : String(input.newRole),
+    temporary: payload.temporary === true,
   };
-}
-
-export function roomRoleRowToMap(
-  userId: string,
-  role: MemberRole | null | undefined,
-): Record<string, MemberRole> {
-  if (!userId || !role) return {};
-  return { [userId]: role };
 }

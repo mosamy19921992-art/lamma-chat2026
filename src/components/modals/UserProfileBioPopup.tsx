@@ -28,6 +28,10 @@ const ROLE_BADGE: Record<string, { label: string; className: string }> = {
     label: "MODERATOR",
     className: "lamma-role-chip lamma-role-mod",
   },
+  host: {
+    label: "HOST",
+    className: "lamma-role-chip lamma-role-host",
+  },
   vip: {
     label: "VIP",
     className: "lamma-role-chip lamma-role-vip",
