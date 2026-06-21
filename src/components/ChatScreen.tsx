@@ -181,6 +181,14 @@ import { usePrivateMessages, hasPmMessageWithDbId } from "../hooks/usePrivateMes
 import { useSocialFeed } from "../hooks/useSocialFeed";
 import { useWebRTCCalls } from "../hooks/useWebRTCCalls";
 import { useOnlinePresence, type PresenceUpdateEvent } from "../hooks/useOnlinePresence";
+import { resolveEffectiveMemberRole } from "../lib/memberRoleResolution";
+import {
+  fetchRoomMemberRoles,
+  promoteMemberRole,
+  isPersistableMemberId,
+} from "../services/auth/memberRoleService";
+import { fetchServerUserRole } from "../services/auth/userRoleService";
+import type { MemberRole } from "../lib/chatTypes";
 import { useIsMobileViewport } from "../hooks/useIsMobileViewport";
 import { useVisualViewportLayout } from "../hooks/useVisualViewportOffset";
 import { useDeepLinkParams } from "../hooks/useDeepLinkParams";
@@ -1869,6 +1877,186 @@ export default function ChatScreen({
   const [rawChatMembers, setChatMembers] = useState<ChatMember[]>(() => [
     buildCurrentChatMember(),
   ]);
+  const [roomMemberRolesByUserId, setRoomMemberRolesByUserId] = useState<
+    Record<string, MemberRole>
+  >({});
+  const [globalRoleOverridesByUserId, setGlobalRoleOverridesByUserId] =
+    useState<Record<string, MemberRole>>({});
+
+  useEffect(() => {
+    if (!activeRoomId) {
+      setRoomMemberRolesByUserId({});
+      return;
+    }
+    let cancelled = false;
+    void fetchRoomMemberRoles(activeRoomId).then((map) => {
+      if (!cancelled) setRoomMemberRolesByUserId(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRoomId]);
+
+  useEffect(() => {
+    if (!supabase || !activeRoomId) return;
+    let cancelled = false;
+    const unsubscribe = subscribeChannelWithRetry(() =>
+      supabase
+        .channel(`room_member_roles_${activeRoomId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "room_member_roles",
+            filter: `room_id=eq.${activeRoomId}`,
+          },
+          (payload) => {
+            if (cancelled) return;
+            if (payload.eventType === "DELETE") {
+              const row = payload.old as { user_id?: string };
+              if (!row?.user_id) return;
+              setRoomMemberRolesByUserId((prev) => {
+                const next = { ...prev };
+                delete next[row.user_id as string];
+                return next;
+              });
+              return;
+            }
+            const row = payload.new as {
+              user_id?: string;
+              role?: MemberRole;
+            };
+            if (!row?.user_id || !row?.role) return;
+            setRoomMemberRolesByUserId((prev) => ({
+              ...prev,
+              [row.user_id as string]: row.role as MemberRole,
+            }));
+          },
+        ),
+    );
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [activeRoomId]);
+
+  useEffect(() => {
+    if (
+      !supabase ||
+      !currentUser.uid ||
+      currentUser.authProvider === "guest"
+    ) {
+      return;
+    }
+    const uid = currentUser.uid;
+    let cancelled = false;
+    const unsubscribe = subscribeChannelWithRetry(() =>
+      supabase
+        .channel(`my_global_role_${uid}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "user_roles",
+            filter: `user_id=eq.${uid}`,
+          },
+          async () => {
+            if (cancelled) return;
+            const serverRole = await fetchServerUserRole(uid);
+            if (serverRole) {
+              onUserSessionUpdate?.({ role: serverRole });
+            }
+          },
+        ),
+    );
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [currentUser.authProvider, currentUser.uid, onUserSessionUpdate]);
+
+  const myPresenceRole = useMemo(
+    () =>
+      resolveEffectiveMemberRole(
+        globalRoleOverridesByUserId[currentUser.uid || ""] ||
+          (typeof currentUser.role === "string" ? currentUser.role : undefined),
+        currentUser.uid ? roomMemberRolesByUserId[currentUser.uid] : null,
+        currentUser.authProvider === "guest" ? "guest" : "user",
+      ),
+    [
+      currentUser.authProvider,
+      currentUser.role,
+      currentUser.uid,
+      globalRoleOverridesByUserId,
+      roomMemberRolesByUserId,
+    ],
+  );
+
+  const handlePromoteMemberRole = useCallback(
+    async (input: {
+      targetUserId: string;
+      targetNickname: string;
+      newRole: MemberRole;
+      previousRole: MemberRole;
+    }) => {
+      if (!isPersistableMemberId(input.targetUserId)) {
+        throw new Error("invalid_target_id");
+      }
+      const result = await promoteMemberRole({
+        roomId: activeRoomId,
+        targetUserId: input.targetUserId,
+        targetNickname: input.targetNickname,
+        newRole: input.newRole,
+        operatorNickname: currentDisplayNickname,
+      });
+      if (!result.ok) {
+        throw new Error(result.error || "promote_failed");
+      }
+
+      if (result.scope === "global" && input.targetUserId) {
+        setGlobalRoleOverridesByUserId((prev) => ({
+          ...prev,
+          [input.targetUserId]: input.newRole,
+        }));
+        if (input.targetUserId === currentUser.uid) {
+          onUserSessionUpdate?.({ role: input.newRole });
+        }
+      } else if (
+        result.scope === "room" &&
+        result.role &&
+        input.targetUserId
+      ) {
+        setRoomMemberRolesByUserId((prev) => ({
+          ...prev,
+          [input.targetUserId]: result.role as MemberRole,
+        }));
+      } else if (result.scope === "room_clear") {
+        setRoomMemberRolesByUserId((prev) => {
+          const next = { ...prev };
+          delete next[input.targetUserId];
+          return next;
+        });
+        setGlobalRoleOverridesByUserId((prev) => {
+          const next = { ...prev };
+          delete next[input.targetUserId];
+          return next;
+        });
+        if (input.targetUserId === currentUser.uid) {
+          onUserSessionUpdate?.({ role: input.newRole });
+        }
+      }
+
+      return result;
+    },
+    [
+      activeRoomId,
+      currentDisplayNickname,
+      currentUser.uid,
+      onUserSessionUpdate,
+    ],
+  );
   type RoomEntryTicker = {
     kind: "join" | "leave" | "standby";
     nickname?: string;
@@ -2001,6 +2189,7 @@ export default function ChatScreen({
   useOnlinePresence({
     roomId: activeRoomId,
     currentUser,
+    presenceRole: myPresenceRole,
     displayNickname: currentDisplayNickname,
     displayAvatar: currentDisplayAvatar,
     displayColor: currentDisplayColor,
@@ -2012,10 +2201,26 @@ export default function ChatScreen({
     onPresenceUpdate: handlePresenceUpdate,
   });
 
-  // Derived chatMembers: hide current user if Ghost Mode is active
-  const chatMembers = isGhostMode
-    ? rawChatMembers.filter((m) => m.nickname !== currentDisplayNickname)
-    : rawChatMembers;
+  // Derived chatMembers: hide current user if Ghost Mode is active + merge room roles
+  const chatMembers = useMemo(() => {
+    const visible = isGhostMode
+      ? rawChatMembers.filter((m) => m.nickname !== currentDisplayNickname)
+      : rawChatMembers;
+    return visible.map((member) => ({
+      ...member,
+      role: resolveEffectiveMemberRole(
+        globalRoleOverridesByUserId[member.id] || member.role,
+        roomMemberRolesByUserId[member.id],
+        member.role === "guest" ? "guest" : "user",
+      ),
+    }));
+  }, [
+    currentDisplayNickname,
+    globalRoleOverridesByUserId,
+    isGhostMode,
+    rawChatMembers,
+    roomMemberRolesByUserId,
+  ]);
   const memberRoleSortPriority: Record<string, number> = {
     owner: 0,
     admin: 1,
@@ -11575,6 +11780,8 @@ export default function ChatScreen({
           setShowProfileModal(false);
           setSelectedProfileMember(null);
         }}
+        onPromoteMemberRole={handlePromoteMemberRole}
+        roomLabel={activeRoomId}
           />
         </ModalSuspense>
         )}

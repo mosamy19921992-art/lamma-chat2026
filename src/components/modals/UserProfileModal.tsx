@@ -1,13 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, LinkIcon, Shield, Mic, Phone, Video, Radio, Compass, Lock, Ghost, Trash2, Image, Tv, Upload, Loader2 } from 'lucide-react';
-import { type BanInfo } from "../../lib/chatTypes.ts";
+import { type BanInfo, type MemberRole } from "../../lib/chatTypes.ts";
 import { MemberAvatar } from "../MemberAvatar";
 import { PROFILE_AVATAR_EMOJIS } from "../../lib/avatarDisplay";
 import { OwnerIdCard } from "../OwnerIdCard";
 import { isOwnerChatRole } from "../../lib/ownerIdentity";
+import {
+  isGlobalPromotionRole,
+  rolePromotionScopeLabel,
+} from "../../lib/memberRoleResolution";
 
-export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setShowProfileModal, setSelectedProfileMember, myActiveSession, currentUser, isOwnerRole, isRegisteredAccount, tempEntryTopicInput, setTempEntryTopicInput, setTempEntryTopicStatusText, tempEntryTopicEnabled, setTempEntryTopicEnabled, handleSaveTempEntryTopic, tempEntryTopicStatusText, nicknameRequestInput, setNicknameRequestInput, nicknameRequestLoading, handleSubmitNicknameChangeRequest, nicknameRequestStatusText, nicknameRequests, setRoomMessages, activeRoomId, addSystemActivityLog, addLammaBotMessage, bannedUsersList, removeBanEntries, addBanEntry, chatMembers, setChatMembers, memberCustomPermissions, setMemberCustomPermissions, myCustomBio, setMyCustomBio, handleSelectProfileEmoji, handleProfileAvatarUploadChange, profileAvatarInputRef, profileAvatarSaving, profileAvatarStatus, onSendPrivateMessage }: any) => {
+const PROMOTE_ERROR_MESSAGES: Record<string, string> = {
+  not_authenticated: "يجب تسجيل الدخول أولاً.",
+  not_authorized: "ليس لديك صلاحية الترقية.",
+  only_owner_can_grant_owner: "المالك فقط يمكنه منح رتبة المالك.",
+  only_owner_can_grant_admin: "المالك فقط يمكنه منح رتبة الأدمن.",
+  cannot_demote_owner: "لا يمكن تخفيض رتبة المالك.",
+  only_owner_can_demote_admin: "المالك فقط يمكنه تخفيض الأدمن.",
+  invalid_target_id: "لا يمكن حفظ الرتبة — العضو يحتاج حساباً مسجلاً متصلاً.",
+  promote_failed: "فشل حفظ الرتبة على السيرفر.",
+};
+
+export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setShowProfileModal, setSelectedProfileMember, myActiveSession, currentUser, isOwnerRole, isRegisteredAccount, tempEntryTopicInput, setTempEntryTopicInput, setTempEntryTopicStatusText, tempEntryTopicEnabled, setTempEntryTopicEnabled, handleSaveTempEntryTopic, tempEntryTopicStatusText, nicknameRequestInput, setNicknameRequestInput, nicknameRequestLoading, handleSubmitNicknameChangeRequest, nicknameRequestStatusText, nicknameRequests, setRoomMessages, activeRoomId, addSystemActivityLog, addLammaBotMessage, bannedUsersList, removeBanEntries, addBanEntry, chatMembers, setChatMembers, memberCustomPermissions, setMemberCustomPermissions, myCustomBio, setMyCustomBio, handleSelectProfileEmoji, handleProfileAvatarUploadChange, profileAvatarInputRef, profileAvatarSaving, profileAvatarStatus, onSendPrivateMessage, onPromoteMemberRole, roomLabel }: any) => {
+  const [rolePromoteLoading, setRolePromoteLoading] = useState(false);
   const isOwnProfile =
     selectedProfileMember?.nickname === myActiveSession.nickname;
   const isStaffViewer =
@@ -16,6 +32,83 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
     currentUser.role === "mod";
   const showStaffTools = isStaffViewer && !isOwnProfile;
   const isOwnerProfile = isOwnerChatRole(selectedProfileMember?.role);
+  const canGrantGlobalRoles = currentUser.role === "owner";
+  const promotionRoomId = roomLabel || activeRoomId;
+
+  const handleRolePromotion = async (targetRole: MemberRole) => {
+    if (!selectedProfileMember || !onPromoteMemberRole) return;
+    const prevRole = selectedProfileMember.role as MemberRole;
+    if (targetRole === prevRole) return;
+
+    if (
+      isGlobalPromotionRole(targetRole) &&
+      !canGrantGlobalRoles
+    ) {
+      alert("المالك فقط يمكنه منح رتب المالك والأدمن.");
+      return;
+    }
+
+    setRolePromoteLoading(true);
+    try {
+      await onPromoteMemberRole({
+        targetUserId: selectedProfileMember.id,
+        targetNickname: selectedProfileMember.nickname,
+        newRole: targetRole,
+        previousRole: prevRole,
+      });
+
+      const scopeLabel = rolePromotionScopeLabel(targetRole, promotionRoomId);
+      addSystemActivityLog(
+        "promote",
+        selectedProfileMember.nickname,
+        `تغيير رتبة إلى [${targetRole}] — ${scopeLabel}`,
+      );
+
+      const roleLabel: Record<string, string> = {
+        owner: "👑 مالك",
+        admin: "🛡️ أدمن",
+        mod: "🔰 مشرف",
+        platinum_vip: "💎 VIP بلاتيني",
+        vip: "💎 VIP",
+        user: "👤 عضو",
+        guest: "👤 زائر",
+      };
+      const isStaffUpgrade =
+        ["admin", "mod", "owner"].includes(targetRole) &&
+        !["admin", "mod", "owner"].includes(prevRole);
+      const isStaffDowngrade =
+        ["admin", "mod", "owner"].includes(prevRole) &&
+        !["admin", "mod", "owner"].includes(targetRole);
+
+      if (isStaffUpgrade) {
+        addLammaBotMessage(
+          "admin",
+          `🎉 تمت ترقية [${selectedProfileMember.nickname}] إلى ${roleLabel[targetRole] || targetRole} بواسطة ${currentUser.nickname}. (${scopeLabel})`,
+        );
+      } else if (isStaffDowngrade || targetRole === "user" || targetRole === "guest") {
+        addLammaBotMessage(
+          "admin",
+          `📋 تم تغيير رتبة [${selectedProfileMember.nickname}] إلى ${roleLabel[targetRole] || targetRole} بواسطة ${currentUser.nickname}. (${scopeLabel})`,
+        );
+      }
+
+      alert(
+        `تم حفظ الرتبة [${roleLabel[targetRole] || targetRole}] بنجاح — ${scopeLabel}`,
+      );
+      setSelectedProfileMember((prev: typeof selectedProfileMember) =>
+        prev ? { ...prev, role: targetRole } : null,
+      );
+    } catch (error) {
+      const code =
+        error instanceof Error ? error.message : "promote_failed";
+      alert(
+        PROMOTE_ERROR_MESSAGES[code] ||
+          "تعذر حفظ الرتبة. تأكد من تشغيل migration على Supabase.",
+      );
+    } finally {
+      setRolePromoteLoading(false);
+    }
+  };
 
   return (
     <>
@@ -670,75 +763,43 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                               <span className="text-[8.5px] text-gray-500 font-extrabold pr-1">
                                 ترقية ومنح الصلاحيات:
                               </span>
+                              <span className="text-[7.5px] text-emerald-400/80 font-bold pr-1">
+                                mod/vip = غرفة «{promotionRoomId}» · admin/owner = كل الغرف
+                              </span>
                               <select
                                 id="profile-role-select"
                                 name="profileRoleSelect"
                                 value={selectedProfileMember.role}
+                                disabled={rolePromoteLoading || !onPromoteMemberRole}
                                 onChange={(e) => {
-                                  const targetRole = e.target.value as any;
-                                  const prevRole = selectedProfileMember.role;
-                                  setChatMembers((prev) =>
-                                    prev.map((m) => {
-                                      if (
-                                        m.nickname.toLowerCase() ===
-                                        selectedProfileMember.nickname.toLowerCase()
-                                      ) {
-                                        return { ...m, role: targetRole };
-                                      }
-                                      return m;
-                                    }),
-                                  );
-                                  addSystemActivityLog(
-                                    "promote",
-                                    selectedProfileMember.nickname,
-                                    `تغيير وتعيين رتبة لعضو الشات إلى [${targetRole}]`,
-                                  );
-
-                                  // إعلان في غرفة الإدارة عند الترقية
-                                  const isUpgrade =
-                                    ["admin", "mod", "owner"].includes(targetRole) &&
-                                    !["admin", "mod", "owner"].includes(prevRole);
-                                  const isDowngrade =
-                                    ["admin", "mod", "owner"].includes(prevRole) &&
-                                    !["admin", "mod", "owner"].includes(targetRole);
-                                  const roleLabel: Record<string, string> = {
-                                    owner: "👑 مالك",
-                                    admin: "🛡️ أدمن",
-                                    mod: "🔰 مشرف",
-                                    vip: "💎 VIP",
-                                    user: "👤 عضو",
-                                    guest: "👤 زائر",
-                                  };
-                                  if (isUpgrade) {
-                                    addLammaBotMessage(
-                                      "admin",
-                                      `🎉 مرحباً بالعضو [${selectedProfileMember.nickname}] في فريق الإدارة! تمت ترقيته لرتبة ${roleLabel[targetRole] || targetRole} بواسطة ${currentUser.nickname}. أهلاً وسهلاً 🛡️`,
-                                    );
-                                  } else if (isDowngrade) {
-                                    addLammaBotMessage(
-                                      "admin",
-                                      `📋 تم تغيير رتبة [${selectedProfileMember.nickname}] من ${roleLabel[prevRole] || prevRole} إلى ${roleLabel[targetRole] || targetRole} بواسطة ${currentUser.nickname}.`,
-                                    );
-                                  }
-
-                                  alert(
-                                    `تم تغيير وتحديث صلاحيات العضو إلى [${targetRole}] بنجاح!`,
-                                  );
-                                  setSelectedProfileMember((prev) =>
-                                    prev ? { ...prev, role: targetRole } : null,
+                                  void handleRolePromotion(
+                                    e.target.value as MemberRole,
                                   );
                                 }}
-                                className="bg-black/60 border border-green-500/25 p-1 rounded-xl text-[9px] text-[#a3e635] font-black focus:ring-0 focus:outline-none focus:border-green-500"
+                                className="bg-black/60 border border-green-500/25 p-1 rounded-xl text-[9px] text-[#a3e635] font-black focus:ring-0 focus:outline-none focus:border-green-500 disabled:opacity-50"
                               >
                                 <option value="guest">👤 GUEST</option>
                                 <option value="user">👨 MEMBER</option>
                                 <option value="vip">💎 VIP MEMBER</option>
+                                <option value="platinum_vip">💎 VIP PLATINUM</option>
                                 <option value="mod">🛡️ CHAT MODERATOR</option>
-                                <option value="admin">
-                                  🛡️ SYSTEM ADMIN
-                                </option>
-                                <option value="owner">👑 SYSTEM OWNER</option>
+                                {canGrantGlobalRoles && (
+                                  <>
+                                    <option value="admin">
+                                      🛡️ SYSTEM ADMIN (كل الغرف)
+                                    </option>
+                                    <option value="owner">
+                                      👑 SYSTEM OWNER (كل الغرف)
+                                    </option>
+                                  </>
+                                )}
                               </select>
+                              {rolePromoteLoading && (
+                                <span className="text-[8px] text-amber-300 font-bold pr-1 inline-flex items-center gap-1">
+                                  <Loader2 size={10} className="animate-spin" />
+                                  جاري الحفظ على السيرفر...
+                                </span>
+                              )}
                             </div>
                           </div>
 

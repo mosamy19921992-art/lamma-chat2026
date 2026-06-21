@@ -10,6 +10,7 @@ Apply **only** via `scripts/apply-production-setup.mjs` (requires `SUPABASE_ACCE
 5. supabase-launch-hardening.sql
 6. supabase-participation-hardening.sql   ← ban / invite-only / call permissions
 7. supabase-private-media.sql             ← private PM bucket
+8. supabase-room-member-roles.sql         ← per-room mod/vip + promote RPC
 ```
 
 **Do not** run `supabase-storage.sql` after step 4 — it overwrites folder-scoped upload policies.
@@ -34,3 +35,11 @@ select * from public.user_roles;
 ```bash
 SUPABASE_ACCESS_TOKEN=... node scripts/apply-participation-hardening-only.mjs
 ```
+
+## Room member roles (per-room mod/vip)
+
+```bash
+SUPABASE_ACCESS_TOKEN=... node scripts/apply-room-member-roles.mjs
+```
+
+Or paste `supabase-room-member-roles.sql` in Supabase SQL Editor.

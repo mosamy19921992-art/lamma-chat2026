@@ -28,6 +28,8 @@ export function presenceChannelName(roomId: string) {
 interface UseOnlinePresenceOptions {
   roomId: string;
   currentUser: UserSession;
+  /** Role broadcast in presence (may include room-scoped elevation). */
+  presenceRole: string;
   displayNickname: string;
   displayAvatar: string;
   displayColor: string;
@@ -61,6 +63,7 @@ function presenceToMember(
 export function useOnlinePresence({
   roomId,
   currentUser,
+  presenceRole,
   displayNickname,
   displayAvatar,
   displayColor,
@@ -84,7 +87,7 @@ export function useOnlinePresence({
           id: currentUser.uid,
           nickname: displayNickname,
           role: normalizeRole(
-            typeof currentUser.role === "string" ? currentUser.role : undefined,
+            typeof presenceRole === "string" ? presenceRole : undefined,
           ),
           color: displayColor || "#10b981",
           avatar: displayAvatar || "👤",
@@ -171,9 +174,7 @@ export function useOnlinePresence({
             id: myUid,
             nickname: displayNickname,
             role: normalizeRole(
-              typeof currentUser.role === "string"
-                ? currentUser.role
-                : undefined,
+              typeof presenceRole === "string" ? presenceRole : undefined,
             ),
             color: displayColor || "#10b981",
             avatar: displayAvatar || "👤",
@@ -242,7 +243,7 @@ export function useOnlinePresence({
               await channel.track({
                 uid: myUid,
                 nickname: displayNickname,
-                role: currentUser.role,
+                role: presenceRole,
                 color: displayColor || "#10b981",
                 avatar: displayAvatar || "👤",
                 fingerprint: myFingerprint,
@@ -290,8 +291,8 @@ export function useOnlinePresence({
     roomId,
     currentUser.authProvider,
     currentUser.email,
-    currentUser.role,
     currentUser.uid,
+    presenceRole,
     displayAvatar,
     displayColor,
     displayNickname,
