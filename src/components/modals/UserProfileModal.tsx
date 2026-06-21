@@ -597,6 +597,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                   selectedProfileMember.browserSignature,
                                 ip: selectedProfileMember.ip,
                                 localStorageId:
+                                  selectedProfileMember.id ||
                                   selectedProfileMember.localStorageId,
                                 type: "mute",
                                 banner: currentUser.nickname,
@@ -731,6 +732,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                     selectedProfileMember.browserSignature,
                                   ip: selectedProfileMember.ip,
                                   localStorageId:
+                                    selectedProfileMember.id ||
                                     selectedProfileMember.localStorageId,
                                   type: "room",
                                   roomId: activeRoomId,
@@ -1207,6 +1209,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                         selectedProfileMember.browserSignature,
                                       ip: selectedProfileMember.ip,
                                       localStorageId:
+                                        selectedProfileMember.id ||
                                         selectedProfileMember.localStorageId,
                                       type: "megaban",
                                       banner: currentUser.nickname,

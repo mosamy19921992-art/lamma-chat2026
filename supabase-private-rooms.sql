@@ -86,7 +86,7 @@ begin
   end if;
 
   v_role := public.current_app_role();
-  v_nick := coalesce(nullif(trim(p_operator_nickname), ''), v_uid::text);
+  v_nick := public.resolve_bound_nickname(v_uid::text);
 
   if v_role in ('owner', 'malek', 'المالك', 'admin', 'أدمن') then
     v_allowed := true;

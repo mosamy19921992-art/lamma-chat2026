@@ -12,6 +12,13 @@ export function isSafeHttpUrl(url: string): boolean {
   }
 }
 
+/** Returns a safe http(s) media URL or null. */
+export function filterSafeMediaUrl(url: string | undefined | null): string | null {
+  if (!url) return null;
+  const trimmed = url.trim().slice(0, 2048);
+  return isSafeHttpUrl(trimmed) ? trimmed : null;
+}
+
 /** Strict hex color for inline [color=#...] tags. */
 export function sanitizeHexColor(value: string): string | null {
   return /^#[0-9a-fA-F]{3,8}$/.test(value) ? value : null;
@@ -23,7 +30,8 @@ export function getYoutubeId(url: string | undefined): string | null {
     /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
   const videoId = match?.[2];
-  return videoId && videoId.length === 11 ? videoId : null;
+  const YT_ID = /^[a-zA-Z0-9_-]{11}$/;
+  return videoId && YT_ID.test(videoId) ? videoId : null;
 }
 
 export function hexToRgba(hex: string, alpha: number) {

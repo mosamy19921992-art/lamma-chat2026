@@ -13,6 +13,7 @@ Apply **only** via `scripts/apply-production-setup.mjs` (requires `SUPABASE_ACCE
 8. supabase-room-member-roles.sql         ← per-room mod/vip + promote RPC
 9. supabase-role-policy-v2.sql            ← host + temp grants + grant matrix
 10. supabase-private-rooms.sql            ← password rooms + creation quota
+11. supabase-moderation-hardening.sql     ← P0: typed bans + moderation RPC
 ```
 
 **Do not** run `supabase-storage.sql` after step 4 — it overwrites folder-scoped upload policies.
@@ -53,3 +54,11 @@ SUPABASE_ACCESS_TOKEN=... node scripts/apply-private-rooms.mjs
 ```
 
 Or paste `supabase-private-rooms.sql` in Supabase SQL Editor.
+
+## Moderation hardening (P0)
+
+```bash
+SUPABASE_ACCESS_TOKEN=... node scripts/apply-moderation-hardening.mjs
+```
+
+Or paste `supabase-moderation-hardening.sql` in Supabase SQL Editor.

@@ -148,6 +148,10 @@ export interface BannedUserRow {
   author: string;
   banner: string;
   reason: string;
+  ban_type?: string;
+  room_id?: string | null;
+  target_user_id?: string | null;
+  expires_at?: string | null;
 }
 
 export interface NicknameChangeRequestRow {

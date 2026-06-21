@@ -16,6 +16,14 @@ begin
     return jsonb_build_object('ok', false, 'error', 'not_authenticated');
   end if;
 
+  if exists (
+    select 1 from public.user_roles
+    where role in ('owner', 'malek', 'المالك')
+      and user_id <> v_uid
+  ) then
+    return jsonb_build_object('ok', false, 'error', 'owner_already_claimed');
+  end if;
+
   select email into v_email from auth.users where id = v_uid;
   if v_email is null or lower(trim(v_email)) <> lower(trim(p_email)) then
     return jsonb_build_object('ok', false, 'error', 'email_mismatch', 'email', v_email);

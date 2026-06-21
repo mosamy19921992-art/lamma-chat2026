@@ -175,6 +175,7 @@ import {
   canSendImages,
   canShareYoutube,
   getRoomCreationQuotaRemaining,
+  filterSafeMediaUrl,
   type StoreCosmeticsSnapshot,
 } from "../lib/chatHelpers.ts";
 import { renderTextMessageWithMedia } from "../lib/chatMessageRender.tsx";
@@ -196,7 +197,7 @@ import {
   revokeMyTempGrants,
 } from "../services/auth/rolePolicyService";
 import { getOrCreateChatSessionId } from "../lib/chatSessionId";
-import { canUseStaffTools, type RoleGrantsPolicy } from "../lib/rolePolicy";
+import { canUseStaffTools, canGrantRole, type RoleGrantsPolicy } from "../lib/rolePolicy";
 import { getDefaultRolePolicy } from "../lib/memberRoleResolution";
 import { fetchServerUserRole } from "../services/auth/userRoleService";
 import type { MemberRole } from "../lib/chatTypes";
@@ -215,6 +216,12 @@ import {
   privateRoomToEntry,
   verifyPrivateRoomPassword,
 } from "../services/chat/privateRoomService";
+import {
+  applyModerationAction,
+  banActionForType,
+  fetchMyActiveSanctions,
+  mapBannedUserRowToBanInfo,
+} from "../services/chat/moderationService";
 import {
   parseDjLibrary,
   persistDjLibrary,
@@ -333,56 +340,13 @@ function serializeBanRowReason(ban: BanInfo): string {
 }
 
 function parseBannedUserRow(row: BannedUserRow): BanInfo {
-  const fallbackTime = row.created_at
-    ? new Date(row.created_at).toLocaleTimeString("ar-EG", {
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
-      })
-    : new Date().toLocaleTimeString("ar-EG", {
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
-      });
+  return mapBannedUserRowToBanInfo(row);
+}
 
-  if (row.reason.startsWith(BANNED_USER_REASON_PREFIX)) {
-    try {
-      const parsed = JSON.parse(
-        row.reason.slice(BANNED_USER_REASON_PREFIX.length),
-      ) as Partial<BanInfo>;
-      return {
-        id: row.id || `ban-${Date.now()}`,
-        nickname: parsed.nickname || row.author,
-        email: parsed.email || undefined,
-        fingerprint: parsed.fingerprint || row.uid,
-        browserSignature: parsed.browserSignature || "",
-        ip: parsed.ip || "",
-        localStorageId: parsed.localStorageId || "",
-        type: (parsed.type as BanInfo["type"]) || "ban",
-        roomId: parsed.roomId || undefined,
-        banner: parsed.banner || row.banner,
-        reason: parsed.reason || row.reason,
-        time: parsed.time || fallbackTime,
-      };
-    } catch {
-      // Fall back to the legacy/simple row shape if JSON parsing fails.
-    }
-  }
-
-  return {
-    id: row.id || `ban-${Date.now()}`,
-    nickname: row.author,
-    email: undefined,
-    fingerprint: row.uid,
-    browserSignature: "",
-    ip: "",
-    localStorageId: "",
-    type: "ban",
-    roomId: undefined,
-    banner: row.banner,
-    reason: row.reason,
-    time: fallbackTime,
-  };
+function resolveBanTargetUserId(ban: BanInfo): string | null {
+  if (isUuidLike(ban.localStorageId)) return ban.localStorageId;
+  if (isUuidLike(ban.fingerprint)) return ban.fingerprint;
+  return null;
 }
 
 function sanitizeRoomBgMap(value: unknown): Record<string, string> {
@@ -1343,6 +1307,31 @@ export default function ChatScreen({
       sync?: boolean;
     },
   ) => {
+    if (options?.sync && supabase && currentUser.authProvider === "supabase") {
+      const serverAction = banActionForType(ban.type, false);
+      if (
+        serverAction === "mute" ||
+        serverAction === "room_ban" ||
+        serverAction === "megaban"
+      ) {
+        const result = await applyModerationAction({
+          action: serverAction,
+          targetUserId: resolveBanTargetUserId(ban),
+          targetNickname: ban.nickname,
+          roomId: ban.roomId || activeRoomId,
+          reason: ban.reason,
+        });
+        if (!result.ok) {
+          alert(
+            `تعذر تنفيذ الإجراء على السيرفر: ${result.error || "unknown"}`,
+          );
+          return;
+        }
+        setBannedUsersList((prev) => mergeBanLists(prev, [ban]));
+        return;
+      }
+    }
+
     setBannedUsersList((prev) => mergeBanLists(prev, [ban]));
 
     if (!options?.sync || !supabase || !canSyncModerationToSupabase) {
@@ -1357,6 +1346,9 @@ export default function ChatScreen({
       author: ban.nickname,
       banner: ban.banner,
       reason: serializeBanRowReason(ban),
+      ban_type: ban.type,
+      room_id: ban.roomId || null,
+      target_user_id: resolveBanTargetUserId(ban),
     };
 
     const { data, error } = await supabase
@@ -1389,7 +1381,32 @@ export default function ChatScreen({
       return prev.filter((ban) => !matcher(ban));
     });
 
-    if (!options?.sync || !supabase || !canSyncModerationToSupabase) {
+    if (!options?.sync || !supabase) {
+      return;
+    }
+
+    for (const ban of removedEntries) {
+      const serverAction = banActionForType(ban.type, true);
+      if (
+        serverAction === "unmute" ||
+        serverAction === "unroom_ban" ||
+        serverAction === "unmegaban"
+      ) {
+        const result = await applyModerationAction({
+          action: serverAction,
+          targetUserId: resolveBanTargetUserId(ban),
+          targetNickname: ban.nickname,
+          roomId: ban.roomId || activeRoomId,
+          reason: ban.reason,
+        });
+        if (!result.ok) {
+          console.warn("Failed to reverse moderation on server", result.error);
+        }
+        continue;
+      }
+    }
+
+    if (!canSyncModerationToSupabase) {
       return;
     }
 
@@ -2178,6 +2195,9 @@ export default function ChatScreen({
       temporary?: boolean;
       durationMinutes?: number | null;
     }) => {
+      if (!canGrantRole(myGranterRole, input.newRole, roleGrantsPolicy)) {
+        throw new Error("not_authorized");
+      }
       if (!isPersistableMemberId(input.targetUserId)) {
         throw new Error("invalid_target_id");
       }
@@ -2251,7 +2271,9 @@ export default function ChatScreen({
       activeRoomId,
       currentDisplayNickname,
       currentUser.uid,
+      myGranterRole,
       onUserSessionUpdate,
+      roleGrantsPolicy,
     ],
   );
   type RoomEntryTicker = {
@@ -4159,6 +4181,20 @@ export default function ChatScreen({
 
   // Sync banned list to localStorage
   useEffect(() => {
+    if (!supabase || !currentUser.uid || currentUser.authProvider !== "supabase") {
+      return;
+    }
+    let cancelled = false;
+    void fetchMyActiveSanctions().then((sanctions) => {
+      if (cancelled || sanctions.length === 0) return;
+      setBannedUsersList((prev) => mergeBanLists(prev, sanctions));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser.uid, currentUser.authProvider]);
+
+  useEffect(() => {
     localStorage.setItem("lamma_banned_list", JSON.stringify(bannedUsersList));
   }, [bannedUsersList]);
 
@@ -5933,6 +5969,12 @@ export default function ChatScreen({
     type: "image" | "imageUrl" | "video" | "audio",
     mediaUrl: string,
   ) => {
+    const safeMedia = filterSafeMediaUrl(mediaUrl);
+    if (!safeMedia) {
+      alert("⚠️ الرابط غير مسموح — استخدم http أو https فقط.");
+      return;
+    }
+
     const finalType: "image" | "video" | "audio" =
       type === "imageUrl" ? "image" : type;
 
@@ -5941,7 +5983,7 @@ export default function ChatScreen({
         await publishPost({
           text: "",
           type: finalType,
-          mediaUrl,
+          mediaUrl: safeMedia,
         });
         setShowAttachmentDropdown(false);
       } catch (error) {
@@ -5967,7 +6009,7 @@ export default function ChatScreen({
         hour12: true,
       }),
       type: finalType,
-      mediaUrl: mediaUrl,
+      mediaUrl: safeMedia,
     };
 
     setRoomMessages((prev) => ({
@@ -5994,8 +6036,8 @@ export default function ChatScreen({
           text: "",
           color: currentUser.color || "#10b981",
           type: finalType,
-          media_url: mediaUrl,
-          youtube_id: getYoutubeId(mediaUrl),
+          media_url: safeMedia,
+          youtube_id: getYoutubeId(safeMedia),
           sender_uid: senderUid,
         },
       ]);
@@ -9467,6 +9509,7 @@ export default function ChatScreen({
                     parentRef={feedViewportRef}
                     renderMessage={(msg, index) => {
                   const isSystem = msg.type === "system";
+                  const safeMediaUrl = filterSafeMediaUrl(msg.mediaUrl);
                   return (
                     <div
                       key={msg.id}
@@ -9813,24 +9856,24 @@ export default function ChatScreen({
                             </div>
                           )}
 
-                          {msg.type === "image" && (
+                          {msg.type === "image" && safeMediaUrl && (
                             <div className="mt-2">
                               <img
                                 loading="lazy"
-                                src={msg.mediaUrl}
+                                src={safeMediaUrl}
                                 alt="Attachment"
                                 className="rounded-xl max-w-[180px] max-h-[120px] object-cover border border-white/10 bg-black/10"
                               />
                             </div>
                           )}
 
-                          {msg.type === "video" && (
+                          {msg.type === "video" && safeMediaUrl && (
                             <div className="mt-2">
-                              {getYoutubeId(msg.mediaUrl) ? (
+                              {getYoutubeId(safeMediaUrl) ? (
                                 <div className="relative pb-[56.25%] h-0 w-[360px] max-w-full rounded-2xl overflow-hidden border border-red-500/20 shadow-lg">
                                   <iframe
                                     title="Attached YouTube Video Player"
-                                    src={`https://www.youtube.com/embed/${getYoutubeId(msg.mediaUrl)}`}
+                                    src={`https://www.youtube.com/embed/${getYoutubeId(safeMediaUrl)}`}
                                     frameBorder="0"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                     allowFullScreen
@@ -9839,7 +9882,7 @@ export default function ChatScreen({
                                 </div>
                               ) : (
                                 <video
-                                  src={msg.mediaUrl}
+                                  src={safeMediaUrl}
                                   controls
                                   className="rounded-2xl max-w-[360px] border border-white/10"
                                 />
@@ -9847,8 +9890,8 @@ export default function ChatScreen({
                             </div>
                           )}
 
-                          {msg.type === "audio" && msg.mediaUrl && (
-                            <VoiceNoteBubble src={msg.mediaUrl} />
+                          {msg.type === "audio" && safeMediaUrl && (
+                            <VoiceNoteBubble src={safeMediaUrl} />
                           )}
                         </div>
                       </div>
@@ -11045,6 +11088,7 @@ export default function ChatScreen({
                   const msgSenderName = spyParts
                     ? (msg.isOwn ? spyParts[0] : spyParts[1])
                     : null;
+                  const safePmMediaUrl = filterSafeMediaUrl(msg.mediaUrl);
                   return (
                   <div
                     key={msg.dbId || `${msg.time}-${msg.text}-${idx}`}
@@ -11064,20 +11108,20 @@ export default function ChatScreen({
                           : "lamma-pm-bubble-incoming bg-black/40 border border-white/8 text-gray-100"
                       }`}
                     >
-                      {msg.mediaUrl && msg.type === "image" ? (
+                      {safePmMediaUrl && msg.type === "image" ? (
                         <img
-                          src={msg.mediaUrl}
+                          src={safePmMediaUrl}
                           alt="مرفق"
                           className="max-w-[220px] max-h-[220px] rounded-xl mb-1.5 object-cover"
                           loading="lazy"
                         />
                       ) : null}
-                      {msg.mediaUrl && msg.type === "video" ? (
-                        getYoutubeId(msg.mediaUrl) ? (
+                      {safePmMediaUrl && msg.type === "video" ? (
+                        getYoutubeId(safePmMediaUrl) ? (
                           <div className="relative pb-[56.25%] h-0 w-[220px] max-w-full rounded-xl overflow-hidden mb-1.5">
                             <iframe
                               title="PM YouTube"
-                              src={`https://www.youtube.com/embed/${getYoutubeId(msg.mediaUrl)}`}
+                              src={`https://www.youtube.com/embed/${getYoutubeId(safePmMediaUrl)}`}
                               frameBorder="0"
                               allowFullScreen
                               className="absolute inset-0 w-full h-full"
@@ -11085,7 +11129,7 @@ export default function ChatScreen({
                           </div>
                         ) : (
                           <video
-                            src={msg.mediaUrl}
+                            src={safePmMediaUrl}
                             controls
                             className="max-w-[220px] rounded-xl mb-1.5 border border-white/10"
                           />
