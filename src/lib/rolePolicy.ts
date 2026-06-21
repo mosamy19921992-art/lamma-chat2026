@@ -1,4 +1,8 @@
 import type { MemberRole } from "./chatTypes";
+import {
+  isAdminAccountRole,
+  isOwnerAccountRole,
+} from "./ownerIdentity";
 
 /** Rank order — higher = more authority (Kalamngy-inspired ladder). */
 export const ROLE_RANK: Record<MemberRole, number> = {
@@ -63,8 +67,12 @@ export type RoleGrantsPolicy = {
 };
 
 export function normalizeMemberRole(raw?: string | null): MemberRole {
-  const role = (raw || "").toLowerCase();
+  const role = (raw || "").toLowerCase().trim();
   if (role in ROLE_RANK) return role as MemberRole;
+  if (isOwnerAccountRole(role)) return "owner";
+  if (isAdminAccountRole(role)) return "admin";
+  if (role === "مشرف" || role === "moderator") return "mod";
+  if (role === "زائر" || role === "visitor") return "guest";
   return "user";
 }
 
@@ -154,7 +162,7 @@ export function canPromoteMembers(role: string | undefined): boolean {
 }
 
 export function canUseOwnerExclusiveTools(role: string | undefined): boolean {
-  return normalizeMemberRole(role) === "owner";
+  return isOwnerAccountRole(role) || normalizeMemberRole(role) === "owner";
 }
 
 export function canUseMegabanTools(role: string | undefined): boolean {

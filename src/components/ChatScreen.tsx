@@ -692,8 +692,12 @@ export default function ChatScreen({
     publicChatSessionStartedAt,
   ).getTime();
   const roleLower = (currentUser.role || "").toLowerCase();
-  const isOwnerRole = roleLower === "owner";
-  const isAdminRole = roleLower === "admin";
+  const isOwnerRole =
+    roleLower === "owner" ||
+    roleLower === "malek" ||
+    roleLower === "المالك" ||
+    roleLower === "boss";
+  const isAdminRole = roleLower === "admin" || roleLower === "أدمن";
   const isManagementRole = isOwnerRole || isAdminRole;
   const isPostsRoom = activeRoomId === POSTS_ROOM_ID;
   const isAdminRoom = activeRoomId === "admin";
@@ -4803,6 +4807,12 @@ export default function ChatScreen({
     }
 
     closeProfileOverlays();
+
+    if (isManagementRole && !isSelf) {
+      setSelectedProfileMember(member);
+      setShowProfileModal(true);
+      return;
+    }
 
     if (isOwnerChatRole(member.role)) {
       setSelectedProfileMember(member);
@@ -12456,6 +12466,9 @@ export default function ChatScreen({
               target.nickname.toLowerCase() === selfNickname.toLowerCase()
             ) {
               openOwnProfileCard();
+            } else if (isManagementRole) {
+              setSelectedProfileMember(target);
+              setShowProfileModal(true);
             } else if (isOwnerChatRole(target.role)) {
               setSelectedProfileMember(target);
               setShowProfileModal(true);

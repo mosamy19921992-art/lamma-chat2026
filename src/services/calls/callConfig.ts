@@ -85,13 +85,20 @@ export function getIceServerBundles(): IceServerBundle[] {
     Boolean(envTurn1 && !isOpenRelayTurn(envTurn1)) ||
     Boolean(envTurn2 && !isOpenRelayTurn(envTurn2));
 
-  const primary: RTCIceServer[] = [...PRIMARY_STUN];
-  if (envTurn1) primary.push(envTurn1);
-  else primary.push(PUBLIC_TURN_RELAY);
+  const primaryStun = hasCustomTurn
+    ? [{ urls: "stun:stun.l.google.com:19302" }]
+    : PRIMARY_STUN;
+  const fallbackStun = hasCustomTurn
+    ? [{ urls: "stun:stun.cloudflare.com:3478" }]
+    : FALLBACK_STUN;
 
-  const fallback: RTCIceServer[] = [...FALLBACK_STUN];
+  const primary: RTCIceServer[] = [...primaryStun];
+  if (envTurn1) primary.push(envTurn1);
+  else if (!hasCustomTurn) primary.push(PUBLIC_TURN_RELAY);
+
+  const fallback: RTCIceServer[] = [...fallbackStun];
   if (envTurn2) fallback.push(envTurn2);
-  else fallback.push(PUBLIC_TURN_TCP);
+  else if (!hasCustomTurn) fallback.push(PUBLIC_TURN_TCP);
 
   const turn1Label = envTurn1
     ? isOpenRelayTurn(envTurn1)

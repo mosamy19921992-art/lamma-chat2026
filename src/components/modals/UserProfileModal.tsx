@@ -984,43 +984,49 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                     <button
                                       type="button"
                                       onClick={() => {
+                                        const nick =
+                                          selectedProfileMember.nickname;
                                         const currentVal =
-                                          memberCustomPermissions[
-                                            selectedProfileMember.nickname
-                                          ]?.callsAllowed || false;
+                                          memberCustomPermissions[nick]
+                                            ?.callsAllowed;
+                                        const nextDenied = currentVal !== false;
                                         setMemberCustomPermissions((prev) => ({
                                           ...prev,
-                                          [selectedProfileMember.nickname]: {
-                                            ...(prev[
-                                              selectedProfileMember.nickname
-                                            ] || {
+                                          [nick]: {
+                                            ...(prev[nick] || {
                                               recordingAllowed: false,
                                               videoCallsAllowed: false,
                                               musicRadioAllowed: false,
                                               roomCreationAllowed: false,
                                             }),
-                                            callsAllowed: !currentVal,
+                                            callsAllowed: nextDenied
+                                              ? false
+                                              : true,
                                           },
                                         }));
                                         addSystemActivityLog(
                                           "promote",
-                                          selectedProfileMember.nickname,
-                                          `${!currentVal ? "تنشيط" : "إلغاء"} مكالمات صوتية لـ ${selectedProfileMember.nickname}`,
+                                          nick,
+                                          `${nextDenied ? "منع" : "تفعيل"} مكالمات صوتية لـ ${nick}`,
                                         );
                                       }}
                                       className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all border ${
                                         memberCustomPermissions[
                                           selectedProfileMember.nickname
-                                        ]?.callsAllowed
-                                          ? "bg-green-500/15 border-green-500/30 text-green-400"
-                                          : "bg-red-500/15 border-red-500/30 text-red-400"
+                                        ]?.callsAllowed === false
+                                          ? "bg-red-500/15 border-red-500/30 text-red-400"
+                                          : "bg-green-500/15 border-green-500/30 text-green-400"
                                       }`}
                                     >
                                       {memberCustomPermissions[
                                         selectedProfileMember.nickname
-                                      ]?.callsAllowed
-                                        ? "مفعلة بنجاح ✅"
-                                        : "معطلة ❌"}
+                                      ]?.callsAllowed === false
+                                        ? "ممنوع ❌"
+                                        : memberCustomPermissions[
+                                              selectedProfileMember.nickname
+                                            ]?.callsAllowed === true
+                                          ? "مفعّل ✅"
+                                          : "مسموح (افتراضي) ✅"}
                                     </button>
                                   </div>
 
@@ -1036,43 +1042,49 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                     <button
                                       type="button"
                                       onClick={() => {
+                                        const nick =
+                                          selectedProfileMember.nickname;
                                         const currentVal =
-                                          memberCustomPermissions[
-                                            selectedProfileMember.nickname
-                                          ]?.videoCallsAllowed || false;
+                                          memberCustomPermissions[nick]
+                                            ?.videoCallsAllowed;
+                                        const nextDenied = currentVal !== false;
                                         setMemberCustomPermissions((prev) => ({
                                           ...prev,
-                                          [selectedProfileMember.nickname]: {
-                                            ...(prev[
-                                              selectedProfileMember.nickname
-                                            ] || {
+                                          [nick]: {
+                                            ...(prev[nick] || {
                                               recordingAllowed: false,
                                               callsAllowed: false,
                                               musicRadioAllowed: false,
                                               roomCreationAllowed: false,
                                             }),
-                                            videoCallsAllowed: !currentVal,
+                                            videoCallsAllowed: nextDenied
+                                              ? false
+                                              : true,
                                           },
                                         }));
                                         addSystemActivityLog(
                                           "promote",
-                                          selectedProfileMember.nickname,
-                                          `${!currentVal ? "تنشيط" : "إلغاء"} مكالمات فيdeo لـ ${selectedProfileMember.nickname}`,
+                                          nick,
+                                          `${nextDenied ? "منع" : "تفعيل"} مكالمات فيdeo لـ ${nick}`,
                                         );
                                       }}
                                       className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all border ${
                                         memberCustomPermissions[
                                           selectedProfileMember.nickname
-                                        ]?.videoCallsAllowed
-                                          ? "bg-green-500/15 border-green-500/30 text-green-400"
-                                          : "bg-red-500/15 border-red-500/30 text-red-400"
+                                        ]?.videoCallsAllowed === false
+                                          ? "bg-red-500/15 border-red-500/30 text-red-400"
+                                          : "bg-green-500/15 border-green-500/30 text-green-400"
                                       }`}
                                     >
                                       {memberCustomPermissions[
                                         selectedProfileMember.nickname
-                                      ]?.videoCallsAllowed
-                                        ? "مفعلة بنجاح ✅"
-                                        : "معطلة ❌"}
+                                      ]?.videoCallsAllowed === false
+                                        ? "ممنوع ❌"
+                                        : memberCustomPermissions[
+                                              selectedProfileMember.nickname
+                                            ]?.videoCallsAllowed === true
+                                          ? "مفعّل ✅"
+                                          : "مسموح (افتراضي) ✅"}
                                     </button>
                                   </div>
 
