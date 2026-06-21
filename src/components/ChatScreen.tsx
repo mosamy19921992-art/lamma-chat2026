@@ -108,6 +108,7 @@ import {
 import { MobileBottomSheet } from "./chat/MobileBottomSheet";
 import { HeaderIconButton } from "./chat/HeaderIconButton";
 import { ChatMessageVirtualList } from "./chat/ChatMessageVirtualList";
+import { ChatMessageRow } from "./chat/ChatMessageRow";
 import {
   fetchActivePlans,
   fetchMySubscription,
@@ -1638,7 +1639,7 @@ export default function ChatScreen({
     setShowSearchPop((prev) => !prev);
   };
 
-  const addReaction = (roomId: string, messageId: string, emoji: string) => {
+  const addReaction = useCallback((roomId: string, messageId: string, emoji: string) => {
     setRoomMessages((prev) => {
       const messagesInRoom = prev[roomId] || [];
       return {
@@ -1658,45 +1659,57 @@ export default function ChatScreen({
         }),
       };
     });
-  };
+  }, []);
 
-  const canDeleteMessage = (msg: any): boolean => {
-    if (!msg) return false;
-    if (msg.type === "system") return false;
-    if (isOwnerRole || isAdminRole) return true;
-    if (currentUser.authProvider === "guest" || !currentUser.uid) return false;
-    const cleanAuthor = msg.author
-      .replace(/\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g, "")
-      .trim();
-    return cleanAuthor === currentUser.nickname;
-  };
+  const canDeleteMessage = useCallback(
+    (msg: Message): boolean => {
+      if (!msg) return false;
+      if (msg.type === "system") return false;
+      if (isOwnerRole || isAdminRole) return true;
+      if (currentUser.authProvider === "guest" || !currentUser.uid) return false;
+      const cleanAuthor = msg.author
+        .replace(/\s*\({0,1}(VIP|vip|أدمن|Admin|المالك|Owner)\){0,1}/g, "")
+        .trim();
+      return cleanAuthor === currentUser.nickname;
+    },
+    [
+      currentUser.authProvider,
+      currentUser.nickname,
+      currentUser.uid,
+      isAdminRole,
+      isOwnerRole,
+    ],
+  );
 
-  const deleteMessage = (msg: any) => {
-    if (!msg?.id) return;
-    const roomId = activeRoomId;
-    let previousMessages: Message[] = [];
-    setRoomMessages((prev) => {
-      previousMessages = prev[roomId] || [];
-      const next = previousMessages.filter((m) => m.id !== msg.id);
-      return { ...prev, [roomId]: next };
-    });
-    if (supabase) {
-      supabase
-        .from("messages")
-        .delete()
-        .eq("id", msg.id)
-        .then(({ error }) => {
-          if (error) {
-            console.error("Error deleting message from Supabase:", error);
-            setRoomMessages((prev) => ({
-              ...prev,
-              [roomId]: previousMessages,
-            }));
-            alert("❌ تعذر حذف الرسالة. حاول مرة أخرى.");
-          }
-        });
-    }
-  };
+  const deleteMessage = useCallback(
+    (msg: Message) => {
+      if (!msg?.id) return;
+      const roomId = activeRoomId;
+      let previousMessages: Message[] = [];
+      setRoomMessages((prev) => {
+        previousMessages = prev[roomId] || [];
+        const next = previousMessages.filter((m) => m.id !== msg.id);
+        return { ...prev, [roomId]: next };
+      });
+      if (supabase) {
+        supabase
+          .from("messages")
+          .delete()
+          .eq("id", msg.id)
+          .then(({ error }) => {
+            if (error) {
+              console.error("Error deleting message from Supabase:", error);
+              setRoomMessages((prev) => ({
+                ...prev,
+                [roomId]: previousMessages,
+              }));
+              alert("❌ تعذر حذف الرسالة. حاول مرة أخرى.");
+            }
+          });
+      }
+    },
+    [activeRoomId],
+  );
 
   // Dynamic products list stored inside the owner's reactive system
   const [storeProducts, setStoreProducts] = useState<any[]>(() => {
@@ -4771,12 +4784,13 @@ export default function ChatScreen({
     }
   };
 
-  const handleInlineMemberTap = (nickname: string) => {
-    // On small touch screens, opening profile cards from every message tap is
-    // easy to trigger by accident and feels like the messages "disappear".
-    if (typeof window !== "undefined" && window.innerWidth < 768) return;
-    openMemberProfile(nickname);
-  };
+  const handleInlineMemberTap = useCallback(
+    (nickname: string) => {
+      if (typeof window !== "undefined" && window.innerWidth < 768) return;
+      openMemberProfile(nickname);
+    },
+    [openMemberProfile],
+  );
 
   // Interactive full-index check for block enforcement (IP, Fingerprint, LocalStorage, Emails, Session, Browser Sig)
   useEffect(() => {
@@ -5815,6 +5829,56 @@ export default function ChatScreen({
   useEffect(() => {
     setOpenReactionMsgId(null);
   }, [activeRoomId]);
+
+  const handleToggleReaction = useCallback((messageId: string) => {
+    setOpenReactionMsgId((prev) => (prev === messageId ? null : messageId));
+  }, []);
+
+  const renderRoomMessage = useCallback(
+    (msg: Message) => (
+      <ChatMessageRow
+        msg={msg}
+        isCompactView={isCompactView}
+        isChatColumnExpanded={isChatColumnExpanded}
+        myActiveSession={myActiveSession}
+        chatMembers={chatMembers}
+        subscription={subscription}
+        memberCosmeticGrants={memberCosmeticGrants}
+        activeTempEntryTopic={activeTempEntryTopic}
+        openReactionMsgId={openReactionMsgId}
+        applyingStyleSandboxId={applyingStyleSandboxId}
+        activeRoomId={activeRoomId}
+        onMemberTap={handleInlineMemberTap}
+        onToggleReaction={handleToggleReaction}
+        onAddReaction={addReaction}
+        onDeleteMessage={deleteMessage}
+        canDeleteMessage={canDeleteMessage}
+        resolveStyleSandboxSession={resolveStyleSandboxSession}
+        onApplyStyleSandbox={handleApplyStyleSandbox}
+        onCancelStyleSandbox={cancelStyleSandbox}
+      />
+    ),
+    [
+      activeRoomId,
+      activeTempEntryTopic,
+      addReaction,
+      applyingStyleSandboxId,
+      cancelStyleSandbox,
+      canDeleteMessage,
+      chatMembers,
+      deleteMessage,
+      handleApplyStyleSandbox,
+      handleInlineMemberTap,
+      handleToggleReaction,
+      isChatColumnExpanded,
+      isCompactView,
+      memberCosmeticGrants,
+      myActiveSession,
+      openReactionMsgId,
+      resolveStyleSandboxSession,
+      subscription,
+    ],
+  );
 
   const activeRoomIdRef = useRef(activeRoomId);
   useEffect(() => {
@@ -9735,413 +9799,7 @@ export default function ChatScreen({
                     minVirtualCount={USE_ROOM_VIRTUAL_THRESHOLD}
                     getItemKey={(msg) => msg.id}
                     estimateSize={messages.length > 30 ? 72 : 96}
-                    renderMessage={(msg, index) => {
-                  const isSystem = msg.type === "system";
-                  const safeMediaUrl = filterSafeMediaUrl(msg.mediaUrl);
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex items-start ${isCompactView ? "gap-1 py-0 px-1" : "gap-2 py-0 px-2"} max-w-full rounded transition-colors ${
-                        isSystem ? "my-1" : "hover:bg-white/5"
-                      }`}
-                    >
-                      {/* Author Avatar */}
-                      <div
-                        className="flex-shrink-0 cursor-pointer mt-1 group/author animate-fadeIn"
-                        onClick={() => handleInlineMemberTap(msg.author)}
-                      >
-                        {(() => {
-                          const authorRole = isSystem
-                            ? "admin"
-                            : getRoleFromAuthor(
-                                msg.author,
-                                myActiveSession,
-                                chatMembers,
-                              );
-                          const storeForAuthor =
-                            msg.author === myActiveSession.nickname
-                              ? subscription
-                              : null;
-                          return (
-                            <OwnerAvatarAura
-                              active={isOwnerAuthor(
-                                msg.author,
-                                myActiveSession,
-                                chatMembers,
-                              )}
-                            >
-                              <AMLogo
-                                size={isCompactView ? 16 : 22}
-                                variant="circular"
-                                glow={
-                                  msg.author === myActiveSession.nickname ||
-                                  isOwnerAuthor(
-                                    msg.author,
-                                    myActiveSession,
-                                    chatMembers,
-                                  )
-                                }
-                                frame={getFrameFromAuthor(
-                                  msg.author,
-                                  myActiveSession,
-                                  chatMembers,
-                                  memberCosmeticGrants,
-                                )}
-                                crownRole={getCrownRoleForDisplay(
-                                  msg.author,
-                                  myActiveSession,
-                                  chatMembers,
-                                  storeForAuthor,
-                                  memberCosmeticGrants,
-                                )}
-                              />
-                            </OwnerAvatarAura>
-                          );
-                        })()}
-                      </div>
-
-                      {/* Author Name and Time Column */}
-                      <div
-                        className="flex flex-col items-start cursor-pointer group/author shrink-0 pt-0"
-                        onClick={() => handleInlineMemberTap(msg.author)}
-                      >
-                        {(() => {
-                          const role = isSystem
-                            ? "admin"
-                            : getRoleFromAuthor(
-                                msg.author,
-                                myActiveSession,
-                                chatMembers,
-                              );
-                          const cleanName = getShortenedNickname(msg.author);
-                          const nameColor = isSystem
-                            ? "#a3e635"
-                            : msg.author === myActiveSession.nickname
-                              ? myActiveSession.color
-                              : msg.color;
-                          const storeForAuthor =
-                            msg.author === myActiveSession.nickname
-                              ? subscription
-                              : null;
-                          const prestigeClass = getPrestigeNameClass(
-                            msg.author,
-                            myActiveSession,
-                            chatMembers,
-                            storeForAuthor,
-                            memberCosmeticGrants,
-                          );
-                          const ownerRow = isOwnerAuthor(
-                            msg.author,
-                            myActiveSession,
-                            chatMembers,
-                          );
-                          const authorMember =
-                            chatMembers.find(
-                              (member) => member.nickname === msg.author,
-                            ) ?? {
-                              nickname: msg.author,
-                              role: role === "none" ? "user" : role,
-                              badge:
-                                msg.author === myActiveSession.nickname
-                                  ? myActiveSession.badge
-                                  : undefined,
-                              title:
-                                msg.author === myActiveSession.nickname
-                                  ? myActiveSession.title
-                                  : undefined,
-                            };
-                          return (
-                            <>
-                              <div className="flex flex-col items-start truncate min-w-0 max-w-full">
-                                <div
-                                  className={`flex items-center gap-1 flex-wrap ${getNameGlassCardClass({
-                                    isSelf:
-                                      msg.author === myActiveSession.nickname,
-                                    isBoss: ownerRow,
-                                    compact: true,
-                                  })}`}
-                                >
-                                  <span
-                                    style={
-                                      prestigeClass ? undefined : { color: nameColor }
-                                    }
-                                    className={`font-bold text-[11px] group-hover/author:underline lamma-author-name ${prestigeClass}`}
-                                  >
-                                    {cleanName}
-                                  </span>
-                                  {ownerRow && (
-                                    <BossSigil
-                                      size={12}
-                                      className="opacity-95 shrink-0"
-                                    />
-                                  )}
-                                  {msg.author === myActiveSession.nickname &&
-                                    activeTempEntryTopic && (
-                                      <span className="max-w-[110px] truncate rounded-full border border-cyan-400/25 bg-cyan-500/10 px-1.5 py-0.5 text-[7px] text-cyan-200">
-                                        {activeTempEntryTopic}
-                                      </span>
-                                    )}
-                                </div>
-                                {!isSystem && (
-                                  <div className="relative group/msgactions flex items-center gap-1 flex-wrap max-w-full">
-                                    <MemberPrestigeBadges
-                                      member={authorMember}
-                                      currentUser={myActiveSession}
-                                      chatMembers={chatMembers}
-                                      subscription={subscription}
-                                      memberCosmeticGrants={memberCosmeticGrants}
-                                      size="sm"
-                                      highlightYou
-                                    />
-                                    {msg.type === "text" && (
-                                      <button
-                                        type="button"
-                                        aria-label="تفاعلات الرسالة"
-                                        aria-expanded={
-                                          openReactionMsgId === msg.id
-                                        }
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setOpenReactionMsgId((prev) =>
-                                            prev === msg.id ? null : msg.id,
-                                          );
-                                        }}
-                                        className="text-[8px] font-mono font-black text-gray-500/90 hover:text-green-300 transition-colors leading-none p-0 border-0 bg-transparent shadow-none cursor-pointer shrink-0 group-hover/author:text-green-300"
-                                      >
-                                        +
-                                      </button>
-                                    )}
-                                    {/* Interaction popover — tap + on mobile, hover on desktop */}
-                                    <div
-                                      className={`absolute top-full mt-0.5 start-0 p-1.5 rounded-lg flex-row gap-2 z-50 w-max items-center lamma-popover-shell ${
-                                        openReactionMsgId === msg.id
-                                          ? "flex"
-                                          : "hidden group-hover/msgactions:flex"
-                                      }`}
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          addReaction(activeRoomId, msg.id, "❤️");
-                                          setOpenReactionMsgId(null);
-                                        }}
-                                        className="text-[11px] md:text-[13px] hover:scale-125 transition-transform cursor-pointer"
-                                      >
-                                        ❤️
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          addReaction(activeRoomId, msg.id, "😂");
-                                          setOpenReactionMsgId(null);
-                                        }}
-                                        className="text-[11px] md:text-[13px] hover:scale-125 transition-transform cursor-pointer"
-                                      >
-                                        😂
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          addReaction(activeRoomId, msg.id, "👍");
-                                          setOpenReactionMsgId(null);
-                                        }}
-                                        className="text-[11px] md:text-[13px] hover:scale-125 transition-transform cursor-pointer"
-                                      >
-                                        👍
-                                      </button>
-                                      {canDeleteMessage(msg) && (
-                                        <>
-                                          <div className="w-[1px] h-3 bg-white/20 mx-0.5"></div>
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              if (
-                                                confirm(
-                                                  "🗑️ حذف الرسالة؟\n\nلو الرسالة مرفوعة على Supabase هتتمسح هناك كمان.",
-                                                )
-                                              ) {
-                                                deleteMessage(msg);
-                                              }
-                                            }}
-                                            className="text-[10px] text-red-400 hover:text-red-300 font-bold px-1 cursor-pointer"
-                                            title="حذف الرسالة"
-                                          >
-                                            🗑️
-                                          </button>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="lamma-author-meta">
-                                <span
-                                  className="text-[8px] font-mono lamma-msg-meta"
-                                  dir="ltr"
-                                >
-                                  {msg.time}
-                                </span>
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-
-                      {/* Message Content */}
-                      <div className="flex-1 min-w-0 pt-0">
-                        <div
-                          className={`lamma-message ${isCompactView ? "text-[10px] px-3 py-2" : "text-[11px]"} leading-relaxed text-gray-100 break-words ${
-                            isChatColumnExpanded
-                              ? "max-w-full"
-                              : "max-w-[min(820px,100%)]"
-                          } ${
-                            isSystem
-                              ? "lamma-msg-bubble-system"
-                              : msg.author === myActiveSession.nickname
-                                ? "lamma-msg-bubble-own"
-                                : ""
-                          }`}
-                          data-design-region="message-bubbles"
-                        >
-                          {msg.type === "style_sandbox" && msg.styleSandboxId ? (
-                            <div className="space-y-2">
-                              <p className="text-[10px] text-emerald-200/90 font-bold">
-                                🎨 طلب تصميم: {msg.text}
-                              </p>
-                              {(() => {
-                                const session = resolveStyleSandboxSession(msg);
-                                if (!session) {
-                                  return (
-                                    <p className="text-[10px] text-amber-300/90">
-                                      ⚠️ بطاقة المعاينة غير متاحة — أعد إرسال الطلب.
-                                    </p>
-                                  );
-                                }
-                                return (
-                                  <StyleSandboxCard
-                                    config={session.config}
-                                    summary={session.summary}
-                                    prompt={session.prompt}
-                                    disabled={session.applied}
-                                    isApplying={applyingStyleSandboxId === session.id}
-                                    onApply={() =>
-                                      void handleApplyStyleSandbox(session)
-                                    }
-                                    onCancel={() =>
-                                      cancelStyleSandbox(msg.styleSandboxId)
-                                    }
-                                  />
-                                );
-                              })()}
-                            </div>
-                          ) : null}
-
-                          {msg.type === "text" &&
-                            renderTextMessageWithMedia(msg.text)}
-
-                          {/* Reaction Bar (only if there are reactions) */}
-                          {msg.reactions &&
-                            Object.keys(msg.reactions).length > 0 && (
-                              <div className="flex gap-1 mt-2 items-center">
-                                {Object.entries(msg.reactions).map(
-                                  ([emoji, count]) => (
-                                    <span
-                                      key={emoji}
-                                      className="text-[9px] bg-white/10 rounded px-1 select-none flex items-center gap-0.5"
-                                    >
-                                      {emoji} {count}
-                                    </span>
-                                  ),
-                                )}
-                              </div>
-                            )}
-
-                          {isSystem && (
-                            <div className="text-right leading-relaxed font-semibold text-[10px] text-gray-200 mt-0.5 select-none font-mono lamma-system-note">
-                              <span className="lamma-system-label flex items-center gap-1 mb-0.5 text-[10px]">
-                                🛡️{" "}
-                                {msg.author === "🔥 LC-Fire"
-                                  ? "إشعار LC-Fire:"
-                                  : "إشعار نظام:"}
-                              </span>
-                              <div className="whitespace-pre-line text-[10.5px] font-sans text-gray-300 leading-relaxed">
-                                {msg.text}
-                              </div>
-                            </div>
-                          )}
-
-                          {msg.type === "gift" && (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-lg animate-bounce">
-                                {msg.giftIcon}
-                              </span>
-                              <span className="font-bold text-white text-[9px]">
-                                {msg.text}
-                              </span>
-                            </div>
-                          )}
-
-                          {msg.type === "image" && safeMediaUrl && (
-                            <div className="mt-2">
-                              {isPrivateStorageRef(safeMediaUrl) ? (
-                                <ResolvedPrivateMedia
-                                  mediaRef={safeMediaUrl}
-                                  kind="image"
-                                  imgClassName="rounded-xl max-w-[180px] max-h-[120px] object-cover border border-white/10 bg-black/10"
-                                />
-                              ) : (
-                                <img
-                                  loading="lazy"
-                                  src={safeMediaUrl}
-                                  alt="Attachment"
-                                  className="rounded-xl max-w-[180px] max-h-[120px] object-cover border border-white/10 bg-black/10"
-                                />
-                              )}
-                            </div>
-                          )}
-
-                          {msg.type === "video" && safeMediaUrl && (
-                            <div className="mt-2">
-                              {getYoutubeId(safeMediaUrl) ? (
-                                <div className="relative pb-[56.25%] h-0 w-[360px] max-w-full rounded-2xl overflow-hidden border border-red-500/20 shadow-lg">
-                                  <iframe
-                                    title="Attached YouTube Video Player"
-                                    src={`https://www.youtube.com/embed/${getYoutubeId(safeMediaUrl)}`}
-                                    frameBorder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                    className="absolute top-0 left-0 w-full h-full"
-                                  />
-                                </div>
-                              ) : isPrivateStorageRef(safeMediaUrl) ? (
-                                <ResolvedPrivateMedia
-                                  mediaRef={safeMediaUrl}
-                                  kind="video"
-                                  className="rounded-2xl max-w-[360px] border border-white/10"
-                                />
-                              ) : (
-                                <video
-                                  src={safeMediaUrl}
-                                  controls
-                                  preload="none"
-                                  playsInline
-                                  className="rounded-2xl max-w-[360px] border border-white/10"
-                                />
-                              )}
-                            </div>
-                          )}
-
-                          {msg.type === "audio" && safeMediaUrl && (
-                            <VoiceNoteBubble src={safeMediaUrl} />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }}
+                    renderMessage={renderRoomMessage}
                   />
                 </>
               )}
