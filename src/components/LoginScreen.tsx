@@ -243,6 +243,11 @@ export default function LoginScreen(props: LoginScreenProps) {
         provider: "google",
         options: {
           redirectTo: buildAuthRedirectUrl(),
+          // Always show Google's account chooser instead of silently reusing
+          // the last signed-in Google account (which forced the admin email).
+          queryParams: {
+            prompt: "select_account",
+          },
         },
       });
 

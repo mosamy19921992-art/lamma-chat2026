@@ -7,10 +7,10 @@
  */
 
 const GEMINI_MODELS = [
+  "gemini-flash-lite-latest",
   "gemini-flash-latest",
-  "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
-  "gemini-2.0-flash",
+  "gemini-2.5-flash",
 ];
 
 function geminiUrl(model) {
@@ -66,8 +66,11 @@ export default async function handler(req, res) {
     contents: [{ role: "user", parts: [{ text: userContent }] }],
     generationConfig: {
       temperature: 0.2,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 1024,
       responseMimeType: "application/json",
+      // Disable "thinking" on Gemini 2.5 flash models — it adds multi-second
+      // latency and consumes the token budget, which caused client timeouts.
+      thinkingConfig: { thinkingBudget: 0 },
     },
   });
 

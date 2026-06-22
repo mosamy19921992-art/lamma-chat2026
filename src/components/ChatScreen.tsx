@@ -5847,7 +5847,7 @@ export default function ChatScreen({
   );
 
   const handleInspectCustomPrompt = useCallback(
-    (region: ChatDesignRegion, prompt: string) => {
+    async (region: ChatDesignRegion, prompt: string) => {
       const regionTerms: Partial<Record<ChatDesignRegion, string>> = {
         "top-header": "الشريط العلوي",
         "room-header-strip": "الشريط تحت الهيدر",
@@ -5863,13 +5863,31 @@ export default function ChatScreen({
       const fullPrompt = prompt.includes(regionHint)
         ? prompt
         : `${prompt} ${regionHint}`.trim();
+
+      // Gemini أولاً — يفهم أي طلب حر على العنصر المحدّد، ويرجع للمحرّك القاعدي تلقائياً لو فشل.
+      setInspectLastSummary("✨ Gemini بيفكّر…");
+      try {
+        const aiResult = await previewDesignPromptAi(fullPrompt);
+        if (aiResult) {
+          setInspectLastSummary(
+            aiResult.fromAi ? `✨ Gemini: ${aiResult.summary}` : aiResult.summary,
+          );
+          setInspectPreviewConfig(aiResult.config);
+          return;
+        }
+      } catch {
+        // fall through to rule-based
+      }
+
       const result = previewDesignPrompt(fullPrompt);
       if (result) {
         setInspectLastSummary(result.summary);
         setInspectPreviewConfig(result.config);
+      } else {
+        setInspectLastSummary("⚠️ لم أفهم الطلب — جرّب صياغة أوضح (مثلاً: «اعمل اللون أزرق»).");
       }
     },
-    [previewDesignPrompt],
+    [previewDesignPromptAi, previewDesignPrompt],
   );
 
   const handleApplyInspectSuggestion = useCallback(

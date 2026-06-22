@@ -179,36 +179,9 @@ export function useUniversalStyleEngine({
 
       appendStyleSandboxMessage(activeRoomId, session, botReply);
 
-      // If the rule-based parser didn't fully understand, try Gemini as upgrade
-      if (!parsed.refined) {
-        void (async () => {
-          const aiResult = await askDesignAi(trimmed, previous ?? undefined);
-          if (!aiResult.hasChanges) return;
-          const aiConfig = applyDesignAiPatch(
-            normalizeUniversalStyleConfig(previous),
-            aiResult.patch,
-          );
-          aiConfig.promptHistory = [
-            ...(previous?.promptHistory ?? []),
-            trimmed,
-          ].slice(-20);
-          previewMemoryRef.current = aiConfig;
-          beginLivePreview(aiConfig);
-          const upgradeSession: StyleSandboxSession = {
-            id: `ai-${now}`,
-            createdAt: now,
-            prompt: trimmed,
-            summary: `✨ Gemini: ${aiResult.summary}`,
-            config: aiConfig,
-            applied: false,
-          };
-          appendStyleSandboxMessage(
-            activeRoomId,
-            upgradeSession,
-            `✨ **Gemini AI** فهم الأمر وعمل المعاينة:\n${aiResult.summary}\n\n✅ «تطبيق على الكل» للحفظ | ✖ «إلغاء» للتراجع`,
-          );
-        })();
-      }
+      // NOTE: Gemini no longer auto-overrides the deterministic preview here.
+      // The rule-based result is predictable (what you ask = what you get).
+      // AI is opt-in via Design Center → «تحكم مباشر» → ✨ Gemini box.
 
       return true;
     },

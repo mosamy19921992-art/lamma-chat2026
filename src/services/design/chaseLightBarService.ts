@@ -41,7 +41,9 @@ const STORAGE_KEY = "lamma_chase_light_settings";
 const ROOT_SELECTOR = ".lamma-neutral-glass";
 
 const DEFAULT_SETTINGS: ChaseLightSettings = {
-  columns: "conic-spin",
+  // Default to no decorative lights — they were always-on and looked messy.
+  // Owners can still enable any chase style from the design library.
+  columns: "none",
   composer: "none",
   header: "none",
   tintHex: DEFAULT_GLASS_TINT,

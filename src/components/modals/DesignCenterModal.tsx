@@ -64,8 +64,32 @@ import {
   normalizeUniversalStyleConfig,
   type UniversalStyleConfig,
 } from '../../services/design/universalStyleTypes';
+import { hexToRgba } from '../../lib/chatHelpers';
 
 type DesignSection = "uploads" | "sliders" | "studio" | "library" | "assistant";
+
+/** ثيمات 2026 كاملة — كل ثيم يضبط الخلفية (الغامق) + البطاقات + الكتابة + الأساسي + الثانوي معاً. */
+const MODERN_THEME_PRESETS: {
+  name: string;
+  bg: string;
+  surface: string;
+  text: string;
+  accent: string;
+  accent2: string;
+}[] = [
+  { name: "ميدنايت أزرق", bg: "#060a12", surface: "rgba(18,24,32,0.72)", text: "#f1f5f9", accent: "#3b82f6", accent2: "#06b6d4" },
+  { name: "فحمي بنفسجي", bg: "#0a0710", surface: "rgba(26,18,38,0.72)", text: "#f5f3ff", accent: "#a855f7", accent2: "#6366f1" },
+  { name: "أسود زمردي", bg: "#05080a", surface: "rgba(12,22,18,0.72)", text: "#ecfdf5", accent: "#10b981", accent2: "#34d399" },
+  { name: "جرافيت ذهبي", bg: "#0a0a0a", surface: "rgba(24,22,16,0.75)", text: "#fafaf9", accent: "#f59e0b", accent2: "#fbbf24" },
+  { name: "نبيذي وردي", bg: "#100509", surface: "rgba(34,12,20,0.72)", text: "#fdf2f8", accent: "#ec4899", accent2: "#f472b6" },
+  { name: "نيلي عميق", bg: "#070815", surface: "rgba(16,18,40,0.72)", text: "#eef2ff", accent: "#6366f1", accent2: "#818cf8" },
+  { name: "تركواز ليلي", bg: "#04100f", surface: "rgba(10,28,26,0.72)", text: "#f0fdfa", accent: "#14b8a6", accent2: "#2dd4bf" },
+  { name: "رمادي حديث", bg: "#0b0d10", surface: "rgba(22,26,32,0.74)", text: "#f8fafc", accent: "#64748b", accent2: "#94a3b8" },
+  { name: "أحمر فحمي", bg: "#0e0507", surface: "rgba(32,12,14,0.72)", text: "#fef2f2", accent: "#ef4444", accent2: "#fb7185" },
+  { name: "برتقالي غروب", bg: "#100a05", surface: "rgba(34,22,12,0.72)", text: "#fff7ed", accent: "#f97316", accent2: "#fb923c" },
+  { name: "سماوي جليدي", bg: "#050d12", surface: "rgba(12,26,34,0.72)", text: "#ecfeff", accent: "#06b6d4", accent2: "#22d3ee" },
+  { name: "ماجنتا ليلي", bg: "#0c0510", surface: "rgba(28,12,34,0.72)", text: "#fdf4ff", accent: "#d946ef", accent2: "#e879f9" },
+];
 
 export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode, previewDesignPrompt, previewDesignPromptAi, previewDesignConfig, committedConfig, cancelPendingDesignPreview, commitPendingDesignPreview, ownerWriteAccessOk }: any) => {
   type PreviewKind = "glass" | "face" | "template" | "column" | "import-pack" | "bubble" | "chase" | null;
@@ -117,6 +141,8 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
   const [sliderBtnGlow, setSliderBtnGlow] = useState<boolean>(defaultBase.buttons.glow);
   const [sliderAccent, setSliderAccent] = useState<string>(defaultBase.palette.accent);
   const [sliderAccent2, setSliderAccent2] = useState<string>(defaultBase.palette.accent2);
+  const [sliderBg, setSliderBg] = useState<string>(defaultBase.palette.bg);
+  const [sliderText, setSliderText] = useState<string>(defaultBase.palette.text);
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
@@ -126,6 +152,94 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     if (!previewDesignConfig || !isOwnerRole) return;
     const base = getBase();
     previewDesignConfig({ ...base, glass: { ...base.glass, ...glassPatch } });
+  };
+
+  const applyThemePreset = (preset: typeof MODERN_THEME_PRESETS[number]) => {
+    if (!previewDesignConfig || !isOwnerRole) return;
+    setSliderAccent(preset.accent);
+    setSliderAccent2(preset.accent2);
+    setSliderBg(preset.bg);
+    setSliderText(preset.text);
+    // ثيم نظيف بالكامل: نبدأ من الإعدادات الافتراضية (بدون أنوار/رينبو/تأثيرات عالقة)،
+    // ونضبط الألوان + خلفية لون صلبة ظاهرة فعلاً (مش طبقة صورة فوقها).
+    const fresh = createDefaultUniversalStyle();
+    previewDesignConfig({
+      ...fresh,
+      label: preset.name,
+      palette: {
+        ...fresh.palette,
+        bg: preset.bg,
+        surface: preset.surface,
+        text: preset.text,
+        accent: preset.accent,
+        accent2: preset.accent2,
+      },
+      backgrounds: {
+        ...fresh.backgrounds,
+        global: { kind: "color", value: preset.bg, overlayOpacity: 0, blurPx: 0 },
+      },
+    });
+  };
+
+  const applyPalettePatch = (patch: Partial<UniversalStyleConfig["palette"]>) => {
+    if (!previewDesignConfig || !isOwnerRole) return;
+    const base = getBase();
+    previewDesignConfig({ ...base, palette: { ...base.palette, ...patch } });
+  };
+
+  // تصفية شاملة — تصفّر كل أنظمة التنسيق المتداخلة دفعة واحدة (مصدر "الهبل").
+  const handleMasterReset = async () => {
+    if (!isOwnerRole) return;
+    if (!window.confirm("هيتم تصفير كل تأثيرات التصميم (الأنوار، الرينبو، الزجاج، الوجه المخصص) والرجوع لشكل نظيف افتراضي للجميع. متأكد؟")) {
+      return;
+    }
+    // 1) إطفاء كل أشرطة النور (الأعمدة/الكتابة/الهيدر)
+    const tint = loadChaseLightSettings().tintHex || "#6ee7b7";
+    commitChaseLightSettings({ columns: "none", composer: "none", header: "none", tintHex: tint, speedSec: 6 });
+    // 2) إرجاع الزجاج الافتراضي
+    applyGlassForm(null);
+    // 3) إيقاف الوجه المخصص (نظام ثيمات)
+    try {
+      const f = { ...loadFace(), enabled: false };
+      saveFace(f);
+      applyFace(f);
+    } catch { /* ignore */ }
+    // 4) ثيم نظيف افتراضي + حفظ للكل
+    if (previewDesignConfig) {
+      previewDesignConfig(createDefaultUniversalStyle());
+      if (commitPendingDesignPreview) await commitPendingDesignPreview();
+    }
+    // 5) خلفية افتراضية
+    onResetDefaultChatBackground?.();
+    // إعادة ضبط حالة السلايدرز
+    const d = createDefaultUniversalStyle();
+    setSliderGlassBlur(d.glass.blurPx);
+    setSliderGlassOpacity(d.glass.opacity);
+    setSliderGlassBorder(d.glass.borderOpacity);
+    setSliderBtnRadius(d.buttons.radiusPx);
+    setSliderBtnGlow(d.buttons.glow);
+    setSliderAccent(d.palette.accent);
+    setSliderAccent2(d.palette.accent2);
+    setSliderBg(d.palette.bg);
+    setSliderText(d.palette.text);
+    setActiveGlassFormId(null);
+    setChaseSettings(loadChaseLightSettings());
+    alert("✅ تم رجوع التصميم لوضع نظيف افتراضي. اختر ثيم 2026 من جديد لو حبيت.");
+  };
+
+  // الخلفية لازم تتغير في طبقة backgrounds.global (مش بس palette.bg) عشان تظهر فعلاً.
+  const applyBgColor = (hex: string) => {
+    if (!previewDesignConfig || !isOwnerRole) return;
+    setSliderBg(hex);
+    const base = getBase();
+    previewDesignConfig({
+      ...base,
+      palette: { ...base.palette, bg: hex },
+      backgrounds: {
+        ...base.backgrounds,
+        global: { kind: "color", value: hex, overlayOpacity: 0, blurPx: 0 },
+      },
+    });
   };
 
   const stopDrag = (event: React.PointerEvent) => event.stopPropagation();
@@ -194,8 +308,18 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
       setChaseSettings(loadChaseLightSettings());
       setPendingChaseSummary("");
     }
+    // Always clear the universal-style preview channel too, so the two preview
+    // systems can never overlap/stack on the DOM (fixes the "تداخل").
+    cancelPendingDesignPreview?.();
     setPreviewKind(null);
     setDesignPreviewActive(false);
+  };
+
+  /** Switch tabs safely — cancels any active preview first so nothing overlaps. */
+  const changeSection = (next: DesignSection) => {
+    if (next === section) return;
+    cancelAllPreviews();
+    setSection(next);
   };
 
   const handlePreviewGlassForm = (formId: GlassFormId) => {
@@ -226,10 +350,15 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
 
   const handlePreviewBubbleShape = (shapeId: BubbleShapeId) => {
     cancelAllPreviews();
-    setPreviewKind("bubble");
-    setPendingBubbleShapeId(shapeId);
-    previewBubbleShape(shapeId);
-    setDesignPreviewActive(true);
+    // تطبيق فوري عند الضغط (بدل معاينة تحتاج تأكيد منفصل).
+    if (commitBubbleShape(shapeId)) {
+      setActiveBubbleShapeId(shapeId);
+      setPendingBubbleShapeId(null);
+      setPreviewKind(null);
+      setDesignPreviewActive(false);
+    } else {
+      alert("⚠️ افتح غرفة شات عادية (مش غرفة القيادة) عشان تشوف شكل الفقاعات يتغيّر.");
+    }
   };
 
   const handleCommitBubbleShape = () => {
@@ -280,9 +409,15 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
 
   const handlePreviewColumnStyle = (styleId: ColumnCardStyleId) => {
     cancelAllPreviews();
-    setPreviewKind("column");
-    setPendingColumnStyleId(styleId);
-    previewColumnCardStyle(styleId, columnTintColor);
+    // تطبيق فوري عند الضغط (بدل معاينة تحتاج تأكيد منفصل).
+    if (commitColumnCardStyle(styleId, columnTintColor)) {
+      setActiveColumnStyleId(styleId === "neon-ring" ? null : styleId);
+      setPendingColumnStyleId(null);
+      setPreviewKind(null);
+      setDesignPreviewActive(false);
+    } else {
+      alert("⚠️ افتح غرفة شات عادية (مش غرفة القيادة) عشان تشوف شكل البطاقات يتغيّر.");
+    }
   };
 
   const handleCommitColumnStyle = () => {
@@ -481,7 +616,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                         <button
                           key={id}
                           type="button"
-                          onClick={() => setSection(id)}
+                          onClick={() => changeSection(id)}
                           onPointerDown={stopDrag}
                           className={`px-3 py-2 rounded-xl text-[10px] font-black shrink-0 transition-all cursor-pointer ${
                             section === id
@@ -497,6 +632,22 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                     {/* ── تحكم مباشر بالسلايدرات + Gemini AI ── */}
                     {section === "sliders" && isOwnerRole && (
                       <div className="space-y-4">
+                        {/* تصفية شاملة */}
+                        <div className="p-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-[11px] text-amber-300 font-black">🧹 تصفية شاملة</div>
+                            <div className="text-[9px] text-gray-400 font-bold">امسح كل الأنوار/الرينبو/التأثيرات المتداخلة وارجع نظيف.</div>
+                          </div>
+                          <button
+                            type="button"
+                            onPointerDown={stopDrag}
+                            onClick={() => void handleMasterReset()}
+                            className="px-3 py-2 rounded-xl text-[10px] font-black lamma-danger-btn shrink-0"
+                          >
+                            رجوع نظيف
+                          </button>
+                        </div>
+
                         {/* Gemini AI */}
                         <div className="p-4 rounded-2xl lamma-section-card space-y-3">
                           <div className="text-[11px] text-cyan-300 font-black">✨ Gemini AI — اكتب أي أمر تصميم</div>
@@ -706,6 +857,100 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                             />
                             <span className="text-[10px] text-gray-500 font-mono">{sliderAccent2}</span>
                           </div>
+                          <div className="flex items-center gap-3">
+                            <label className="text-[10px] text-gray-400 font-bold w-20 shrink-0">الخلفية (غامق)</label>
+                            <input
+                              type="color"
+                              value={sliderBg}
+                              onPointerDown={stopDrag}
+                              onChange={(e) => {
+                                applyBgColor(e.target.value);
+                              }}
+                              className="w-8 h-8 rounded-lg border-0 cursor-pointer bg-transparent"
+                            />
+                            <span className="text-[10px] text-gray-500 font-mono">{sliderBg}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <label className="text-[10px] text-gray-400 font-bold w-20 shrink-0">لون البطاقات</label>
+                            <input
+                              type="color"
+                              onPointerDown={stopDrag}
+                              onChange={(e) => {
+                                applyPalettePatch({ surface: hexToRgba(e.target.value, 0.72) });
+                              }}
+                              className="w-8 h-8 rounded-lg border-0 cursor-pointer bg-transparent"
+                            />
+                            <span className="text-[10px] text-gray-500 font-bold">شفافية زجاجية تلقائية</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <label className="text-[10px] text-gray-400 font-bold w-20 shrink-0">لون الكتابة</label>
+                            <input
+                              type="color"
+                              value={sliderText}
+                              onPointerDown={stopDrag}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setSliderText(v);
+                                applyPalettePatch({ text: v });
+                              }}
+                              className="w-8 h-8 rounded-lg border-0 cursor-pointer bg-transparent"
+                            />
+                            <span className="text-[10px] text-gray-500 font-mono">{sliderText}</span>
+                          </div>
+                        </div>
+
+                        {/* ثيمات 2026 الكاملة — ضغطة واحدة */}
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                          <div className="text-[11px] text-cyan-300 font-black">🌈 ثيمات 2026 — اختر بضغطة</div>
+                          <div className="text-[10px] text-gray-400">كل ثيم يضبط الخلفية الغامقة + البطاقات + الكتابة + الألوان معاً (معاينة)، ثم «تطبيق نهائي».</div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {MODERN_THEME_PRESETS.map((preset) => {
+                              const isActive =
+                                sliderAccent.toLowerCase() === preset.accent.toLowerCase() &&
+                                sliderBg.toLowerCase() === preset.bg.toLowerCase();
+                              return (
+                                <button
+                                  key={preset.name}
+                                  type="button"
+                                  onPointerDown={stopDrag}
+                                  onClick={() => applyThemePreset(preset)}
+                                  title={preset.name}
+                                  className={`group flex flex-col items-center gap-1 p-1.5 rounded-xl transition-all ${
+                                    isActive ? "bg-white/10 ring-1 ring-cyan-400/60" : "hover:bg-white/5"
+                                  }`}
+                                >
+                                  <span
+                                    className="w-full h-8 rounded-lg shadow-inner border border-white/10 flex items-center justify-center gap-1"
+                                    style={{ background: preset.bg }}
+                                  >
+                                    <span className="w-3 h-3 rounded-full" style={{ background: preset.accent }} />
+                                    <span className="w-3 h-3 rounded-full" style={{ background: preset.accent2 }} />
+                                  </span>
+                                  <span className="text-[8px] text-gray-400 font-bold truncate w-full text-center">
+                                    {preset.name}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <button
+                            type="button"
+                            onPointerDown={stopDrag}
+                            onClick={() => {
+                              if (!previewDesignConfig || !isOwnerRole) return;
+                              const base = getBase();
+                              const fresh = createDefaultUniversalStyle();
+                              // تصفير كل التأثيرات + الـ regions (الرينبو/الشريط/الأنوار) مع الحفاظ على الألوان.
+                              previewDesignConfig({
+                                ...base,
+                                effects: { ...fresh.effects },
+                                regions: fresh.regions,
+                              });
+                            }}
+                            className="w-full py-2 rounded-xl text-[10px] font-black lamma-tab-soft hover:text-white"
+                          >
+                            🚫 إطفاء كل الأنوار والرينبو والتأثيرات
+                          </button>
                         </div>
 
                         {/* Apply / Cancel bar for sliders */}
@@ -731,6 +976,8 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                               setSliderBtnGlow(base.buttons.glow);
                               setSliderAccent(base.palette.accent);
                               setSliderAccent2(base.palette.accent2);
+                              setSliderBg(base.palette.bg);
+                              setSliderText(base.palette.text);
                             }}
                             className="px-4 py-2.5 rounded-xl text-[10px] font-black lamma-tab-soft"
                           >

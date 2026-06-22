@@ -24,7 +24,7 @@ export interface DesignAiResult {
 }
 
 const ENDPOINT = "/api/gemini-design";
-const TIMEOUT_MS = 12_000;
+const TIMEOUT_MS = 25_000;
 
 /**
  * Ask Gemini to parse a natural-language design command.
