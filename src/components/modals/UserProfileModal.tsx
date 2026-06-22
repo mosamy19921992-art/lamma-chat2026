@@ -203,7 +203,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                         onClick={() => onSendPrivateMessage(selectedProfileMember)}
                         className="w-full flex items-center justify-center gap-1.5 p-2.5 rounded-xl text-center text-[10px] font-black transition-all cursor-pointer lamma-accent-btn"
                       >
-                        💬 محادثة خاصة مع المالك
+                        💬 محادثة خاصة
                       </button>
                     )}
                   </div>
@@ -243,6 +243,15 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                     </div>
                   </div>
                 </div>
+                {!isOwnProfile && onSendPrivateMessage && (
+                  <button
+                    type="button"
+                    onClick={() => onSendPrivateMessage(selectedProfileMember)}
+                    className="w-full flex items-center justify-center gap-1.5 p-2.5 rounded-xl text-center text-[10px] font-black transition-all cursor-pointer lamma-accent-btn"
+                  >
+                    💬 محادثة خاصة
+                  </button>
+                )}
                 </>
                 )}
 

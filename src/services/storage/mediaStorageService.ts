@@ -79,6 +79,23 @@ async function signPrivatePath(objectPath: string): Promise<string | null> {
   return data.signedUrl;
 }
 
+const ALLOWED_PRIVATE_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "audio/webm",
+  "audio/mp4",
+  "audio/ogg",
+  "audio/mpeg",
+  "audio/aac",
+  "audio/x-m4a",
+  "video/mp4",
+  "video/webm",
+];
+
+const MAX_PRIVATE_FILE_BYTES = 25 * 1024 * 1024;
+
 export async function uploadPrivateMediaFile(
   file: File,
   uid: string,
@@ -86,6 +103,15 @@ export async function uploadPrivateMediaFile(
 ): Promise<{ path: string; signedUrl: string | null; error?: string }> {
   if (!supabase) {
     return { path: "", signedUrl: null, error: "Supabase not configured" };
+  }
+
+  const baseType = (file.type || "").split(";")[0].trim();
+  if (baseType && !ALLOWED_PRIVATE_MIME_TYPES.some((t) => baseType === t)) {
+    return { path: "", signedUrl: null, error: "نوع الملف غير مدعوم." };
+  }
+
+  if (file.size > MAX_PRIVATE_FILE_BYTES) {
+    return { path: "", signedUrl: null, error: "حجم الملف يتجاوز الحد المسموح (25MB)." };
   }
 
   const ext = file.name.split(".").pop()?.toLowerCase() || "bin";

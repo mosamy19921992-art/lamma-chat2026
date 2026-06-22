@@ -21,6 +21,19 @@ export async function uploadVoiceNoteBlob(
     };
   }
 
+  const ALLOWED_AUDIO_TYPES = [
+    "audio/webm",
+    "audio/mp4",
+    "audio/ogg",
+    "audio/mpeg",
+    "audio/aac",
+    "audio/x-m4a",
+  ];
+  const baseType = blob.type.split(";")[0].trim();
+  if (blob.type && !ALLOWED_AUDIO_TYPES.some((t) => baseType.startsWith(t))) {
+    return { url: null, error: "نوع الملف الصوتي غير مدعوم." };
+  }
+
   const ext = blob.type.includes("webm")
     ? "webm"
     : blob.type.includes("mp4") || blob.type.includes("aac")

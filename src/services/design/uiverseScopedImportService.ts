@@ -77,6 +77,7 @@ interface ActiveScopedApply {
   styleId: string;
   targetLabel: string;
   sourceUrl: string;
+  cssContent?: string;
 }
 
 function styleIdFor(region: string, subTarget: string): string {
@@ -192,12 +193,10 @@ export async function fetchUiverseCssFromUrl(
   }
 
   const uiverse = parseUiverseUrl(trimmed);
-  if (!uiverse) {
-    return {
-      result: null,
-      error: "رابط UIverse غير صالح — مثال: https://uiverse.io/user/slug",
-    };
-  }
+  const title = uiverse
+    ? `${uiverse.author}/${uiverse.slug}`
+    : new URL(trimmed).hostname;
+
   let html: string | null = null;
   let source: UiverseFetchResult["source"] = "uiverse-page";
   let fetchError: string | null = null;
@@ -211,7 +210,7 @@ export async function fetchUiverseCssFromUrl(
       result: buildFetchResult(
         proxy.css,
         proxy.source === "galaxy" ? "galaxy" : "uiverse-page",
-        `${uiverse.author}/${uiverse.slug}`,
+        title,
         proxy.html,
         trimmed,
       ),
@@ -223,7 +222,8 @@ export async function fetchUiverseCssFromUrl(
     if (proxy.source === "galaxy") source = "galaxy";
   }
 
-  if (!html) {
+  // UIverse: try Galaxy archive as fallback
+  if (!html && uiverse) {
     html = await fetchFromGalaxy(uiverse.author, uiverse.slug);
     if (html) source = "galaxy";
   }
@@ -233,7 +233,7 @@ export async function fetchUiverseCssFromUrl(
       result: null,
       error:
         fetchError ||
-        "تعذّر جلب المكوّن من UIverse. تأكد من الرابط (مثال: https://uiverse.io/user/slug) أو جرّب مكوّنًا أقدم من الأرشيف.",
+        "تعذّر جلب CSS من هذا الرابط. تأكد أن الصفحة تحتوي على أنماط CSS أو جرّب رابطًا آخر.",
     };
   }
 
@@ -241,18 +241,12 @@ export async function fetchUiverseCssFromUrl(
   if (!css.trim()) {
     return {
       result: null,
-      error: "لم أجد CSS في صفحة UIverse — جرّب رابط مكوّن آخر.",
+      error: "لم أجد CSS في هذه الصفحة — جرّب رابطًا آخر.",
     };
   }
 
   return {
-    result: buildFetchResult(
-      css,
-      source,
-      `${uiverse.author}/${uiverse.slug}`,
-      html,
-      trimmed,
-    ),
+    result: buildFetchResult(css, source, title, html, trimmed),
     error: null,
   };
 }
@@ -302,6 +296,7 @@ export function applyUiverseCssToTarget(
     styleId: id,
     targetLabel: target.labelAr,
     sourceUrl,
+    cssContent: parsed.scopedCss,
   });
   saveActive(active);
 
@@ -363,10 +358,24 @@ export function getActiveUiverseScopedApplies(): ActiveScopedApply[] {
 export function restoreUiverseScopedOnLoad(): void {
   if (typeof document === "undefined") return;
   const active = loadActive();
+  const restored: ActiveScopedApply[] = [];
+
   for (const entry of active) {
-    if (!document.getElementById(entry.styleId)) {
+    if (document.getElementById(entry.styleId)) {
+      restored.push(entry);
+      continue;
+    }
+    if (entry.cssContent?.trim()) {
+      const styleEl = document.createElement("style");
+      styleEl.id = entry.styleId;
+      styleEl.setAttribute("data-lamma-uiverse", "true");
+      styleEl.textContent = `/* Lamma scoped UIverse restored — ${entry.targetLabel} */\n${entry.cssContent}`;
+      document.head.appendChild(styleEl);
+      restored.push(entry);
+    } else {
       clearRegionMarks(entry.region);
     }
   }
-  saveActive(active.filter((a) => document.getElementById(a.styleId)));
+
+  saveActive(restored);
 }

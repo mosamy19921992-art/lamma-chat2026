@@ -1,6 +1,6 @@
-/** Server-side fetch for UIverse — Galaxy archive + reader fallback (UIverse blocks datacenter IPs). */
+/** Server-side fetch for UIverse + any safe HTTPS CSS page — Galaxy archive + reader fallback. */
 
-const ALLOWED_HOST = "uiverse.io";
+const UIVERSE_HOST = "uiverse.io";
 const MAX_BYTES = 512_000;
 const GALAXY_BASE =
   "https://raw.githubusercontent.com/uiverse-io/galaxy/main";
@@ -28,11 +28,42 @@ const BROWSER_HEADERS = {
   Referer: "https://uiverse.io/",
 };
 
+// Allow only HTTPS requests to known design-source hosts, and block
+// private / loopback / link-local / cloud-metadata targets (SSRF guard).
+const ALLOWED_HOSTS = ["uiverse.io", "raw.githubusercontent.com", "r.jina.ai"];
+
+function isPrivateHost(host) {
+  const h = host.toLowerCase();
+  if (h === "localhost" || h === "::1" || h.endsWith(".localhost")) return true;
+  // IPv4 private / loopback / link-local / cloud metadata (169.254.169.254)
+  if (
+    /^127\./.test(h) ||
+    /^10\./.test(h) ||
+    /^192\.168\./.test(h) ||
+    /^169\.254\./.test(h) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(h)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function isAllowedUrl(raw) {
   try {
     const u = new URL(raw);
-    const host = u.hostname.replace(/^www\./, "");
-    return u.protocol === "https:" && host.endsWith(ALLOWED_HOST);
+    if (u.protocol !== "https:") return false;
+    const host = u.hostname.replace(/^www\./, "").toLowerCase();
+    if (isPrivateHost(host)) return false;
+    return ALLOWED_HOSTS.some((d) => host === d || host.endsWith("." + d));
+  } catch {
+    return false;
+  }
+}
+
+function isUiverseUrl(raw) {
+  try {
+    const u = new URL(raw);
+    return u.hostname.replace(/^www\./, "").endsWith(UIVERSE_HOST);
   } catch {
     return false;
   }
@@ -42,7 +73,7 @@ function parseUiverseUrl(raw) {
   try {
     const parsed = new URL(raw.trim());
     const host = parsed.hostname.replace(/^www\./, "");
-    if (!host.endsWith(ALLOWED_HOST)) return null;
+    if (!host.endsWith(UIVERSE_HOST)) return null;
 
     const parts = parsed.pathname.split("/").filter(Boolean);
     const skip = new Set([
@@ -243,63 +274,70 @@ export default async function handler(req, res) {
   if (!isAllowedUrl(url)) {
     res.status(400).json({
       error: "invalid_url",
-      hint: "https://uiverse.io/username/component-slug",
-    });
-    return;
-  }
-
-  const parsed = parseUiverseUrl(url);
-  if (!parsed) {
-    res.status(400).json({
-      error: "invalid_path",
-      hint: "مثال: https://uiverse.io/0x-Sarthak/hungry-penguin-30",
+      hint: "الرابط يجب أن يبدأ بـ https://",
     });
     return;
   }
 
   try {
-    const galaxyHit = await fetchGalaxyHtml(parsed.author, parsed.slug);
-    if (galaxyHit) {
-      const css = extractCssFromHtml(galaxyHit.html);
-      if (css.trim()) {
-        res.status(200).json({
-          ok: true,
-          css,
-          source: "galaxy",
-          title: `${parsed.author}/${parsed.slug}`,
+    // UIverse: try Galaxy archive first, then reader, then direct page fetch
+    if (isUiverseUrl(url)) {
+      const parsed = parseUiverseUrl(url);
+      if (!parsed) {
+        res.status(400).json({
+          error: "invalid_path",
+          hint: "مثال: https://uiverse.io/0x-Sarthak/hungry-penguin-30",
         });
         return;
       }
+
+      const galaxyHit = await fetchGalaxyHtml(parsed.author, parsed.slug);
+      if (galaxyHit) {
+        const css = extractCssFromHtml(galaxyHit.html);
+        if (css.trim()) {
+          res.status(200).json({ ok: true, css, source: "galaxy", title: `${parsed.author}/${parsed.slug}` });
+          return;
+        }
+      }
+
+      const readerHit = await fetchViaJinaReader(url);
+      if (readerHit?.css?.trim()) {
+        res.status(200).json({ ok: true, css: readerHit.css, source: readerHit.source, title: `${parsed.author}/${parsed.slug}` });
+        return;
+      }
+
+      const pageHit = await fetchUiversePage(url);
+      if (pageHit?.css?.trim()) {
+        res.status(200).json({ ok: true, css: pageHit.css, source: pageHit.source, title: `${parsed.author}/${parsed.slug}` });
+        return;
+      }
+
+      res.status(502).json({
+        error: "fetch_failed",
+        hint: "تعذّر جلب CSS من UIverse. تأكد من الرابط أو جرّب مكوّنًا آخر.",
+        author: parsed.author,
+        slug: parsed.slug,
+      });
+      return;
     }
 
+    // Generic HTTPS URL: try jina reader then direct page fetch
+    const hostname = new URL(url).hostname;
     const readerHit = await fetchViaJinaReader(url);
     if (readerHit?.css?.trim()) {
-      res.status(200).json({
-        ok: true,
-        css: readerHit.css,
-        source: readerHit.source,
-        title: `${parsed.author}/${parsed.slug}`,
-      });
+      res.status(200).json({ ok: true, css: readerHit.css, source: "reader", title: hostname });
       return;
     }
 
     const pageHit = await fetchUiversePage(url);
     if (pageHit?.css?.trim()) {
-      res.status(200).json({
-        ok: true,
-        css: pageHit.css,
-        source: pageHit.source,
-        title: `${parsed.author}/${parsed.slug}`,
-      });
+      res.status(200).json({ ok: true, css: pageHit.css, source: "page", title: hostname });
       return;
     }
 
     res.status(502).json({
       error: "fetch_failed",
-      hint:
-        "تعذّر جلب CSS. تأكد من الرابط (author/slug) أو جرّب مكوّنًا من uiverse.io/galaxy.",
-      author: parsed.author,
-      slug: parsed.slug,
+      hint: "تعذّر استخراج CSS من هذا الرابط. تأكد أن الصفحة تحتوي على <style> tags.",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

@@ -190,8 +190,8 @@ const REGION_TERMS: Record<ChatDesignRegion, string[]> = {
 };
 
 const ACTION_TERMS: Record<RegionAction, string[]> = {
-  darken: ["غامق", "غمق", "داكن", "أغمق", "اغمق", "dark", "darker", "dim"],
-  lighten: ["فاتح", "أفتح", "افتح", "light", "lighter", "bright", "brighten"],
+  darken: ["غامق", "غمق", "داكن", "أغمق", "اغمق", "تعتيم", "اعتم", "أعتم", "عتم", "dark", "darker", "dim"],
+  lighten: ["فاتح", "أفتح", "افتح", "شفافية", "شفاف", "شفف", "أشفاف", "اشفاف", "light", "lighter", "bright", "brighten"],
   clean: ["نظافة", "نظف", "نظيف", "clean", "تنظيف", "نظفها", "نضف"],
   "remove-colors": [
     "ازالة الالوان",

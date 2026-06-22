@@ -55,9 +55,19 @@ import {
   type ChaseLightTarget,
 } from '../../services/design/chaseLightBarService';
 
-type DesignSection = "uploads" | "studio" | "library" | "assistant";
+import {
+  applyDesignAiPatch,
+  askDesignAi,
+} from '../../services/design/designAiService';
+import {
+  createDefaultUniversalStyle,
+  normalizeUniversalStyleConfig,
+  type UniversalStyleConfig,
+} from '../../services/design/universalStyleTypes';
 
-export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode, previewDesignPrompt, previewDesignConfig, cancelPendingDesignPreview, commitPendingDesignPreview, ownerWriteAccessOk }: any) => {
+type DesignSection = "uploads" | "sliders" | "studio" | "library" | "assistant";
+
+export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode, previewDesignPrompt, previewDesignPromptAi, previewDesignConfig, committedConfig, cancelPendingDesignPreview, commitPendingDesignPreview, ownerWriteAccessOk }: any) => {
   type PreviewKind = "glass" | "face" | "template" | "column" | "import-pack" | "bubble" | "chase" | null;
 
   const [section, setSection] = useState<DesignSection>("uploads");
@@ -92,6 +102,31 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
   const rightColUploadRef = useRef<HTMLInputElement>(null);
   const centerColUploadRef = useRef<HTMLInputElement>(null);
   const leftColUploadRef = useRef<HTMLInputElement>(null);
+
+  /* ── Sliders + Gemini AI state ── */
+  const getBase = (): UniversalStyleConfig => {
+    const cfg = (committedConfig ?? null) as UniversalStyleConfig | null;
+    return normalizeUniversalStyleConfig(cfg ?? createDefaultUniversalStyle());
+  };
+
+  const defaultBase = createDefaultUniversalStyle();
+  const [sliderGlassBlur, setSliderGlassBlur] = useState<number>(defaultBase.glass.blurPx);
+  const [sliderGlassOpacity, setSliderGlassOpacity] = useState<number>(defaultBase.glass.opacity);
+  const [sliderGlassBorder, setSliderGlassBorder] = useState<number>(defaultBase.glass.borderOpacity);
+  const [sliderBtnRadius, setSliderBtnRadius] = useState<number>(defaultBase.buttons.radiusPx);
+  const [sliderBtnGlow, setSliderBtnGlow] = useState<boolean>(defaultBase.buttons.glow);
+  const [sliderAccent, setSliderAccent] = useState<string>(defaultBase.palette.accent);
+  const [sliderAccent2, setSliderAccent2] = useState<string>(defaultBase.palette.accent2);
+
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  const [aiLastSummary, setAiLastSummary] = useState("");
+
+  const applySliderGlassPatch = (glassPatch: Partial<UniversalStyleConfig["glass"]>) => {
+    if (!previewDesignConfig || !isOwnerRole) return;
+    const base = getBase();
+    previewDesignConfig({ ...base, glass: { ...base.glass, ...glassPatch } });
+  };
 
   const stopDrag = (event: React.PointerEvent) => event.stopPropagation();
 
@@ -438,9 +473,10 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                     <div className="flex items-center gap-1.5 p-1 rounded-2xl lamma-section-card overflow-x-auto">
                       {([
                         ["uploads", "📤 رفع الصور"],
-                        ["studio", "🎛️ الألوان والثيمات"],
-                        ["library", "📚 مكتبة الثيمات"],
-                        ["assistant", "🤖 المساعد الذكي"],
+                        ["sliders", "🎚️ تحكم مباشر"],
+                        ["studio", "🎛️ ثيمات"],
+                        ["library", "📚 مكتبة"],
+                        ["assistant", "🤖 ذكي"],
                       ] as const).map(([id, label]) => (
                         <button
                           key={id}
@@ -457,6 +493,252 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                         </button>
                       ))}
                     </div>
+
+                    {/* ── تحكم مباشر بالسلايدرات + Gemini AI ── */}
+                    {section === "sliders" && isOwnerRole && (
+                      <div className="space-y-4">
+                        {/* Gemini AI */}
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                          <div className="text-[11px] text-cyan-300 font-black">✨ Gemini AI — اكتب أي أمر تصميم</div>
+                          <div className="text-[10px] text-gray-400">مثل: «اجعل الخلفية زرقاء داكنة»، «زود الشفافية»، «زوايا حادة»</div>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={aiPrompt}
+                              onChange={(e) => setAiPrompt(e.target.value)}
+                              onKeyDown={async (e) => {
+                                if (e.key !== "Enter" || !aiPrompt.trim()) return;
+                                setAiStatus("loading");
+                                const base = getBase();
+                                const result = await askDesignAi(aiPrompt.trim(), base);
+                                if (result.hasChanges && previewDesignConfig) {
+                                  const patched = applyDesignAiPatch(base, result.patch);
+                                  previewDesignConfig(patched);
+                                  setSliderGlassBlur(patched.glass.blurPx);
+                                  setSliderGlassOpacity(patched.glass.opacity);
+                                  setSliderGlassBorder(patched.glass.borderOpacity);
+                                  setSliderBtnRadius(patched.buttons.radiusPx);
+                                  setSliderBtnGlow(patched.buttons.glow);
+                                  setSliderAccent(patched.palette.accent);
+                                  setSliderAccent2(patched.palette.accent2);
+                                  setAiLastSummary(result.summary);
+                                  setAiStatus("ok");
+                                } else {
+                                  setAiLastSummary(result.summary || result.error || "لم أفهم الأمر");
+                                  setAiStatus("error");
+                                }
+                              }}
+                              onPointerDown={stopDrag}
+                              placeholder="اكتب أمر التصميم واضغط Enter…"
+                              dir="rtl"
+                              className="flex-1 text-[11px] bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-500/50"
+                            />
+                            <button
+                              type="button"
+                              onPointerDown={stopDrag}
+                              disabled={aiStatus === "loading" || !aiPrompt.trim()}
+                              onClick={async () => {
+                                if (!aiPrompt.trim()) return;
+                                setAiStatus("loading");
+                                const base = getBase();
+                                const result = await askDesignAi(aiPrompt.trim(), base);
+                                if (result.hasChanges && previewDesignConfig) {
+                                  const patched = applyDesignAiPatch(base, result.patch);
+                                  previewDesignConfig(patched);
+                                  setSliderGlassBlur(patched.glass.blurPx);
+                                  setSliderGlassOpacity(patched.glass.opacity);
+                                  setSliderGlassBorder(patched.glass.borderOpacity);
+                                  setSliderBtnRadius(patched.buttons.radiusPx);
+                                  setSliderBtnGlow(patched.buttons.glow);
+                                  setSliderAccent(patched.palette.accent);
+                                  setSliderAccent2(patched.palette.accent2);
+                                  setAiLastSummary(result.summary);
+                                  setAiStatus("ok");
+                                } else {
+                                  setAiLastSummary(result.summary || result.error || "لم أفهم الأمر");
+                                  setAiStatus("error");
+                                }
+                              }}
+                              className="px-3 py-2 rounded-xl text-[10px] font-black lamma-accent-btn text-white disabled:opacity-40"
+                            >
+                              {aiStatus === "loading" ? "…" : "✨"}
+                            </button>
+                          </div>
+                          {aiLastSummary && (
+                            <div className={`text-[10px] font-bold px-2 py-1 rounded-lg ${aiStatus === "ok" ? "text-emerald-300 bg-emerald-500/10" : "text-rose-300 bg-rose-500/10"}`}>
+                              {aiLastSummary}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Glass sliders */}
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-4">
+                          <div className="text-[11px] text-cyan-300 font-black">🪟 الزجاج (Glass)</div>
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] text-gray-400 font-bold">
+                              <span>تعتيم الزجاج</span>
+                              <span>{Math.round(sliderGlassOpacity * 100)}%</span>
+                            </div>
+                            <input
+                              type="range" min={0.02} max={0.42} step={0.01}
+                              value={sliderGlassOpacity}
+                              onPointerDown={stopDrag}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value);
+                                setSliderGlassOpacity(v);
+                                applySliderGlassPatch({ opacity: v });
+                              }}
+                              className="w-full accent-cyan-400"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] text-gray-400 font-bold">
+                              <span>ضبابية الزجاج</span>
+                              <span>{sliderGlassBlur}px</span>
+                            </div>
+                            <input
+                              type="range" min={4} max={40} step={1}
+                              value={sliderGlassBlur}
+                              onPointerDown={stopDrag}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value);
+                                setSliderGlassBlur(v);
+                                applySliderGlassPatch({ blurPx: v });
+                              }}
+                              className="w-full accent-cyan-400"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] text-gray-400 font-bold">
+                              <span>حدة الحدود</span>
+                              <span>{Math.round(sliderGlassBorder * 100)}%</span>
+                            </div>
+                            <input
+                              type="range" min={0.02} max={0.5} step={0.01}
+                              value={sliderGlassBorder}
+                              onPointerDown={stopDrag}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value);
+                                setSliderGlassBorder(v);
+                                applySliderGlassPatch({ borderOpacity: v });
+                              }}
+                              className="w-full accent-cyan-400"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Button / input sliders */}
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-4">
+                          <div className="text-[11px] text-cyan-300 font-black">🔘 الأزرار</div>
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] text-gray-400 font-bold">
+                              <span>زوايا الأزرار</span>
+                              <span>{sliderBtnRadius}px</span>
+                            </div>
+                            <input
+                              type="range" min={0} max={28} step={1}
+                              value={sliderBtnRadius}
+                              onPointerDown={stopDrag}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value);
+                                setSliderBtnRadius(v);
+                                const base = getBase();
+                                previewDesignConfig?.({ ...base, buttons: { ...base.buttons, radiusPx: v } });
+                              }}
+                              className="w-full accent-cyan-400"
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-gray-400 font-bold">توهج الأزرار</span>
+                            <button
+                              type="button"
+                              onPointerDown={stopDrag}
+                              onClick={() => {
+                                const next = !sliderBtnGlow;
+                                setSliderBtnGlow(next);
+                                const base = getBase();
+                                previewDesignConfig?.({ ...base, buttons: { ...base.buttons, glow: next } });
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${sliderBtnGlow ? "lamma-accent-btn text-white" : "lamma-tab-soft text-gray-400"}`}
+                            >
+                              {sliderBtnGlow ? "✅ مفعّل" : "⭕ معطّل"}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Color pickers */}
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                          <div className="text-[11px] text-cyan-300 font-black">🎨 الألوان الرئيسية</div>
+                          <div className="flex items-center gap-3">
+                            <label className="text-[10px] text-gray-400 font-bold w-20 shrink-0">اللون الأساسي</label>
+                            <input
+                              type="color"
+                              value={sliderAccent}
+                              onPointerDown={stopDrag}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setSliderAccent(v);
+                                const base = getBase();
+                                previewDesignConfig?.({ ...base, palette: { ...base.palette, accent: v } });
+                              }}
+                              className="w-8 h-8 rounded-lg border-0 cursor-pointer bg-transparent"
+                            />
+                            <span className="text-[10px] text-gray-500 font-mono">{sliderAccent}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <label className="text-[10px] text-gray-400 font-bold w-20 shrink-0">اللون الثانوي</label>
+                            <input
+                              type="color"
+                              value={sliderAccent2}
+                              onPointerDown={stopDrag}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setSliderAccent2(v);
+                                const base = getBase();
+                                previewDesignConfig?.({ ...base, palette: { ...base.palette, accent2: v } });
+                              }}
+                              className="w-8 h-8 rounded-lg border-0 cursor-pointer bg-transparent"
+                            />
+                            <span className="text-[10px] text-gray-500 font-mono">{sliderAccent2}</span>
+                          </div>
+                        </div>
+
+                        {/* Apply / Cancel bar for sliders */}
+                        <div className="sticky top-0 z-20 flex gap-2 p-3 rounded-2xl border border-cyan-400/30 bg-[#0a1218]/95 backdrop-blur-xl">
+                          <button
+                            type="button"
+                            onPointerDown={stopDrag}
+                            onClick={() => void commitPendingDesignPreview?.()}
+                            className="flex-1 py-2.5 rounded-xl text-[10px] font-black lamma-accent-btn text-white"
+                          >
+                            ✅ تطبيق نهائي
+                          </button>
+                          <button
+                            type="button"
+                            onPointerDown={stopDrag}
+                            onClick={() => {
+                              cancelPendingDesignPreview?.();
+                              const base = getBase();
+                              setSliderGlassBlur(base.glass.blurPx);
+                              setSliderGlassOpacity(base.glass.opacity);
+                              setSliderGlassBorder(base.glass.borderOpacity);
+                              setSliderBtnRadius(base.buttons.radiusPx);
+                              setSliderBtnGlow(base.buttons.glow);
+                              setSliderAccent(base.palette.accent);
+                              setSliderAccent2(base.palette.accent2);
+                            }}
+                            className="px-4 py-2.5 rounded-xl text-[10px] font-black lamma-tab-soft"
+                          >
+                            ❌ إلغاء
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {section === "studio" && isOwnerRole && (
                       <DesignStudioModal

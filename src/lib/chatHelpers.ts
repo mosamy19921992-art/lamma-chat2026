@@ -271,6 +271,19 @@ export function canUseMusicRadio(
   return !!getMemberPermissions(perms, user.nickname).musicRadioAllowed;
 }
 
+/** تشغيل/رفع موسيقى أو راديو شخصي — يحتاج منحة من المالك */
+export function canControlMusicRadio(
+  user: Pick<UserSession, "nickname" | "role">,
+  perms: Record<string, MemberCustomPermissions>,
+): boolean {
+  return canUseMusicRadio(user, perms);
+}
+
+/** الاستماع لبث DJ المالك في الغرفة — متاح للجميع افتراضياً */
+export function canListenToOwnerDj(): boolean {
+  return true;
+}
+
 export function canSendImages(
   user: Pick<UserSession, "nickname" | "role">,
   perms: Record<string, MemberCustomPermissions>,

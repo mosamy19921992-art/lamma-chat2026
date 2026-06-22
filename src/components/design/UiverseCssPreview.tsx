@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { Eye, Sparkles } from "lucide-react";
 import type { UiverseFetchResult } from "../../services/design/uiverseScopedImportService";
-import { getRootClassFromCss } from "../../services/design/uiverseCssParser";
+import { getRootClassFromCss, sanitizeCss } from "../../services/design/uiverseCssParser";
 
 interface UiverseCssPreviewProps {
   result: UiverseFetchResult;
@@ -10,7 +10,19 @@ interface UiverseCssPreviewProps {
 
 export function UiverseCssPreview({ result, targetLabel }: UiverseCssPreviewProps) {
   const rootClass = useMemo(() => getRootClassFromCss(result.css), [result.css]);
-  const safeCss = useMemo(() => result.css.slice(0, 48_000), [result.css]);
+  // Sanitize CSS (strip @import/expression/behavior/javascript:/data:) — not just length-cap.
+  const safeCss = useMemo(() => sanitizeCss(result.css).css, [result.css]);
+  // Render untrusted third-party markup + CSS inside a fully sandboxed iframe.
+  // sandbox="" disables ALL script execution (including inline on* handlers),
+  // and isolates it from the app origin — neutralizing DOM XSS.
+  const previewSrcDoc = useMemo(() => {
+    const markup = (result.previewMarkup ?? "").slice(0, 12_000);
+    return `<!doctype html><html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;height:100%;display:flex;align-items:center;justify-content:center;background:transparent;overflow:hidden;}
+  ${safeCss}
+</style></head><body>${markup}</body></html>`;
+  }, [result.previewMarkup, safeCss]);
 
   return (
     <div
@@ -41,11 +53,14 @@ export function UiverseCssPreview({ result, targetLabel }: UiverseCssPreviewProp
             "radial-gradient(circle at 50% 30%, rgba(56,189,248,0.08), transparent 55%), #0a0f18",
         }}
       >
-        <div className="uiverse-preview-stage relative inline-flex items-center justify-center max-w-full">
-          <style>{safeCss}</style>
-          <div
-            className="uiverse-preview-markup"
-            dangerouslySetInnerHTML={{ __html: result.previewMarkup ?? "" }}
+        <div className="uiverse-preview-stage relative inline-flex items-center justify-center w-full">
+          <iframe
+            title="UIverse preview (sandboxed)"
+            sandbox=""
+            referrerPolicy="no-referrer"
+            loading="lazy"
+            srcDoc={previewSrcDoc}
+            className="uiverse-preview-frame w-full min-h-[160px] border-0 bg-transparent"
           />
         </div>
       </div>
@@ -61,9 +76,9 @@ export function UiverseCssPreview({ result, targetLabel }: UiverseCssPreviewProp
             الهدف: {targetLabel}
           </p>
         )}
-        <p className="text-[7px] text-gray-500 font-bold leading-relaxed flex items-start gap-1">
-          <Sparkles size={9} className="shrink-0 mt-0.5 text-gray-600" />
-          هذه معاينة المكوّن كما جاء من الرابط — ليست ثيم الموقع.
+        <p className="text-[7px] text-amber-400/80 font-bold leading-relaxed flex items-start gap-1">
+          <Sparkles size={9} className="shrink-0 mt-0.5 text-amber-500" />
+          ⚠️ المعاينة تقريبية — الشكل الحقيقي على الموقع قد يختلف بسبب تحويل CSS للعناصر.
         </p>
       </div>
     </div>

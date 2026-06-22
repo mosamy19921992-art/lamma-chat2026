@@ -62,47 +62,56 @@ export function useVoiceMessageRecorder() {
       throw new Error("UNSUPPORTED");
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-    });
-
-    streamRef.current = stream;
-    chunksRef.current = [];
-
-    const mimeType = pickVoiceRecorderMimeType();
-    mimeTypeRef.current = mimeType || "audio/webm";
-
-    const recorder = new MediaRecorder(
-      stream,
-      mimeType ? { mimeType } : undefined,
-    );
-
-    recorder.ondataavailable = (ev) => {
-      if (ev.data.size > 0) chunksRef.current.push(ev.data);
-    };
-
-    mediaRecorderRef.current = recorder;
-    recorder.start(250);
-    setDurationSec(0);
-    setIsRecording(true);
-
-    timerRef.current = setInterval(() => {
-      setDurationSec((s) => {
-        const next = s + 1;
-        if (next >= MAX_VOICE_RECORD_SECONDS) {
-          const active = mediaRecorderRef.current;
-          if (active && active.state === "recording") {
-            stopRecorderInternal(() => {});
-          }
-          return MAX_VOICE_RECORD_SECONDS;
-        }
-        return next;
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
       });
-    }, 1000);
+
+      streamRef.current = stream;
+      chunksRef.current = [];
+
+      const mimeType = pickVoiceRecorderMimeType();
+      mimeTypeRef.current = mimeType || "audio/webm";
+
+      const recorder = new MediaRecorder(
+        stream,
+        mimeType ? { mimeType } : undefined,
+      );
+
+      recorder.ondataavailable = (ev) => {
+        if (ev.data.size > 0) chunksRef.current.push(ev.data);
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start(250);
+      setDurationSec(0);
+      setIsRecording(true);
+
+      timerRef.current = setInterval(() => {
+        setDurationSec((s) => {
+          const next = s + 1;
+          if (next >= MAX_VOICE_RECORD_SECONDS) {
+            const active = mediaRecorderRef.current;
+            if (active && active.state === "recording") {
+              stopRecorderInternal(() => {});
+            }
+            return MAX_VOICE_RECORD_SECONDS;
+          }
+          return next;
+        });
+      }, 1000);
+    } catch (err) {
+      // Ensure mic is released if MediaRecorder construction or any setup fails
+      if (stream && streamRef.current !== stream) {
+        stream.getTracks().forEach((t) => t.stop());
+      }
+      throw err;
+    }
   }, [isRecording, stopRecorderInternal]);
 
   useEffect(() => {

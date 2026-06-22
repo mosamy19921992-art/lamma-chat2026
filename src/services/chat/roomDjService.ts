@@ -1,5 +1,6 @@
 import { supabase } from "../../lib/supabase";
 import type { RoomDjState } from "../../lib/chatTypes";
+import { filterSafeMediaUrl } from "../../lib/chatHelpers";
 
 const SYNC_KEY_ATTR = "data-dj-sync-key";
 const DJ_URL_ATTR = "data-dj-url";
@@ -11,11 +12,14 @@ export function parseRoomDjMap(raw: unknown): Record<string, RoomDjState> {
     if (!value || typeof value !== "object") continue;
     const v = value as Partial<RoomDjState>;
     if (typeof v.url !== "string" || !v.url.trim()) continue;
+    if (v.isPlaying === false) continue;
+    const safeUrl = filterSafeMediaUrl(v.url.trim());
+    if (!safeUrl) continue;
     result[roomId] = {
       mode: v.mode === "radio" || v.mode === "music" ? v.mode : "music",
       trackId: String(v.trackId || ""),
       title: String(v.title || "موسيقى"),
-      url: v.url.trim(),
+      url: safeUrl,
       isPlaying: Boolean(v.isPlaying),
       startedAtMs: Number(v.startedAtMs) || Date.now(),
       updatedBy: String(v.updatedBy || "المالك"),
@@ -103,7 +107,7 @@ export async function persistRoomDjState(
   roomId: string,
   state: RoomDjState | null,
   currentMap: Record<string, RoomDjState>,
-): Promise<Record<string, RoomDjState>> {
+): Promise<{ map: Record<string, RoomDjState>; error: string | null }> {
   const next = { ...currentMap };
   if (state?.isPlaying) {
     next[roomId] = state;
@@ -118,10 +122,11 @@ export async function persistRoomDjState(
       .eq("id", settingsRowId);
     if (error) {
       console.warn("Failed to sync room DJ state", error);
+      return { map: currentMap, error: error.message };
     }
   }
 
-  return next;
+  return { map: next, error: null };
 }
 
 /** يطبّق بث DJ على عنصر الصوت — يرجع cleanup لإزالة المؤقتات والمستمعين */
@@ -140,6 +145,8 @@ export function applyRoomDjToAudio(
 
   if (!listenEnabled || !dj?.isPlaying) {
     audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
     audio.removeAttribute(DJ_URL_ATTR);
     audio.removeAttribute(SYNC_KEY_ATTR);
     return cleanup;

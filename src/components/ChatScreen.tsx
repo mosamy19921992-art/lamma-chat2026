@@ -178,6 +178,7 @@ import {
   isSafeHttpUrl,
   canSendImages,
   canShareYoutube,
+  canControlMusicRadio,
   getRoomCreationQuotaRemaining,
   filterSafeMediaUrl,
   isPrivateStorageRef,
@@ -693,11 +694,7 @@ export default function ChatScreen({
     publicChatSessionStartedAt,
   ).getTime();
   const roleLower = (currentUser.role || "").toLowerCase();
-  const isOwnerRole =
-    roleLower === "owner" ||
-    roleLower === "malek" ||
-    roleLower === "المالك" ||
-    roleLower === "boss";
+  const isOwnerRole = roleLower === "owner";
   const isAdminRole = roleLower === "admin" || roleLower === "أدمن";
   const isManagementRole = isOwnerRole || isAdminRole;
   const isPostsRoom = activeRoomId === POSTS_ROOM_ID;
@@ -2600,23 +2597,11 @@ export default function ChatScreen({
   }, [botRuleSwearFilter]);
 
   // Global Owner Control Center states
-  const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(() => {
-    return localStorage.getItem("lamma_maintenance_mode") === "true";
-  });
-  const [isGlobalMute, setIsGlobalMute] = useState<boolean>(() => {
-    return localStorage.getItem("lamma_global_mute") === "true";
-  });
-  const [isGlobalMicMute, setIsGlobalMicMute] = useState<boolean>(() => {
-    return localStorage.getItem("lamma_global_mic_mute") === "true";
-  });
-  const [isOnlyVIPCanSendImages, setIsOnlyVIPCanSendImages] = useState<boolean>(
-    () => {
-      return localStorage.getItem("lamma_vip_only_images") === "true";
-    },
-  );
-  const [isBotSilent, setIsBotSilent] = useState<boolean>(() => {
-    return localStorage.getItem("lamma_bot_silent") === "true";
-  });
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+  const [isGlobalMute, setIsGlobalMute] = useState(false);
+  const [isGlobalMicMute, setIsGlobalMicMute] = useState(false);
+  const [isOnlyVIPCanSendImages, setIsOnlyVIPCanSendImages] = useState(false);
+  const [isBotSilent, setIsBotSilent] = useState(false);
   const [isAdsEnabled, setIsAdsEnabled] = useState<boolean>(() => {
     return localStorage.getItem("lamma_ads_enabled") !== "false";
   });
@@ -2631,29 +2616,7 @@ export default function ChatScreen({
   useEffect(() => {
     roomDjMapRef.current = roomDjMap;
   }, [roomDjMap]);
-  // Persistent state synchronization loops
-  useEffect(() => {
-    localStorage.setItem("lamma_maintenance_mode", String(isMaintenanceMode));
-  }, [isMaintenanceMode]);
-
-  useEffect(() => {
-    localStorage.setItem("lamma_global_mute", String(isGlobalMute));
-  }, [isGlobalMute]);
-
-  useEffect(() => {
-    localStorage.setItem("lamma_global_mic_mute", String(isGlobalMicMute));
-  }, [isGlobalMicMute]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      "lamma_vip_only_images",
-      String(isOnlyVIPCanSendImages),
-    );
-  }, [isOnlyVIPCanSendImages]);
-
-  useEffect(() => {
-    localStorage.setItem("lamma_bot_silent", String(isBotSilent));
-  }, [isBotSilent]);
+  // Global flags are authoritative from Supabase only — no localStorage cache
 
   // Re-apply the owner's saved custom design face + glass form after each load.
   useEffect(() => {
@@ -2747,6 +2710,11 @@ export default function ChatScreen({
       JSON.stringify(memberCustomPermissions),
     );
   }, [memberCustomPermissions]);
+
+  const canUserControlMusicRadio = useMemo(
+    () => canControlMusicRadio(currentUser, memberCustomPermissions),
+    [currentUser, memberCustomPermissions],
+  );
 
   const roomCreationQuotaInfo = useMemo(
     () =>
@@ -3021,7 +2989,9 @@ export default function ChatScreen({
         });
       }
       if (settings.room_dj_map !== undefined) {
-        setRoomDjMap(parseRoomDjMap(settings.room_dj_map));
+        const parsed = parseRoomDjMap(settings.room_dj_map);
+        roomDjMapRef.current = parsed;
+        setRoomDjMap(parsed);
       }
       if (Array.isArray(settings.design_presets)) {
         setDesignPresets(settings.design_presets as DesignPreset[]);
@@ -3303,7 +3273,9 @@ export default function ChatScreen({
                 : [],
             );
             if (settings.room_dj_map !== undefined) {
-              setRoomDjMap(parseRoomDjMap(settings.room_dj_map));
+              const parsed = parseRoomDjMap(settings.room_dj_map);
+              roomDjMapRef.current = parsed;
+              setRoomDjMap(parsed);
             }
             if (settings.dj_library !== undefined) {
               setDjLibrary(parseDjLibrary(settings.dj_library));
@@ -3553,7 +3525,6 @@ export default function ChatScreen({
         custom_logo_url: brandLogoUrl,
         room_bg_map: roomBgMap,
         design_presets: designPresets,
-        room_dj_map: roomDjMap,
         dj_library: djLibrary,
         bot_enabled: isBotEnabled,
         bot_rule_anti_links: botRuleAntiLinks,
@@ -3605,7 +3576,6 @@ export default function ChatScreen({
     isInviteOnlyMode,
     ownerBgImage,
     roomBgMap,
-    roomDjMap,
     djLibrary,
     botRuleAntiLinks,
     botRuleAntiSpam,
@@ -3713,10 +3683,13 @@ export default function ChatScreen({
 
       for (const row of toDelete) {
         if (row.nickname) {
-          await supabase
+          const { error: delErr } = await supabase
             .from("owner_member_cosmetics")
             .delete()
             .eq("nickname", row.nickname);
+          if (delErr) {
+            console.warn("Failed to delete cosmetic row:", row.nickname, delErr.message);
+          }
         }
       }
 
@@ -3816,40 +3789,50 @@ export default function ChatScreen({
       playing: boolean,
       positionSec = 0,
     ) => {
-      if (!isOwnerRole || !supabase) return;
+      if (!canUserControlMusicRadio || !supabase) return;
       const nowMs = Date.now();
-      const state: RoomDjState | null =
-        playing && track
-          ? {
-              mode: "music",
-              trackId: track.id,
-              title: track.title,
-              url: track.url,
-              isPlaying: true,
-              startedAtMs: computeDjStartedAtMs(positionSec, nowMs),
-              updatedBy: currentUser.nickname,
-              updatedAtMs: nowMs,
-            }
-          : null;
-      const next = await persistRoomDjState(
+      const next = { ...roomDjMapRef.current };
+      if (playing && track) {
+        next[activeRoomId] = {
+          mode: "music",
+          trackId: track.id,
+          title: track.title,
+          url: track.url,
+          isPlaying: true,
+          startedAtMs: computeDjStartedAtMs(positionSec, nowMs),
+          updatedBy: currentUser.nickname,
+          updatedAtMs: nowMs,
+        };
+      } else {
+        delete next[activeRoomId];
+      }
+      roomDjMapRef.current = next;
+      setRoomDjMap(next);
+      const { map: savedMap, error: djError } = await persistRoomDjState(
         OWNER_SETTINGS_ROW_ID,
         activeRoomId,
-        state,
-        roomDjMapRef.current,
+        playing && track
+          ? next[activeRoomId]!
+          : null,
+        next,
       );
-      setRoomDjMap(next);
+      if (djError) {
+        roomDjMapRef.current = savedMap;
+        setRoomDjMap(savedMap);
+        console.warn("[DJ] فشل حفظ إعدادات DJ:", djError);
+      }
     },
-    [activeRoomId, currentUser.nickname, isOwnerRole],
+    [activeRoomId, canUserControlMusicRadio, currentUser.nickname],
   );
 
   useEffect(() => {
-    if (isOwnerRole) return;
+    if (canUserControlMusicRadio && isMusicPlaying) return;
     const audio = djBroadcastAudioRef.current;
     if (!audio) return;
     return applyRoomDjToAudio(audio, activeRoomDj, {
       listenEnabled: isDjListening,
     });
-  }, [activeRoomDj, activeRoomId, isDjListening, isOwnerRole]);
+  }, [activeRoomDj, activeRoomId, isDjListening, canUserControlMusicRadio, isMusicPlaying]);
 
   useEffect(() => {
     const stopAllAudio = () => {
@@ -3858,7 +3841,7 @@ export default function ChatScreen({
       djBroadcastAudioRef.current?.pause();
       setIsRadioPlaying(false);
       setIsMusicPlaying(false);
-      if (isOwnerRole) {
+      if (canUserControlMusicRadio) {
         void syncOwnerRoomDj(null, false);
       }
     };
@@ -3869,7 +3852,7 @@ export default function ChatScreen({
       window.removeEventListener("pagehide", stopAllAudio);
       window.removeEventListener("beforeunload", stopAllAudio);
     };
-  }, [isOwnerRole, syncOwnerRoomDj]);
+  }, [canUserControlMusicRadio, syncOwnerRoomDj]);
 
   useEffect(() => {
     return () => {
@@ -3900,7 +3883,16 @@ export default function ChatScreen({
     return false;
   };
 
+  const ensureMusicRadioControl = () => {
+    if (canUserControlMusicRadio) return true;
+    alert(
+      "🎵 التحكم بالموسيقى والراديو للمالك فقط — يمكنه منحك الصلاحية من غرفة القيادة → صلاحيات الأعضاء.",
+    );
+    return false;
+  };
+
   const startRadioPlayback = async (station: RadioStation = currentRadioStation) => {
+    if (!ensureMusicRadioControl()) return;
     const audio = radioAudioRef.current;
     if (!audio) return;
     if (isMusicPlaying && musicAudioRef.current) {
@@ -3923,10 +3915,12 @@ export default function ChatScreen({
       setIsRadioPlaying(false);
       return;
     }
+    if (!ensureMusicRadioControl()) return;
     void startRadioPlayback();
   };
 
   const handleSelectRadioStation = (station: RadioStation) => {
+    if (!ensureMusicRadioControl()) return;
     setCurrentRadioStation(station);
     setIsRadioPlaying(false);
     if (radioAudioRef.current) {
@@ -3937,19 +3931,21 @@ export default function ChatScreen({
   };
 
   const nextRadioStation = () => {
+    if (!ensureMusicRadioControl()) return;
     const idx = radioStations.findIndex((s) => s.id === currentRadioStation.id);
     const nextIdx = (idx + 1) % radioStations.length;
     handleSelectRadioStation(radioStations[nextIdx]);
   };
 
   const prevRadioStation = () => {
+    if (!ensureMusicRadioControl()) return;
     const idx = radioStations.findIndex((s) => s.id === currentRadioStation.id);
     const prevIdx = (idx - 1 + radioStations.length) % radioStations.length;
     handleSelectRadioStation(radioStations[prevIdx]);
   };
 
   const toggleMusicPlay = () => {
-    if (!isOwnerRole) return;
+    if (!canUserControlMusicRadio) return;
     if (!musicAudioRef.current) return;
     if (!currentMusicTrack.url) {
       alert("ارفع أغنية للقائمة أولاً ثم اخترها.");
@@ -3957,6 +3953,8 @@ export default function ChatScreen({
     }
     if (isMusicPlaying) {
       musicAudioRef.current.pause();
+      musicAudioRef.current.removeAttribute("src");
+      musicAudioRef.current.load();
       setIsMusicPlaying(false);
       void syncOwnerRoomDj(null, false);
     } else {
@@ -3979,7 +3977,7 @@ export default function ChatScreen({
     track: MusicTrackItem,
     broadcastForOwner = false,
   ) => {
-    if (!isOwnerRole && !broadcastForOwner) return;
+    if (!canUserControlMusicRadio && !broadcastForOwner) return;
     if (!track.url) return;
     setCurrentMusicTrack(track);
     setIsMusicPlaying(false);
@@ -3995,7 +3993,7 @@ export default function ChatScreen({
           ?.play()
           .then(() => {
             setIsMusicPlaying(true);
-            if (isOwnerRole || broadcastForOwner) {
+            if (canUserControlMusicRadio || broadcastForOwner) {
               const pos = musicAudioRef.current?.currentTime ?? 0;
               void syncOwnerRoomDj(track, true, pos);
             }
@@ -4010,7 +4008,7 @@ export default function ChatScreen({
   ) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = "";
-    if (files.length === 0 || !isOwnerRole) return;
+    if (files.length === 0 || !canUserControlMusicRadio) return;
     if (currentUser.authProvider !== "supabase") {
       alert("📤 رفع الأغاني يحتاج حساب مسجل دخول Supabase.");
       return;
@@ -4058,14 +4056,14 @@ export default function ChatScreen({
   };
 
   const nextMusicTrack = () => {
-    if (!isOwnerRole || djPlaylist.length === 0) return;
+    if (!canUserControlMusicRadio || djPlaylist.length === 0) return;
     const idx = djPlaylist.findIndex((t) => t.id === currentMusicTrack.id);
     const nextIdx = (idx + 1) % djPlaylist.length;
     handleSelectMusicTrack(djPlaylist[nextIdx], true);
   };
 
   const prevMusicTrack = () => {
-    if (!isOwnerRole || djPlaylist.length === 0) return;
+    if (!canUserControlMusicRadio || djPlaylist.length === 0) return;
     const idx = djPlaylist.findIndex((t) => t.id === currentMusicTrack.id);
     const prevIdx = (idx - 1 + djPlaylist.length) % djPlaylist.length;
     handleSelectMusicTrack(djPlaylist[prevIdx], true);
@@ -4112,6 +4110,7 @@ export default function ChatScreen({
   const [messageToasts, setMessageToasts] = useState<
     { id: string; title: string; body: string }[]
   >([]);
+  const toastTimersRef = useRef<Set<number>>(new Set());
   const isPmOpenRef = useRef(false);
   const mobileTabRef = useRef(mobileTab);
 
@@ -4151,9 +4150,18 @@ export default function ChatScreen({
   const showMessageToast = useCallback((title: string, body: string) => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     setMessageToasts((prev) => [...prev, { id, title, body }].slice(-3));
-    window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       setMessageToasts((prev) => prev.filter((toast) => toast.id !== id));
+      toastTimersRef.current.delete(timer);
     }, 4500);
+    toastTimersRef.current.add(timer);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      toastTimersRef.current.forEach((t) => clearTimeout(t));
+      toastTimersRef.current.clear();
+    };
   }, []);
 
   const alertIncomingMessage = useCallback(
@@ -4836,13 +4844,6 @@ export default function ChatScreen({
     const member = resolveChatMemberByNickname(nickname);
     if (!member) return;
 
-    if (isMobileAppShell && !options?.direct) {
-      closeMobileChrome();
-      setUserContextTarget(member);
-      setShowUserContextPop(true);
-      return;
-    }
-
     closeMobileChrome();
 
     const selfNickname = myActiveSession.nickname || currentUser.nickname;
@@ -4863,6 +4864,12 @@ export default function ChatScreen({
 
     if (isSelf) {
       openOwnProfileCard();
+      return;
+    }
+
+    if (!options?.direct) {
+      setUserContextTarget(member);
+      setShowUserContextPop(true);
       return;
     }
 
@@ -5781,6 +5788,7 @@ export default function ChatScreen({
     cancelStyleSandbox,
     resetChatBackgroundToDefault,
     previewDesignPrompt,
+    previewDesignPromptAi,
     previewDesignConfig,
     commitPendingDesignPreview,
     cancelPendingDesignPreview,
@@ -8464,8 +8472,9 @@ export default function ChatScreen({
                   <button
                     type="button"
                     onClick={toggleRadioPlay}
-                    className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
-                    title="تشغيل/إيقاف"
+                    disabled={!canUserControlMusicRadio && !isRadioPlaying}
+                    className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action disabled:opacity-40"
+                    title={canUserControlMusicRadio ? "تشغيل/إيقاف" : "التحكم للمالك فقط"}
                   >
                     {isRadioPlaying ? (
                       <Pause
@@ -8493,13 +8502,19 @@ export default function ChatScreen({
                         {currentRadioStation.frequency}
                       </div>
                     </div>
+                    {!canUserControlMusicRadio && (
+                      <div className="rounded-xl bg-white/5 border border-white/10 px-2 py-1.5 text-[9px] text-gray-400 font-bold text-center">
+                        🔊 الاستماع للبث متاح — التحكم بالراديو للمالك أو من يمنحه الصلاحية
+                      </div>
+                    )}
                     <div className="space-y-1 max-h-28 overflow-y-auto">
                       {radioStations.map((station) => (
                         <button
                           key={station.id}
                           type="button"
                           onClick={() => handleSelectRadioStation(station)}
-                          className={`w-full p-1.5 rounded-xl text-[10px] font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item ${
+                          disabled={!canUserControlMusicRadio}
+                          className={`w-full p-1.5 rounded-xl text-[10px] font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item disabled:opacity-50 disabled:cursor-not-allowed ${
                             currentRadioStation.id === station.id
                               ? "bg-green-500/10 border-green-500/20 text-green-300"
                               : "bg-white/5 border-transparent text-gray-300 hover:bg-white/10"
@@ -8512,6 +8527,7 @@ export default function ChatScreen({
                         </button>
                       ))}
                     </div>
+                    {canUserControlMusicRadio ? (
                     <div className="mt-auto flex items-center justify-center gap-3 pt-1">
                       <button
                         type="button"
@@ -8542,6 +8558,7 @@ export default function ChatScreen({
                         <ChevronLeft size={16} className="text-gray-300" />
                       </button>
                     </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -8603,7 +8620,7 @@ export default function ChatScreen({
                     />
                     <span className="text-[12px] font-black">DJ الغرفة</span>
                   </div>
-                  {isOwnerRole ? (
+                  {canUserControlMusicRadio ? (
                     <button
                       type="button"
                       onClick={toggleMusicPlay}
@@ -8638,7 +8655,7 @@ export default function ChatScreen({
                 </div>
                 <div className="mt-3 flex-1 min-h-0 overflow-y-auto">
                   <div className="rounded-2xl p-3 h-full flex flex-col gap-2 lamma-section-card">
-                    {isOwnerRole && (
+                    {canUserControlMusicRadio && (
                       <>
                         <button
                           type="button"
@@ -8651,7 +8668,7 @@ export default function ChatScreen({
                         </button>
                       </>
                     )}
-                    {!isOwnerRole && (
+                    {!canUserControlMusicRadio && (
                       <button
                         type="button"
                         onClick={toggleDjListening}
@@ -8672,19 +8689,19 @@ export default function ChatScreen({
                         )}
                       </button>
                     )}
-                    {!isOwnerRole && activeRoomDj?.isPlaying && (
+                    {!canUserControlMusicRadio && activeRoomDj?.isPlaying && (
                       <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/20 px-2 py-1.5 text-[9px] text-cyan-200 font-bold truncate">
-                        🎧 المالك يشغّل: {activeRoomDj.title}
+                        🎧 {activeRoomDj.updatedBy || "المالك"} يشغّل: {activeRoomDj.title}
                       </div>
                     )}
-                    {!isOwnerRole && !activeRoomDj?.isPlaying && (
+                    {!canUserControlMusicRadio && !activeRoomDj?.isPlaying && (
                       <div className="rounded-xl bg-white/5 border border-white/10 px-2 py-1.5 text-[9px] text-gray-400 font-bold text-center">
                         لا يوجد بث DJ حالياً
                       </div>
                     )}
                     <div className="text-right">
                       <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
-                        {isOwnerRole
+                        {canUserControlMusicRadio
                           ? isMusicPlaying
                             ? "🔊 بث للغرفة"
                             : "⏸ متوقف"
@@ -8695,19 +8712,19 @@ export default function ChatScreen({
                             : "🔇 DJ مكتوم"}
                       </div>
                       <div className="text-[12px] text-white font-extrabold mt-1 truncate">
-                        {isOwnerRole
+                        {canUserControlMusicRadio
                           ? currentMusicTrack.title
                           : activeRoomDj?.title || "—"}
                       </div>
                       <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1 truncate">
-                        {isOwnerRole
+                        {canUserControlMusicRadio
                           ? currentMusicTrack.desc
                           : isDjListening
                             ? "اختيارك: استماع"
                             : "اختيارك: كتم"}
                       </div>
                     </div>
-                    {isOwnerRole && (
+                    {canUserControlMusicRadio && (
                       <>
                         <div className="space-y-1 max-h-32 overflow-y-auto">
                           {djPlaylist.length === 0 ? (
@@ -10279,6 +10296,12 @@ export default function ChatScreen({
                           </div>
                         </div>
 
+                        {!canUserControlMusicRadio && (
+                          <p className="text-[9px] text-gray-500 leading-relaxed w-full">
+                            🔊 الاستماع للبث متاح — التحكم بالراديو للمالك أو من يمنحه الصلاحية
+                          </p>
+                        )}
+
                         {/* Radio Players/Stream selectors */}
                         <div className="w-full space-y-1 text-right">
                           {radioStations.map((station) => (
@@ -10286,7 +10309,8 @@ export default function ChatScreen({
                               key={station.id}
                               type="button"
                               onClick={() => handleSelectRadioStation(station)}
-                              className={`w-full p-1.5 rounded-xl text-xs font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item ${
+                              disabled={!canUserControlMusicRadio}
+                              className={`w-full p-1.5 rounded-xl text-xs font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item disabled:opacity-50 disabled:cursor-not-allowed ${
                                 currentRadioStation.id === station.id
                                   ? "bg-green-500/10 border-green-500/20 text-green-300"
                                   : "bg-white/5 border-transparent text-gray-300"
@@ -10300,7 +10324,7 @@ export default function ChatScreen({
                           ))}
                         </div>
 
-                        {/* Controls */}
+                        {canUserControlMusicRadio ? (
                         <div className="flex items-center justify-center gap-4 text-green-300 w-full pt-1">
                           <button
                             type="button"
@@ -10328,6 +10352,7 @@ export default function ChatScreen({
                             <ChevronLeft size={18} />
                           </button>
                         </div>
+                        ) : null}
 
                         {/* Playing Status label */}
                         <div className="text-[9.5px] font-bold lamma-soft-status">
@@ -10382,7 +10407,7 @@ export default function ChatScreen({
                         </button>
                       </div>
                       <div className="p-4 text-center flex flex-col items-center space-y-3">
-                        {isOwnerRole && (
+                        {canUserControlMusicRadio && (
                           <>
                             <button
                               type="button"
@@ -10401,7 +10426,7 @@ export default function ChatScreen({
                           </>
                         )}
 
-                        {!isOwnerRole && (
+                        {!canUserControlMusicRadio && (
                           <button
                             type="button"
                             onClick={toggleDjListening}
@@ -10423,27 +10448,27 @@ export default function ChatScreen({
                           </button>
                         )}
 
-                        {!isOwnerRole && activeRoomDj?.isPlaying && (
+                        {!canUserControlMusicRadio && activeRoomDj?.isPlaying && (
                           <div className="w-full rounded-xl bg-cyan-500/10 border border-cyan-500/20 px-3 py-2 text-[10px] text-cyan-200 font-bold truncate">
-                            🎧 المالك يشغّل: {activeRoomDj.title}
+                            🎧 {activeRoomDj.updatedBy || "المالك"} يشغّل: {activeRoomDj.title}
                           </div>
                         )}
 
-                        {!isOwnerRole && !activeRoomDj?.isPlaying && (
+                        {!canUserControlMusicRadio && !activeRoomDj?.isPlaying && (
                           <div className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-[10px] text-gray-400 font-bold">
                             لا يوجد بث DJ حالياً
                           </div>
                         )}
 
                         <div
-                          className={`w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-500 p-0.5 shadow-[0_0_15px_rgba(6,182,212,0.2)] ${(isOwnerRole ? isMusicPlaying : isDjListening && activeRoomDj?.isPlaying) ? "animate-[spin_6s_linear_infinite]" : ""}`}
+                          className={`w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-500 p-0.5 shadow-[0_0_15px_rgba(6,182,212,0.2)] ${(canUserControlMusicRadio ? isMusicPlaying : isDjListening && activeRoomDj?.isPlaying) ? "animate-[spin_6s_linear_infinite]" : ""}`}
                         >
                           <div className="w-full h-full rounded-full bg-[#0a0f0c] border-[2px] border-black flex items-center justify-center text-lg">
                             <Music size={18} className="text-cyan-300" />
                           </div>
                         </div>
 
-                        {isOwnerRole && (
+                        {canUserControlMusicRadio && (
                           <>
                             <div className="w-full space-y-1 text-right max-h-36 overflow-y-auto">
                               {djPlaylist.length === 0 ? (
@@ -12109,7 +12134,9 @@ export default function ChatScreen({
                     uploadDesignImage={uploadDesignAsset}
                     onStartInspectMode={handleStartDesignInspect}
                     previewDesignPrompt={previewDesignPrompt}
+                    previewDesignPromptAi={previewDesignPromptAi}
                     previewDesignConfig={previewDesignConfig}
+                    committedConfig={committedConfig}
                     commitPendingDesignPreview={commitPendingDesignPreview}
                     cancelPendingDesignPreview={cancelPendingDesignPreview}
                     ownerWriteAccessOk={ownerWriteAccessOk}
@@ -12670,50 +12697,103 @@ export default function ChatScreen({
 
         {activeCall && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`fixed inset-0 z-[9999] ${
+              showVideoCallPanel
+                ? "bg-black"
+                : "bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            }`}
           >
-            <div className="rounded-3xl p-6 w-full max-w-md flex flex-col items-center justify-center space-y-4 lamma-call-shell">
-              {/* Hidden audio for voice-only calls */}
-              <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
+            <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
 
-              {/* Video — show local camera from first ring/connect; remote when available */}
-              {showVideoCallPanel && (
-                  <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black border border-white/10">
-                    {remoteStream?.getVideoTracks().some((t) => t.enabled) ? (
-                      <video
-                        ref={bindRemoteVideo}
-                        autoPlay
-                        playsInline
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-gray-500">
-                        في انتظار كاميرا الطرف الآخر…
-                      </div>
-                    )}
-                    <video
-                      ref={bindLocalVideo}
-                      autoPlay
-                      playsInline
-                      muted
-                      className={`absolute bottom-2 right-2 w-28 h-20 rounded-lg object-cover border-2 shadow-lg ${
-                        hasLocalVideo
-                          ? "border-emerald-400/60"
-                          : "border-red-400/50 bg-gray-900"
-                      }`}
-                      style={{ transform: "scaleX(-1)" }}
-                    />
-                    {!hasLocalVideo && (
-                      <span className="absolute bottom-3 right-3 text-[8px] font-black text-red-300 bg-black/70 px-1.5 py-0.5 rounded">
-                        الكاميرا مغلقة
-                      </span>
-                    )}
+            {showVideoCallPanel ? (
+              <div className="relative w-full h-full min-h-[100dvh] overflow-hidden">
+                {remoteStream?.getVideoTracks().some((t) => t.enabled) ? (
+                  <video
+                    ref={bindRemoteVideo}
+                    autoPlay
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover bg-black"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black text-gray-400">
+                    <span className="text-4xl">📹</span>
+                    <span className="text-sm font-bold">في انتظار كاميرا الطرف الآخر…</span>
                   </div>
                 )}
 
+                <video
+                  ref={bindLocalVideo}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`absolute top-4 right-4 z-10 w-28 h-36 sm:w-36 sm:h-48 rounded-2xl object-cover border-2 shadow-2xl ${
+                    hasLocalVideo
+                      ? "border-emerald-400/70"
+                      : "border-red-400/50 bg-gray-900"
+                  }`}
+                  style={{ transform: "scaleX(-1)" }}
+                />
+                {!hasLocalVideo && (
+                  <span className="absolute top-[9.5rem] right-4 sm:top-[13rem] z-10 text-[9px] font-black text-red-200 bg-black/75 px-2 py-1 rounded-lg">
+                    الكاميرا مغلقة
+                  </span>
+                )}
+
+                <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black via-black/80 to-transparent px-4 pt-16 pb-[max(1.25rem,env(safe-area-inset-bottom))] flex flex-col items-center gap-3">
+                  <div className="text-center space-y-1">
+                    <h3 className="text-lg font-black text-white drop-shadow-lg">
+                      {activeCall.target}
+                    </h3>
+                    <p className="text-[11px] font-bold text-gray-300">
+                      مكالمة فيديو WebRTC
+                    </p>
+                  </div>
+
+                  <div className="w-full max-w-sm text-center space-y-2 rounded-xl px-3 py-2 bg-black/40 backdrop-blur-sm border border-white/10">
+                    {(activeCall.status === "connecting" ||
+                      activeCall.status === "ringing") && (
+                      <span className="text-sm font-bold text-yellow-400 animate-pulse">
+                        {activeCall.status === "ringing"
+                          ? "جاري الرنين..."
+                          : "جاري الاتصال..."}
+                      </span>
+                    )}
+                    {activeCall.status === "reconnecting" && (
+                      <span className="text-sm font-bold text-yellow-400 animate-pulse">
+                        جاري التبديل للسيرفر الاحتياطي...
+                      </span>
+                    )}
+                    {activeCall.status === "connected" && (
+                      <span className="text-2xl font-mono font-black text-[#a3e635]">
+                        {formatCallDuration(activeCall.callDuration)}
+                      </span>
+                    )}
+                    {activeCall.status === "failed" && (
+                      <span className="text-sm font-bold text-red-400">
+                        {describeCallFailure(activeCall.failureReason)}
+                      </span>
+                    )}
+                    {activeCall.status === "ended" && (
+                      <span className="text-sm font-bold text-red-500">انتهت المكالمة</span>
+                    )}
+                  </div>
+
+                  {activeCall.status !== "ended" && activeCall.status !== "failed" && (
+                    <button
+                      type="button"
+                      onClick={endCall}
+                      className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-500 cursor-pointer flex items-center justify-center text-white transition-all shadow-[0_4px_20px_rgba(220,38,38,0.55)]"
+                    >
+                      <Phone size={28} className="rotate-[135deg]" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+            <div className="rounded-3xl p-6 w-full max-w-md flex flex-col items-center justify-center space-y-4 lamma-call-shell">
               <div className="relative">
                 <div
                   className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl shadow-xl ${
@@ -12730,15 +12810,13 @@ export default function ChatScreen({
                             : "bg-gray-800 border-[3px] border-gray-600"
                   }`}
                 >
-                  {activeCall.type === "video" ? "📹" : "📞"}
+                  📞
                 </div>
               </div>
 
               <div className="text-center space-y-1">
                 <h3 className="text-lg font-black text-white">{activeCall.target}</h3>
-                <p className="text-xs font-bold text-gray-400">
-                  {activeCall.type === "video" ? "مكالمة فيديو WebRTC" : "مكالمة صوتية WebRTC"}
-                </p>
+                <p className="text-xs font-bold text-gray-400">مكالمة صوتية WebRTC</p>
               </div>
 
               <div className="w-full text-center space-y-2 rounded-xl p-3 lamma-call-status">
@@ -12802,6 +12880,7 @@ export default function ChatScreen({
                 )}
               </div>
             </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

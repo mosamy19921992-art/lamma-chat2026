@@ -32,9 +32,11 @@ export const DJ_LISTEN_STORAGE_KEY = "lamma_dj_listen";
 
 export function readDjListenPreference(): boolean {
   try {
-    return localStorage.getItem(DJ_LISTEN_STORAGE_KEY) === "true";
+    const stored = localStorage.getItem(DJ_LISTEN_STORAGE_KEY);
+    if (stored === null) return true;
+    return stored === "true";
   } catch {
-    return false;
+    return true;
   }
 }
 

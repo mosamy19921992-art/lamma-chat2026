@@ -35,6 +35,9 @@ export const supabase = isSupabaseConfigured
         storageKey: "lamma-chat-auth",
         storage: browserStorage,
       },
+      realtime: {
+        heartbeatIntervalMs: 25_000,
+      },
     })
   : null;
 

@@ -47,6 +47,15 @@
       ]
     },
     {
+      "source": "/((?!api/|assets/|images/|manifest\\.json|sw\\.js|offline\\.html|favicon\\.ico|robots\\.txt|sitemap\\.xml|.*\\..*).*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
       "source": "/assets/(.*)",
       "headers": [
         {

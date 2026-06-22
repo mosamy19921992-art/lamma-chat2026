@@ -446,6 +446,18 @@ function applyRefinement(base: UniversalStyleConfig, text: string): UniversalSty
     next.glass.blurPx = clamp(next.glass.blurPx - 4, 8, 36);
   }
 
+  // تعتيم البطاقات الزجاجية — زيادة الـ opacity
+  if (hasAny(text, ["تعتيم", "اعتم", "أعتم", "عتم", "غمق الزجاج", "أغمق الزجاج", "اغمق الزجاج", "أغمق البطاقات", "opacity up", "more opacity"])) {
+    next.glass.opacity = clamp(next.glass.opacity + 0.06, 0.04, 0.38);
+    next.glass.borderOpacity = clamp(next.glass.borderOpacity + 0.04, 0.05, 0.4);
+  }
+
+  // زيادة الشفافية — تخفيف الـ opacity
+  if (hasAny(text, ["شفافية", "اشفاف", "أشفاف", "شفاف", "شفف", "خلي الزجاج شفاف", "أقل تعتيم", "أخف", "خفف", "opacity down", "less opacity", "transparent"])) {
+    next.glass.opacity = clamp(next.glass.opacity - 0.05, 0.03, 0.38);
+    next.glass.borderOpacity = clamp(next.glass.borderOpacity - 0.03, 0.04, 0.4);
+  }
+
   if (hasAny(text, ["neon", "glow", "توهج", "نيون"])) {
     next.buttons.neon = true;
     next.buttons.glow = true;

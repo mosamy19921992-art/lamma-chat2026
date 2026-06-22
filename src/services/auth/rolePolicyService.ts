@@ -120,7 +120,10 @@ export async function fetchAllTempGrants(): Promise<TempGrantRow[]> {
 
 export async function revokeMyTempGrants(): Promise<void> {
   if (!supabase) return;
-  await supabase.rpc("revoke_my_temp_grants");
+  const { error } = await supabase.rpc("revoke_my_temp_grants");
+  if (error) {
+    console.warn("revokeMyTempGrants failed:", error.message);
+  }
 }
 
 export function buildDefaultPolicyPayload(): RoleGrantsPolicy {
