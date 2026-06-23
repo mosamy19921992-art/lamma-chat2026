@@ -32,14 +32,48 @@ export default defineConfig(() => {
       // payload stays small and the browser can cache them independently.
       rollupOptions: {
         output: {
-          manualChunks: {
-            'vendor-react': ['react', 'react-dom'],
-            'vendor-supabase': ['@supabase/supabase-js'],
-            'vendor-motion': ['motion'],
-            'vendor-icons': ['lucide-react'],
+          manualChunks: (id) => {
+            // Vendor chunks
+            if (id.includes('node_modules')) {
+              if (id.includes('react') || id.includes('react-dom')) {
+                return 'vendor-react';
+              }
+              if (id.includes('@supabase')) {
+                return 'vendor-supabase';
+              }
+              if (id.includes('motion') || id.includes('framer-motion')) {
+                return 'vendor-motion';
+              }
+              if (id.includes('lucide-react')) {
+                return 'vendor-icons';
+              }
+              return 'vendor';
+            }
+            
+            // Design modules chunk
+            if (id.includes('/services/design/')) {
+              return 'design-modules';
+            }
+            
+            // Chat screen split
+            if (id.includes('/components/ChatScreen.tsx')) {
+              return 'chat-screen';
+            }
+            
+            // Large modals split
+            if (id.includes('/components/modals/DesignCenterModal.tsx')) {
+              return 'design-center-modal';
+            }
+            if (id.includes('/components/modals/UserProfileModal.tsx')) {
+              return 'user-profile-modal';
+            }
+            if (id.includes('/components/modals/OwnerPanelModal.tsx')) {
+              return 'owner-panel-modal';
+            }
           },
         },
       },
+      chunkSizeWarningLimit: 600,
     },
   };
 });
