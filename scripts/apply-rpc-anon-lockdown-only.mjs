@@ -1,14 +1,13 @@
 /**
- * Apply only supabase-api-validation-hardening.sql (message length CHECK constraints).
+ * Apply supabase-rpc-anon-lockdown.sql only.
  *
  * Usage:
- *   $env:SUPABASE_ACCESS_TOKEN="sbp_..."
- *   node scripts/apply-api-validation-hardening-only.mjs
+ *   node scripts/apply-rpc-anon-lockdown-only.mjs
  */
 
 import { readFileSync, existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const PROJECT_REF = "detvapbvkabvdjsdttfy";
 
@@ -40,17 +39,12 @@ const token =
   loadEnvFile(".env.local").SUPABASE_ACCESS_TOKEN?.trim();
 
 if (!token) {
-  console.error(
-    "Missing SUPABASE_ACCESS_TOKEN.\nAdd to .env.local or env, then rerun.\nCreate at: https://supabase.com/dashboard/account/tokens",
-  );
+  console.error("Missing SUPABASE_ACCESS_TOKEN in .env.local");
   process.exit(1);
 }
 
 const root = dirname(fileURLToPath(import.meta.url));
-const sql = readFileSync(
-  join(root, "..", "supabase-api-validation-hardening.sql"),
-  "utf8",
-);
+const sql = readFileSync(join(root, "..", "supabase-rpc-anon-lockdown.sql"), "utf8");
 
 const response = await fetch(
   `https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`,
@@ -67,20 +61,7 @@ const response = await fetch(
 const text = await response.text();
 if (!response.ok) {
   console.error(`SQL apply failed (${response.status}): ${text}`);
-  if (response.status === 401) {
-    console.error(
-      "\nSupabase PAT expired or invalid.\n" +
-        "Create a new token: https://supabase.com/dashboard/account/tokens\n" +
-        "Update SUPABASE_ACCESS_TOKEN in .env.local then rerun.",
-    );
-  } else if (response.status === 403) {
-    console.error(
-      "\nPAT has no access to project detvapbvkabvdjsdttfy.\n" +
-        "Sign in to the Supabase account that OWNS this project,\n" +
-        "then create the token at: https://supabase.com/dashboard/account/tokens",
-    );
-  }
   process.exit(1);
 }
 
-console.log("API validation hardening SQL applied.");
+console.log("RPC anon lockdown SQL applied.");

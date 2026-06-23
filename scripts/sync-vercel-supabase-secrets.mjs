@@ -62,6 +62,10 @@ if (!keysRes.ok) {
     console.error(
       "PAT expired — create new token: https://supabase.com/dashboard/account/tokens",
     );
+  } else if (keysRes.status === 403) {
+    console.error(
+      "PAT cannot access project detvapbvkabvdjsdttfy — use the account that owns this project.",
+    );
   }
   process.exit(1);
 }
