@@ -8504,8 +8504,7 @@ export default function ChatScreen({
                   });
                 };
                 pointerDragCleanupRef.current?.();
-                let dragCleanup: () => void;
-                dragCleanup = attachWindowPointerDrag(onMove, () => {
+                const dragCleanup = attachWindowPointerDrag(onMove, () => {
                   if (pointerDragCleanupRef.current === dragCleanup) {
                     pointerDragCleanupRef.current = null;
                   }
@@ -8653,8 +8652,7 @@ export default function ChatScreen({
                   });
                 };
                 pointerDragCleanupRef.current?.();
-                let dragCleanup: () => void;
-                dragCleanup = attachWindowPointerDrag(onMove, () => {
+                const dragCleanup = attachWindowPointerDrag(onMove, () => {
                   if (pointerDragCleanupRef.current === dragCleanup) {
                     pointerDragCleanupRef.current = null;
                   }
@@ -11023,8 +11021,7 @@ export default function ChatScreen({
                   });
                 };
                 pointerDragCleanupRef.current?.();
-                let dragCleanup: () => void;
-                dragCleanup = attachWindowPointerDrag(onMove, () => {
+                const dragCleanup = attachWindowPointerDrag(onMove, () => {
                   if (pointerDragCleanupRef.current === dragCleanup) {
                     pointerDragCleanupRef.current = null;
                   }

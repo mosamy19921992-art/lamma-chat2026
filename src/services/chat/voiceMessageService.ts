@@ -29,7 +29,7 @@ export async function uploadVoiceNoteBlob(
     "audio/aac",
     "audio/x-m4a",
   ];
-  const baseType = blob.type.split(";")[0].trim();
+  const baseType = (blob.type.split(";")[0] ?? "").trim();
   if (blob.type && !ALLOWED_AUDIO_TYPES.some((t) => baseType.startsWith(t))) {
     return { url: null, error: "نوع الملف الصوتي غير مدعوم." };
   }

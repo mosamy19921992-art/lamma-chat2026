@@ -105,7 +105,7 @@ export async function uploadPrivateMediaFile(
     return { path: "", signedUrl: null, error: "Supabase not configured" };
   }
 
-  const baseType = (file.type || "").split(";")[0].trim();
+  const baseType = ((file.type || "").split(";")[0] ?? "").trim();
   if (baseType && !ALLOWED_PRIVATE_MIME_TYPES.some((t) => baseType === t)) {
     return { path: "", signedUrl: null, error: "نوع الملف غير مدعوم." };
   }

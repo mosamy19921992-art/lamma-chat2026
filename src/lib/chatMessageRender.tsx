@@ -76,7 +76,7 @@ function renderCodeFencedText(text: string): React.ReactNode[] {
         </span>,
       );
     }
-    const raw = match[1];
+    const raw = match[1] ?? "";
     const code = raw.replace(/^```[\w-]*\n?/, "").replace(/```$/, "");
     nodes.push(
       <pre key={`c-${match.index}`} className="lamma-code-block">

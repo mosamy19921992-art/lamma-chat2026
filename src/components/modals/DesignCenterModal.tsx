@@ -143,8 +143,10 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const commitRef = useRef(commitPendingDesignPreview);
   const hasPendingRef = useRef(hasPendingDesignPreview);
-  commitRef.current = commitPendingDesignPreview;
-  hasPendingRef.current = hasPendingDesignPreview;
+  useEffect(() => {
+    commitRef.current = commitPendingDesignPreview;
+    hasPendingRef.current = hasPendingDesignPreview;
+  }, [commitPendingDesignPreview, hasPendingDesignPreview]);
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveMessage, setSaveMessage] = useState("");

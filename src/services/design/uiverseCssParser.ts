@@ -168,7 +168,7 @@ function extractHexColors(css: string): string[] {
   const hexRe = /#([0-9a-fA-F]{3,8})\b/g;
   let m: RegExpExecArray | null;
   while ((m = hexRe.exec(css)) !== null) {
-    found.add(`#${m[1].slice(0, 6)}`);
+    if (m[1]) found.add(`#${m[1].slice(0, 6)}`);
   }
   return [...found].slice(0, 8);
 }

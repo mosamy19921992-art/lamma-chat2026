@@ -281,15 +281,20 @@ export function parseUiverseUrl(
       "design",
     ]);
 
-    while (parts.length > 2 && skip.has(parts[0].toLowerCase())) {
+    while (parts.length > 2) {
+      const head = parts[0];
+      if (!head || !skip.has(head.toLowerCase())) break;
       parts.shift();
     }
 
     if (parts.length < 2) return null;
-    return { author: parts[0], slug: parts[1] };
+    const author = parts[0];
+    const slug = parts[1];
+    if (!author || !slug) return null;
+    return { author, slug };
   } catch {
     const short = trimmed.match(/^([\w.-]+)\/([\w.-]+)$/);
-    if (short) return { author: short[1], slug: short[2] };
+    if (short?.[1] && short[2]) return { author: short[1], slug: short[2] };
     return null;
   }
 }
