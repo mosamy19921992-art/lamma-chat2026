@@ -32,6 +32,9 @@ export function LuxuryDMChat({
   onCallAudio,
   onCallVideo,
 }: LuxuryDMChatProps) {
+  if (!isOpen) return null;
+  if (!contact) return null;
+
   const [messages, setMessages] = useState<DMMessage[]>([
     { id: "1", text: "مرحباً! كيف حالك؟", sent: false, time: "10:30" },
     { id: "2", text: "أهلاً! الحمد لله بخير، وأنت؟", sent: true, time: "10:31" },
@@ -79,13 +82,13 @@ export function LuxuryDMChat({
         <button className="lamma-dm-back-btn lamma-ripple-button" onClick={onClose}>
           <ArrowLeft size={20} />
         </button>
-
+ || "م"
         {/* Avatar */}
         <div className="lamma-dm-avatar" style={{ width: 40, height: 40, fontSize: 16 }}>
           {contact.avatar}
           {contact.online && <div className="lamma-dm-online-indicator" />}
         </div>
-
+ || "مستخدم"
         {/* Name */}
         <div className="lamma-dm-info" style={{ flex: 1 }}>
           <div className="lamma-dm-name">{contact.name}</div>

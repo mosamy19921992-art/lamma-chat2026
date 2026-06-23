@@ -19,11 +19,12 @@ export function LuxuryIncomingCallModal({
   onReject,
 }: LuxuryIncomingCallModalProps) {
   if (!isOpen) return null;
+  if (!caller) return null;
 
   return (
     <div className="lamma-incoming-call-modal">
       {/* Avatar */}
-      <div className="lamma-call-avatar">{caller.avatar}</div>
+      <div className="lamma-call-avatar">{caller.avatar || "م"}</div>
 
       {/* Call Info */}
       <div className="lamma-call-info">

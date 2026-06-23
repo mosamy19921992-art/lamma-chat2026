@@ -76,18 +76,18 @@ export function LuxuryDMList({
             >
               {/* Avatar */}
               <div className="lamma-dm-avatar">
-                {contact.avatar}
+                {contact.avatar || "م"}
                 {contact.online && <div className="lamma-dm-online-indicator" />}
               </div>
 
               {/* Info */}
               <div className="lamma-dm-info">
-                <div className="lamma-dm-name">{contact.name}</div>
-                <div className="lamma-dm-last-message">{contact.lastMessage}</div>
+                <div className="lamma-dm-name">{contact.name || "مستخدم"}</div>
+                <div className="lamma-dm-last-message">{contact.lastMessage || ""}</div>
               </div>
 
               {/* Time */}
-              <div className="lamma-dm-time">{contact.time}</div>
+              <div className="lamma-dm-time">{contact.time || ""}</div>
             </div>
           ))}
         </div>
