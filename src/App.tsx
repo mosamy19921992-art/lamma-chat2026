@@ -471,7 +471,7 @@ export default function App() {
           />
         ) : (
           <Suspense fallback={<ChatLoadingScreen user={user} />}>
-            <ChatThemeGate user={user}>
+            <ChatThemeGate>
               <ChatScreen
                 key={`${user.uid}-${user.authProvider}`}
                 currentUser={user}
@@ -497,28 +497,10 @@ export default function App() {
   );
 }
 
-function ChatThemeGate({
-  user,
-  children,
-}: {
-  user: UserSession;
-  children: React.ReactNode;
-}) {
-  const [themeReady, setThemeReady] = useState(false);
-
+function ChatThemeGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    let cancelled = false;
-    void prefetchRemoteDesignTheme().finally(() => {
-      if (!cancelled) setThemeReady(true);
-    });
-    return () => {
-      cancelled = true;
-    };
+    void prefetchRemoteDesignTheme();
   }, []);
-
-  if (!themeReady) {
-    return <ChatLoadingScreen user={user} />;
-  }
 
   return <>{children}</>;
 }

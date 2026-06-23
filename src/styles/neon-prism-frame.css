@@ -1,0 +1,180 @@
+/* Sidebar prism frame — loaded last via main.tsx (after index.css).
+   Targets: horizontal header seams + outer column shells only.
+   Inner room/radio rows stay plain (no nested glow). */
+
+@property --lamma-prism-angle {
+  syntax: "<angle>";
+  initial-value: 225deg;
+  inherits: false;
+}
+
+@keyframes lamma-prism-angle-drift {
+  to {
+    --lamma-prism-angle: 585deg;
+  }
+}
+
+.lamma-neutral-glass {
+  --lamma-prism-seam-bg: linear-gradient(
+    90deg,
+    #f472b6 0%,
+    #e879f9 14%,
+    #c084fc 28%,
+    #a78bfa 42%,
+    #818cf8 56%,
+    #38bdf8 72%,
+    #22d3ee 86%,
+    #06b6d4 100%
+  );
+  --lamma-prism-seam-glow:
+    0 0 6px rgba(244, 114, 182, 0.85),
+    0 0 14px rgba(192, 132, 252, 0.65),
+    0 0 26px rgba(34, 211, 238, 0.45);
+  --lamma-prism-card-fill: rgba(14, 11, 7, 0.68);
+  --lamma-prism-card-fill-hover: rgba(18, 14, 9, 0.76);
+}
+
+/* Shared seam pseudo-element */
+.lamma-neutral-glass > header.lamma-header::after,
+.lamma-neutral-glass .lamma-chat-subheader > .lamma-room-header:first-of-type::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: 2px !important;
+  z-index: 40 !important;
+  pointer-events: none !important;
+  background: var(--lamma-prism-seam-bg) !important;
+  box-shadow: var(--lamma-prism-seam-glow) !important;
+  animation: none !important;
+}
+
+.lamma-neutral-glass > header.lamma-header,
+.lamma-neutral-glass .lamma-chat-subheader > .lamma-room-header:first-of-type {
+  position: relative;
+}
+
+/* Outer shells: VIP / radio / music / الغرف / المتصلون */
+.lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"],
+.lamma-neutral-glass[data-chase-columns="none"] .lamma-side-column .lamma-glass[data-design-region="column-cards"],
+.lamma-neutral-glass[data-chase-columns] .lamma-side-column .lamma-glass[data-design-region="column-cards"],
+.lamma-neutral-glass[data-us-sidebar-chase="true"] .lamma-side-column .lamma-glass[data-design-region="column-cards"],
+.lamma-neutral-glass[data-glass-form] .lamma-side-column .lamma-glass[data-design-region="column-cards"],
+.lamma-neutral-glass[data-column-card-style] .lamma-side-column .lamma-glass[data-design-region="column-cards"] {
+  position: relative !important;
+  isolation: isolate !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow:
+    0 0 14px rgba(244, 114, 182, 0.28),
+    0 0 28px rgba(34, 211, 238, 0.18),
+    0 10px 30px rgba(0, 0, 0, 0.32) !important;
+}
+
+.lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"]::before,
+.lamma-neutral-glass[data-chase-columns="none"] .lamma-side-column .lamma-glass[data-design-region="column-cards"]::before,
+.lamma-neutral-glass[data-chase-columns] .lamma-side-column .lamma-glass[data-design-region="column-cards"]::before,
+.lamma-neutral-glass[data-us-sidebar-chase="true"] .lamma-side-column .lamma-glass[data-design-region="column-cards"]::before,
+.lamma-neutral-glass[data-glass-form] .lamma-side-column .lamma-glass[data-design-region="column-cards"]::before,
+.lamma-neutral-glass[data-column-card-style] .lamma-side-column .lamma-glass[data-design-region="column-cards"]::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  padding: 1.5px !important;
+  border-radius: inherit !important;
+  background: conic-gradient(
+    from var(--lamma-prism-angle),
+    #f472b6 0deg,
+    #e879f9 55deg,
+    #c084fc 110deg,
+    #818cf8 165deg,
+    #22d3ee 220deg,
+    #06b6d4 275deg,
+    #67e8f9 330deg,
+    #f472b6 360deg
+  ) !important;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  pointer-events: none !important;
+  z-index: 3 !important;
+  animation: lamma-prism-angle-drift 16s linear infinite !important;
+}
+
+.lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"]::after,
+.lamma-neutral-glass[data-chase-columns="none"] .lamma-side-column .lamma-glass[data-design-region="column-cards"]::after,
+.lamma-neutral-glass[data-chase-columns] .lamma-side-column .lamma-glass[data-design-region="column-cards"]::after,
+.lamma-neutral-glass[data-us-sidebar-chase="true"] .lamma-side-column .lamma-glass[data-design-region="column-cards"]::after,
+.lamma-neutral-glass[data-glass-form] .lamma-side-column .lamma-glass[data-design-region="column-cards"]::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 1.5px !important;
+  border-radius: 22.5px !important;
+  background: var(--lamma-prism-card-fill) !important;
+  border: none !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+  animation: none !important;
+}
+
+.lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"]:hover::after {
+  background: var(--lamma-prism-card-fill-hover) !important;
+}
+
+.lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"] > * {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+.lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"] .lamma-fire-scroll,
+.lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"] .lamma-widget-body,
+.lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"] .lamma-widget-scroll {
+  border-radius: 18px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+/* Inner rows — flat, no gold/prism */
+.lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"] :is(.lamma-room-list-card, .lamma-list-item, .lamma-widget-list-item) {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+.lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"] :is(.lamma-room-list-card, .lamma-list-item):hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"] :is(.bg-\[rgba\(16\,185\,129\,0\.12\)\], .bg-\[rgba\(16\,185\,129\,0\.10\)\]) {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border: 1px solid rgba(16, 185, 129, 0.28) !important;
+  box-shadow: none !important;
+}
+
+.lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"] :is(.lamma-list-item, .lamma-room-list-card)::before,
+.lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"] :is(.lamma-list-item, .lamma-room-list-card)::after {
+  display: none !important;
+  content: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lamma-neutral-glass .lamma-side-column .lamma-glass[data-design-region="column-cards"]::before {
+    animation: none !important;
+  }
+}
