@@ -277,6 +277,14 @@ function ChatMessageRowInner({
           <span className="text-[8px] font-mono lamma-msg-meta" dir="ltr">
             {msg.time}
           </span>
+          {msg.sendPending ? (
+            <span
+              className="text-[8px] text-amber-400/90 font-bold"
+              title="في انتظار الإرسال"
+            >
+              ⏳
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -432,6 +440,7 @@ function messageContentEqual(prev: Message, next: Message): boolean {
     prev.styleSandboxApplied === next.styleSandboxApplied &&
     prev.styleSandboxSummary === next.styleSandboxSummary &&
     prev.styleSandboxConfig === next.styleSandboxConfig &&
+    prev.sendPending === next.sendPending &&
     reactionsEqual(prev.reactions, next.reactions)
   );
 }

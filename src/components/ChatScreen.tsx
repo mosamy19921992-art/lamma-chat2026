@@ -292,6 +292,8 @@ import {
   uploadPrivateMediaFile,
 } from "../services/chat/privateMessagesService";
 import { subscribeChannelWithRetry } from "../services/chat/realtimeUtils";
+import { persistMessageReaction } from "../services/chat/messagesService";
+import RealtimeStatus from "./pwa/RealtimeStatus";
 import { upsertCurrentUserProfile, fetchUserProfileByNickname } from "../services/social/userProfileService";
 import { deleteSocialPost } from "../services/social/socialPostsService";
 import { SocialFeedPanel } from "./social/SocialFeedPanel";
@@ -1754,6 +1756,33 @@ export default function ChatScreen({
           return msg;
         }),
       };
+    });
+
+    const isPersistableId =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        messageId,
+      );
+    if (!isPersistableId) return;
+
+    void persistMessageReaction(messageId, emoji).catch((error) => {
+      console.warn("Failed to persist reaction:", error);
+      setRoomMessages((prev) => {
+        const messagesInRoom = prev[roomId] || [];
+        return {
+          ...prev,
+          [roomId]: messagesInRoom.map((msg) => {
+            if (msg.id !== messageId) return msg;
+            const reactions = { ...(msg.reactions || {}) };
+            const nextCount = (reactions[emoji] || 1) - 1;
+            if (nextCount <= 0) {
+              delete reactions[emoji];
+            } else {
+              reactions[emoji] = nextCount;
+            }
+            return { ...msg, reactions };
+          }),
+        };
+      });
     });
   }, []);
 
@@ -5424,6 +5453,7 @@ export default function ChatScreen({
     setRoomMessages,
     allMessages,
     cleanupPublicChatSession,
+    realtimeConnected,
   } = useChatMessages({
     activeRoomId,
     currentUserNickname: currentDisplayNickname,
@@ -7315,6 +7345,7 @@ export default function ChatScreen({
       data-reading-mode={readingMode ? "true" : "false"}
     >
       <UniversalStyleVideoLayer />
+      <RealtimeStatus realtimeConnected={realtimeConnected} />
       {messageToasts.length > 0 ? (
         <div
           className="fixed top-14 left-1/2 -translate-x-1/2 z-[250] flex flex-col gap-2 pointer-events-none w-[min(92vw,360px)]"

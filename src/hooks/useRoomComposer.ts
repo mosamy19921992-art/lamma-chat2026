@@ -5,8 +5,9 @@ import {
   createOutgoingRoomMessage,
   persistRoomMessage,
 } from "../services/chat/messagesService";
+import { enqueueOutboxMessage } from "../services/chat/messageOutbox";
 import { handleRoomChatCommand } from "../services/chat/roomCommandsService";
-import { getYoutubeId, canShareYoutube, isBrowserOnline, OFFLINE_SEND_HINT, isLikelyNetworkError } from "../lib/chatHelpers";
+import { getYoutubeId, canShareYoutube, isBrowserOnline, isLikelyNetworkError } from "../lib/chatHelpers";
 import { moderateRoomMessage } from "../services/chat/roomModerationService";
 import { handleViolationEscalation } from "../services/chat/roomViolationService";
 import { checkAnswer, handleGameCommand } from "../services/chat/gamesBot";
@@ -115,11 +116,6 @@ export function useRoomComposer({
     rateLimitRef.current.push(now);
 
     if (!inputText.trim()) return;
-
-    if (!isBrowserOnline()) {
-      addBotSystemWarning(activeRoomId, OFFLINE_SEND_HINT);
-      return;
-    }
 
     const trimmedInput = inputText.trim();
     const hasYoutubeLink =
@@ -340,6 +336,35 @@ export function useRoomComposer({
     setInputText("");
     setShowEmojiPicker(false);
 
+    const queueForLater = () => {
+      enqueueOutboxMessage({
+        id: newMessage.id,
+        roomId: activeRoomId,
+        author: userNick,
+        text: cleanText,
+        color: currentUser.color,
+        isShadowed,
+        createdAt: Date.now(),
+      });
+      setRoomMessages((prev) => ({
+        ...prev,
+        [activeRoomId]: (prev[activeRoomId] || []).map((message) =>
+          message.id === newMessage.id
+            ? { ...message, sendPending: true }
+            : message,
+        ),
+      }));
+      addBotSystemWarning(
+        activeRoomId,
+        "📥 تم حفظ رسالتك محلياً — ستُرسل تلقائياً عند عودة الإنترنت.",
+      );
+    };
+
+    if (!isBrowserOnline()) {
+      queueForLater();
+      return;
+    }
+
     try {
       await persistRoomMessage({
         message: newMessage,
@@ -348,16 +373,14 @@ export function useRoomComposer({
     } catch (error: any) {
         console.error("Error sending to Supabase:", error);
 
-        // Roll back the optimistic message in all cases
-        setRoomMessages((prev) => ({
-          ...prev,
-          [activeRoomId]: (prev[activeRoomId] || []).filter(
-            (m) => m.id !== newMessage.id,
-          ),
-        }));
-
         // 42501 = RLS policy blocked the insert (server-side moderation)
         if (error?.code === "42501") {
+          setRoomMessages((prev) => ({
+            ...prev,
+            [activeRoomId]: (prev[activeRoomId] || []).filter(
+              (m) => m.id !== newMessage.id,
+            ),
+          }));
           addBotSystemWarning(
             activeRoomId,
             "🛡️ رسالتك تم رفضها من السيرفر لأنها تحتوي على رابط أو كلمة محظورة.",
@@ -366,12 +389,23 @@ export function useRoomComposer({
           return;
         }
 
-        // Generic network / server error — give the text back
+        if (isLikelyNetworkError(error)) {
+          queueForLater();
+          return;
+        }
+
+        // Roll back the optimistic message for other failures
+        setRoomMessages((prev) => ({
+          ...prev,
+          [activeRoomId]: (prev[activeRoomId] || []).filter(
+            (m) => m.id !== newMessage.id,
+          ),
+        }));
+
+        // Generic server error — give the text back
         setInputText(originalInput);
         alert(
-          isLikelyNetworkError(error)
-            ? `${OFFLINE_SEND_HINT}\n\nلم يتم حفظ الرسالة على السيرفر.`
-            : "❌ تعذر إرسال الرسالة حاليًا. لم يتم حفظها على السيرفر، فتمت إعادتها لك لتجرب الإرسال مرة أخرى.",
+          "❌ تعذر إرسال الرسالة حاليًا. لم يتم حفظها على السيرفر، فتمت إعادتها لك لتجرب الإرسال مرة أخرى.",
         );
         return;
       }

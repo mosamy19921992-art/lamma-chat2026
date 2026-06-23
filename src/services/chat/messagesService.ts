@@ -102,7 +102,29 @@ export async function persistRoomMessage({
 
 interface RoomMessageSubscriptionHandlers {
   onInsert: (message: SupabaseMessage) => void;
+  onUpdate?: (message: SupabaseMessage) => void;
   onDelete?: (messageId: string) => void;
+  onRealtimeStatus?: (connected: boolean) => void;
+}
+
+export async function persistMessageReaction(
+  messageId: string,
+  emoji: string,
+): Promise<Record<string, number>> {
+  if (!supabase) {
+    throw new Error("Supabase client is not configured.");
+  }
+
+  const { data, error } = await supabase.rpc("add_message_reaction", {
+    p_message_id: messageId,
+    p_emoji: emoji,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as Record<string, number> | null) ?? {};
 }
 
 export function subscribeToRoomMessages(
@@ -142,6 +164,19 @@ export function subscribeToRoomMessages(
       .on(
         "postgres_changes",
         {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `room_id=eq.${roomId}`,
+        },
+        (payload) => {
+          if (stopped) return;
+          handlers.onUpdate?.(payload.new as SupabaseMessage);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
           event: "DELETE",
           schema: "public",
           table: "messages",
@@ -158,7 +193,12 @@ export function subscribeToRoomMessages(
       .subscribe((status, err) => {
         if (stopped) return;
 
+        if (status === "SUBSCRIBED") {
+          handlers.onRealtimeStatus?.(true);
+        }
+
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          handlers.onRealtimeStatus?.(false);
           console.warn(
             `[Chat] Realtime channel issue for room "${roomId}":`,
             status,

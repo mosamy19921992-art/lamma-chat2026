@@ -6,6 +6,10 @@ import {
   subscribeToRoomMessages,
   unsubscribeFromRoomMessages,
 } from "../services/chat/messagesService";
+import {
+  flushMessageOutbox,
+  getOutboxMessages,
+} from "../services/chat/messageOutbox";
 
 interface UseChatMessagesOptions {
   activeRoomId: string;
@@ -111,10 +115,61 @@ export function useChatMessages({
   const [roomMessages, setRoomMessages] = useState<Record<string, Message[]>>(
     {},
   );
+  const [realtimeConnected, setRealtimeConnected] = useState(true);
 
   useEffect(() => {
     onIncomingMessageRef.current = onIncomingMessage;
   }, [onIncomingMessage]);
+
+  useEffect(() => {
+    const pending = getOutboxMessages();
+    if (!pending.length) return;
+
+    setRoomMessages((prev) => {
+      const next = { ...prev };
+      for (const item of pending) {
+        const room = next[item.roomId] || [];
+        if (room.some((message) => message.id === item.id)) continue;
+        next[item.roomId] = [
+          ...room,
+          {
+            id: item.id,
+            author: item.author,
+            text: item.text,
+            color: item.color,
+            isOwn: true,
+            time: new Date(item.createdAt).toLocaleTimeString("ar-EG", {
+              hour: "numeric",
+              minute: "numeric",
+              hour12: true,
+            }),
+            type: item.isShadowed ? "shadow_msg" : "text",
+            sendPending: true,
+          },
+        ];
+      }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const flushQueued = () => {
+      void flushMessageOutbox((roomId, messageId) => {
+        setRoomMessages((prev) => ({
+          ...prev,
+          [roomId]: (prev[roomId] || []).map((message) =>
+            message.id === messageId
+              ? { ...message, sendPending: false }
+              : message,
+          ),
+        }));
+      });
+    };
+
+    window.addEventListener("online", flushQueued);
+    void flushQueued();
+    return () => window.removeEventListener("online", flushQueued);
+  }, []);
 
   const clearPublicChatStorage = useCallback(() => {
     try {
@@ -343,6 +398,21 @@ export function useChatMessages({
           ),
         }));
       },
+      onUpdate: (sMsg) => {
+        if (cancelled) return;
+        setRoomMessages((prev) => ({
+          ...prev,
+          [activeRoomId]: (prev[activeRoomId] || []).map((message) =>
+            message.id === sMsg.id
+              ? { ...message, reactions: sMsg.reactions ?? message.reactions }
+              : message,
+          ),
+        }));
+      },
+      onRealtimeStatus: (connected) => {
+        if (cancelled) return;
+        setRealtimeConnected(connected);
+      },
     });
 
     return () => {
@@ -385,6 +455,7 @@ export function useChatMessages({
     setRoomMessages,
     allMessages,
     cleanupPublicChatSession,
+    realtimeConnected,
   };
 }
 

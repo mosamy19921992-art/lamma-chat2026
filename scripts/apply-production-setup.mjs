@@ -108,6 +108,7 @@ async function applySql() {
     ["supabase-private-media.sql", "private PM media bucket"],
     ["supabase-api-validation-hardening.sql", "API validation length checks"],
     ["supabase-rpc-anon-lockdown.sql", "RPC anon lockdown (participation)"],
+    ["supabase-message-reactions-rpc.sql", "message reactions RPC"],
   ];
 
   for (const [file, label] of migrationChain) {

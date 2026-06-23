@@ -70,6 +70,8 @@ export interface Message {
   giftName?: string;
   youtubeId?: string;
   reactions?: Record<string, number>;
+  /** Optimistic message queued in local outbox until network is back. */
+  sendPending?: boolean;
   styleSandboxId?: string;
   styleSandboxConfig?: import("../services/design/universalStyleTypes").UniversalStyleConfig;
   styleSandboxSummary?: string;
