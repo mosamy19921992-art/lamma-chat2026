@@ -1298,7 +1298,7 @@ export default function ChatScreen({
 
   // Shop interactive state variables
   const [shopTab, setShopTab] = useState<
-    "vip" | "skins" | "badges" | "suggests" | "stats" | "maintenance"
+    "vip" | "skins" | "badges" | "suggests" | "stats" | "maintenance" | "offers"
   >("vip");
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [payGateway, setPayGateway] = useState<
@@ -3054,6 +3054,17 @@ export default function ChatScreen({
       if (Array.isArray(settings.design_presets)) {
         setDesignPresets(settings.design_presets as DesignPreset[]);
       }
+      if (
+        Array.isArray(settings.store_products) &&
+        settings.store_products.length > 0
+      ) {
+        setStoreProducts(
+          settings.store_products.filter(
+            (item): item is Record<string, unknown> =>
+              Boolean(item) && typeof item === "object" && "id" in item,
+          ) as typeof storeProducts,
+        );
+      }
       if (settings.universal_style_config !== undefined) {
         hydrateUniversalStyleFromSettings(settings.universal_style_config);
       }
@@ -3350,6 +3361,17 @@ export default function ChatScreen({
             if (settings.bot_rule_swear_filter !== undefined) {
               setBotRuleSwearFilter(Boolean(settings.bot_rule_swear_filter));
             }
+            if (
+              Array.isArray(settings.store_products) &&
+              settings.store_products.length > 0
+            ) {
+              setStoreProducts(
+                settings.store_products.filter(
+                  (item): item is Record<string, unknown> =>
+                    Boolean(item) && typeof item === "object" && "id" in item,
+                ) as typeof storeProducts,
+              );
+            }
           } else {
             const settings = (settingsResult.data as { payload: PublicChatSettingsPayload })
               .payload;
@@ -3582,6 +3604,7 @@ export default function ChatScreen({
         custom_logo_url: brandLogoUrl,
         room_bg_map: roomBgMap,
         design_presets: designPresets,
+        store_products: storeProducts,
         dj_library: djLibrary,
         bot_enabled: isBotEnabled,
         bot_rule_anti_links: botRuleAntiLinks,
@@ -3633,6 +3656,7 @@ export default function ChatScreen({
     ownerBgImage,
     roomBgMap,
     djLibrary,
+    storeProducts,
     botRuleAntiLinks,
     botRuleAntiSpam,
     botRuleSwearFilter,
@@ -12369,6 +12393,8 @@ export default function ChatScreen({
                     friendSuggestions={friendSuggestions}
                     setFriendSuggestions={setFriendSuggestions}
                     setBotLogs={setBotLogs}
+                    addBotSystemWarning={addBotSystemWarning}
+                    setStoreProducts={setStoreProducts}
                     isDbConnectionLost={isDbConnectionLost}
                     setIsDbConnectionLost={setIsDbConnectionLost}
                     setIsReconnectingDb={setIsReconnectingDb}

@@ -1,17 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;800;900&family=Tajawal:wght@400;700;900&family=Space+Grotesk:wght@400;600;700&display=swap');
 @import "./components/login-screen-legacy.css";
 @import "./styles/lamma-magic-shell.css";
-@import "./styles/glass-forms.css";
 @import "./styles/column-card-styles.css";
 @import "./styles/pwa-mobile-premium.css";
 @import "./styles/universal-style-engine.css";
 @import "./styles/design-inspect.css";
 @import "./styles/design-pack-sandbox.css";
 @import "./styles/message-bubble-shapes.css";
-@import "./styles/chase-light-bars.css";
 @import "./styles/sidebar-widget-styles.css";
 @import "./styles/pm-bubble-styles.css";
 @import "./styles/ui-polish-audit.css";
+@import "./styles/ultimate-design-system.css";
 @import "tailwindcss";
 
 @theme {
@@ -4389,4 +4388,798 @@ body {
       inset 0 1px 0 rgba(255, 255, 255, 0.24),
       0 4px 14px rgba(16, 185, 129, 0.15);
   }
+}
+
+/* ============================================
+   2026 DESIGN BOT SYSTEM - COMPLETE THEME CATALOG
+   ============================================ */
+
+/* ============================================
+   LIVE PREVIEW CANVAS STYLES
+   ============================================ */
+#live-preview-canvas {
+  width: 100%;
+  height: 200px;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  background: #0a0a0a;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 16px;
+  transition: border-color 0.3s ease;
+}
+
+#live-preview-canvas.preview-active {
+  border-color: #10b981;
+}
+
+#live-preview-canvas .preview-header {
+  height: 40px;
+  background: rgba(10, 10, 10, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+}
+
+#live-preview-canvas .preview-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff5f57;
+}
+
+#live-preview-canvas .preview-dot:nth-child(2) {
+  background: #febc2e;
+}
+
+#live-preview-canvas .preview-dot:nth-child(3) {
+  background: #28c840;
+}
+
+#live-preview-canvas .preview-content {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#live-preview-canvas .preview-message {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 11px;
+  color: #fff;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#live-preview-canvas .preview-button {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 11px;
+  color: #fff;
+  cursor: pointer;
+  width: fit-content;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ============================================
+   RGB BORDER ANIMATION - ROTATING NEON STRIPS
+   ============================================ */
+
+@keyframes borderRotate {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes borderRotateFull {
+  0% {
+    background-position: 0% 0%;
+  }
+  25% {
+    background-position: 100% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  75% {
+    background-position: 0% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+/* Animated RGB Border for Cards and Containers */
+body.has-rgb-border .lamma-glass,
+body.has-rgb-border .lamma-panel-shell,
+body.has-rgb-border #live-preview-canvas {
+  position: relative;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+body.has-rgb-border .lamma-glass::before,
+body.has-rgb-border .lamma-panel-shell::before,
+body.has-rgb-border #live-preview-canvas::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(
+    45deg,
+    #ff0000,
+    #ff7f00,
+    #ffff00,
+    #00ff00,
+    #0000ff,
+    #4b0082,
+    #9400d3,
+    #ff0000
+  );
+  background-size: 400% 400%;
+  animation: borderRotate 3s linear infinite;
+  z-index: -1;
+  filter: blur(4px);
+  opacity: 0.8;
+}
+
+/* RGB Border for Chat Container */
+body.has-rgb-border .lamma-header {
+  position: relative;
+  border-bottom: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+body.has-rgb-border .lamma-header::before {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    #ff0000,
+    #ff7f00,
+    #ffff00,
+    #00ff00,
+    #0000ff,
+    #4b0082,
+    #9400d3,
+    #ff0000
+  );
+  background-size: 200% 100%;
+  animation: borderRotate 2s linear infinite;
+}
+
+/* RGB Border for Messages */
+body.has-rgb-border .lamma-message {
+  position: relative;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+body.has-rgb-border .lamma-message::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    45deg,
+    #ff0000,
+    #ff7f00,
+    #ffff00,
+    #00ff00,
+    #0000ff,
+    #4b0082,
+    #9400d3,
+    #ff0000
+  );
+  background-size: 400% 400%;
+  animation: borderRotate 4s linear infinite;
+  z-index: -1;
+  filter: blur(2px);
+  opacity: 0.6;
+}
+
+/* ============================================
+   NEON COLOR PALETTES (5 Colors)
+   ============================================ */
+
+/* 1. Cyberpunk Neon */
+body.theme-cyberpunk {
+  --neon-primary: #ff00ff;
+  --neon-secondary: #00ffff;
+  --neon-accent: #ff0080;
+}
+
+body.theme-cyberpunk,
+body.theme-cyberpunk #root {
+  background: #0a0a0a !important;
+}
+
+body.theme-cyberpunk .lamma-glass {
+  background: rgba(10, 10, 10, 0.85);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+
+body.theme-cyberpunk .lamma-glass::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 34px;
+  background: linear-gradient(
+    45deg,
+    var(--neon-primary),
+    var(--neon-secondary),
+    var(--neon-accent),
+    var(--neon-primary)
+  );
+  background-size: 400% 400%;
+  animation: borderRotate 3s linear infinite;
+  z-index: -1;
+  filter: blur(8px);
+  opacity: 0.8;
+}
+
+body.theme-cyberpunk .lamma-message {
+  background: rgba(20, 20, 20, 0.9);
+  border: 1px solid rgba(255, 0, 255, 0.3);
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.2);
+}
+
+body.theme-cyberpunk .lamma-primary-btn {
+  background: linear-gradient(135deg, var(--neon-primary) 0%, var(--neon-secondary) 100%);
+  border: none;
+  color: #000;
+  font-weight: 700;
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
+}
+
+/* 2. Neon Cyan */
+body.theme-neon-cyan {
+  --neon-primary: #00ffff;
+  --neon-secondary: #00ff88;
+  --neon-accent: #00d4ff;
+}
+
+body.theme-neon-cyan,
+body.theme-neon-cyan #root {
+  background: #0a0a0a !important;
+}
+
+body.theme-neon-cyan .lamma-glass {
+  background: rgba(10, 10, 10, 0.85);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+
+body.theme-neon-cyan .lamma-glass::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 34px;
+  background: linear-gradient(
+    45deg,
+    var(--neon-primary),
+    var(--neon-secondary),
+    var(--neon-accent),
+    var(--neon-primary)
+  );
+  background-size: 400% 400%;
+  animation: borderRotate 3s linear infinite;
+  z-index: -1;
+  filter: blur(8px);
+  opacity: 0.8;
+}
+
+body.theme-neon-cyan .lamma-message {
+  background: rgba(20, 20, 20, 0.9);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+}
+
+body.theme-neon-cyan .lamma-primary-btn {
+  background: linear-gradient(135deg, var(--neon-primary) 0%, var(--neon-secondary) 100%);
+  border: none;
+  color: #000;
+  font-weight: 700;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+}
+
+/* 3. Aurora */
+body.theme-aurora {
+  --neon-primary: #00ff88;
+  --neon-secondary: #00d4ff;
+  --neon-accent: #a855f7;
+}
+
+body.theme-aurora,
+body.theme-aurora #root {
+  background: #0a0a0a !important;
+}
+
+body.theme-aurora .lamma-glass {
+  background: rgba(10, 10, 10, 0.85);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+
+body.theme-aurora .lamma-glass::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 34px;
+  background: linear-gradient(
+    45deg,
+    var(--neon-primary),
+    var(--neon-secondary),
+    var(--neon-accent),
+    var(--neon-primary)
+  );
+  background-size: 400% 400%;
+  animation: borderRotate 3s linear infinite;
+  z-index: -1;
+  filter: blur(8px);
+  opacity: 0.8;
+}
+
+body.theme-aurora .lamma-message {
+  background: rgba(20, 20, 20, 0.9);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+}
+
+body.theme-aurora .lamma-primary-btn {
+  background: linear-gradient(135deg, var(--neon-primary) 0%, var(--neon-accent) 100%);
+  border: none;
+  color: #000;
+  font-weight: 700;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+}
+
+/* 4. Deep Purple */
+body.theme-deep-purple {
+  --neon-primary: #a855f7;
+  --neon-secondary: #ec4899;
+  --neon-accent: #8b5cf6;
+}
+
+body.theme-deep-purple,
+body.theme-deep-purple #root {
+  background: #0a0a0a !important;
+}
+
+body.theme-deep-purple .lamma-glass {
+  background: rgba(10, 10, 10, 0.85);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+
+body.theme-deep-purple .lamma-glass::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 34px;
+  background: linear-gradient(
+    45deg,
+    var(--neon-primary),
+    var(--neon-secondary),
+    var(--neon-accent),
+    var(--neon-primary)
+  );
+  background-size: 400% 400%;
+  animation: borderRotate 3s linear infinite;
+  z-index: -1;
+  filter: blur(8px);
+  opacity: 0.8;
+}
+
+body.theme-deep-purple .lamma-message {
+  background: rgba(20, 20, 20, 0.9);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+}
+
+body.theme-deep-purple .lamma-primary-btn {
+  background: linear-gradient(135deg, var(--neon-primary) 0%, var(--neon-secondary) 100%);
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+}
+
+/* 5. Gold Glow */
+body.theme-gold-glow {
+  --neon-primary: #ffd700;
+  --neon-secondary: #ff8c00;
+  --neon-accent: #ff6347;
+}
+
+body.theme-gold-glow,
+body.theme-gold-glow #root {
+  background: #0a0a0a !important;
+}
+
+body.theme-gold-glow .lamma-glass {
+  background: rgba(10, 10, 10, 0.85);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+
+body.theme-gold-glow .lamma-glass::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 34px;
+  background: linear-gradient(
+    45deg,
+    var(--neon-primary),
+    var(--neon-secondary),
+    var(--neon-accent),
+    var(--neon-primary)
+  );
+  background-size: 400% 400%;
+  animation: borderRotate 3s linear infinite;
+  z-index: -1;
+  filter: blur(8px);
+  opacity: 0.8;
+}
+
+body.theme-gold-glow .lamma-message {
+  background: rgba(20, 20, 20, 0.9);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+}
+
+body.theme-gold-glow .lamma-primary-btn {
+  background: linear-gradient(135deg, var(--neon-primary) 0%, var(--neon-secondary) 100%);
+  border: none;
+  color: #000;
+  font-weight: 700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+/* ============================================
+   GLASS TYPES (3 Types) - REAL BACKDROP FILTER
+   ============================================ */
+
+/* 1. Soft Glass - Light Blur */
+body.glass-soft .lamma-glass,
+body.glass-soft .lamma-panel-shell,
+body.glass-soft #live-preview-canvas .preview-message,
+body.glass-soft #live-preview-canvas .preview-button {
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(12px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 20px;
+}
+
+body.glass-soft .lamma-message {
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(8px) saturate(110%) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(110%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px;
+}
+
+/* 2. Crystal Glowing Glass - Medium Blur */
+body.glass-crystal .lamma-glass,
+body.glass-crystal .lamma-panel-shell,
+body.glass-crystal #live-preview-canvas .preview-message,
+body.glass-crystal #live-preview-canvas .preview-button {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(30px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 24px;
+  box-shadow:
+    0 8px 32px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+body.glass-crystal .lamma-message {
+  background: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(20px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 18px;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 3. iOS Ultra Blur Glass - Heavy Blur */
+body.glass-ultra-blur .lamma-glass,
+body.glass-ultra-blur .lamma-panel-shell,
+body.glass-ultra-blur #live-preview-canvas .preview-message,
+body.glass-ultra-blur #live-preview-canvas .preview-button {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(40px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  border-radius: 24px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+body.glass-ultra-blur .lamma-message {
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  border-radius: 18px;
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Apply glass effects to preview canvas */
+body.glass-soft #live-preview-canvas .preview-header {
+  backdrop-filter: blur(12px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+}
+
+body.glass-crystal #live-preview-canvas .preview-header {
+  backdrop-filter: blur(30px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+}
+
+body.glass-ultra-blur #live-preview-canvas .preview-header {
+  backdrop-filter: blur(40px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(180%) !important;
+}
+
+/* ============================================
+   LIGHTING STRIPS (3 Types)
+   ============================================ */
+
+/* 1. Moving LED Strip */
+body.lighting-led .lamma-header::before {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--neon-primary, #ff00ff),
+    var(--neon-secondary, #00ffff),
+    var(--neon-accent, #ff0080),
+    var(--neon-primary, #ff00ff)
+  );
+  background-size: 200% 100%;
+  animation: borderRotate 2s linear infinite;
+}
+
+/* 2. Soft Neon Pulse */
+body.lighting-pulse .lamma-header::before {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--neon-primary, #ff00ff);
+  animation: neon-pulse 2s ease-in-out infinite;
+  opacity: 0.6;
+}
+
+/* 3. Aura Background Glow */
+body.lighting-aura .lamma-glass {
+  box-shadow:
+    0 0 40px var(--neon-primary, rgba(255, 0, 255, 0.3)),
+    0 0 80px var(--neon-secondary, rgba(0, 255, 255, 0.2)),
+    0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.lighting-aura .lamma-message {
+  box-shadow:
+    0 0 20px var(--neon-primary, rgba(255, 0, 255, 0.2)),
+    0 6px 14px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ============================================
+   NEON PULSE ANIMATION
+   ============================================ */
+@keyframes neon-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* ============================================
+   REAL 2026 MODERN GLASS CARDS WITH HEADER STRIPS
+   ============================================ */
+
+/* Modern Glass Card 2026 */
+.card-2026 {
+  background: rgba(20, 20, 30, 0.6);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-2026-header {
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+}
+
+.card-2026-body {
+  padding: 20px;
+  flex: 1;
+}
+
+/* Animated Header Strip - Inside Card */
+.card-strip-animated {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ff006e, #fb5607, #ffbe0b, #8338ec, #3a86ff, #ff006e);
+  background-size: 300% 100%;
+  animation: stripFlow 3s linear infinite;
+}
+
+.card-strip-neon {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #00ff9f, #00b8d9, #6a00ff, #00ff9f);
+  background-size: 300% 100%;
+  animation: stripFlow 2s linear infinite;
+}
+
+.card-strip-fire {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ff0000, #ff6600, #ffcc00, #ff0000);
+  background-size: 300% 100%;
+  animation: stripFlow 1.5s linear infinite;
+}
+
+@keyframes stripFlow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+/* Card Variants */
+.card-2026-purple {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.3) 100%);
+  border-color: rgba(102, 126, 234, 0.3);
+}
+
+.card-2026-ocean {
+  background: linear-gradient(135deg, rgba(0, 119, 182, 0.2) 0%, rgba(0, 180, 216, 0.3) 100%);
+  border-color: rgba(0, 180, 216, 0.3);
+}
+
+.card-2026-sunset {
+  background: linear-gradient(135deg, rgba(255, 94, 87, 0.2) 0%, rgba(255, 188, 46, 0.3) 100%);
+  border-color: rgba(255, 94, 87, 0.3);
+}
+
+.card-2026-forest {
+  background: linear-gradient(135deg, rgba(45, 106, 79, 0.2) 0%, rgba(64, 145, 108, 0.3) 100%);
+  border-color: rgba(64, 145, 108, 0.3);
+}
+
+/* Modern Button Styles */
+.btn-2026 {
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-2026-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-2026-primary:hover {
+  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
+  transform: translateY(-2px);
+}
+
+.btn-2026-glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.btn-2026-glass:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Modern Input Styles */
+.input-2026 {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  outline: none;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.input-2026::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.input-2026:focus {
+  border-color: rgba(102, 126, 234, 0.5);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+}
+
+/* Preview Container */
+.preview-2026 {
+  background: #0a0a0a;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 24px;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preview-label-2026 {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
 }

@@ -70,8 +70,23 @@ import {
   commitSidebarWidgetSettings,
 } from '../../services/design/sidebarWidgetStyleService';
 import { commitPmBubbleStyle } from '../../services/design/pmBubbleStyleService';
+import {
+  loadUDSSettings,
+  saveUDSSettings,
+  previewUDSSettings,
+  commitUDSSettings,
+  resetUDSSettings,
+  getNeonBorderLabel,
+  getGlassTextureLabel,
+  getPaletteLabel,
+  getPaletteHex,
+  type UDSSettings,
+  type UDSNeonBorderStyle,
+  type UDSGlassTextureStyle,
+  type UDSPaletteColor,
+} from '../../services/design/ultimateDesignSystemService';
 
-type DesignSection = "colors" | "shapes" | "uploads";
+type DesignSection = "colors" | "shapes" | "uploads" | "ultimate";
 
 /** ثيمات 2026 كاملة — كل ثيم يضبط الخلفية (الغامق) + البطاقات + الكتابة + الأساسي + الثانوي معاً. */
 const MODERN_THEME_PRESETS: {
@@ -132,6 +147,10 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
   const rightColUploadRef = useRef<HTMLInputElement>(null);
   const centerColUploadRef = useRef<HTMLInputElement>(null);
   const leftColUploadRef = useRef<HTMLInputElement>(null);
+
+  /* ── Ultimate Design System state ── */
+  const [udsSettings, setUdsSettings] = useState<UDSSettings>(() => loadUDSSettings());
+  const [udsPreviewActive, setUdsPreviewActive] = useState(false);
 
   /* ── Sliders + Gemini AI state ── */
   const getBase = (): UniversalStyleConfig => {
@@ -735,6 +754,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                         ["uploads", "📤 الصور"],
                         ["colors", "🎨 الألوان"],
                         ["shapes", "🔷 الشكل"],
+                        ["ultimate", "✨ Ultimate"],
                       ] as const).map(([id, label]) => (
                         <button
                           key={id}
@@ -1123,6 +1143,368 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
 
                     {section === "shapes" && isOwnerRole && (
                       <DesignShapesPanel onStartInspectMode={onStartInspectMode} />
+                    )}
+
+                    {section === "ultimate" && (
+                      <div className="space-y-4">
+                        {/* Header */}
+                        <div className="p-4 rounded-2xl lamma-section-card">
+                          <div className="text-white text-xs font-black">
+                            ✨ Ultimate Design System 2026
+                          </div>
+                          <div className="text-[10px] text-gray-400 font-bold mt-1">
+                            مكتبة تصميم شاملة: أشرطة نيون متحركة، زجاج كريستالي، لوحة ألوان المستقبل
+                          </div>
+                        </div>
+
+                        {/* Neon Borders & Effects */}
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                          <div className="text-[11px] text-cyan-300 font-black">💫 أشرطة النيون والمؤثرات</div>
+                          <div className="text-[10px] text-gray-400">اختر تأثير الحدود النيون المتحرك</div>
+                          
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { id: "none" as const, label: "بدون" },
+                              { id: "led-strip" as const, label: "شريط LED متحرك" },
+                              { id: "pulsing-glow" as const, label: "نبض إضاءة" },
+                              { id: "border-aura" as const, label: "هالة ضوئية" },
+                              { id: "rgb-wave" as const, label: "موجة RGB" },
+                              { id: "static-cyber" as const, label: "خط سيبر ثابت" },
+                            ].map((style) => (
+                              <button
+                                key={style.id}
+                                type="button"
+                                onPointerDown={stopDrag}
+                                onClick={() => {
+                                  const newSettings = { ...udsSettings, neonBorder: style.id };
+                                  setUdsSettings(newSettings);
+                                  previewUDSSettings(newSettings);
+                                  setUdsPreviewActive(true);
+                                }}
+                                className={`p-3 rounded-xl text-[10px] font-black transition-all ${
+                                  udsSettings.neonBorder === style.id
+                                    ? "bg-cyan-500/20 border border-cyan-400/50 text-cyan-300"
+                                    : "bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10"
+                                }`}
+                              >
+                                {style.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Neon Border Color */}
+                          {udsSettings.neonBorder !== "none" && (
+                            <div className="mt-3 p-3 rounded-xl bg-white/5 space-y-2">
+                              <div className="text-[10px] text-gray-400 font-bold">لون النيون</div>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { id: "cyberpunk-pink" as const, color: "#ff006e" },
+                                  { id: "neon-cyan" as const, color: "#00f5d4" },
+                                  { id: "aurora-green" as const, color: "#06d6a0" },
+                                  { id: "electric-violet" as const, color: "#7209b7" },
+                                  { id: "gold-eclipse" as const, color: "#ffd60a" },
+                                ].map((c) => (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    onPointerDown={stopDrag}
+                                    onClick={() => {
+                                      const newSettings = { ...udsSettings, neonBorderColor: c.id };
+                                      setUdsSettings(newSettings);
+                                      previewUDSSettings(newSettings);
+                                    }}
+                                    className={`w-8 h-8 rounded-lg border-2 transition-all ${
+                                      udsSettings.neonBorderColor === c.id
+                                        ? "border-white scale-110"
+                                        : "border-white/20 hover:border-white/50"
+                                    }`}
+                                    style={{ backgroundColor: c.color }}
+                                    title={getPaletteLabel(c.id)}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Apply to Body Toggle */}
+                          {udsSettings.neonBorder === "led-strip" && (
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-[10px] text-gray-400 font-bold">تطبيق على جسم الصفحة</span>
+                              <button
+                                type="button"
+                                onPointerDown={stopDrag}
+                                onClick={() => {
+                                  const newSettings = { ...udsSettings, applyToBody: !udsSettings.applyToBody };
+                                  setUdsSettings(newSettings);
+                                  previewUDSSettings(newSettings);
+                                }}
+                                className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${
+                                  udsSettings.applyToBody
+                                    ? "lamma-accent-btn text-white"
+                                    : "lamma-tab-soft text-gray-400"
+                                }`}
+                              >
+                                {udsSettings.applyToBody ? "✅ مفعّل" : "⭕ معطّل"}
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Apply to Containers Toggle for all neon effects */}
+                          {udsSettings.neonBorder !== "none" && (
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-[10px] text-gray-400 font-bold">تطبيق على البطاقات الجانبية</span>
+                              <button
+                                type="button"
+                                onPointerDown={stopDrag}
+                                onClick={() => {
+                                  const newSettings = { ...udsSettings, applyToContainers: !udsSettings.applyToContainers };
+                                  setUdsSettings(newSettings);
+                                  previewUDSSettings(newSettings);
+                                }}
+                                className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${
+                                  udsSettings.applyToContainers
+                                    ? "lamma-accent-btn text-white"
+                                    : "lamma-tab-soft text-gray-400"
+                                }`}
+                              >
+                                {udsSettings.applyToContainers ? "✅ مفعّل" : "⭕ معطّل"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Glassmorphic Textures */}
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                          <div className="text-[11px] text-cyan-300 font-black">🪟 تأثيرات الزجاج الكريستالي</div>
+                          <div className="text-[10px] text-gray-400">اختر نسيج الزجاج الشفاف</div>
+                          
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { id: "none" as const, label: "بدون" },
+                              { id: "ios-ultra-blur" as const, label: "iOS Ultra Blur" },
+                              { id: "crystal-glow" as const, label: "زجاج كريستالي" },
+                              { id: "soft-frosted" as const, label: "زجاج مطفأ" },
+                              { id: "dark-mirror" as const, label: "مرآة داكنة" },
+                              { id: "velvet-blur" as const, label: "زجاج مخملي" },
+                            ].map((style) => (
+                              <button
+                                key={style.id}
+                                type="button"
+                                onPointerDown={stopDrag}
+                                onClick={() => {
+                                  const newSettings = { ...udsSettings, glassTexture: style.id };
+                                  setUdsSettings(newSettings);
+                                  previewUDSSettings(newSettings);
+                                  setUdsPreviewActive(true);
+                                }}
+                                className={`p-3 rounded-xl text-[10px] font-black transition-all ${
+                                  udsSettings.glassTexture === style.id
+                                    ? "bg-cyan-500/20 border border-cyan-400/50 text-cyan-300"
+                                    : "bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10"
+                                }`}
+                              >
+                                {style.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Glass Tint */}
+                          {udsSettings.glassTexture !== "none" && (
+                            <div className="mt-3 p-3 rounded-xl bg-white/5 space-y-2">
+                              <div className="text-[10px] text-gray-400 font-bold">صبغة الزجاج</div>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { id: "none" as const, label: "بدون", color: "#ffffff" },
+                                  { id: "cyberpunk-pink" as const, label: "وردي", color: "#ff006e" },
+                                  { id: "neon-cyan" as const, label: "سماوي", color: "#00f5d4" },
+                                  { id: "aurora-green" as const, label: "أخضر", color: "#06d6a0" },
+                                  { id: "electric-violet" as const, label: "بنفسجي", color: "#7209b7" },
+                                  { id: "gold-eclipse" as const, label: "ذهبي", color: "#ffd60a" },
+                                ].map((c) => (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    onPointerDown={stopDrag}
+                                    onClick={() => {
+                                      const newSettings = { ...udsSettings, glassTint: c.id };
+                                      setUdsSettings(newSettings);
+                                      previewUDSSettings(newSettings);
+                                    }}
+                                    className={`px-3 py-2 rounded-xl text-[10px] font-black border-2 transition-all ${
+                                      udsSettings.glassTint === c.id
+                                        ? "border-white text-white"
+                                        : "border-white/20 text-gray-400 hover:border-white/50"
+                                    }`}
+                                    style={{ backgroundColor: c.color + "20" }}
+                                  >
+                                    {c.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Apply to Containers Toggle */}
+                          {udsSettings.glassTexture !== "none" && (
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-[10px] text-gray-400 font-bold">تطبيق على الحاويات</span>
+                              <button
+                                type="button"
+                                onPointerDown={stopDrag}
+                                onClick={() => {
+                                  const newSettings = { ...udsSettings, applyToContainers: !udsSettings.applyToContainers };
+                                  setUdsSettings(newSettings);
+                                  previewUDSSettings(newSettings);
+                                }}
+                                className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${
+                                  udsSettings.applyToContainers
+                                    ? "lamma-accent-btn text-white"
+                                    : "lamma-tab-soft text-gray-400"
+                                }`}
+                              >
+                                {udsSettings.applyToContainers ? "✅ مفعّل" : "⭕ معطّل"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Futuristic Palette 2026 */}
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                          <div className="text-[11px] text-cyan-300 font-black">🎨 لوحة ألوان المستقبل 2026</div>
+                          <div className="text-[10px] text-gray-400">اختر اللون الأساسي للتصميم</div>
+                          
+                          <div className="grid grid-cols-4 gap-2">
+                            {[
+                              { id: "cyberpunk-pink" as const, color: "#ff006e" },
+                              { id: "neon-cyan" as const, color: "#00f5d4" },
+                              { id: "aurora-green" as const, color: "#06d6a0" },
+                              { id: "electric-violet" as const, color: "#7209b7" },
+                              { id: "gold-eclipse" as const, color: "#ffd60a" },
+                              { id: "carbon-dark" as const, color: "#0a0a0a" },
+                              { id: "minimalist-white" as const, color: "#ffffff" },
+                              { id: "deep-space-blue" as const, color: "#03045e" },
+                            ].map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onPointerDown={stopDrag}
+                                onClick={() => {
+                                  const newSettings = { ...udsSettings, palette: c.id };
+                                  setUdsSettings(newSettings);
+                                  previewUDSSettings(newSettings);
+                                  setUdsPreviewActive(true);
+                                }}
+                                className={`w-full aspect-square rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1 ${
+                                  udsSettings.palette === c.id
+                                    ? "border-white scale-105 shadow-lg"
+                                    : "border-white/20 hover:border-white/50"
+                                }`}
+                                style={{ backgroundColor: c.color }}
+                                title={getPaletteLabel(c.id)}
+                              >
+                                <div className="w-6 h-6 rounded-full border-2 border-white/30" style={{ backgroundColor: c.color }} />
+                              </button>
+                            ))}
+                          </div>
+                          
+                          <div className="text-[10px] text-gray-400 font-bold text-center mt-2">
+                            اللون المحدد: {getPaletteLabel(udsSettings.palette)}
+                          </div>
+                        </div>
+
+                        {/* Preview Cards */}
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                          <div className="text-[11px] text-cyan-300 font-black">👁️ معاينة سريعة</div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { style: "led-strip" as const, label: "LED Strip" },
+                              { style: "pulsing-glow" as const, label: "Pulsing Glow" },
+                              { style: "border-aura" as const, label: "Border Aura" },
+                            ].map((preview) => (
+                              <div
+                                key={preview.style}
+                                className={`uds-preview-card ${udsSettings.neonBorder === preview.style ? "active" : ""} ${
+                                  preview.style === "led-strip" ? "uds-neon-led-strip" :
+                                  preview.style === "pulsing-glow" ? "uds-pulsing-glow" :
+                                  "uds-border-aura"
+                                }`}
+                                onClick={() => {
+                                  const newSettings = { ...udsSettings, neonBorder: preview.style };
+                                  setUdsSettings(newSettings);
+                                  previewUDSSettings(newSettings);
+                                  setUdsPreviewActive(true);
+                                }}
+                                style={{ backgroundColor: "#0a0a0a" }}
+                              >
+                                {preview.label}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { style: "ios-ultra-blur" as const, label: "iOS Blur" },
+                              { style: "crystal-glow" as const, label: "Crystal" },
+                              { style: "soft-frosted" as const, label: "Frosted" },
+                            ].map((preview) => (
+                              <div
+                                key={preview.style}
+                                className={`uds-preview-card ${udsSettings.glassTexture === preview.style ? "active" : ""} ${
+                                  preview.style === "ios-ultra-blur" ? "uds-ios-ultra-blur" :
+                                  preview.style === "crystal-glow" ? "uds-crystal-glow" :
+                                  "uds-soft-frosted"
+                                }`}
+                                onClick={() => {
+                                  const newSettings = { ...udsSettings, glassTexture: preview.style };
+                                  setUdsSettings(newSettings);
+                                  previewUDSSettings(newSettings);
+                                  setUdsPreviewActive(true);
+                                }}
+                                style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+                              >
+                                {preview.label}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Save / Apply / Reset Bar */}
+                        <div className="sticky top-0 z-20 flex gap-2 p-3 rounded-2xl border border-cyan-400/30 bg-[#0a1218]/95 backdrop-blur-xl">
+                          <button
+                            type="button"
+                            onPointerDown={stopDrag}
+                            onClick={() => {
+                              commitUDSSettings(udsSettings);
+                              setUdsPreviewActive(false);
+                              alert("✅ تم حفظ إعدادات Ultimate Design System وتطبيقها بنجاح!");
+                            }}
+                            className="flex-1 py-2.5 rounded-xl text-[10px] font-black lamma-accent-btn text-white"
+                          >
+                            💾 حفظ وتطبيق
+                          </button>
+                          <button
+                            type="button"
+                            onPointerDown={stopDrag}
+                            onClick={() => {
+                              resetUDSSettings();
+                              setUdsSettings(loadUDSSettings());
+                              setUdsPreviewActive(false);
+                              alert("✅ تم إعادة تعيين الإعدادات للافتراضي.");
+                            }}
+                            className="px-4 py-2.5 rounded-xl text-[10px] font-black lamma-tab-soft"
+                          >
+                            ↺ إعادة تعيين
+                          </button>
+                        </div>
+
+                        {/* Preview Status */}
+                        {udsPreviewActive && (
+                          <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-400/30">
+                            <div className="text-[10px] text-cyan-300 font-bold text-center">
+                              👀 معاينة نشطة - اضغط "حفظ وتطبيق" للتثبيت
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     {section === "uploads" && (

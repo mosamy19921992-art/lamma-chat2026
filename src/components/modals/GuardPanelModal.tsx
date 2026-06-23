@@ -72,7 +72,10 @@ export function GuardPanelModal({
         </div>
         <button
           type="button"
-          onClick={() => setIsBotEnabled(!isBotEnabled)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsBotEnabled(!isBotEnabled);
+          }}
           onPointerDown={(event) => event.stopPropagation()}
           className={`px-4 py-2 rounded-xl text-[11px] font-black transition-all flex items-center gap-1.5 shrink-0 select-none cursor-pointer ${
             isBotEnabled ? "lamma-toggle-on" : "lamma-toggle-off"
@@ -262,7 +265,9 @@ export function GuardPanelModal({
 
       {/* Quick action */}
       <button
-        onClick={() => {
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
           const timeStr = new Date().toLocaleTimeString("en-US", {
             hour: "numeric",
             minute: "numeric",
@@ -283,6 +288,7 @@ export function GuardPanelModal({
           ]);
           setActiveModal(null);
         }}
+        onPointerDown={(e) => e.stopPropagation()}
         className="w-full py-2.5 rounded-xl text-yellow-300 font-black text-[10px] transition-all flex items-center justify-center gap-1.5 select-none lamma-soft-warn"
       >
         🚨 إنذار عام للغرفة

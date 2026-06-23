@@ -17,6 +17,7 @@ export type PublicChatSettingsPayload = Pick<
   | "room_bg_map"
   | "design_presets"
   | "room_dj_map"
+  | "store_products"
   | "glow_color"
   | "wall_theme"
   | "chat_theme"

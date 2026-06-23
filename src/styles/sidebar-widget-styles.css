@@ -1,4 +1,5 @@
-/* Sidebar widgets — radio, music/DJ, column dividers (data-* on .lamma-neutral-glass) */
+/* Sidebar widgets — radio, music/DJ, column dividers (data-* on .lamma-neutral-glass)
+   Updated 2026 with Ultimate Design System integration */
 
 /* Per-card text colors (Design Center → الشكل) */
 .lamma-store-panel {
@@ -159,7 +160,7 @@
   100% { transform: translateX(100%); opacity: 0; }
 }
 
-/* ── Radio panel ── */
+/* ── Radio panel 2026 ── */
 .lamma-neutral-glass[data-radio-style="vinyl"] .lamma-radio-panel .lamma-section-card,
 .lamma-neutral-glass[data-radio-style="vinyl"] .lamma-radio-panel .lamma-widget-body {
   background: rgba(14, 11, 7, 0.92) !important;
@@ -233,7 +234,60 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 
-/* ── Music / DJ panel ── */
+/* NEW 2026 Radio Styles */
+.lamma-neutral-glass[data-radio-style="cyber-neon"] .lamma-radio-panel .lamma-glass {
+  background: rgba(10, 10, 10, 0.85) !important;
+  border: 2px solid #ff006e !important;
+  box-shadow:
+    0 0 10px #ff006e,
+    0 0 20px rgba(255, 0, 110, 0.3),
+    inset 0 0 10px rgba(255, 0, 110, 0.1) !important;
+  animation: radio-cyber-pulse 2s ease-in-out infinite !important;
+}
+
+@keyframes radio-cyber-pulse {
+  0%, 100% { box-shadow: 0 0 10px #ff006e, 0 0 20px rgba(255, 0, 110, 0.3), inset 0 0 10px rgba(255, 0, 110, 0.1); }
+  50% { box-shadow: 0 0 20px #ff006e, 0 0 40px rgba(255, 0, 110, 0.5), inset 0 0 20px rgba(255, 0, 110, 0.2); }
+}
+
+.lamma-neutral-glass[data-radio-style="glass-aura"] .lamma-radio-panel .lamma-glass {
+  background: rgba(255, 255, 255, 0.1) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.4) !important;
+  backdrop-filter: blur(20px) saturate(1.4) !important;
+  border: 1px solid rgba(0, 245, 212, 0.3) !important;
+  box-shadow:
+    0 0 15px rgba(0, 245, 212, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.lamma-neutral-glass[data-radio-style="holographic"] .lamma-radio-panel .lamma-glass {
+  background: linear-gradient(135deg,
+    rgba(114, 9, 183, 0.3) 0%,
+    rgba(0, 245, 212, 0.3) 50%,
+    rgba(255, 0, 110, 0.3) 100%) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  animation: holographic-shift 4s ease infinite !important;
+}
+
+@keyframes holographic-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.lamma-neutral-glass[data-radio-style="dark-crystal"] .lamma-radio-panel .lamma-glass {
+  background: linear-gradient(145deg,
+    rgba(20, 20, 20, 0.9) 0%,
+    rgba(40, 40, 40, 0.85) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.1),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.3),
+    0 8px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ── Music / DJ panel 2026 ── */
 .lamma-neutral-glass[data-music-style="spectrum"] .lamma-music-panel .lamma-widget-body {
   position: relative !important;
   overflow: hidden !important;
@@ -285,6 +339,61 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
     0 12px 32px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* NEW 2026 Music Styles */
+.lamma-neutral-glass[data-music-style="neon-wave"] .lamma-music-panel .lamma-glass {
+  background: rgba(0, 0, 0, 0.8) !important;
+  border: 2px solid #00f5d4 !important;
+  box-shadow:
+    0 0 10px #00f5d4,
+    0 0 20px rgba(0, 245, 212, 0.3) !important;
+  animation: music-neon-glow 2s ease-in-out infinite !important;
+}
+
+@keyframes music-neon-glow {
+  0%, 100% { box-shadow: 0 0 10px #00f5d4, 0 0 20px rgba(0, 245, 212, 0.3); }
+  50% { box-shadow: 0 0 20px #00f5d4, 0 0 40px rgba(0, 245, 212, 0.5); }
+}
+
+.lamma-neutral-glass[data-music-style="crystal-glass"] .lamma-music-panel .lamma-glass {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.25) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 100%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.4) !important;
+  backdrop-filter: blur(20px) saturate(1.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 8px 32px rgba(0, 0, 0, 0.2) !important;
+}
+
+.lamma-neutral-glass[data-music-style="aurora-glow"] .lamma-music-panel .lamma-glass {
+  background: linear-gradient(135deg,
+    rgba(6, 214, 160, 0.2) 0%,
+    rgba(114, 9, 183, 0.2) 50%,
+    rgba(255, 0, 110, 0.2) 100%) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  backdrop-filter: blur(18px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  animation: aurora-shift 5s ease infinite !important;
+}
+
+@keyframes aurora-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.lamma-neutral-glass[data-music-style="dark-velvet"] .lamma-music-panel .lamma-glass {
+  background: rgba(255, 255, 255, 0.06) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.15) !important;
+  backdrop-filter: blur(18px) saturate(1.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08),
+    0 6px 28px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* ── Column dividers ── */

@@ -2,7 +2,7 @@
 // against the running app and can auto-heal common problems. Every result shown
 // here reflects a real runtime check, not a simulation.
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Activity, Wrench, RefreshCw, ShieldCheck } from "lucide-react";
 import {
   runMaintenanceDiagnostics,
@@ -53,8 +53,10 @@ export function MaintenancePanel({
   const [report, setReport] = useState<MaintenanceReport | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isFixing, setIsFixing] = useState(false);
+  const [notifyChatOnFix, setNotifyChatOnFix] = useState(false);
   const [healLog, setHealLog] = useState<string[]>([]);
   const [showHealLog, setShowHealLog] = useState(false);
+  const initialScanDoneRef = useRef(false);
 
   const log = useCallback(
     (text: string, severity: BotLogEntry["severity"]) => {
@@ -91,10 +93,12 @@ export function MaintenancePanel({
       if (result.fixed.length > 0) {
         appendHealLog(result.fixed);
         setHealLog(readHealLog());
-        addBotSystemWarning(
-          activeRoomId,
-          `🛠️ بوت الصيانة أصلح ${result.fixed.length} مشكلة تلقائيًا وحافظ على استقرار الشات.`,
-        );
+        if (notifyChatOnFix) {
+          addBotSystemWarning(
+            activeRoomId,
+            `🛠️ بوت الصيانة أصلح ${result.fixed.length} مشكلة تلقائيًا وحافظ على استقرار الشات.`,
+          );
+        }
       } else if (result.failed.length > 0) {
         log("تعذّر إكمال بعض خطوات الإصلاح — جرّب تحديث الصفحة.", "danger");
       } else {
@@ -106,12 +110,13 @@ export function MaintenancePanel({
     } finally {
       setIsFixing(false);
     }
-  }, [activeRoomId, addBotSystemWarning, log, runScan]);
+  }, [activeRoomId, addBotSystemWarning, log, notifyChatOnFix, runScan]);
 
   useEffect(() => {
-    void runScan();
+    if (initialScanDoneRef.current) return;
+    initialScanDoneRef.current = true;
     setHealLog(readHealLog());
-  }, [runScan]);
+  }, []);
 
   const score = report?.score ?? 0;
   const scoreColor =
@@ -172,7 +177,7 @@ export function MaintenancePanel({
         ))}
         {!report && (
           <div className="p-4 text-center text-gray-500 font-bold text-[10px]">
-            جارٍ تشغيل الفحص الأولي...
+            اضغط «إعادة فحص شامل» لبدء فحص الأنظمة.
           </div>
         )}
       </div>
@@ -180,7 +185,10 @@ export function MaintenancePanel({
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
-          onClick={() => void runScan()}
+          onClick={(e) => {
+            e.stopPropagation();
+            void runScan();
+          }}
           onPointerDown={(event) => event.stopPropagation()}
           disabled={isScanning || isFixing}
           className="py-2.5 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 lamma-soft-action text-gray-200 cursor-pointer"
@@ -190,7 +198,10 @@ export function MaintenancePanel({
         </button>
         <button
           type="button"
-          onClick={() => void runFix()}
+          onClick={(e) => {
+            e.stopPropagation();
+            void runFix();
+          }}
           onPointerDown={(event) => event.stopPropagation()}
           disabled={isScanning || isFixing}
           className="py-2.5 rounded-xl text-[10px] font-black text-white transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 lamma-accent-btn cursor-pointer"
@@ -203,6 +214,16 @@ export function MaintenancePanel({
           {isFixing ? "جارٍ الإصلاح..." : "إصلاح تلقائي للمشاكل"}
         </button>
       </div>
+
+      <label className="flex items-center justify-end gap-2 text-[9px] text-gray-400 font-bold cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={notifyChatOnFix}
+          onChange={(e) => setNotifyChatOnFix(e.target.checked)}
+          className="rounded border-white/20"
+        />
+        إرسال تنبيه في الشات عند الإصلاح (اختياري)
+      </label>
 
       {report && report.failCount === 0 && report.warnCount === 0 && (
         <div className="flex items-center justify-center gap-1.5 text-[10px] font-black text-emerald-300 pt-1">

@@ -9,6 +9,8 @@ import {
   submitOrder,
   type PaymentInfo,
 } from "../../services/store/subscriptionService";
+import { MaintenancePanel } from "./MaintenancePanel";
+import { StoreOffersPanel, type StoreProduct } from "./StoreOffersPanel";
 
 interface StorePanelModalProps {
   shopTab: string;
@@ -35,6 +37,8 @@ interface StorePanelModalProps {
   friendSuggestions: any[];
   setFriendSuggestions: React.Dispatch<React.SetStateAction<any[]>>;
   setBotLogs: React.Dispatch<React.SetStateAction<any[]>>;
+  addBotSystemWarning: (roomId: string, message: string) => void;
+  setStoreProducts: React.Dispatch<React.SetStateAction<StoreProduct[]>>;
   isDbConnectionLost: boolean;
   setIsDbConnectionLost: (val: boolean) => void;
   setIsReconnectingDb: (val: boolean) => void;
@@ -75,6 +79,8 @@ export function StorePanelModal({
   friendSuggestions,
   setFriendSuggestions,
   setBotLogs,
+  addBotSystemWarning,
+  setStoreProducts,
   isDbConnectionLost,
   setIsDbConnectionLost,
   setIsReconnectingDb,
@@ -93,7 +99,7 @@ export function StorePanelModal({
   const isOwner = currentUser.role === "owner";
 
   useEffect(() => {
-    if (!isOwner && (shopTab === "stats" || shopTab === "maintenance")) {
+    if (!isOwner && (shopTab === "stats" || shopTab === "maintenance" || shopTab === "offers")) {
       setShopTab("vip");
     }
   }, [isOwner, setShopTab, shopTab]);
@@ -247,6 +253,21 @@ export function StorePanelModal({
         {isOwner && (
           <>
         <button
+          type="button"
+          onClick={() => {
+            setShopTab("offers");
+            setSelectedProduct(null);
+            setPayStatus("idle");
+          }}
+          className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
+            shopTab === "offers"
+              ? "lamma-toggle-on"
+              : "lamma-tab-soft text-gray-400 hover:text-white"
+          }`}
+        >
+          📢 إدارة العروض
+        </button>
+        <button
           onClick={() => {
             setShopTab("stats");
             setPayStatus("idle");
@@ -266,11 +287,11 @@ export function StorePanelModal({
           }}
           className={`px-3 py-1.5 rounded-xl font-bold text-[10px] shrink-0 transition-all ${
             shopTab === "maintenance"
-              ? "lamma-toggle-off"
+              ? "lamma-toggle-on"
               : "lamma-tab-soft text-gray-400 hover:text-white"
           }`}
         >
-          🔧 الصيانة والتعافي
+          🔧 بوت الصيانة
         </button>
           </>
         )}
@@ -451,6 +472,40 @@ export function StorePanelModal({
                   ⚠️ لا توجد باقات متاحة حالياً — تواصل مع المالك.
                 </p>
               )}
+            </div>
+          )}
+
+          {storeProducts.filter((p) => p.tab === "vip").length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-white/5">
+              <h5 className="text-[10px] font-black text-emerald-300 text-right">
+                ✨ عروض خاصة من المالك
+              </h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {storeProducts
+                  .filter((p) => p.tab === "vip")
+                  .map((p) => (
+                    <div
+                      key={p.id}
+                      className="p-3 rounded-xl lamma-admin-card text-right"
+                    >
+                      <h6 className="text-[11px] font-black text-white">{p.name}</h6>
+                      <p className="text-[8.5px] text-gray-400 mt-1">{p.description}</p>
+                      <div className="text-[10px] text-emerald-400 font-bold mt-2">{p.price}</div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedProduct(p);
+                          setPayGateway("instapay");
+                          setPaymentAccountInput("");
+                          setPayStatus("idle");
+                        }}
+                        className="w-full mt-2 py-1.5 rounded-lg text-[9px] font-black lamma-toggle-on"
+                      >
+                        طلب العرض
+                      </button>
+                    </div>
+                  ))}
+              </div>
             </div>
           )}
         </div>
@@ -644,115 +699,25 @@ export function StorePanelModal({
         </div>
       )}
 
-      {/* TAB CONTENTS - 6. AUTOMATED MAINTENANCE & HEALING (owner only) */}
+      {/* TAB — Owner offers management */}
+      {isOwner && shopTab === "offers" && (
+        <StoreOffersPanel
+          storeProducts={storeProducts as StoreProduct[]}
+          setStoreProducts={setStoreProducts}
+          currentUser={currentUser}
+          activeRoomId={activeRoomId}
+          addLammaBotMessage={addLammaBotMessage}
+          addSystemActivityLog={addSystemActivityLog}
+        />
+      )}
+
+      {/* TAB — Real maintenance bot (owner only) */}
       {isOwner && shopTab === "maintenance" && (
-        <div className="space-y-3 font-sans">
-          <div className="p-3 rounded-xl flex items-center justify-between gap-3 text-right lamma-soft-danger">
-            <div className="space-y-0.5">
-              <h5 className="text-[11.5px] font-black text-white">
-                نظام الصيانة والتعافي الذاتي الشامل (Auto Maintenance Engine)
-              </h5>
-              <p className="text-[8.5px] text-gray-400 font-bold leading-relaxed font-sans">
-                عند انقطاع الاتصال بقواعد البيانات Supabase أو تعطل Realtime
-                Client، يتدخل البوت دورياً لإعادة التوجيه وإرسال التنبيهات
-                اللازمة للمشرف الفني آلياً.
-              </p>
-            </div>
-            <div
-              className={`w-3 h-3 rounded-full shrink-0 ${isDbConnectionLost ? "bg-red-500 animate-ping" : "bg-green-500 animate-pulse"}`}
-            ></div>
-          </div>
-
-          <div className="p-3 rounded-xl space-y-2 lamma-section-card">
-            <div className="flex items-center justify-between text-right border-b border-white/5 pb-1.5">
-              <span className="text-[8.5px] text-gray-500 font-extrabold">
-                الوضع الحالي لقنوات الإتصال
-              </span>
-              <span
-                className={`text-[9.1px] font-black ${isDbConnectionLost ? "text-red-400 animate-pulse" : "text-green-400"}`}
-              >
-                {isDbConnectionLost
-                  ? "🔴 الخدمة معطلة (Supabase Lost)"
-                  : "🟢 الخدمة مستقرة بالكامل"}
-              </span>
-            </div>
-
-            <div className="space-y-1 max-h-[105px] overflow-y-auto font-mono text-[8.5px] leading-relaxed">
-              {dbStatusLogs.map((log, i) => (
-                <div
-                  key={i}
-                  className="text-gray-400 p-1 border-b border-white/[0.02] last:border-0"
-                >
-                  {log}
-                </div>
-              ))}
-              {dbStatusLogs.length === 0 && (
-                <div className="text-gray-500 text-center py-4 font-sans text-[9px] font-bold">
-                  انقر على الخيار أدناه لتجربة المحاكاة ورصد التعافي الفوري.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {!isDbConnectionLost ? (
-            <button
-              onClick={() => {
-                setIsDbConnectionLost(true);
-                setIsReconnectingDb(true);
-                const now = new Date().toLocaleTimeString("ar-EG", {
-                  hour: "numeric",
-                  minute: "numeric",
-                  second: "numeric",
-                });
-                setDbStatusLogs([
-                  `[${now}] 🚨 طوارئ: تم رصد انقطاعات حادة بالمزود الرئيسي لقاعدة البيانات Supabase!`,
-                  `[${now}] 🚨 طوارئ: انقطاع قنوات المزامنة المتزامنة الفورية (Realtime Engine Offline).`,
-                  `[${now}] 🛡️ الأتمتة: تشغيل خطة الطوارئ فئة A والبدء بالمحاولات الدورية للتواصل البديل...`,
-                ]);
-
-                setTimeout(() => {
-                  const now2 = new Date().toLocaleTimeString("ar-EG", {
-                    hour: "numeric",
-                    minute: "numeric",
-                    second: "numeric",
-                  });
-                  setDbStatusLogs((prev) => [
-                    `[${now2}] ⚙️ المحرك: تم توجيه ترافيك الغرفة والنشاط للذاكرة العشوائية المستقرة البديلة (RAM-Mirror).`,
-                    `[${now2}] 🔔 التنبيه الآلي: تم إرسال رسالة بريدية عاجلة للمشرف الفني لفرض الرصد التكتيكي لقاعدة البيانات.`,
-                    ...prev,
-                  ]);
-                }, 1800);
-
-                setTimeout(() => {
-                  const now3 = new Date().toLocaleTimeString("ar-EG", {
-                    hour: "numeric",
-                    minute: "numeric",
-                    second: "numeric",
-                  });
-                  setDbStatusLogs((prev) => [
-                    `[${now3}] ✅ الأتمتة بنجاح: تم التغلب والتعافي التام وإعادة تصفية الاتصال بخادم النسخ الاحتياطية الاستراتيجي بنسبة استقرار 100%!`,
-                    `[${now3}] 📡 الاتصال: عودة حالة الحاقنات للون الأخضر والعمل مستقر بالكامل.`,
-                    ...prev,
-                  ]);
-                  setIsDbConnectionLost(false);
-                  setIsReconnectingDb(false);
-                  addLammaBotMessage(
-                    activeRoomId,
-                    "🤖 نظام التعافي الذاتي Lamma Maintenance: تم رصد انقطاع عابر في قنوات الاتصال بريل تايم Supabase وقامت الأتمتة الذاتية بإجراء تحويل المسار والربط بالخادم الرديف بنجاح تام في غضون ثوانٍ دون ضياع للرسائل 🚀🛡️!"
-                  );
-                }, 4500);
-              }}
-              className="w-full py-2 font-extrabold text-[10px] rounded-xl transition-all cursor-pointer text-center lamma-danger-btn"
-            >
-              🔌 محاكاة قطع الاتصال ورصد التعافي الفوري للبوت
-            </button>
-          ) : (
-            <div className="py-2.5 rounded-xl text-center text-yellow-300 text-[10px] font-black font-sans lamma-soft-warn">
-              ⏳ جاري تنفيذ معالجات التعافي الذاتي من خلال البوت الذكي... انتظر
-              ثانية واحدة!
-            </div>
-          )}
-        </div>
+        <MaintenancePanel
+          activeRoomId={activeRoomId}
+          setBotLogs={setBotLogs}
+          addBotSystemWarning={addBotSystemWarning}
+        />
       )}
 
       {/* GATEWAY PAYMENT PANEL (IF PRODUCT CHOSEN) */}
