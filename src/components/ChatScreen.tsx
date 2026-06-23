@@ -120,6 +120,7 @@ import {
 } from "../services/store/subscriptionService";
 import { MemberAvatar } from "./MemberAvatar";
 import { isAvatarImageUrl } from "../lib/avatarDisplay";
+import { requireAuthenticatedUid } from "../services/auth/guestAuthService";
 import {
   persistProfileAvatarToMetadata,
   uploadProfileAvatarFile,
@@ -652,6 +653,38 @@ export default function ChatScreen({
   const handleCloseDmChat = () => {
     setShowDmChat(false);
     setSelectedDmContact(null);
+  };
+
+  // Admin Message Handler
+  const handleSendAdminMessage = async (targetNickname: string, message: string) => {
+    if (!supabase) return;
+    
+    try {
+      const senderUid = await requireAuthenticatedUid();
+      
+      // Send as admin message (from "admin" to target user)
+      const { error } = await supabase.from("pm_messages").insert([{
+        sender_uid: "admin",
+        sender_nickname: "الأدمن",
+        receiver_uid: targetNickname,
+        receiver_nickname: targetNickname,
+        text: message,
+        type: "text",
+        is_read: false,
+      }]);
+
+      if (error) throw error;
+
+      addSystemActivityLog(
+        "promote",
+        currentUser.nickname,
+        `قام المالك بإرسال رسالة من الأدمن إلى: ${targetNickname}`,
+        currentUser.nickname
+      );
+    } catch (error) {
+      console.error("Error sending admin message:", error);
+      alert("حدث خطأ أثناء إرسال الرسالة");
+    }
   };
 
   // Sample DM Contacts (would be fetched from Supabase in production)
@@ -12342,6 +12375,7 @@ export default function ChatScreen({
                     currentUserNickname={currentUser.nickname}
                     setBrandLogoUrl={setBrandLogoUrl}
                     setOwnerBgImage={setOwnerBgImage}
+                    onSendAdminMessage={handleSendAdminMessage}
                   />
                 )}
 
