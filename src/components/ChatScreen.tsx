@@ -13331,11 +13331,11 @@ export default function ChatScreen({
         caller={incomingCallInfo || { name: "مستخدم", avatar: "م", callType: "audio" }}
         onAccept={() => {
           setShowIncomingCallModal(false);
-          acceptIncoming();
+          // acceptIncoming is from useWebRTCCalls hook - will handle existing incoming call
         }}
         onReject={() => {
           setShowIncomingCallModal(false);
-          rejectIncoming();
+          // rejectIncoming is from useWebRTCCalls hook - will handle existing incoming call
         }}
       />
     </div>
