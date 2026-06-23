@@ -2,6 +2,28 @@
 
 import type { MemberCosmeticGrant, MemberCustomPermissions, UserSession } from "./chatTypes";
 
+/** Browser connectivity — false when offline (send should not start). */
+export function isBrowserOnline(): boolean {
+  if (typeof navigator === "undefined") return true;
+  return navigator.onLine;
+}
+
+export const OFFLINE_SEND_HINT =
+  "📡 لا يوجد اتصال بالإنترنت. انتظر حتى يعود الاتصال ثم أعد الإرسال.";
+
+export function isLikelyNetworkError(error: unknown): boolean {
+  if (!isBrowserOnline()) return true;
+  const msg = String(
+    (error as { message?: string })?.message ?? error ?? "",
+  ).toLowerCase();
+  return (
+    msg.includes("failed to fetch") ||
+    msg.includes("network") ||
+    msg.includes("timeout") ||
+    msg.includes("load failed")
+  );
+}
+
 /** Allow only http(s) URLs — blocks javascript:, data:, vbscript: in chat links/media. */
 export function isSafeHttpUrl(url: string): boolean {
   try {

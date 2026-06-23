@@ -255,7 +255,7 @@ export function useChatMessages({
       }
     };
 
-    const fetchSupabaseMessages = async () => {
+    const fetchSupabaseMessages = async (attempt = 0) => {
       try {
         const { data, error } = await fetchRoomMessages(
           activeRoomId,
@@ -270,6 +270,14 @@ export function useChatMessages({
         }
 
         if (error) {
+          if (attempt < 2) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, 1200 * (attempt + 1)),
+            );
+            if (!cancelled && fetchGeneration === roomFetchGenerationRef.current) {
+              return fetchSupabaseMessages(attempt + 1);
+            }
+          }
           console.warn("Failed to fetch room messages:", error.message);
           return;
         }
@@ -293,6 +301,14 @@ export function useChatMessages({
           });
         }
       } catch (error) {
+        if (attempt < 2 && !cancelled) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1200 * (attempt + 1)),
+          );
+          if (fetchGeneration === roomFetchGenerationRef.current) {
+            return fetchSupabaseMessages(attempt + 1);
+          }
+        }
         console.warn("Failed to fetch room messages:", error);
       }
     };

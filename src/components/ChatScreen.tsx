@@ -181,6 +181,8 @@ import {
   getRoomCreationQuotaRemaining,
   filterSafeMediaUrl,
   isPrivateStorageRef,
+  isBrowserOnline,
+  OFFLINE_SEND_HINT,
   type StoreCosmeticsSnapshot,
 } from "../lib/chatHelpers.ts";
 import { compressImageForChat } from "../lib/imageCompression";
@@ -6287,7 +6289,14 @@ export default function ChatScreen({
       bumpUserStat("messagesSent");
     }
     chatStickToBottomRef.current = true;
-    sendRoomMessage();
+    try {
+      await sendRoomMessage();
+    } catch (error) {
+      console.error("sendRoomMessage failed:", error);
+      alert(
+        "❌ تعذر إرسال الرسالة. حاول مرة أخرى.",
+      );
+    }
     if (isMobileAppShell) {
       window.setTimeout(() => scrollChatToBottom("smooth"), 120);
       window.setTimeout(() => scrollChatToBottom("smooth"), 420);
@@ -6315,6 +6324,11 @@ export default function ChatScreen({
 
   const handleSendPM = async () => {
     if (!pmTarget || !pmInputText.trim()) return;
+
+    if (!isBrowserOnline()) {
+      alert(OFFLINE_SEND_HINT);
+      return;
+    }
 
     // Rate limiting: max 3 PM messages per second (separate from room chat)
     const now = Date.now();
@@ -6408,6 +6422,10 @@ export default function ChatScreen({
       );
       return;
     }
+    if (!isBrowserOnline()) {
+      alert(OFFLINE_SEND_HINT);
+      return;
+    }
     bumpUserStat("giftsSent");
     // Append message about gift inside room
     const timeStr = new Date().toLocaleTimeString("en-US", {
@@ -6469,7 +6487,7 @@ export default function ChatScreen({
                 : formatSupabaseUserError(error, "❌ تعذر إرسال الهدية. حاول مرة أخرى."),
             );
           }
-        });
+        })
     }
 
     // Animate multiple particles
@@ -6491,6 +6509,11 @@ export default function ChatScreen({
     type: "image" | "imageUrl" | "video" | "audio",
     mediaUrl: string,
   ) => {
+    if (!isBrowserOnline()) {
+      alert(OFFLINE_SEND_HINT);
+      return;
+    }
+
     const safeMedia = filterSafeMediaUrl(mediaUrl);
     if (!safeMedia) {
       alert("⚠️ الرابط غير مسموح — استخدم http أو https فقط.");
@@ -7123,7 +7146,7 @@ export default function ChatScreen({
         alert(`❌ فشل رفع الرسالة الصوتية: ${error || "خطأ غير معروف"}`);
         return;
       }
-      sendMediaMessage("audio", url);
+      await sendMediaMessage("audio", url);
     } catch (error) {
       alert(
         error instanceof Error

@@ -6,7 +6,7 @@ import {
   persistRoomMessage,
 } from "../services/chat/messagesService";
 import { handleRoomChatCommand } from "../services/chat/roomCommandsService";
-import { getYoutubeId, canShareYoutube } from "../lib/chatHelpers";
+import { getYoutubeId, canShareYoutube, isBrowserOnline, OFFLINE_SEND_HINT, isLikelyNetworkError } from "../lib/chatHelpers";
 import { moderateRoomMessage } from "../services/chat/roomModerationService";
 import { handleViolationEscalation } from "../services/chat/roomViolationService";
 import { checkAnswer, handleGameCommand } from "../services/chat/gamesBot";
@@ -103,6 +103,7 @@ export function useRoomComposer({
   canShareYoutubeInMessage,
 }: UseRoomComposerOptions) {
   const handleSendMessage = useCallback(async () => {
+    try {
     const now = Date.now();
     rateLimitRef.current = rateLimitRef.current.filter((t) => now - t < 1000);
     if (rateLimitRef.current.length >= 3) {
@@ -114,6 +115,11 @@ export function useRoomComposer({
     rateLimitRef.current.push(now);
 
     if (!inputText.trim()) return;
+
+    if (!isBrowserOnline()) {
+      addBotSystemWarning(activeRoomId, OFFLINE_SEND_HINT);
+      return;
+    }
 
     const trimmedInput = inputText.trim();
     const hasYoutubeLink =
@@ -363,7 +369,9 @@ export function useRoomComposer({
         // Generic network / server error — give the text back
         setInputText(originalInput);
         alert(
-          "❌ تعذر إرسال الرسالة حاليًا. لم يتم حفظها على السيرفر، فتمت إعادتها لك لتجرب الإرسال مرة أخرى.",
+          isLikelyNetworkError(error)
+            ? `${OFFLINE_SEND_HINT}\n\nلم يتم حفظ الرسالة على السيرفر.`
+            : "❌ تعذر إرسال الرسالة حاليًا. لم يتم حفظها على السيرفر، فتمت إعادتها لك لتجرب الإرسال مرة أخرى.",
         );
         return;
       }
@@ -372,6 +380,12 @@ export function useRoomComposer({
       setTimeout(() => {
         addBotSystemWarning(activeRoomId, warningMessage);
       }, 600);
+    }
+    } catch (unexpected) {
+      console.error("handleSendMessage failed:", unexpected);
+      alert(
+        "❌ حصل خطأ غير متوقع أثناء الإرسال. حاول مرة أخرى.",
+      );
     }
   }, [
     activeRoomId,
