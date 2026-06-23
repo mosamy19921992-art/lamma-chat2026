@@ -213,6 +213,73 @@
     padding-bottom: 4px !important;
   }
 
+  /* Mobile composer — 2 rows: [+] [input] [send] then tool strip */
+  .lamma-composer-layout {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    column-gap: 0.3rem;
+    row-gap: 0.35rem;
+    align-items: end;
+  }
+
+  .lamma-composer-slot-attach {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .lamma-composer-slot-input {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .lamma-composer-slot-send {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .lamma-composer-tools-wrapper {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 1px;
+  }
+
+  .lamma-composer-tools-wrapper::-webkit-scrollbar {
+    display: none;
+  }
+
+  .lamma-composer-desktop-only {
+    display: none !important;
+  }
+
+  .lamma-composer-radio-host,
+  .lamma-composer-music-host {
+    grid-column: auto;
+    grid-row: auto;
+    width: 0;
+    height: 0;
+    overflow: visible;
+    position: absolute;
+    pointer-events: none;
+  }
+
+  .lamma-composer-radio-host .lamma-feature-shell,
+  .lamma-composer-music-host .lamma-feature-shell {
+    pointer-events: auto;
+  }
+
+  .lamma-post-composer-note {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
   .lamma-pwa-app-shell .lamma-room-header {
     flex-shrink: 0;
   }

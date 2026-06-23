@@ -82,6 +82,7 @@ import {
   Trash2,
   Maximize2,
   Minimize2,
+  MoreHorizontal,
 } from "lucide-react";
 import { motion, AnimatePresence, useDragControls } from "motion/react";
 import AMLogo from "./AMLogo.tsx";
@@ -4142,6 +4143,7 @@ export default function ChatScreen({
   const [showCommandsDropdown, setShowCommandsDropdown] = useState(false);
   const [showPrivacyDropdown, setShowPrivacyDropdown] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [showComposerMoreDropdown, setShowComposerMoreDropdown] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
   const pmImageUploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -4269,6 +4271,7 @@ export default function ChatScreen({
   const featuresTrayBtnRef = useRef<HTMLButtonElement>(null);
   const commandsBtnRef = useRef<HTMLButtonElement>(null);
   const attachmentBtnRef = useRef<HTMLButtonElement>(null);
+  const composerMoreBtnRef = useRef<HTMLButtonElement>(null);
 
   const closeAllDropdowns = useCallback(() => {
     setShowAttachmentDropdown(false);
@@ -4280,6 +4283,7 @@ export default function ChatScreen({
     setShowCommandsDropdown(false);
     setShowPrivacyDropdown(false);
     setShowSettingsDropdown(false);
+    setShowComposerMoreDropdown(false);
     setShowFeaturesTray(false);
     setShowHeaderMenu(false);
     setShowPmListDropdown(false);
@@ -4305,7 +4309,8 @@ export default function ChatScreen({
     showNotificationsDropdown ||
     showCommandsDropdown ||
     showPrivacyDropdown ||
-    showSettingsDropdown;
+    showSettingsDropdown ||
+    showComposerMoreDropdown;
 
   const toggleDropdown = (
     dropdown:
@@ -4318,6 +4323,7 @@ export default function ChatScreen({
       | "commands"
       | "privacy"
       | "settings"
+      | "composerMore"
       | "headerMenu"
       | "pmList"
       | "features",
@@ -4334,7 +4340,8 @@ export default function ChatScreen({
       (dropdown === "notifications" && !showNotificationsDropdown) ||
       (dropdown === "commands" && !showCommandsDropdown) ||
       (dropdown === "privacy" && !showPrivacyDropdown) ||
-      (dropdown === "settings" && !showSettingsDropdown);
+      (dropdown === "settings" && !showSettingsDropdown) ||
+      (dropdown === "composerMore" && !showComposerMoreDropdown);
 
     setActiveModal(null);
     setIsPmOpen(false);
@@ -4384,6 +4391,9 @@ export default function ChatScreen({
         break;
       case "settings":
         setShowSettingsDropdown(true);
+        break;
+      case "composerMore":
+        setShowComposerMoreDropdown(true);
         break;
     }
   };
@@ -10247,7 +10257,7 @@ export default function ChatScreen({
             }
           >
             <div
-              className={`flex flex-wrap md:flex-nowrap items-center gap-1 sm:gap-1.5 rounded-t-[22px] rounded-b-none md:rounded-t-[24px] md:rounded-b-none px-2 sm:px-3 py-1.5 sm:py-2 md:py-1 ${
+              className={`lamma-composer-layout flex flex-col gap-1 md:flex-row md:flex-nowrap items-stretch md:items-center md:gap-1.5 rounded-t-[22px] rounded-b-none md:rounded-t-[24px] md:rounded-b-none px-2 sm:px-3 py-1.5 sm:py-2 md:py-1 ${
                 isZenMode
                   ? "bg-[#0b100c]/88 border border-green-500/24 shadow-2xl backdrop-blur-xl lamma-chat-input-shell"
                   : "bg-[rgba(7,10,12,0.22)] border border-white/6 shadow-none lamma-chat-input-shell"
@@ -10262,7 +10272,7 @@ export default function ChatScreen({
               }
             >
               {/* Attachment Dropdown Container */}
-              <div className="relative dropdown-container z-20">
+              <div className="relative dropdown-container z-20 lamma-composer-slot-attach shrink-0">
                 <button
                   ref={attachmentBtnRef}
                   type="button"
@@ -10323,14 +10333,14 @@ export default function ChatScreen({
 
               {/* Games button removed — games live in the Games room */}
 
-              <div className="flex items-center shrink-0 lamma-composer-cluster">
+              <div className="hidden md:flex items-center shrink-0 lamma-composer-cluster lamma-composer-desktop-only">
                 <button
                   type="button"
                   onClick={() => {
                     setShopTab("vip");
                     openModal("store");
                   }}
-                  className="flex items-center justify-center text-emerald-300 transition-all relative select-none cursor-pointer xl:hidden lamma-quiet-power-btn lamma-composer-tool"
+                  className="flex items-center justify-center text-emerald-300 transition-all relative select-none cursor-pointer lamma-quiet-power-btn lamma-composer-tool"
                   title="المتجر والاشتراكات التلقائية"
                 >
                   <Gift size={14} strokeWidth={2.1} />
@@ -10353,14 +10363,14 @@ export default function ChatScreen({
                 )}
               </div>
 
-              {/* Radio Dropdown Container */}
+              {/* Radio Dropdown Container — trigger hidden on mobile (see ⋯ menu) */}
               <div
-                className={`relative dropdown-container xl:hidden ${isPostsRoom ? "hidden" : ""}`}
+                className={`relative dropdown-container lamma-composer-radio-host ${isPostsRoom ? "hidden" : ""}`}
               >
                 <button
                   type="button"
                   onClick={() => toggleDropdown("radio")}
-                  className={`flex items-center justify-center transition-all lamma-composer-tool ${showRadioDropdown ? "lamma-quiet-power-btn-active text-green-300" : "text-gray-400 hover:text-white lamma-quiet-power-btn"}`}
+                  className={`hidden md:flex items-center justify-center transition-all lamma-composer-tool ${showRadioDropdown ? "lamma-quiet-power-btn-active text-green-300" : "text-gray-400 hover:text-white lamma-quiet-power-btn"}`}
                   title="راديو لمة"
                 >
                   <Radio size={14} />
@@ -10472,14 +10482,14 @@ export default function ChatScreen({
                 </AnimatePresence>
               </div>
 
-              {/* Music Dropdown Container */}
+              {/* Music Dropdown Container — trigger hidden on mobile (see ⋯ menu) */}
               <div
-                className={`relative dropdown-container xl:hidden ${isPostsRoom ? "hidden" : ""}`}
+                className={`relative dropdown-container lamma-composer-music-host ${isPostsRoom ? "hidden" : ""}`}
               >
                 <button
                   type="button"
                   onClick={() => toggleDropdown("music")}
-                  className={`flex items-center justify-center transition-all lamma-composer-tool ${showMusicDropdown ? "lamma-quiet-power-btn-active text-cyan-300" : "text-gray-400 hover:text-white lamma-quiet-power-btn"}`}
+                  className={`hidden md:flex items-center justify-center transition-all lamma-composer-tool ${showMusicDropdown ? "lamma-quiet-power-btn-active text-cyan-300" : "text-gray-400 hover:text-white lamma-quiet-power-btn"}`}
                   title="DJ الغرفة"
                 >
                   <Music size={14} />
@@ -10652,74 +10662,8 @@ export default function ChatScreen({
                 </AnimatePresence>
               </div>
 
-              <div className="relative">
-                {isVoiceRecording && voiceRecordingScopeRef.current === "room" && (
-                  <VoiceRecorderBar
-                    durationSec={voiceRecordingSec}
-                    maxDurationSec={120}
-                    onCancel={() => cancelVoiceRecording()}
-                    onSend={() => void sendRecordedVoiceMessage()}
-                    isUploading={isUploadingVoice}
-                  />
-                )}
-                <button
-                  type="button"
-                  onClick={() => void beginVoiceMessageRecording()}
-                  className={`items-center justify-center transition-all lamma-toolbar-btn lamma-composer-tool ${isPostsRoom ? "hidden" : "flex"} ${
-                    isVoiceRecording
-                      ? "text-red-400 animate-pulse"
-                      : "text-gray-400 hover:text-white"
-                  }`}
-                  title="رسالة صوتية (مثل واتساب)"
-                >
-                  <Mic size={14} />
-                </button>
-              </div>
-
-              <div
-                className={`relative dropdown-container ${isPostsRoom ? "hidden" : ""}`}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleDropdown("emoji")}
-                  className="flex items-center justify-center text-[#b7d96d] transition-all lamma-toolbar-btn lamma-composer-tool"
-                  title="إيموجي"
-                >
-                  <Smile size={14} />
-                </button>
-                <AnimatePresence>
-                  {showEmojiPicker && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute bottom-full right-0 mb-4 rounded-2xl p-3 w-64 z-50 max-h-[300px] flex flex-col lamma-popover-shell"
-                    >
-                      <div className="text-[10px] text-gray-400 font-bold mb-2 flex-shrink-0">
-                        الرموز التعبيرية
-                      </div>
-                      <div className="grid grid-cols-6 gap-2 overflow-y-auto">
-                        {EMOTICONS.map((e) => (
-                          <button
-                            key={e}
-                            onClick={() => {
-                              setInputText((prev) => prev + e);
-                              setShowEmojiPicker(false);
-                            }}
-                            className="p-1 hover:bg-white/10 rounded-lg text-xl transition-all cursor-pointer flex items-center justify-center flex-shrink-0"
-                          >
-                            {e}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
               {isPostsRoom && (
-                <div className="lamma-post-composer-note">
+                <div className="lamma-post-composer-note md:order-none w-full md:w-auto">
                   {canPublishPosts
                     ? "📰 اكتب منشورك هنا. استخدم Enter لسطر جديد و Ctrl+Enter للنشر."
                     : "👀 يمكن للجميع مشاهدة المنشورات، لكن النشر متاح للأعضاء المسجلين فقط."}
@@ -10765,10 +10709,87 @@ export default function ChatScreen({
                       : "المشاهدة متاحة للجميع، والنشر للمسجلين فقط"
                     : "اكتب رسالة..."
                 }
-                className={`flex-1 min-w-[120px] bg-transparent border-0 focus:ring-0 text-xs focus:outline-none px-2 text-right lamma-composer-field ${isPostsRoom ? "min-h-[76px] resize-none py-2" : "h-9 resize-none py-2 leading-5"}`}
+                className={`flex-1 min-w-0 w-full bg-transparent border-0 focus:ring-0 text-xs focus:outline-none px-2 text-right lamma-composer-field lamma-composer-slot-input ${isPostsRoom ? "min-h-[76px] resize-none py-2" : "h-9 resize-none py-2 leading-5"}`}
               />
 
-              <div className="relative dropdown-container flex-shrink-0">
+              <button
+                type="button"
+                onClick={handleSendMessage}
+                disabled={isPostsRoom && !canPublishPosts}
+                className="md:hidden w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all flex-shrink-0 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed lamma-send-orb lamma-composer-slot-send"
+                title={isPostsRoom ? "نشر" : "إرسال"}
+              >
+                <Send size={15} className="rotate-180" />
+              </button>
+
+              <div className="lamma-composer-tools-wrapper flex items-center gap-0.5 w-full min-w-0 md:contents shrink-0">
+              <div className="relative lamma-composer-slot-tool shrink-0">
+                {isVoiceRecording && voiceRecordingScopeRef.current === "room" && (
+                  <VoiceRecorderBar
+                    durationSec={voiceRecordingSec}
+                    maxDurationSec={120}
+                    onCancel={() => cancelVoiceRecording()}
+                    onSend={() => void sendRecordedVoiceMessage()}
+                    isUploading={isUploadingVoice}
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => void beginVoiceMessageRecording()}
+                  className={`items-center justify-center transition-all lamma-toolbar-btn lamma-composer-tool ${isPostsRoom ? "hidden" : "flex"} ${
+                    isVoiceRecording
+                      ? "text-red-400 animate-pulse"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                  title="رسالة صوتية (مثل واتساب)"
+                >
+                  <Mic size={14} />
+                </button>
+              </div>
+
+              <div
+                className={`relative dropdown-container lamma-composer-slot-tool shrink-0 ${isPostsRoom ? "hidden" : ""}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleDropdown("emoji")}
+                  className="flex items-center justify-center text-[#b7d96d] transition-all lamma-toolbar-btn lamma-composer-tool"
+                  title="إيموجي"
+                >
+                  <Smile size={14} />
+                </button>
+                <AnimatePresence>
+                  {showEmojiPicker && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute bottom-full right-0 mb-4 rounded-2xl p-3 w-64 z-50 max-h-[300px] flex flex-col lamma-popover-shell"
+                    >
+                      <div className="text-[10px] text-gray-400 font-bold mb-2 flex-shrink-0">
+                        الرموز التعبيرية
+                      </div>
+                      <div className="grid grid-cols-6 gap-2 overflow-y-auto">
+                        {EMOTICONS.map((e) => (
+                          <button
+                            key={e}
+                            onClick={() => {
+                              setInputText((prev) => prev + e);
+                              setShowEmojiPicker(false);
+                            }}
+                            className="p-1 hover:bg-white/10 rounded-lg text-xl transition-all cursor-pointer flex items-center justify-center flex-shrink-0"
+                          >
+                            {e}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="relative dropdown-container flex-shrink-0 lamma-composer-slot-tool">
                 <button
                   type="button"
                   onClick={() => toggleDropdown("settings" as any)}
@@ -10935,11 +10956,95 @@ export default function ChatScreen({
                 </AnimatePresence>
               </div>
 
+              <div className="relative dropdown-container flex-shrink-0 lamma-composer-slot-tool md:hidden">
+                <button
+                  ref={composerMoreBtnRef}
+                  type="button"
+                  onClick={() => toggleDropdown("composerMore")}
+                  className={`flex items-center justify-center transition-all lamma-composer-tool ${showComposerMoreDropdown ? "bg-white/10 text-white" : "text-gray-400 hover:text-white lamma-toolbar-btn"}`}
+                  title="المزيد"
+                >
+                  <MoreHorizontal size={16} />
+                </button>
+                <FloatingDropdownPortal
+                  open={showComposerMoreDropdown}
+                  anchorRef={composerMoreBtnRef}
+                  align="end"
+                  placement="above"
+                  className="rounded-2xl p-2 grid grid-cols-1 gap-1 w-44 lamma-popover-shell"
+                >
+                  {!isPostsRoom && (
+                    <>
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 p-2 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer lamma-list-item hover:bg-white/5"
+                        onClick={() => {
+                          setShopTab("vip");
+                          openModal("store");
+                          setShowComposerMoreDropdown(false);
+                        }}
+                      >
+                        <Gift size={14} className="text-emerald-300 shrink-0" />
+                        <span>المتجر</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 p-2 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer lamma-list-item hover:bg-white/5"
+                        onClick={() => {
+                          toggleDropdown("radio");
+                        }}
+                      >
+                        <Radio size={14} className="text-green-300 shrink-0" />
+                        <span>راديو لمة</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 p-2 rounded-xl text-xs text-gray-200 w-full text-right cursor-pointer lamma-list-item hover:bg-white/5"
+                        onClick={() => {
+                          toggleDropdown("music");
+                        }}
+                      >
+                        <Music size={14} className="text-cyan-300 shrink-0" />
+                        <span>DJ الغرفة</span>
+                      </button>
+                    </>
+                  )}
+                  {isAdminRole && !isOwnerRole && (
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 p-2 rounded-xl text-xs text-red-300 w-full text-right cursor-pointer lamma-list-item hover:bg-white/5"
+                      onClick={() => {
+                        openModal("admin");
+                        setShowComposerMoreDropdown(false);
+                      }}
+                    >
+                      <Shield size={14} className="shrink-0" />
+                      <span>لوحة الإدارة</span>
+                    </button>
+                  )}
+                  {isOwnerRole && (
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 p-2 rounded-xl text-xs text-yellow-200 w-full text-right cursor-pointer lamma-list-item hover:bg-white/5"
+                      onClick={() => {
+                        setLeadershipTab("quick");
+                        openModal("leadership");
+                        setShowComposerMoreDropdown(false);
+                      }}
+                    >
+                      <Crown size={14} className="shrink-0" />
+                      <span>غرفة القيادة</span>
+                    </button>
+                  )}
+                </FloatingDropdownPortal>
+              </div>
+              </div>
+
               <button
                 type="button"
                 onClick={handleSendMessage}
                 disabled={isPostsRoom && !canPublishPosts}
-                className="w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all flex-shrink-0 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed lamma-send-orb"
+                className="hidden md:flex w-9 h-9 rounded-full items-center justify-center active:scale-95 transition-all flex-shrink-0 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed lamma-send-orb lamma-composer-slot-send"
                 title={isPostsRoom ? "نشر" : "إرسال"}
               >
                 <Send size={15} className="rotate-180" />
