@@ -197,6 +197,9 @@ import { useSocialFeed } from "../hooks/useSocialFeed";
 import { useWebRTCCalls } from "../hooks/useWebRTCCalls";
 import { useOnlinePresence, type PresenceUpdateEvent } from "../hooks/useOnlinePresence";
 import { resolveEffectiveMemberRole, resolveGranterEffectiveRole } from "../lib/memberRoleResolution";
+import { LuxuryDMList } from "./mobile/LuxuryDMList";
+import { LuxuryDMChat } from "./mobile/LuxuryDMChat";
+import { LuxuryIncomingCallModal } from "./mobile/LuxuryIncomingCallModal";
 import {
   fetchRoomMemberRoles,
   promoteMemberRole,
@@ -613,6 +616,63 @@ export default function ChatScreen({
     "sidebar" | "chat" | "private" | "members"
   >("chat");
   const [openReactionMsgId, setOpenReactionMsgId] = useState<string | null>(null);
+
+  // Luxury Mobile UI - DM Components
+  const [showDmList, setShowDmList] = useState(false);
+  const [showDmChat, setShowDmChat] = useState(false);
+  const [selectedDmContact, setSelectedDmContact] = useState<any>(null);
+  const [showIncomingCallModal, setShowIncomingCallModal] = useState(false);
+  const [incomingCallInfo, setIncomingCallInfo] = useState<any>(null);
+
+  // DM Call Handlers
+  const handleDmAudioCall = (contactId: string) => {
+    initiateCall(contactId, "audio");
+    setShowDmChat(false);
+  };
+
+  const handleDmVideoCall = (contactId: string) => {
+    initiateCall(contactId, "video");
+    setShowDmChat(false);
+  };
+
+  const handleOpenDmList = () => {
+    setShowDmList(true);
+  };
+
+  const handleCloseDmList = () => {
+    setShowDmList(false);
+  };
+
+  const handleOpenDmChat = (contact: any) => {
+    setSelectedDmContact(contact);
+    setShowDmChat(true);
+    setShowDmList(false);
+  };
+
+  const handleCloseDmChat = () => {
+    setShowDmChat(false);
+    setSelectedDmContact(null);
+  };
+
+  // Sample DM Contacts (would be fetched from Supabase in production)
+  const sampleDmContacts = [
+    {
+      id: "1",
+      name: "أحمد محمد",
+      avatar: "أ",
+      lastMessage: "مرحباً! كيف حالك؟",
+      time: "10:30",
+      online: true,
+    },
+    {
+      id: "2",
+      name: "سارة علي",
+      avatar: "س",
+      lastMessage: "شكراً لك",
+      time: "09:45",
+      online: false,
+    },
+  ];
 
   const [showFeaturesTray, setShowFeaturesTray] = useState(false);
   const [showMembersList, setShowMembersList] = useState(false);
@@ -13246,6 +13306,37 @@ export default function ChatScreen({
         multiple
         className="hidden"
         onChange={handleOwnerMusicUpload}
+      />
+
+      {/* Luxury Mobile UI - DM Components */}
+      <LuxuryDMList
+        isOpen={showDmList}
+        onClose={handleCloseDmList}
+        onOpenChat={handleOpenDmChat}
+        contacts={sampleDmContacts}
+        currentUser={currentUser}
+      />
+
+      <LuxuryDMChat
+        isOpen={showDmChat}
+        onClose={handleCloseDmChat}
+        contact={selectedDmContact}
+        currentUser={currentUser}
+        onCallAudio={handleDmAudioCall}
+        onCallVideo={handleDmVideoCall}
+      />
+
+      <LuxuryIncomingCallModal
+        isOpen={showIncomingCallModal}
+        caller={incomingCallInfo || { name: "مستخدم", avatar: "م", callType: "audio" }}
+        onAccept={() => {
+          setShowIncomingCallModal(false);
+          acceptIncoming();
+        }}
+        onReject={() => {
+          setShowIncomingCallModal(false);
+          rejectIncoming();
+        }}
       />
     </div>
   );

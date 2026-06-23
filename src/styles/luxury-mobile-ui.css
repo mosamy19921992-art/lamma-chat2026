@@ -1,0 +1,530 @@
+/* ── Luxury Mobile UI 2026 - Crystal & Neon Theme ── */
+/* Native-Like Animations, Spring Physics, Messenger-Style DMs */
+
+@media (max-width: 767px) {
+  /* ── 1. Dynamic Viewport Units (Keyboard Resize Fix) ── */
+  html,
+  body,
+  #root,
+  .app-container {
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  @supports (height: 100svh) {
+    html,
+    body,
+    #root,
+    .app-container {
+      height: 100svh;
+      max-height: 100svh;
+    }
+  }
+
+  /* ── 2. iOS Ultra Blur for Header & Bottom Nav ── */
+  .lamma-header {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1000 !important;
+    background: rgba(6, 10, 14, 0.85) !important;
+    backdrop-filter: blur(40px) saturate(1.8) brightness(1.1) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(1.8) brightness(1.1) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .lamma-pwa-bottom-nav {
+    background: rgba(8, 12, 18, 0.92) !important;
+    backdrop-filter: blur(40px) saturate(1.8) brightness(1.05) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(1.8) brightness(1.05) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .lamma-pwa-bottom-nav-inner {
+    background: linear-gradient(
+      180deg,
+      rgba(18, 24, 32, 0.98) 0%,
+      rgba(8, 12, 18, 1) 100%
+    ) !important;
+  }
+
+  /* ── 3. 1px Neon Glow Borders for Buttons & Chat Box ── */
+  .lamma-accent-btn {
+    position: relative;
+    border: 1px solid rgba(16, 185, 129, 0.4) !important;
+    box-shadow: 
+      0 0 0 1px rgba(16, 185, 129, 0.1),
+      0 0 20px rgba(16, 185, 129, 0.2),
+      inset 0 0 20px rgba(16, 185, 129, 0.05) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .lamma-accent-btn:active {
+    transform: scale(0.96) !important;
+    box-shadow: 
+      0 0 0 1px rgba(16, 185, 129, 0.3),
+      0 0 30px rgba(16, 185, 129, 0.4),
+      inset 0 0 30px rgba(16, 185, 129, 0.15) !important;
+  }
+
+  .lamma-chat-core-shell {
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    box-shadow: 
+      0 0 0 1px rgba(255, 255, 255, 0.02),
+      0 0 40px rgba(16, 185, 129, 0.05) !important;
+  }
+
+  /* ── 4. Spring Physics Swipe Gestures for Sidebar ── */
+  .lamma-mobile-sidebar-shell {
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    will-change: transform !important;
+  }
+
+  .lamma-mobile-sidebar-shell.swipe-left {
+    transform: translateX(-100%) !important;
+  }
+
+  .lamma-mobile-sidebar-shell.swipe-right {
+    transform: translateX(0) !important;
+  }
+
+  /* Swipe overlay with spring bounce */
+  .lamma-swipe-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 999;
+  }
+
+  .lamma-swipe-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ── 5. Touch Ripple Effect for Buttons ── */
+  .lamma-ripple-button {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lamma-ripple-button::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.4s ease-out, height 0.4s ease-out, opacity 0.4s ease-out;
+    opacity: 0;
+  }
+
+  .lamma-ripple-button:active::after {
+    width: 200px;
+    height: 200px;
+    opacity: 1;
+    transition: width 0s, height 0s, opacity 0.2s ease-out;
+  }
+
+  /* ── 6. Messenger-Style DM List ── */
+  .lamma-dm-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: rgba(6, 10, 14, 0.5);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .lamma-dm-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+  }
+
+  .lamma-dm-item:active {
+    background: rgba(255, 255, 255, 0.05);
+    transform: scale(0.98);
+  }
+
+  .lamma-dm-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 95, 70, 0.2));
+    border: 2px solid rgba(16, 185, 129, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: #10b981;
+    position: relative;
+  }
+
+  .lamma-dm-online-indicator {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 14px;
+    height: 14px;
+    background: #10b981;
+    border: 2px solid rgba(6, 10, 14, 1);
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  }
+
+  .lamma-dm-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .lamma-dm-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #ecfdf5;
+    margin-bottom: 4px;
+  }
+
+  .lamma-dm-last-message {
+    font-size: 13px;
+    color: rgba(148, 163, 184, 0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lamma-dm-time {
+    font-size: 11px;
+    color: rgba(148, 163, 184, 0.5);
+  }
+
+  /* ── 7. Messenger-Style DM Chat ── */
+  .lamma-dm-chat-container {
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 10, 14, 0.98);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .lamma-dm-chat-container.active {
+    transform: translateX(0);
+  }
+
+  .lamma-dm-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    background: rgba(6, 10, 14, 0.95);
+    backdrop-filter: blur(40px) saturate(1.8);
+    -webkit-backdrop-filter: blur(40px) saturate(1.8);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    position: relative;
+  }
+
+  .lamma-dm-header-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .lamma-dm-call-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #10b981;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .lamma-dm-call-btn:active {
+    transform: scale(0.9);
+    background: rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  }
+
+  .lamma-dm-call-btn.video {
+    color: #a855f7;
+    background: rgba(168, 85, 247, 0.15);
+    border-color: rgba(168, 85, 247, 0.4);
+  }
+
+  .lamma-dm-call-btn.video:active {
+    background: rgba(168, 85, 247, 0.3);
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+  }
+
+  .lamma-dm-messages {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .lamma-dm-message {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    line-height: 1.4;
+    position: relative;
+    animation: messageSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes messageSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .lamma-dm-message.sent {
+    align-self: flex-end;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(6, 95, 70, 0.3));
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    color: #d1fae5;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+  }
+
+  .lamma-dm-message.received {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    border-bottom-left-radius: 4px;
+  }
+
+  .lamma-dm-input-area {
+    padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    background: rgba(6, 10, 14, 0.95);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .lamma-dm-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 12px 20px;
+    font-size: 14px;
+    color: #ecfdf5;
+    outline: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .lamma-dm-input:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+  }
+
+  .lamma-dm-send-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+  }
+
+  .lamma-dm-send-btn:active {
+    transform: scale(0.9);
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+  }
+
+  /* ── 8. Incoming Call Modal (Messenger-Style) ── */
+  .lamma-incoming-call-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes modalFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .lamma-call-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(6, 95, 70, 0.3));
+    border: 3px solid rgba(16, 185, 129, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 700;
+    color: #10b981;
+    margin-bottom: 20px;
+    animation: avatarPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes avatarPulse {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(16, 185, 129, 0.6);
+    }
+  }
+
+  .lamma-call-info {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .lamma-call-name {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ecfdf5;
+    margin-bottom: 8px;
+  }
+
+  .lamma-call-status {
+    font-size: 14px;
+    color: rgba(148, 163, 184, 0.8);
+  }
+
+  .lamma-call-actions {
+    display: flex;
+    gap: 24px;
+  }
+
+  .lamma-call-action-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .lamma-call-accept {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+  }
+
+  .lamma-call-accept:active {
+    transform: scale(0.9);
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.6);
+  }
+
+  .lamma-call-reject {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
+  }
+
+  .lamma-call-reject:active {
+    transform: scale(0.9);
+    box-shadow: 0 0 40px rgba(239, 68, 68, 0.6);
+  }
+
+  /* ── 9. Back Button with Spring Animation ── */
+  .lamma-dm-back-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ecfdf5;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .lamma-dm-back-btn:active {
+    transform: scale(0.9);
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  /* ── 10. Smooth Scroll for Messages ── */
+  .lamma-dm-messages {
+    scroll-behavior: smooth;
+  }
+
+  .lamma-dm-messages::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .lamma-dm-messages::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .lamma-dm-messages::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+  }
+}

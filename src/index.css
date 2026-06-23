@@ -12,6 +12,7 @@
 @import "./styles/ui-polish-audit.css";
 @import "./styles/ultimate-design-system.css";
 @import "tailwindcss";
+@import "./styles/luxury-mobile-ui.css";
 
 @theme {
   --font-sans: "Cairo", "Tajawal", "Space Grotesk", system-ui, sans-serif;
