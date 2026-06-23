@@ -3532,7 +3532,6 @@ export default function ChatScreen({
     }
 
     ownerSettingsSyncTimeoutRef.current = setTimeout(async () => {
-      const universalStyle = loadUniversalStyleLocal();
       const payload: OwnerSettingsRow = {
         id: OWNER_SETTINGS_ROW_ID,
         ghost_mode: isGhostMode,
@@ -3555,7 +3554,6 @@ export default function ChatScreen({
         bot_rule_anti_links: botRuleAntiLinks,
         bot_rule_anti_spam: botRuleAntiSpam,
         bot_rule_swear_filter: botRuleSwearFilter,
-        universal_style_config: universalStyle as unknown as Record<string, unknown>,
       };
 
       const { error } = await supabase
@@ -5795,6 +5793,7 @@ export default function ChatScreen({
     previewDesignConfig,
     commitPendingDesignPreview,
     cancelPendingDesignPreview,
+    flushAllDesignPersistence,
     verifyDesignPreviewDom,
     hasPendingDesignPreview,
     isApplyingStyle,
@@ -5817,8 +5816,42 @@ export default function ChatScreen({
     }
   }, [resetChatBackgroundToDefault]);
 
-  const handleStartDesignInspect = useCallback(() => {
+  const [isFlushingDesignSave, setIsFlushingDesignSave] = useState(false);
+
+  const handleCloseActiveModal = useCallback(async () => {
+    const isDesignOpen =
+      activeModal === "leadership" && leadershipTab === "design" && isOwnerRole;
+    if (isDesignOpen) {
+      setIsFlushingDesignSave(true);
+      try {
+        const result = await flushAllDesignPersistence();
+        if (!result.ok) {
+          alert(
+            result.localOnly
+              ? `⚠️ ${result.message}\n\n(اتحفظ على جهازك — السيرفر رفض.)`
+              : `⚠️ ${result.message}`,
+          );
+        }
+      } finally {
+        setIsFlushingDesignSave(false);
+      }
+    }
+    setActiveModal(null);
+  }, [
+    activeModal,
+    flushAllDesignPersistence,
+    isOwnerRole,
+    leadershipTab,
+  ]);
+
+  const handleStartDesignInspect = useCallback(async () => {
     if (!isOwnerRole) return;
+    setIsFlushingDesignSave(true);
+    try {
+      await flushAllDesignPersistence();
+    } finally {
+      setIsFlushingDesignSave(false);
+    }
     setActiveModal(null);
     setDesignInspectActive(true);
     setInspectSelectedRegion(null);
@@ -5826,7 +5859,7 @@ export default function ChatScreen({
     setInspectTargetEl(null);
     setInspectLastSummary("");
     setInspectPreviewConfig(null);
-  }, [isOwnerRole]);
+  }, [flushAllDesignPersistence, isOwnerRole]);
 
   const handleExitDesignInspect = useCallback(() => {
     if (hasPendingDesignPreview) cancelPendingDesignPreview();
@@ -11687,9 +11720,10 @@ export default function ChatScreen({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setActiveModal(null);
+                    void handleCloseActiveModal();
                   }}
-                  className="p-1.5 rounded-xl bg-red-400/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer relative z-50"
+                  disabled={isFlushingDesignSave}
+                  className="p-1.5 rounded-xl bg-red-400/10 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer relative z-50 disabled:opacity-40"
                   onPointerDown={(e) => e.stopPropagation()}
                 >
                   <X size={16} />
@@ -11833,10 +11867,19 @@ export default function ChatScreen({
                               { id: "owner", name: "بوت التصميم AI", flag: "🎨" },
                             ]);
                           }
-                          handleSwitchRoom("owner");
-                          setActiveModal(null);
-                          setIsSidebarOpen(false);
-                          setMobileTab("chat");
+                          void (async () => {
+                            if (
+                              activeModal === "leadership" &&
+                              leadershipTab === "design" &&
+                              isOwnerRole
+                            ) {
+                              await flushAllDesignPersistence();
+                            }
+                            handleSwitchRoom("owner");
+                            setActiveModal(null);
+                            setIsSidebarOpen(false);
+                            setMobileTab("chat");
+                          })();
                         }}
                         className="w-full py-2.5 rounded-xl text-[10px] font-black bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all cursor-pointer"
                       >
@@ -12212,6 +12255,7 @@ export default function ChatScreen({
                     previewDesignConfig={previewDesignConfig}
                     committedConfig={committedConfig}
                     getEditableDesignConfig={getEditableDesignConfig}
+                    flushAllDesignPersistence={flushAllDesignPersistence}
                     commitPendingDesignPreview={commitPendingDesignPreview}
                     verifyDesignPreviewDom={verifyDesignPreviewDom}
                     hasPendingDesignPreview={hasPendingDesignPreview}

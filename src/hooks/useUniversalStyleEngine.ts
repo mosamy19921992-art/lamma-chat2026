@@ -29,6 +29,9 @@ import {
   saveUniversalStyleLocal,
   syncUniversalStyleToSupabase,
 } from "../services/design/universalStyleStorage";
+import { attachOverlaysToConfig } from "../services/design/designOverlayBundle";
+import { flushDesignOverlaysSync } from "../services/design/designOverlaySync";
+import { resetRemoteDesignThemePrefetch } from "../services/design/designThemeBoot";
 import {
   createDefaultUniversalStyle,
   normalizeUniversalStyleConfig,
@@ -228,21 +231,23 @@ export function useUniversalStyleEngine({
 
       try {
         const access = await checkOwnerWriteAccessWithClaim();
-        const config = session.config;
+        const merged = attachOverlaysToConfig(
+          normalizeUniversalStyleConfig(session.config),
+        );
 
-        setCommittedConfig(config);
-        saveUniversalStyleLocal(config);
+        setCommittedConfig(merged);
+        saveUniversalStyleLocal(merged);
         clearUniversalStylePreviewDomOnly();
-        ensureUniversalStyleApplied(config, { preview: false });
+        ensureUniversalStyleApplied(merged, { preview: false });
         previewSnapshotRef.current = null;
-        previewMemoryRef.current = config;
+        previewMemoryRef.current = merged;
 
         if (pendingImportPackRef.current) {
           commitImportPackVisuals(pendingImportPackRef.current);
           pendingImportPackRef.current = null;
         }
 
-        if (setOwnerBgImage && isDefaultWallpaperConfig(config)) {
+        if (setOwnerBgImage && isDefaultWallpaperConfig(merged)) {
           setOwnerBgImage(null);
         }
 
@@ -258,11 +263,12 @@ export function useUniversalStyleEngine({
           };
         }
 
-        await syncUniversalStyleToSupabase(config, ownerSettingsRowId);
+        await syncUniversalStyleToSupabase(merged, ownerSettingsRowId);
+        resetRemoteDesignThemePrefetch();
 
-        const successMsg = isDefaultWallpaperConfig(config)
+        const successMsg = isDefaultWallpaperConfig(merged)
           ? "✅ رجّعت الخلفية الافتراضية (/MAN.png) للجميع."
-          : `✅ تم حفظ «${config.label}» على السيرفر — كل المستخدمين هيشوفوه.`;
+          : `✅ تم حفظ «${merged.label}» على السيرفر — كل المستخدمين هيشوفوه.`;
 
         if (!options?.silent) {
           addLammaBotMessage(activeRoomId, successMsg);
@@ -426,6 +432,45 @@ export function useUniversalStyleEngine({
     return result;
   }, [applyStyleGlobally, isOwner]);
 
+  /** Flush pending colors + shape overlays before closing design UI or leaving page. */
+  const flushAllDesignPersistence = useCallback(async (): Promise<DesignCommitResult> => {
+    let colorResult: DesignCommitResult | null = null;
+    if (previewMemoryRef.current) {
+      colorResult = await commitPendingDesignPreview();
+    }
+    try {
+      await flushDesignOverlaysSync(ownerSettingsRowId);
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "فشل حفظ إعدادات الشكل";
+      const formatted = formatOwnerWriteDeniedMessage(msg);
+      return (
+        colorResult ?? {
+          ok: false,
+          message: formatted,
+          localOnly: true,
+        }
+      );
+    }
+    if (colorResult && !colorResult.ok) {
+      return colorResult;
+    }
+    return {
+      ok: true,
+      message:
+        colorResult?.message ?? "✅ تم حفظ إعدادات الشكل على السيرفر.",
+    };
+  }, [commitPendingDesignPreview, ownerSettingsRowId]);
+
+  useEffect(() => {
+    if (!isOwner || typeof window === "undefined") return;
+    const onPageHide = () => {
+      void flushAllDesignPersistence();
+    };
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, [flushAllDesignPersistence, isOwner]);
+
   const verifyDesignPreviewDom = useCallback((): DesignCommitResult => {
     const state = readUniversalStyleDomState();
     if (!state) {
@@ -477,6 +522,7 @@ export function useUniversalStyleEngine({
     previewDesignConfig,
     commitPendingDesignPreview,
     cancelPendingDesignPreview,
+    flushAllDesignPersistence,
     verifyDesignPreviewDom,
     hasPendingDesignPreview,
     isApplyingStyle,

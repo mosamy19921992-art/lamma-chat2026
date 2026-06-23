@@ -86,6 +86,7 @@ export interface StyleSandboxSession {
 }
 
 export const UNIVERSAL_STYLE_STORAGE_KEY = "lamma_universal_style_config";
+export const UNIVERSAL_STYLE_SAVED_AT_KEY = "lamma_universal_style_saved_at";
 
 export function createDefaultUniversalStyle(): UniversalStyleConfig {
   return {

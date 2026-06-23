@@ -96,7 +96,7 @@ const MODERN_THEME_PRESETS: {
   { name: "ماجنتا ليلي", bg: "#0c0510", surface: "rgba(28,12,34,0.72)", text: "#fdf4ff", accent: "#d946ef", accent2: "#e879f9" },
 ];
 
-export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode, previewDesignPrompt, previewDesignPromptAi, previewDesignConfig, committedConfig, getEditableDesignConfig, cancelPendingDesignPreview, commitPendingDesignPreview, verifyDesignPreviewDom, hasPendingDesignPreview, isApplyingStyle, ownerWriteAccessOk }: any) => {
+export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode, previewDesignPrompt, previewDesignPromptAi, previewDesignConfig, committedConfig, getEditableDesignConfig, cancelPendingDesignPreview, commitPendingDesignPreview, flushAllDesignPersistence, verifyDesignPreviewDom, hasPendingDesignPreview, isApplyingStyle, ownerWriteAccessOk }: any) => {
   type PreviewKind = "glass" | "face" | "template" | "column" | "import-pack" | "bubble" | "chase" | null;
   type SaveStatus = "idle" | "preview" | "saving" | "saved" | "local-only" | "error";
 
@@ -163,9 +163,10 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
   };
 
   const flushSave = async (): Promise<void> => {
-    if (!commitPendingDesignPreview) return;
+    const saver = flushAllDesignPersistence ?? commitPendingDesignPreview;
+    if (!saver) return;
     setSaveStatus("saving");
-    const result = await commitPendingDesignPreview();
+    const result = await saver();
     if (result.ok) {
       setSaveStatus("saved");
       setSaveMessage(result.message);
@@ -179,12 +180,13 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
   };
 
   const scheduleAutoSave = () => {
-    if (!isOwnerRole || !commitPendingDesignPreview) return;
+    if (!isOwnerRole) return;
+    if (!flushAllDesignPersistence && !commitPendingDesignPreview) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
       autoSaveTimerRef.current = null;
       void flushSave();
-    }, 700);
+    }, 400);
   };
 
   const previewAndTrack = (config: UniversalStyleConfig) => {

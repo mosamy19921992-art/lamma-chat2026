@@ -2,6 +2,7 @@ import { supabase } from "../../lib/supabase";
 import { applyUniversalStyleToDom } from "./universalStyleApply";
 import { attachOverlaysToConfig } from "./designOverlayBundle";
 import {
+  UNIVERSAL_STYLE_SAVED_AT_KEY,
   UNIVERSAL_STYLE_STORAGE_KEY,
   createDefaultUniversalStyle,
   normalizeUniversalStyleConfig,
@@ -9,6 +10,8 @@ import {
 } from "./universalStyleTypes";
 
 const SUPABASE_WRITE_TIMEOUT_MS = 10_000;
+/** Local theme wins over remote if saved this many ms after remote updated_at */
+const LOCAL_NEWER_GRACE_MS = 800;
 
 async function withWriteTimeout<T>(
   promise: PromiseLike<T>,
@@ -28,6 +31,26 @@ async function withWriteTimeout<T>(
   }
 }
 
+export function getUniversalStyleLocalSavedAt(): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    const raw = localStorage.getItem(UNIVERSAL_STYLE_SAVED_AT_KEY);
+    const parsed = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(parsed) ? parsed : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function markUniversalStyleSavedAt(ts = Date.now()): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(UNIVERSAL_STYLE_SAVED_AT_KEY, String(ts));
+  } catch {
+    // ignore
+  }
+}
+
 export function loadUniversalStyleLocal(): UniversalStyleConfig | null {
   try {
     const raw = localStorage.getItem(UNIVERSAL_STYLE_STORAGE_KEY);
@@ -40,9 +63,13 @@ export function loadUniversalStyleLocal(): UniversalStyleConfig | null {
   }
 }
 
-export function saveUniversalStyleLocal(config: UniversalStyleConfig): void {
+export function saveUniversalStyleLocal(
+  config: UniversalStyleConfig,
+  savedAt?: number,
+): void {
   try {
     localStorage.setItem(UNIVERSAL_STYLE_STORAGE_KEY, JSON.stringify(config));
+    markUniversalStyleSavedAt(savedAt ?? Date.now());
   } catch {
     // ignore quota
   }
@@ -56,31 +83,38 @@ export async function syncUniversalStyleToSupabase(
   const merged = options?.skipOverlayCollect
     ? normalizeUniversalStyleConfig(config)
     : attachOverlaysToConfig(config);
-  saveUniversalStyleLocal(merged);
+  const savedAt = Date.now();
+  saveUniversalStyleLocal(merged, savedAt);
   if (!supabase) return;
 
   const patch = {
     universal_style_config: merged,
-    updated_at: new Date().toISOString(),
+    updated_at: new Date(savedAt).toISOString(),
   };
 
-  const { error } = await withWriteTimeout(
+  const { data, error } = await withWriteTimeout(
     supabase
       .from("owner_settings")
       .update(patch)
-      .eq("id", ownerSettingsRowId),
+      .eq("id", ownerSettingsRowId)
+      .select("updated_at")
+      .maybeSingle(),
     "حفظ التصميم",
   );
 
   if (error) {
-    const { error: upsertError } = await withWriteTimeout(
-      supabase.from("owner_settings").upsert(
-        {
-          id: ownerSettingsRowId,
-          ...patch,
-        },
-        { onConflict: "id" },
-      ),
+    const { data: upsertData, error: upsertError } = await withWriteTimeout(
+      supabase
+        .from("owner_settings")
+        .upsert(
+          {
+            id: ownerSettingsRowId,
+            ...patch,
+          },
+          { onConflict: "id" },
+        )
+        .select("updated_at")
+        .maybeSingle(),
       "حفظ التصميم (upsert)",
     );
     if (upsertError) {
@@ -99,45 +133,90 @@ export async function syncUniversalStyleToSupabase(
       }
       throw new Error(upsertError.message);
     }
+    const remoteTs = parseRemoteUpdatedAt(
+      (upsertData as { updated_at?: string } | null)?.updated_at,
+    );
+    if (remoteTs) saveUniversalStyleLocal(merged, remoteTs);
+    return;
   }
+
+  const remoteTs = parseRemoteUpdatedAt(
+    (data as { updated_at?: string } | null)?.updated_at,
+  );
+  if (remoteTs) saveUniversalStyleLocal(merged, remoteTs);
+}
+
+function parseRemoteUpdatedAt(value?: string | null): number | null {
+  if (!value) return null;
+  const ts = new Date(value).getTime();
+  return Number.isFinite(ts) ? ts : null;
 }
 
 export async function loadUniversalStyleFromSupabase(
   ownerSettingsRowId = "global",
 ): Promise<UniversalStyleConfig | null> {
-  if (!supabase) return loadUniversalStyleLocal();
+  const localCached = loadUniversalStyleLocal();
+  const localSavedAt = getUniversalStyleLocalSavedAt();
+
+  if (!supabase) return localCached;
 
   const { data, error } = await supabase
     .from("owner_settings")
-    .select("universal_style_config")
+    .select("universal_style_config, updated_at")
     .eq("id", ownerSettingsRowId)
     .maybeSingle();
 
   if (error) {
     console.warn("[UniversalStyle] load failed:", error.message);
-    return loadUniversalStyleLocal();
+    return localCached;
   }
 
-  const remote = (data as { universal_style_config?: UniversalStyleConfig } | null)
-    ?.universal_style_config;
+  const row = data as {
+    universal_style_config?: UniversalStyleConfig;
+    updated_at?: string;
+  } | null;
+  const remoteUpdatedAt = parseRemoteUpdatedAt(row?.updated_at) ?? 0;
+  const remote = row?.universal_style_config;
+
+  if (
+    localCached &&
+    localSavedAt > remoteUpdatedAt + LOCAL_NEWER_GRACE_MS
+  ) {
+    console.info(
+      "[UniversalStyle] local theme is newer than remote — keeping local and re-pushing",
+    );
+    void syncUniversalStyleToSupabase(localCached, ownerSettingsRowId).catch(
+      (pushError) => {
+        console.warn("[UniversalStyle] re-push local theme failed:", pushError);
+      },
+    );
+    return normalizeUniversalStyleConfig(localCached);
+  }
 
   if (remote?.version === 1) {
     const normalized = normalizeUniversalStyleConfig(remote);
-    saveUniversalStyleLocal(normalized);
+    saveUniversalStyleLocal(
+      normalized,
+      remoteUpdatedAt > 0 ? remoteUpdatedAt : Date.now(),
+    );
     return normalized;
   }
 
-  return loadUniversalStyleLocal();
+  return localCached;
 }
 
 export function ensureUniversalStyleBoot(): UniversalStyleConfig {
   return loadUniversalStyleLocal() || createDefaultUniversalStyle();
 }
 
-/** Apply remote/local universal style bundle (DOM + localStorage). */
+/** Apply remote/local universal style bundle (DOM + localStorage + overlays). */
 export function persistAndApplyUniversalStyle(config: UniversalStyleConfig): void {
-  saveUniversalStyleLocal(config);
-  applyUniversalStyleToDom(config, { preview: false });
+  const normalized = normalizeUniversalStyleConfig(config);
+  saveUniversalStyleLocal(normalized);
+  applyUniversalStyleToDom(normalized, { preview: false });
+  void import("./designOverlayBundle").then(({ applyDesignOverlays }) => {
+    applyDesignOverlays(normalized.overlays);
+  });
 }
 
 /** True when universal style uses the built-in chat wallpaper (MAN.png layer). */
