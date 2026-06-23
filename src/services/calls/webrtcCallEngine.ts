@@ -193,4 +193,75 @@ export class WebRTCCallEngine {
     this.closePeerConnection(true);
     this.serverIndex = 0;
   }
+
+  /** Toggle microphone track enabled state */
+  toggleMic(): boolean {
+    if (!this.localStream) return false;
+    const audioTrack = this.localStream.getAudioTracks()[0];
+    if (!audioTrack) return false;
+    audioTrack.enabled = !audioTrack.enabled;
+    return audioTrack.enabled;
+  }
+
+  /** Get current mic state */
+  isMicEnabled(): boolean {
+    if (!this.localStream) return false;
+    const audioTrack = this.localStream.getAudioTracks()[0];
+    return audioTrack?.enabled ?? false;
+  }
+
+  /** Toggle camera track enabled state */
+  toggleCamera(): boolean {
+    if (!this.localStream) return false;
+    const videoTrack = this.localStream.getVideoTracks()[0];
+    if (!videoTrack) return false;
+    videoTrack.enabled = !videoTrack.enabled;
+    return videoTrack.enabled;
+  }
+
+  /** Get current camera state */
+  isCameraEnabled(): boolean {
+    if (!this.localStream) return false;
+    const videoTrack = this.localStream.getVideoTracks()[0];
+    return videoTrack?.enabled ?? false;
+  }
+
+  /** Switch between front and back camera on mobile devices */
+  async switchCamera(): Promise<boolean> {
+    if (!this.localStream) return false;
+    const videoTrack = this.localStream.getVideoTracks()[0];
+    if (!videoTrack) return false;
+
+    const currentSettings = videoTrack.getSettings();
+    const currentFacingMode = currentSettings?.facingMode;
+
+    const newFacingMode = currentFacingMode === "user" ? "environment" : "user";
+
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: newFacingMode },
+        audio: false,
+      });
+
+      const newVideoTrack = newStream.getVideoTracks()[0];
+
+      if (this.pc) {
+        const sender = this.pc.getSenders().find(
+          (s) => s.track?.kind === "video"
+        );
+        if (sender) {
+          await sender.replaceTrack(newVideoTrack);
+        }
+      }
+
+      videoTrack.stop();
+      this.localStream.removeTrack(videoTrack);
+      this.localStream.addTrack(newVideoTrack);
+
+      return true;
+    } catch (err) {
+      console.error("Failed to switch camera:", err);
+      return false;
+    }
+  }
 }

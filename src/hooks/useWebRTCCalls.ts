@@ -83,6 +83,8 @@ export function useWebRTCCalls({
   const pendingOfferTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [isMicMuted, setIsMicMuted] = useState(false);
+  const [isCameraOff, setIsCameraOff] = useState(false);
 
   useEffect(() => {
     activeCallRef.current = activeCall;
@@ -765,18 +767,41 @@ export function useWebRTCCalls({
     };
   }, [cleanupCall]);
 
-  return {
-    activeCall,
-    incomingCall,
-    localStream,
-    remoteStream,
-    initiateCall,
-    acceptIncoming,
-    rejectIncoming,
-    endCall,
-    webRTCServers: [
-      { name: "Google STUN (Primary)" },
-      { name: "Cloudflare STUN (Fallback)" },
-    ],
-  };
+  const toggleMic = useCallback(() => {
+  const engine = getEngine();
+  const newState = engine.toggleMic();
+  setIsMicMuted(!newState);
+}, [getEngine]);
+
+const toggleCamera = useCallback(() => {
+  const engine = getEngine();
+  const newState = engine.toggleCamera();
+  setIsCameraOff(!newState);
+}, [getEngine]);
+
+const switchCamera = useCallback(async () => {
+  const engine = getEngine();
+  const success = await engine.switchCamera();
+  return success;
+}, [getEngine]);
+
+return {
+  activeCall,
+  incomingCall,
+  localStream,
+  remoteStream,
+  initiateCall,
+  acceptIncoming,
+  rejectIncoming,
+  endCall,
+  toggleMic,
+  toggleCamera,
+  switchCamera,
+  isMicMuted,
+  isCameraOff,
+  webRTCServers: [
+    { name: "Google STUN (Primary)" },
+    { name: "Cloudflare STUN (Fallback)" },
+  ],
+};
 }
