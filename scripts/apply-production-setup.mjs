@@ -106,6 +106,7 @@ async function applySql() {
     ["supabase-launch-hardening.sql", "launch hardening (PM + call_signals)"],
     ["supabase-participation-hardening.sql", "participation (ban/invite/calls)"],
     ["supabase-private-media.sql", "private PM media bucket"],
+    ["supabase-api-validation-hardening.sql", "API validation length checks"],
   ];
 
   for (const [file, label] of migrationChain) {

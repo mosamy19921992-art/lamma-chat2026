@@ -1,9 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-
-const OWNER_EMAIL =
-  process.env.OWNER_EMAIL?.trim() || "mohamed.samy2821992@gmail.com";
-const BOOTSTRAP_SECRET =
-  process.env.OPS_BOOTSTRAP_SECRET?.trim() || "lamma-owner-bootstrap-2026";
+import { checkRateLimit, getClientIp } from "./_lib/apiSecurity.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -11,11 +7,37 @@ export default async function handler(req, res) {
     return;
   }
 
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`ensure-owner:${ip}`, 5, 60_000)) {
+    res.status(429).json({ error: "rate_limited" });
+    return;
+  }
+
+  const ownerEmail = process.env.OWNER_EMAIL?.trim();
+  const bootstrapSecret = process.env.OPS_BOOTSTRAP_SECRET?.trim();
+
+  if (!bootstrapSecret) {
+    res.status(503).json({
+      error: "missing_env",
+      need: ["OPS_BOOTSTRAP_SECRET"],
+      hint: "Set a strong random secret in Vercel → Environment Variables",
+    });
+    return;
+  }
+
+  if (!ownerEmail) {
+    res.status(503).json({
+      error: "missing_env",
+      need: ["OWNER_EMAIL"],
+    });
+    return;
+  }
+
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ")
     ? authHeader.slice(7)
     : req.headers["x-bootstrap-secret"];
-  if (token !== BOOTSTRAP_SECRET) {
+  if (token !== bootstrapSecret) {
     res.status(401).json({ error: "unauthorized" });
     return;
   }
@@ -23,13 +45,13 @@ export default async function handler(req, res) {
   const supabaseUrl =
     process.env.SUPABASE_URL?.trim() ||
     process.env.VITE_SUPABASE_URL?.trim() ||
-    "https://detvapbvkabvdjsdttfy.supabase.co";
+    "";
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
-  if (!serviceKey) {
+  if (!supabaseUrl || !serviceKey) {
     res.status(503).json({
       error: "missing_env",
-      need: ["SUPABASE_SERVICE_ROLE_KEY"],
+      need: ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
       hint: "Add in Vercel → Project Settings → Environment Variables (Production)",
     });
     return;
@@ -47,15 +69,15 @@ export default async function handler(req, res) {
     if (listError) throw listError;
 
     const user = listData.users.find(
-      (u) => (u.email || "").trim().toLowerCase() === OWNER_EMAIL.toLowerCase(),
+      (u) => (u.email || "").trim().toLowerCase() === ownerEmail.toLowerCase(),
     );
     if (!user) {
-      res.status(404).json({ error: "owner_user_not_found", email: OWNER_EMAIL });
+      res.status(404).json({ error: "owner_user_not_found" });
       return;
     }
 
     const { error: metaError } = await admin.auth.admin.updateUserById(user.id, {
-      user_metadata: { ...(user.user_metadata || {}), role: "owner" },
+      app_metadata: { ...(user.app_metadata || {}), role: "owner" },
     });
     if (metaError) throw metaError;
 
@@ -69,9 +91,9 @@ export default async function handler(req, res) {
     );
     if (roleError) throw roleError;
 
-    res.status(200).json({ ok: true, user_id: user.id, email: user.email });
+    res.status(200).json({ ok: true, user_id: user.id });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ error: message });
+    console.error("ensure-owner failed:", error);
+    res.status(500).json({ error: "internal_error" });
   }
 }

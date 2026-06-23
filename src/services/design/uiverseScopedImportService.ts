@@ -1,4 +1,5 @@
 import { isSafeHttpUrl } from "../../lib/chatHelpers";
+import { supabase } from "../../lib/supabase";
 import {
   extractCssFromHtml,
   extractPreviewMarkupFromHtml,
@@ -150,7 +151,16 @@ async function fetchViaProxy(
 ): Promise<{ html: string | null; css: string | null; source?: string; error?: string }> {
   try {
     const proxyUrl = `/api/fetch-uiverse?url=${encodeURIComponent(url)}`;
-    const res = await fetch(proxyUrl, { cache: "no-store" });
+    const headers: Record<string, string> = {};
+    if (supabase) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+    }
+    const res = await fetch(proxyUrl, { cache: "no-store", headers });
     const data = (await res.json()) as {
       html?: string;
       css?: string;

@@ -5,6 +5,7 @@
  * unavailable (network error, missing key, etc.).
  */
 
+import { supabase } from "../../lib/supabase";
 import type { UniversalStyleConfig } from "./universalStyleTypes";
 
 export interface DesignAiPatch {
@@ -26,6 +27,20 @@ export interface DesignAiResult {
 const ENDPOINT = "/api/gemini-design";
 const TIMEOUT_MS = 25_000;
 
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (!supabase) return headers;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  return headers;
+}
+
 /**
  * Ask Gemini to parse a natural-language design command.
  * Always resolves — never throws.
@@ -38,9 +53,10 @@ export async function askDesignAi(
   const timeoutId = window.setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
+    const headers = await getAuthHeaders();
     const res = await fetch(ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         prompt,
         currentConfig: currentConfig

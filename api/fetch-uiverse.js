@@ -1,5 +1,7 @@
 /** Server-side fetch for UIverse + any safe HTTPS CSS page — Galaxy archive + reader fallback. */
 
+import { checkRateLimit, getClientIp, verifySupabaseJwt } from "./_lib/apiSecurity.js";
+
 const UIVERSE_HOST = "uiverse.io";
 const MAX_BYTES = 512_000;
 const GALAXY_BASE =
@@ -270,6 +272,18 @@ export default async function handler(req, res) {
     return;
   }
 
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`uiverse:${ip}`, 30, 60_000)) {
+    res.status(429).json({ error: "rate_limited" });
+    return;
+  }
+
+  const user = await verifySupabaseJwt(req);
+  if (!user) {
+    res.status(401).json({ error: "authentication_required" });
+    return;
+  }
+
   const url = String(req.query.url || "").trim();
   if (!isAllowedUrl(url)) {
     res.status(400).json({
@@ -340,7 +354,7 @@ export default async function handler(req, res) {
       hint: "تعذّر استخراج CSS من هذا الرابط. تأكد أن الصفحة تحتوي على <style> tags.",
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    res.status(500).json({ error: message });
+    console.error("fetch-uiverse failed:", error);
+    res.status(500).json({ error: "internal_error" });
   }
 }

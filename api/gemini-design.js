@@ -1,10 +1,16 @@
 /**
  * Vercel Serverless Function — /api/gemini-design
- * Translates a natural-language design command (Arabic/English) into
- * a structured UniversalStyleConfig patch using Gemini Flash.
- *
- * The GEMINI_API_KEY env var is kept server-side and never exposed to the browser.
+ * Translates a natural-language design command into a UniversalStyleConfig patch.
+ * GEMINI_API_KEY stays server-side; callers must present a valid Supabase JWT.
  */
+
+import {
+  checkRateLimit,
+  getClientIp,
+  sanitizeDesignPatch,
+  sanitizeSummaryText,
+  verifySupabaseJwt,
+} from "./_lib/apiSecurity.js";
 
 const GEMINI_MODELS = [
   "gemini-flash-lite-latest",
@@ -12,6 +18,10 @@ const GEMINI_MODELS = [
   "gemini-2.5-flash-lite",
   "gemini-2.5-flash",
 ];
+
+const MAX_PROMPT_LEN = 500;
+const RATE_LIMIT = 20;
+const RATE_WINDOW_MS = 60_000;
 
 function geminiUrl(model) {
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -47,9 +57,19 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`gemini:${ip}`, RATE_LIMIT, RATE_WINDOW_MS)) {
+    return res.status(429).json({ error: "طلبات كثيرة — انتظر دقيقة وحاول تاني" });
+  }
+
+  const user = await verifySupabaseJwt(req);
+  if (!user) {
+    return res.status(401).json({ error: "يجب تسجيل الدخول لاستخدام تصميم AI" });
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: "Gemini API key not configured" });
+    return res.status(503).json({ error: "Gemini API key not configured" });
   }
 
   const { prompt, currentConfig } = req.body || {};
@@ -57,9 +77,14 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "prompt required" });
   }
 
+  const safePrompt = prompt.trim().slice(0, MAX_PROMPT_LEN);
+  if (!safePrompt) {
+    return res.status(400).json({ error: "prompt required" });
+  }
+
   const userContent = currentConfig
-    ? `الأمر: "${prompt}"\n\nالإعدادات الحالية:\nglass.opacity=${currentConfig.glass?.opacity ?? 0.12}, glass.blurPx=${currentConfig.glass?.blurPx ?? 18}, accent="${currentConfig.palette?.accent ?? "#10b981"}"`
-    : `الأمر: "${prompt}"`;
+    ? `الأمر: "${safePrompt}"\n\nالإعدادات الحالية:\nglass.opacity=${currentConfig.glass?.opacity ?? 0.12}, glass.blurPx=${currentConfig.glass?.blurPx ?? 18}, accent="${currentConfig.palette?.accent ?? "#10b981"}"`
+    : `الأمر: "${safePrompt}"`;
 
   const requestBody = JSON.stringify({
     systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
@@ -68,8 +93,6 @@ export default async function handler(req, res) {
       temperature: 0.2,
       maxOutputTokens: 1024,
       responseMimeType: "application/json",
-      // Disable "thinking" on Gemini 2.5 flash models — it adds multi-second
-      // latency and consumes the token budget, which caused client timeouts.
       thinkingConfig: { thinkingBudget: 0 },
     },
   });
@@ -92,25 +115,21 @@ export default async function handler(req, res) {
     }
 
     if (!geminiRes || !geminiRes.ok) {
-      const errText = geminiRes ? await geminiRes.text() : "no response";
       const status = geminiRes?.status ?? 0;
-      console.error("Gemini all models failed:", status, errText);
+      console.error("Gemini all models failed:", status);
       const isAuth = status === 401 || status === 403;
       return res.status(502).json({
         error: isAuth
           ? "🔑 خطأ في مفتاح Gemini — تواصل مع المالك"
           : "⏳ Gemini مشغول دلوقتي — جرّب تاني بعد شوية",
-        status,
-        detail: errText.slice(0, 300),
       });
     }
 
-    console.log("Gemini ok via model:", usedModel);
+    console.log("Gemini ok via model:", usedModel, "user:", user.id);
     const data = await geminiRes.json();
     const parts = data?.candidates?.[0]?.content?.parts ?? [];
     const rawText = parts.map((p) => p?.text ?? "").join("").trim() || "{}";
 
-    // Strip optional markdown code fences (```json ... ```)
     const cleaned = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
 
     let parsed;
@@ -122,8 +141,8 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      summary: parsed.summary ?? "",
-      patch: parsed.patch ?? {},
+      summary: sanitizeSummaryText(parsed.summary ?? ""),
+      patch: sanitizeDesignPatch(parsed.patch ?? {}),
     });
   } catch (err) {
     console.error("gemini-design error:", err);
