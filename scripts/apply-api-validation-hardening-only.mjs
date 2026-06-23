@@ -67,6 +67,13 @@ const response = await fetch(
 const text = await response.text();
 if (!response.ok) {
   console.error(`SQL apply failed (${response.status}): ${text}`);
+  if (response.status === 401) {
+    console.error(
+      "\nSupabase PAT expired or invalid.\n" +
+        "Create a new token: https://supabase.com/dashboard/account/tokens\n" +
+        "Update SUPABASE_ACCESS_TOKEN in .env.local then rerun.",
+    );
+  }
   process.exit(1);
 }
 
