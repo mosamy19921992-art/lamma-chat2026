@@ -480,7 +480,8 @@ function getNameGlassCardClass(options: {
 export default function ChatScreen({
   currentUser,
   onLogout,
-  primaryTheme: _primaryTheme,
+  primaryTheme,
+  setPrimaryTheme,
   onUserSessionUpdate,
   inviteOnlyMode: inviteOnlyModeProp = false,
   hasInviteAccess = false,
@@ -7341,6 +7342,7 @@ export default function ChatScreen({
           : undefined
       }
       dir="rtl"
+      data-app-theme={primaryTheme}
       data-clear-bg={shellClearBg}
       data-reading-mode={readingMode ? "true" : "false"}
     >
@@ -10855,6 +10857,26 @@ export default function ChatScreen({
                             {readingMode ? "ON" : "OFF"}
                           </span>
                         </button>
+                        {setPrimaryTheme ? (
+                          <button
+                            type="button"
+                            className={`text-right p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-between lamma-list-item ${
+                              primaryTheme === "amoled"
+                                ? "bg-white/10 text-slate-100 border border-white/10"
+                                : "hover:bg-white/10 text-gray-200"
+                            }`}
+                            onClick={() =>
+                              setPrimaryTheme(
+                                primaryTheme === "amoled" ? "dark" : "amoled",
+                              )
+                            }
+                          >
+                            <span>وضع AMOLED (أسود نقي)</span>
+                            <span className="text-[9px] font-mono">
+                              {primaryTheme === "amoled" ? "ON" : "OFF"}
+                            </span>
+                          </button>
+                        ) : null}
                         {/* Ads toggle — owner/admin only */}
                         {(isOwnerRole || isAdminRole) && (
                           <button

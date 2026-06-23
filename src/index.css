@@ -11,6 +11,7 @@
 @import "./styles/chase-light-bars.css";
 @import "./styles/sidebar-widget-styles.css";
 @import "./styles/pm-bubble-styles.css";
+@import "./styles/ui-polish-audit.css";
 @import "tailwindcss";
 
 @theme {
@@ -26,7 +27,7 @@
   --accent-secondary: #aeb6bf;
   --accent-soft: rgba(255, 255, 255, 0.08);
   --text-primary: #f8fafc;
-  --text-secondary: #8ea0a7;
+  --text-secondary: #9fb0b8;
   --danger: #ef4444;
   --warning: #f59e0b;
   --glass-bg: rgba(14, 18, 22, 0.68);
@@ -958,7 +959,7 @@ body {
 }
 
 .lamma-msg-meta {
-  color: #7f8b90;
+  color: #94a3ab;
   font-weight: 700;
   letter-spacing: 0.01em;
 }
@@ -1097,7 +1098,7 @@ body {
 }
 
 .lamma-composer-field::placeholder {
-  color: #7d8a91;
+  color: #8f9ea6;
   letter-spacing: 0.01em;
 }
 
@@ -3246,7 +3247,11 @@ body {
 
 /* Beautiful color styles for message text bubbles (روح واحدة) */
 .lamma-neutral-glass .lamma-message {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition:
+    transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.22s ease,
+    box-shadow 0.22s ease,
+    background 0.22s ease !important;
 }
 
 /* Inactive/General messages from other people: warm amber smoked glass */
@@ -3397,7 +3402,11 @@ body {
 /* Stylish card layout for each message container in the list */
 .lamma-neutral-glass .lamma-chat-core-shell .flex-col.gap-2\.5 > div[class*="hover:bg-white"] {
   border-right: 3px solid transparent !important;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition:
+    background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.22s ease,
+    box-shadow 0.22s ease,
+    transform 0.22s ease !important;
   border-radius: 12px !important;
   padding: 6px 10px !important;
   margin: 2px 0 !important;

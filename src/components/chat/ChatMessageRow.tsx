@@ -126,9 +126,9 @@ function ChatMessageRowInner({
 
   return (
     <div
-      className={`flex items-start ${isCompactView ? "gap-1 py-0 px-1" : "gap-2 py-0 px-2"} max-w-full rounded transition-colors ${
-        isSystem ? "my-1" : "hover:bg-white/5"
-      }`}
+      className={`flex items-start max-w-full rounded transition-colors ${
+        isCompactView ? "gap-1.5 py-0.5 px-1" : "gap-2.5 py-1 px-2"
+      } ${isSystem ? "my-1" : "hover:bg-white/5"}`}
     >
       <div
         className="flex-shrink-0 cursor-pointer mt-1 group/author animate-fadeIn"
@@ -274,7 +274,7 @@ function ChatMessageRowInner({
           )}
         </div>
         <div className="lamma-author-meta">
-          <span className="text-[8px] font-mono lamma-msg-meta" dir="ltr">
+          <span className="text-[10px] font-mono lamma-msg-meta" dir="ltr">
             {msg.time}
           </span>
           {msg.sendPending ? (
@@ -290,7 +290,7 @@ function ChatMessageRowInner({
 
       <div className="flex-1 min-w-0 pt-0">
         <div
-          className={`lamma-message ${isCompactView ? "text-[10px] px-3 py-2" : "text-[11px]"} leading-relaxed text-gray-100 break-words ${
+          className={`lamma-message ${isCompactView ? "text-[11px] px-3 py-2.5" : "text-[12px] px-3 py-2.5"} leading-relaxed text-gray-100 break-words ${
             isChatColumnExpanded
               ? "max-w-full"
               : "max-w-[min(820px,100%)]"

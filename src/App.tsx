@@ -59,6 +59,14 @@ type Theme = 'dark' | 'amoled';
 const GUEST_SESSION_KEY = 'lamma_guest_session';
 const DEV_SESSION_KEY = 'lamma_dev_session';
 
+function readStoredTheme(): Theme {
+  try {
+    return localStorage.getItem('lamma_primary_theme') === 'amoled' ? 'amoled' : 'dark';
+  } catch {
+    return 'dark';
+  }
+}
+
 function readGuestSession(): UserSession | null {
   try {
     const raw = localStorage.getItem(GUEST_SESSION_KEY);
@@ -208,12 +216,21 @@ export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
   const [authReady, setAuthReady] = useState(() => !isSupabaseConfigured);
   const [pendingSupabaseUser, setPendingSupabaseUser] = useState<SupabaseUser | null>(null);
-  const [primaryTheme, setPrimaryTheme] = useState<Theme>('dark');
+  const [primaryTheme, setPrimaryTheme] = useState<Theme>(readStoredTheme);
   const [inviteOnlyMode, setInviteOnlyMode] = useState(false);
   const [hasInviteAccess, setHasInviteAccess] = useState(() => hasStoredInviteAccess());
 
   // PWA: register service worker, expose install/update state.
   const sw = useServiceWorker();
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-app-theme', primaryTheme);
+    try {
+      localStorage.setItem('lamma_primary_theme', primaryTheme);
+    } catch {
+      // storage unavailable
+    }
+  }, [primaryTheme]);
 
   // Drop stale bundles after deploy (fixes old cached DJ upload code).
   useEffect(() => {
@@ -477,6 +494,7 @@ export default function App() {
                 currentUser={user}
                 onLogout={handleLogout}
                 primaryTheme={primaryTheme}
+                setPrimaryTheme={setPrimaryTheme}
                 inviteOnlyMode={inviteOnlyMode}
                 hasInviteAccess={hasInviteAccess}
                 onUserSessionUpdate={(patch) => {

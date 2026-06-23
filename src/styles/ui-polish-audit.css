@@ -1,0 +1,207 @@
+/* UI/UX polish — contrast rhythm, motion, responsive chat */
+
+:root,
+html[data-app-theme="dark"] {
+  --ui-text-muted: #9fb0b8;
+  --ui-text-meta: #94a3ab;
+  --ui-text-placeholder: #8f9ea6;
+  --ui-bubble-other-bg: rgba(22, 18, 14, 0.88);
+  --ui-bubble-other-text: #f7f3eb;
+  --ui-motion-fast: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html[data-app-theme="amoled"] {
+  --bg-primary: #000000;
+  --bg-secondary: #040404;
+  --bg-surface: #080808;
+  --text-secondary: #b0bcc4;
+  --ui-text-muted: #b4bfc6;
+  --ui-text-meta: #a3b1ba;
+  --ui-text-placeholder: #9aa8b0;
+  --ui-bubble-other-bg: rgba(10, 9, 8, 0.96);
+  --ui-bubble-other-text: #faf6ee;
+  --glass-bg: rgba(6, 6, 6, 0.94);
+  --frost-shadow: rgba(0, 0, 0, 0.62);
+}
+
+html[data-app-theme="amoled"] body {
+  background: #000 !important;
+}
+
+html[data-app-theme="amoled"] .lamma-neutral-glass .lamma-chat-input-shell {
+  background: rgba(4, 4, 4, 0.98) !important;
+}
+
+html[data-app-theme="amoled"]
+  .lamma-neutral-glass
+  .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system) {
+  background: var(--ui-bubble-other-bg) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55) !important;
+}
+
+/* Softer reading mode — higher contrast without true light theme */
+.lamma-neutral-glass[data-reading-mode="true"] .lamma-message {
+  color: #f8fafc !important;
+}
+
+.lamma-neutral-glass[data-reading-mode="true"] .lamma-msg-meta {
+  color: rgba(226, 232, 240, 0.72) !important;
+}
+
+.lamma-msg-meta {
+  color: var(--ui-text-meta);
+}
+
+.lamma-composer-field::placeholder {
+  color: var(--ui-text-placeholder) !important;
+  opacity: 1;
+}
+
+.lamma-neutral-glass .lamma-msg-meta {
+  color: var(--ui-text-meta) !important;
+  text-shadow: none !important;
+}
+
+.lamma-neutral-glass .lamma-msg-bubble-system {
+  background: rgba(218, 165, 32, 0.14) !important;
+  color: #ffe08a !important;
+  border-color: rgba(255, 215, 0, 0.55) !important;
+  text-shadow: none !important;
+}
+
+.lamma-neutral-glass .lamma-message {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.72) !important;
+  font-size: clamp(12px, 0.78rem + 0.12vw, 13.5px) !important;
+  line-height: 1.55 !important;
+  transition:
+    transform var(--ui-motion-fast),
+    border-color var(--ui-motion-fast),
+    box-shadow var(--ui-motion-fast),
+    background var(--ui-motion-fast) !important;
+}
+
+.lamma-neutral-glass
+  .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system) {
+  text-shadow: none !important;
+  color: var(--ui-bubble-other-text) !important;
+}
+
+.lamma-neutral-glass .lamma-author-name {
+  font-size: clamp(11px, 0.72rem + 0.1vw, 12.5px) !important;
+}
+
+.lamma-neutral-glass .lamma-chat-core-shell .flex-col.gap-2\.5 > div[class*="hover:bg-white"] {
+  padding: 7px 11px !important;
+  margin: 3px 0 !important;
+  transition:
+    background-color var(--ui-motion-fast),
+    border-color var(--ui-motion-fast),
+    box-shadow var(--ui-motion-fast),
+    transform var(--ui-motion-fast) !important;
+}
+
+.lamma-chat-feed-viewport .flex-col.gap-2\.5,
+.lamma-neutral-glass .flex-col.gap-2\.5 {
+  gap: 0.72rem !important;
+}
+
+.lamma-message,
+.lamma-author-line,
+.lamma-author-meta,
+.lamma-chat-input-shell,
+.lamma-composer-field {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lamma-chat-feed-viewport,
+.lamma-fire-scroll {
+  scroll-behavior: smooth;
+}
+
+.lamma-composer-tool:focus-visible,
+.lamma-header-mini-btn:focus-visible,
+.lamma-toolbar-btn:focus-visible {
+  outline: 2px solid rgba(16, 185, 129, 0.72);
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  .lamma-neutral-glass .lamma-message {
+    padding: 11px 13px !important;
+    font-size: 13px !important;
+    line-height: 1.62 !important;
+  }
+
+  .lamma-neutral-glass .lamma-msg-meta {
+    font-size: 10px !important;
+  }
+
+  .lamma-composer-tool {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .lamma-composer-field {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+
+  .lamma-neutral-glass .lamma-chat-input-shell {
+    padding-inline: max(8px, env(safe-area-inset-left, 0px))
+      max(8px, env(safe-area-inset-right, 0px));
+    overflow: hidden;
+  }
+
+  .lamma-pwa-bottom-nav-label {
+    font-size: 10px;
+  }
+
+  .lamma-header-mini-btn {
+    min-width: 2rem;
+    min-height: 2rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .lamma-neutral-glass .lamma-chat-core-shell .lamma-message {
+    max-width: min(720px, 94%);
+  }
+}
+
+@media (min-width: 1280px) {
+  .lamma-neutral-glass .lamma-chat-feed-viewport .lamma-message {
+    max-width: min(820px, 88%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lamma-message,
+  .lamma-neutral-glass .lamma-message,
+  .lamma-neutral-glass
+    .lamma-chat-core-shell
+    .flex-col.gap-2\.5
+    > div[class*="hover:bg-white"],
+  .lamma-room-list-card,
+  .lamma-header-mini-btn {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .lamma-message:hover,
+  .lamma-neutral-glass .lamma-message:hover,
+  .lamma-neutral-glass
+    .lamma-chat-core-shell
+    .flex-col.gap-2\.5
+    > div[class*="hover:bg-white"]:hover {
+    transform: none !important;
+  }
+
+  .lamma-chat-feed-viewport,
+  .lamma-fire-scroll {
+    scroll-behavior: auto;
+  }
+}

@@ -41,6 +41,7 @@ export interface ChatScreenProps {
   currentUser: UserSession;
   onLogout: () => void;
   primaryTheme: "dark" | "amoled";
+  setPrimaryTheme?: (theme: "dark" | "amoled") => void;
   onUserSessionUpdate?: (patch: Partial<UserSession>) => void;
   inviteOnlyMode?: boolean;
   hasInviteAccess?: boolean;
