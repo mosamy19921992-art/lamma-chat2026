@@ -1,4 +1,5 @@
 import { setDesignPreviewActive } from "./designPreviewDom";
+import { scheduleDesignOverlaysSync } from "./designOverlaySync";
 
 export type BubbleShapeId =
   | "default"
@@ -98,7 +99,10 @@ export function previewBubbleShape(id: BubbleShapeId): boolean {
   return applyToDom(id, true);
 }
 
-export function commitBubbleShape(id: BubbleShapeId): boolean {
+export function commitBubbleShape(
+  id: BubbleShapeId,
+  options?: { skipSync?: boolean },
+): boolean {
   const ok = applyToDom(id, false);
   if (!ok) return false;
   try {
@@ -111,6 +115,7 @@ export function commitBubbleShape(id: BubbleShapeId): boolean {
     // ignore
   }
   previewSnapshot = null;
+  if (!options?.skipSync) scheduleDesignOverlaysSync();
   return true;
 }
 

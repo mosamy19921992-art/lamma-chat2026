@@ -453,3 +453,210 @@
     animation: none !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2026 clean chase presets — single accent, no rainbow
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes chase-soft-edge-flow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes chase-laser-scan {
+  0% { transform: translateX(-100%); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+/* Soft edge — columns */
+.lamma-neutral-glass[data-chase-columns="soft-edge"] .lamma-side-column .lamma-glass::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: -1px !important;
+  border-radius: inherit !important;
+  padding: 1px !important;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(var(--chase-tint-rgb, 110, 231, 183), 0.55),
+    rgba(6, 182, 212, 0.45),
+    transparent
+  ) !important;
+  background-size: 200% 200% !important;
+  animation: chase-soft-edge-flow calc(var(--chase-speed, 6s) * 1.5) linear infinite !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Aurora flow — columns */
+.lamma-neutral-glass[data-chase-columns="aurora-flow"] .lamma-side-column .lamma-glass::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: -1px !important;
+  border-radius: inherit !important;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--chase-tint-rgb, 110, 231, 183), 0.35),
+    rgba(6, 182, 212, 0.25),
+    rgba(var(--chase-tint-rgb, 110, 231, 183), 0.35)
+  ) !important;
+  background-size: 200% 200% !important;
+  animation: chase-liquid-flow var(--chase-speed, 6s) linear infinite !important;
+  z-index: 0 !important;
+}
+
+.lamma-neutral-glass[data-chase-columns="aurora-flow"] .lamma-side-column .lamma-glass::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 2px !important;
+  border-radius: inherit !important;
+  background: rgba(10, 14, 18, 0.9) !important;
+  z-index: 0 !important;
+}
+
+/* Ambient breathe — columns */
+.lamma-neutral-glass[data-chase-columns="ambient-breathe"] .lamma-side-column .lamma-glass {
+  box-shadow: 0 0 0 0 rgba(var(--chase-tint-rgb, 110, 231, 183), 0.3) !important;
+  animation: chase-pulse-glow var(--chase-speed, 6s) ease-in-out infinite !important;
+}
+
+.lamma-neutral-glass[data-chase-columns="ambient-breathe"] .lamma-side-column .lamma-glass::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  border: 1px solid rgba(var(--chase-tint-rgb, 110, 231, 183), 0.35) !important;
+  pointer-events: none !important;
+  animation: chase-pulse-glow var(--chase-speed, 6s) ease-in-out infinite !important;
+}
+
+/* Laser scan — columns */
+.lamma-neutral-glass[data-chase-columns="laser-scan"] .lamma-side-column .lamma-glass {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.lamma-neutral-glass[data-chase-columns="laser-scan"] .lamma-side-column .lamma-glass::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 40% !important;
+  height: 2px !important;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--chase-tint, #6ee7b7),
+    transparent
+  ) !important;
+  animation: chase-laser-scan var(--chase-speed, 6s) ease-in-out infinite !important;
+  z-index: 2 !important;
+  pointer-events: none !important;
+}
+
+/* Mono glow — columns */
+.lamma-neutral-glass[data-chase-columns="mono-glow"] .lamma-side-column .lamma-glass::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: -1px !important;
+  border-radius: inherit !important;
+  border: 1px solid rgba(var(--chase-tint-rgb, 110, 231, 183), 0.5) !important;
+  box-shadow: 0 0 14px rgba(var(--chase-tint-rgb, 110, 231, 183), 0.25) !important;
+  pointer-events: none !important;
+}
+
+/* Composer + header bars for 2026 presets */
+.lamma-neutral-glass[data-chase-composer="soft-edge"] .lamma-chat-input-shell::before,
+.lamma-neutral-glass[data-chase-composer="aurora-flow"] .lamma-chat-input-shell::before,
+.lamma-neutral-glass[data-chase-composer="ambient-breathe"] .lamma-chat-input-shell::before,
+.lamma-neutral-glass[data-chase-composer="laser-scan"] .lamma-chat-input-shell::before,
+.lamma-neutral-glass[data-chase-composer="mono-glow"] .lamma-chat-input-shell::before,
+.lamma-neutral-glass[data-chase-header="soft-edge"] .lamma-room-header::after,
+.lamma-neutral-glass[data-chase-header="aurora-flow"] .lamma-room-header::after,
+.lamma-neutral-glass[data-chase-header="ambient-breathe"] .lamma-room-header::after,
+.lamma-neutral-glass[data-chase-header="laser-scan"] .lamma-room-header::after,
+.lamma-neutral-glass[data-chase-header="mono-glow"] .lamma-room-header::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 2px !important;
+  z-index: 5 !important;
+  pointer-events: none !important;
+}
+
+.lamma-neutral-glass[data-chase-composer="soft-edge"] .lamma-chat-input-shell::before,
+.lamma-neutral-glass[data-chase-header="soft-edge"] .lamma-room-header::after {
+  top: 0 !important;
+  bottom: auto !important;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(var(--chase-tint-rgb, 110, 231, 183), 0.7),
+    rgba(6, 182, 212, 0.5),
+    transparent
+  ) !important;
+  background-size: 200% auto !important;
+  animation: chase-soft-edge-flow var(--chase-speed, 6s) linear infinite !important;
+}
+
+.lamma-neutral-glass[data-chase-composer="aurora-flow"] .lamma-chat-input-shell::before,
+.lamma-neutral-glass[data-chase-header="aurora-flow"] .lamma-room-header::after {
+  top: 0 !important;
+  bottom: auto !important;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--chase-tint-rgb, 110, 231, 183), 0.4),
+    rgba(6, 182, 212, 0.35),
+    rgba(var(--chase-tint-rgb, 110, 231, 183), 0.4)
+  ) !important;
+  background-size: 200% auto !important;
+  animation: chase-bar-flow var(--chase-speed, 6s) linear infinite !important;
+}
+
+.lamma-neutral-glass[data-chase-composer="ambient-breathe"] .lamma-chat-input-shell::before,
+.lamma-neutral-glass[data-chase-header="ambient-breathe"] .lamma-room-header::after {
+  bottom: 0 !important;
+  background: var(--chase-tint, #6ee7b7) !important;
+  animation: chase-pulse-glow var(--chase-speed, 6s) ease-in-out infinite !important;
+  opacity: 0.65 !important;
+}
+
+.lamma-neutral-glass[data-chase-composer="mono-glow"] .lamma-chat-input-shell::before,
+.lamma-neutral-glass[data-chase-header="mono-glow"] .lamma-room-header::after {
+  bottom: 0 !important;
+  background: var(--chase-tint, #6ee7b7) !important;
+  box-shadow: 0 0 10px rgba(var(--chase-tint-rgb, 110, 231, 183), 0.45) !important;
+}
+
+.lamma-neutral-glass[data-chase-columns="soft-edge"] .lamma-side-column .lamma-glass,
+.lamma-neutral-glass[data-chase-columns="aurora-flow"] .lamma-side-column .lamma-glass,
+.lamma-neutral-glass[data-chase-columns="ambient-breathe"] .lamma-side-column .lamma-glass,
+.lamma-neutral-glass[data-chase-columns="laser-scan"] .lamma-side-column .lamma-glass,
+.lamma-neutral-glass[data-chase-columns="mono-glow"] .lamma-side-column .lamma-glass {
+  position: relative !important;
+  overflow: hidden !important;
+  isolation: isolate !important;
+}
+
+.lamma-neutral-glass[data-chase-columns="soft-edge"] .lamma-side-column .lamma-glass > *,
+.lamma-neutral-glass[data-chase-columns="aurora-flow"] .lamma-side-column .lamma-glass > *,
+.lamma-neutral-glass[data-chase-columns="ambient-breathe"] .lamma-side-column .lamma-glass > *,
+.lamma-neutral-glass[data-chase-columns="laser-scan"] .lamma-side-column .lamma-glass > *,
+.lamma-neutral-glass[data-chase-columns="mono-glow"] .lamma-side-column .lamma-glass > * {
+  position: relative;
+  z-index: 1;
+}

@@ -13,13 +13,17 @@ export type PmMessageRowProps = {
   msg: PMThreadMessage;
   targetNickname: string;
   spySenderLabel: string | null;
+  fontScale?: number;
 };
 
 function PmMessageRowInner({
   msg,
   targetNickname,
   spySenderLabel,
+  fontScale = 1,
 }: PmMessageRowProps) {
+  const bubbleFontPx = 12 * fontScale;
+  const metaFontPx = 9 * fontScale;
   const isSpyThread = targetNickname.startsWith("🕵️");
   const safePmMediaUrl = filterSafeMediaUrl(msg.mediaUrl);
   const legacyUrl = filterSafeMediaUrl(msg.mediaUrl);
@@ -30,12 +34,15 @@ function PmMessageRowInner({
       className={`flex flex-col max-w-[85%] pb-3 ${msg.isOwn ? "mr-auto items-start" : "ml-auto items-end"}`}
     >
       {spySenderLabel && (
-        <span className="text-[8px] text-purple-300 font-bold mb-0.5 px-1">
+        <span
+          className="text-purple-300 font-bold mb-0.5 px-1"
+          style={{ fontSize: `${8 * fontScale}px` }}
+        >
           {spySenderLabel}
         </span>
       )}
       <div
-        className={`p-2.5 text-xs leading-normal lamma-message break-words min-w-0 overflow-wrap-anywhere ${
+        className={`p-2.5 leading-normal lamma-message break-words min-w-0 overflow-wrap-anywhere ${
           isSpyThread
             ? msg.isOwn
               ? "lamma-pm-bubble-own bg-blue-500/15 border border-blue-500/20 text-blue-100 rounded-tr-none"
@@ -44,6 +51,7 @@ function PmMessageRowInner({
               ? "lamma-pm-bubble-own lamma-msg-bubble-own bg-white/12 border border-white/10 text-white font-extrabold"
               : "lamma-pm-bubble-incoming bg-black/40 border border-white/8 text-gray-100"
         } ${msg.pending ? "opacity-80" : ""}`}
+        style={{ fontSize: `${bubbleFontPx}px` }}
       >
         {safePmMediaUrl && msg.type === "image" ? (
           isPrivateStorageRef(safePmMediaUrl) ? (
@@ -102,16 +110,22 @@ function PmMessageRowInner({
         ) : null}
       </div>
       <div className="flex items-center gap-1 mt-0.5">
-        <span className="text-[8px] text-gray-500 font-mono">{msg.time}</span>
+        <span
+          className="text-gray-500 font-mono"
+          style={{ fontSize: `${metaFontPx}px` }}
+        >
+          {msg.time}
+        </span>
         {msg.isOwn && (
           <span
-            className={`text-[10px] ${
+            className={`${
               msg.status === "read"
                 ? "text-blue-400"
                 : msg.status === "delivered"
                   ? "text-gray-300"
                   : "text-gray-500"
             }`}
+            style={{ fontSize: `${10 * fontScale}px` }}
           >
             {msg.pending
               ? "…"
@@ -145,5 +159,6 @@ export const PmMessageRow = memo(PmMessageRowInner, (prev, next) => {
   if (!pmMessageEqual(prev.msg, next.msg)) return false;
   if (prev.targetNickname !== next.targetNickname) return false;
   if (prev.spySenderLabel !== next.spySenderLabel) return false;
+  if (prev.fontScale !== next.fontScale) return false;
   return true;
 });

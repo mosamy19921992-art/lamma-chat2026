@@ -46,9 +46,9 @@ function clampOverlay(v: number): number {
 export function applyUniversalStyleToDom(
   config: UniversalStyleConfig,
   options?: { preview?: boolean },
-): void {
+): boolean {
   const root = getRoot();
-  if (!root) return;
+  if (!root) return false;
 
   root.setAttribute("data-universal-style", "active");
   if (options?.preview) {
@@ -130,6 +130,21 @@ export function applyUniversalStyleToDom(
   root.setAttribute("data-clear-bg", globalMedia ? "false" : "true");
 
   applyChatRegionsToDom(root, config);
+  return true;
+}
+
+/** Retry until ChatScreen shell mounts (fixes silent preview before paint). */
+export function ensureUniversalStyleApplied(
+  config: UniversalStyleConfig,
+  options?: { preview?: boolean },
+  attempt = 0,
+): boolean {
+  const ok = applyUniversalStyleToDom(config, options);
+  if (ok || attempt >= 24 || typeof window === "undefined") return ok;
+  window.requestAnimationFrame(() =>
+    ensureUniversalStyleApplied(config, options, attempt + 1),
+  );
+  return false;
 }
 
 function applyChatRegionsToDom(

@@ -96,9 +96,23 @@ export function applyDesignAiPatch(
   base: UniversalStyleConfig,
   patch: DesignAiPatch,
 ): UniversalStyleConfig {
+  const palette = patch.palette ? { ...base.palette, ...patch.palette } : base.palette;
+
+  // When the AI changes the background color, mirror it into backgrounds.global
+  // so it ACTUALLY shows (palette.bg alone is hidden behind the wallpaper layer).
+  let backgrounds = base.backgrounds;
+  const newBg = patch.palette?.bg;
+  if (newBg) {
+    backgrounds = {
+      ...base.backgrounds,
+      global: { kind: "color", value: newBg, overlayOpacity: 0, blurPx: 0 },
+    };
+  }
+
   return {
     ...base,
-    palette: patch.palette ? { ...base.palette, ...patch.palette } : base.palette,
+    palette,
+    backgrounds,
     glass: patch.glass ? { ...base.glass, ...patch.glass } : base.glass,
     buttons: patch.buttons ? { ...base.buttons, ...patch.buttons } : base.buttons,
     inputs: patch.inputs ? { ...base.inputs, ...patch.inputs } : base.inputs,

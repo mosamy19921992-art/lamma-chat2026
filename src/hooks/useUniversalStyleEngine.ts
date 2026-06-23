@@ -14,7 +14,9 @@ import type { Message } from "../lib/chatTypes";
 import {
   applyUniversalStyleToDom,
   clearUniversalStylePreviewDomOnly,
+  ensureUniversalStyleApplied,
 } from "../services/design/universalStyleApply";
+import { readUniversalStyleDomState } from "../services/design/designPreviewDom";
 import { parseOwnerStylePrompt } from "../services/design/universalStyleEngine";
 import {
   askDesignAi,
@@ -22,7 +24,6 @@ import {
 } from "../services/design/designAiService";
 import {
   isDefaultWallpaperConfig,
-  loadUniversalStyleFromSupabase,
   loadUniversalStyleLocal,
   resetConfigWallpaperToDefault,
   saveUniversalStyleLocal,
@@ -38,6 +39,13 @@ import {
 const OWNER_ROOM_ID = "owner";
 const STYLE_PROMPT_COOLDOWN_MS = 350;
 const MAX_STYLE_SANDBOX_SESSIONS = 12;
+
+export interface DesignCommitResult {
+  ok: boolean;
+  message: string;
+  localOnly?: boolean;
+  previewApplied?: boolean;
+}
 
 interface UseUniversalStyleEngineOptions {
   activeRoomId: string;
@@ -77,6 +85,16 @@ export function useUniversalStyleEngine({
     );
   }, [committedConfig]);
 
+  /** Latest in-progress preview or last committed — for Design Center edits. */
+  const getEditableDesignConfig = useCallback((): UniversalStyleConfig => {
+    return normalizeUniversalStyleConfig(
+      previewMemoryRef.current ??
+        committedConfig ??
+        loadUniversalStyleLocal() ??
+        createDefaultUniversalStyle(),
+    );
+  }, [committedConfig]);
+
   const captureRollbackSnapshot = useCallback((): UniversalStyleConfig => {
     return structuredClone(resolveCommittedConfig());
   }, [resolveCommittedConfig]);
@@ -84,11 +102,12 @@ export function useUniversalStyleEngine({
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const loaded = await loadUniversalStyleFromSupabase(ownerSettingsRowId);
+      const { prefetchRemoteDesignTheme } = await import(
+        "../services/design/designThemeBoot"
+      );
+      const loaded = await prefetchRemoteDesignTheme(ownerSettingsRowId);
       if (cancelled || !loaded) return;
-      const normalized = normalizeUniversalStyleConfig(loaded);
-      setCommittedConfig(normalized);
-      applyUniversalStyleToDom(normalized, { preview: false });
+      setCommittedConfig(normalizeUniversalStyleConfig(loaded));
     })();
     return () => {
       cancelled = true;
@@ -96,11 +115,11 @@ export function useUniversalStyleEngine({
   }, [ownerSettingsRowId]);
 
   const beginLivePreview = useCallback(
-    (config: UniversalStyleConfig) => {
+    (config: UniversalStyleConfig): boolean => {
       if (!previewSnapshotRef.current) {
         previewSnapshotRef.current = captureRollbackSnapshot();
       }
-      applyUniversalStyleToDom(config, { preview: true });
+      return ensureUniversalStyleApplied(config, { preview: true });
     },
     [captureRollbackSnapshot],
   );
@@ -197,26 +216,24 @@ export function useUniversalStyleEngine({
   );
 
   const applyStyleGlobally = useCallback(
-    async (session: StyleSandboxSession): Promise<boolean> => {
-      if (session.applied || applyInFlightRef.current) return false;
+    async (
+      session: StyleSandboxSession,
+      options?: { silent?: boolean },
+    ): Promise<DesignCommitResult> => {
+      if (session.applied || applyInFlightRef.current) {
+        return { ok: false, message: "عملية حفظ أخرى شغّالة — انتظر ثانية." };
+      }
       applyInFlightRef.current = true;
       setIsApplyingStyle(true);
 
       try {
         const access = await checkOwnerWriteAccessWithClaim();
-        if (!access.ok) {
-          addLammaBotMessage(
-            activeRoomId,
-            formatOwnerWriteDeniedMessage(access.reason),
-          );
-          return false;
-        }
-
         const config = session.config;
+
         setCommittedConfig(config);
         saveUniversalStyleLocal(config);
         clearUniversalStylePreviewDomOnly();
-        applyUniversalStyleToDom(config, { preview: false });
+        ensureUniversalStyleApplied(config, { preview: false });
         previewSnapshotRef.current = null;
         previewMemoryRef.current = config;
 
@@ -229,24 +246,41 @@ export function useUniversalStyleEngine({
           setOwnerBgImage(null);
         }
 
+        if (!access.ok) {
+          const msg = formatOwnerWriteDeniedMessage(access.reason);
+          if (!options?.silent) {
+            addLammaBotMessage(activeRoomId, msg);
+          }
+          return {
+            ok: false,
+            message: msg,
+            localOnly: true,
+          };
+        }
+
         await syncUniversalStyleToSupabase(config, ownerSettingsRowId);
 
-        addLammaBotMessage(
-          activeRoomId,
-          isDefaultWallpaperConfig(config)
-            ? "✅ رجّعت الخلفية الافتراضية (/MAN.png) للجميع."
-            : `✅ تم تطبيق «${config.label}» — ${config.effects?.sidebarCardChase ? "شريط النور على بطاقات الأعمدة شغّال للجميع." : "كل المستخدمين هيشوفوه."}`,
-        );
-        return true;
+        const successMsg = isDefaultWallpaperConfig(config)
+          ? "✅ رجّعت الخلفية الافتراضية (/MAN.png) للجميع."
+          : `✅ تم حفظ «${config.label}» على السيرفر — كل المستخدمين هيشوفوه.`;
+
+        if (!options?.silent) {
+          addLammaBotMessage(activeRoomId, successMsg);
+        }
+        return { ok: true, message: successMsg };
       } catch (error) {
         console.warn("[UniversalStyle] apply failed:", error);
         const msg =
           error instanceof Error ? error.message : "خطأ غير معروف";
-        addLammaBotMessage(
-          activeRoomId,
-          formatOwnerWriteDeniedMessage(msg),
-        );
-        return false;
+        const formatted = formatOwnerWriteDeniedMessage(msg);
+        if (!options?.silent) {
+          addLammaBotMessage(activeRoomId, formatted);
+        }
+        return {
+          ok: false,
+          message: formatted,
+          localOnly: true,
+        };
       } finally {
         applyInFlightRef.current = false;
         setIsApplyingStyle(false);
@@ -296,16 +330,18 @@ export function useUniversalStyleEngine({
   );
 
   const previewDesignConfig = useCallback(
-    (config: UniversalStyleConfig): { summary: string; config: UniversalStyleConfig } | null => {
+    (
+      config: UniversalStyleConfig,
+    ): { summary: string; config: UniversalStyleConfig; previewApplied: boolean } | null => {
       if (!isOwner) return null;
       previewMemoryRef.current = config;
       if (!previewSnapshotRef.current) {
         previewSnapshotRef.current = captureRollbackSnapshot();
       }
-      beginLivePreview(config);
+      const previewApplied = beginLivePreview(config);
       setHasPendingDesignPreview(true);
       setDesignPreviewActive(true);
-      return { summary: config.label, config };
+      return { summary: config.label, config, previewApplied };
     },
     [beginLivePreview, captureRollbackSnapshot, isOwner],
   );
@@ -367,26 +403,60 @@ export function useUniversalStyleEngine({
     [beginLivePreview, committedConfig, isOwner],
   );
 
-  const commitPendingDesignPreview = useCallback(async (): Promise<boolean> => {
+  const commitPendingDesignPreview = useCallback(async (): Promise<DesignCommitResult> => {
     const config = previewMemoryRef.current;
-    if (!config || !isOwner) return false;
+    if (!config || !isOwner) {
+      return { ok: false, message: "لا توجد معاينة للحفظ." };
+    }
 
     const session: StyleSandboxSession = {
       id: `inspect-${Date.now()}`,
       createdAt: Date.now(),
-      prompt: "inspect-mode",
-      summary: config.label || "معاينة Inspect",
+      prompt: "design-center",
+      summary: config.label || "مركز التصميم",
       config,
       applied: false,
     };
 
-    const ok = await applyStyleGlobally(session);
-    if (ok) {
+    const result = await applyStyleGlobally(session, { silent: true });
+    if (result.ok) {
       setHasPendingDesignPreview(false);
       setDesignPreviewActive(false);
     }
-    return ok;
+    return result;
   }, [applyStyleGlobally, isOwner]);
+
+  const verifyDesignPreviewDom = useCallback((): DesignCommitResult => {
+    const state = readUniversalStyleDomState();
+    if (!state) {
+      return {
+        ok: false,
+        message: "⚠️ شاشة الشات مش جاهزة — افتح غرفة شات عادية (مش القيادة فقط).",
+        previewApplied: false,
+      };
+    }
+    if (!state.shellReady) {
+      return {
+        ok: false,
+        message: "⚠️ محرك التصميم مش متصل بالشات بعد.",
+        previewApplied: false,
+      };
+    }
+    if (hasPendingDesignPreview && !state.preview) {
+      return {
+        ok: false,
+        message: "⚠️ المعاينة لم تصل للشاشة — جرّب refresh أو غرفة شات.",
+        previewApplied: false,
+      };
+    }
+    return {
+      ok: true,
+      message: state.preview
+        ? "👀 المعاينة شغّالة على الشات — اضغط حفظ للجميع."
+        : "✅ التصميم مطبّق على الشات.",
+      previewApplied: state.preview,
+    };
+  }, [hasPendingDesignPreview]);
 
   const cancelPendingDesignPreview = useCallback(() => {
     rollbackLivePreview();
@@ -397,6 +467,7 @@ export function useUniversalStyleEngine({
 
   return {
     committedConfig,
+    getEditableDesignConfig,
     tryHandleOwnerStylePrompt,
     applyStyleGlobally,
     cancelStyleSandbox,
@@ -406,6 +477,7 @@ export function useUniversalStyleEngine({
     previewDesignConfig,
     commitPendingDesignPreview,
     cancelPendingDesignPreview,
+    verifyDesignPreviewDom,
     hasPendingDesignPreview,
     isApplyingStyle,
   };

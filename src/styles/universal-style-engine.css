@@ -75,14 +75,28 @@
 .lamma-neutral-glass[data-universal-style="active"] .lamma-popover-shell,
 .lamma-neutral-glass[data-universal-style="active"] .sidebar-container,
 .lamma-neutral-glass[data-universal-style="active"] .lamma-mobile-sidebar-shell {
-  background: var(--us-surface, rgba(18, 24, 32, 0.72)) !important;
+  background: color-mix(
+    in srgb,
+    var(--us-surface, rgba(18, 24, 32, 0.72)) calc(var(--us-glass-opacity, 0.12) * 100%),
+    transparent
+  ) !important;
   border-color: rgba(255, 255, 255, var(--us-glass-border, 0.1)) !important;
   backdrop-filter: blur(var(--us-glass-blur, 18px)) saturate(1.25);
   -webkit-backdrop-filter: blur(var(--us-glass-blur, 18px)) saturate(1.25);
 }
 
+/* Live preview — owner sees changes before commit */
+.lamma-neutral-glass[data-universal-style="active"][data-universal-style-preview="true"] {
+  outline: 2px dashed rgba(34, 211, 238, 0.45);
+  outline-offset: -2px;
+}
+
 .lamma-neutral-glass[data-universal-style="active"] .lamma-chat-core-shell {
-  background: color-mix(in srgb, var(--us-surface) 88%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--us-surface, rgba(18, 24, 32, 0.72)) calc(var(--us-glass-opacity, 0.12) * 88%),
+    transparent
+  );
 }
 
 .lamma-neutral-glass[data-universal-style="active"][data-us-feed-media="true"]

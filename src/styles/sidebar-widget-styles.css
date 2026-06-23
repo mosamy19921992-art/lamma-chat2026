@@ -1,0 +1,367 @@
+/* Sidebar widgets — radio, music/DJ, column dividers (data-* on .lamma-neutral-glass) */
+
+/* Per-card text colors (Design Center → الشكل) */
+.lamma-store-panel {
+  --widget-text: var(--lamma-sidebar-store-text, #f8fafc);
+  color: var(--widget-text);
+}
+
+.lamma-radio-panel {
+  --widget-text: var(--lamma-sidebar-radio-text, #f8fafc);
+  color: var(--widget-text);
+}
+
+.lamma-music-panel {
+  --widget-text: var(--lamma-sidebar-music-text, #f8fafc);
+  color: var(--widget-text);
+}
+
+.lamma-store-panel .font-black,
+.lamma-radio-panel .font-black,
+.lamma-music-panel .font-black,
+.lamma-store-panel .font-extrabold,
+.lamma-radio-panel .font-extrabold,
+.lamma-music-panel .font-extrabold {
+  color: var(--widget-text) !important;
+}
+
+.lamma-store-panel .text-gray-400,
+.lamma-radio-panel .text-gray-400,
+.lamma-music-panel .text-gray-400,
+.lamma-store-panel .text-gray-500,
+.lamma-radio-panel .text-gray-500,
+.lamma-music-panel .text-gray-500 {
+  color: color-mix(in srgb, var(--widget-text) 65%, transparent) !important;
+}
+
+/* Compact widget layout — scales when owner resizes column sections */
+.lamma-store-panel,
+.lamma-radio-panel,
+.lamma-music-panel {
+  container-type: size;
+  container-name: sidebar-widget;
+  min-height: 0;
+  height: 100%;
+}
+
+.lamma-widget-card {
+  min-height: 0;
+  height: 100%;
+}
+
+.lamma-widget-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.lamma-widget-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.lamma-widget-controls {
+  flex-shrink: 0;
+}
+
+.lamma-widget-now-playing {
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+@container sidebar-widget (max-height: 220px) {
+  .lamma-widget-card {
+    padding: 0.5rem !important;
+  }
+
+  .lamma-widget-header span {
+    font-size: 10px !important;
+  }
+
+  .lamma-widget-now-playing .text-\[12px\] {
+    font-size: 10px !important;
+  }
+
+  .lamma-widget-now-playing .text-\[10px\] {
+    font-size: 8px !important;
+  }
+
+  .lamma-widget-scroll {
+    max-height: none !important;
+  }
+
+  .lamma-widget-compact-hide,
+  .lamma-widget-optional {
+    display: none !important;
+  }
+
+  .lamma-widget-controls button {
+    padding: 0.35rem !important;
+  }
+
+  .lamma-widget-controls button svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+}
+
+@container sidebar-widget (max-height: 150px) {
+  .lamma-widget-scroll {
+    display: none !important;
+  }
+
+  .lamma-widget-optional {
+    display: none !important;
+  }
+
+  .lamma-widget-list-item {
+    padding: 0.25rem 0.4rem !important;
+    font-size: 8px !important;
+  }
+
+  .lamma-widget-header svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .lamma-widget-now-playing .lamma-widget-title {
+    font-size: 10px !important;
+  }
+}
+
+@keyframes lamma-radio-vinyl-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes lamma-wave-bar {
+  0%, 100% { transform: scaleY(0.35); opacity: 0.5; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes lamma-spectrum-bar {
+  0%, 100% { height: 28%; }
+  50% { height: 92%; }
+}
+
+@keyframes lamma-divider-wave {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes lamma-laser-scan {
+  0% { transform: translateX(-100%); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+/* ── Radio panel ── */
+.lamma-neutral-glass[data-radio-style="vinyl"] .lamma-radio-panel .lamma-section-card,
+.lamma-neutral-glass[data-radio-style="vinyl"] .lamma-radio-panel .lamma-widget-body {
+  background: rgba(14, 11, 7, 0.92) !important;
+  border: 1px solid rgba(16, 185, 129, 0.22) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.lamma-neutral-glass[data-radio-style="vinyl"] .lamma-radio-panel .lamma-widget-body::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  top: 4px !important;
+  left: 50% !important;
+  width: 40px !important;
+  height: 40px !important;
+  margin-left: -20px !important;
+  border-radius: 50% !important;
+  border: 2px solid rgba(16, 185, 129, 0.45) !important;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(0,0,0,0.9) 18%, transparent 19%),
+    repeating-radial-gradient(circle at 50% 50%, rgba(16,185,129,0.08) 0 2px, transparent 2px 4px) !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+.lamma-neutral-glass[data-radio-style="vinyl"] .lamma-radio-panel .lamma-widget-body > * {
+  position: relative !important;
+  z-index: 1 !important;
+  margin-top: 0 !important;
+}
+
+.lamma-neutral-glass[data-radio-style="wave"] .lamma-radio-panel .lamma-widget-body::after {
+  content: "" !important;
+  display: flex !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 20px !important;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(var(--chase-tint-rgb, 16, 185, 129), 0.5) 25%,
+    rgba(var(--chase-tint-rgb, 16, 185, 129), 0.8) 50%,
+    rgba(var(--chase-tint-rgb, 16, 185, 129), 0.5) 75%,
+    transparent 100%) !important;
+  background-size: 200% 100% !important;
+  animation: lamma-divider-wave 3s linear infinite !important;
+  opacity: 0.55 !important;
+  pointer-events: none !important;
+}
+
+.lamma-neutral-glass[data-radio-style="minimal"] .lamma-radio-panel .lamma-glass {
+  border-radius: 12px !important;
+  background: rgba(10, 14, 18, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: none !important;
+}
+
+.lamma-neutral-glass[data-radio-style="minimal"] .lamma-radio-panel .lamma-section-card {
+  background: transparent !important;
+  border: none !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0 !important;
+}
+
+.lamma-neutral-glass[data-radio-style="neon-studio"] .lamma-radio-panel .lamma-glass {
+  box-shadow:
+    0 0 0 1px rgba(16, 185, 129, 0.25),
+    0 0 24px rgba(16, 185, 129, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ── Music / DJ panel ── */
+.lamma-neutral-glass[data-music-style="spectrum"] .lamma-music-panel .lamma-widget-body {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.lamma-neutral-glass[data-music-style="spectrum"] .lamma-music-panel .lamma-widget-body::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 32px !important;
+  background:
+    linear-gradient(to top, rgba(6, 182, 212, 0.15), transparent),
+    repeating-linear-gradient(90deg,
+      rgba(6, 182, 212, 0.7) 0 3px,
+      transparent 3px 8px) !important;
+  mask-image: linear-gradient(to top, black, transparent) !important;
+  animation: lamma-spectrum-bar 0.8s ease-in-out infinite alternate !important;
+  pointer-events: none !important;
+  opacity: 0.65 !important;
+}
+
+.lamma-neutral-glass[data-music-style="stream-deck"] .lamma-music-panel .lamma-glass {
+  border-radius: 20px !important;
+  background: rgba(12, 16, 22, 0.82) !important;
+}
+
+.lamma-neutral-glass[data-music-style="stream-deck"] .lamma-music-panel button {
+  border-radius: 999px !important;
+}
+
+.lamma-neutral-glass[data-music-style="cassette"] .lamma-music-panel .lamma-glass {
+  background: linear-gradient(145deg, rgba(34, 22, 12, 0.92), rgba(20, 14, 8, 0.88)) !important;
+  border: 1px solid rgba(218, 165, 32, 0.22) !important;
+}
+
+.lamma-neutral-glass[data-music-style="cassette"] .lamma-music-panel .lamma-section-card {
+  background: rgba(218, 165, 32, 0.06) !important;
+  border: 1px dashed rgba(218, 165, 32, 0.2) !important;
+}
+
+.lamma-neutral-glass[data-music-style="glass-deck"] .lamma-music-panel .lamma-glass {
+  background: rgba(255, 255, 255, 0.06) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.4) !important;
+  backdrop-filter: blur(20px) saturate(1.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 12px 32px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* ── Column dividers ── */
+.lamma-neutral-glass[data-column-divider="hairline"] .lamma-column-divider::before {
+  left: 8% !important;
+  right: 8% !important;
+  height: 1px !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+
+.lamma-neutral-glass[data-column-divider="hairline"] .lamma-column-divider::after {
+  display: none !important;
+}
+
+.lamma-neutral-glass[data-column-divider="glow-dot"] .lamma-column-divider::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(var(--chase-tint-rgb, 110, 231, 183), 0.45),
+    transparent
+  ) !important;
+  height: 2px !important;
+  box-shadow: 0 0 12px rgba(var(--chase-tint-rgb, 110, 231, 183), 0.35) !important;
+}
+
+.lamma-neutral-glass[data-column-divider="glow-dot"] .lamma-column-divider::after {
+  width: 10px !important;
+  height: 10px !important;
+  background: var(--chase-tint, #6ee7b7) !important;
+  box-shadow: 0 0 16px var(--chase-tint, #6ee7b7) !important;
+  border: none !important;
+}
+
+.lamma-neutral-glass[data-column-divider="glass-notch"] .lamma-column-divider::before {
+  display: none !important;
+}
+
+.lamma-neutral-glass[data-column-divider="glass-notch"] .lamma-column-divider::after {
+  width: 56px !important;
+  height: 10px !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+.lamma-neutral-glass[data-column-divider="wave"] .lamma-column-divider::before {
+  height: 3px !important;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 6' preserveAspectRatio='none'%3E%3Cpath d='M0 3 Q15 0 30 3 T60 3 T90 3 T120 3' fill='none' stroke='rgba(110,231,183,0.55)' stroke-width='1.5'/%3E%3C/svg%3E") center / 100% 100% no-repeat !important;
+  box-shadow: none !important;
+}
+
+.lamma-neutral-glass[data-column-divider="wave"] .lamma-column-divider::after {
+  display: none !important;
+}
+
+.lamma-neutral-glass[data-column-divider="accent-dash"] .lamma-column-divider::before {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--chase-tint, #6ee7b7) 0 6px,
+    transparent 6px 12px
+  ) !important;
+  height: 2px !important;
+  left: 12% !important;
+  right: 12% !important;
+  box-shadow: none !important;
+}
+
+.lamma-neutral-glass[data-column-divider="accent-dash"] .lamma-column-divider::after {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lamma-neutral-glass[data-radio-style="wave"] .lamma-radio-panel .lamma-widget-body::after,
+  .lamma-neutral-glass[data-music-style="spectrum"] .lamma-music-panel .lamma-widget-body::before {
+    animation: none !important;
+  }
+}

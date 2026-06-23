@@ -163,6 +163,7 @@ export const GLASS_TINT_SWATCHES = [
 export const DEFAULT_GLASS_TINT = "#6ee7b7";
 
 import { setDesignPreviewActive } from "./designPreviewDom";
+import { scheduleDesignOverlaysSync } from "./designOverlaySync";
 
 const FORM_STORAGE_KEY = "lamma_glass_form";
 const TINT_STORAGE_KEY = "lamma_glass_form_tint";
@@ -272,11 +273,16 @@ export function previewGlassForm(id: GlassFormId, tintHex: string): boolean {
 }
 
 /** Save and keep the previewed glass form + tint. */
-export function commitGlassForm(id: GlassFormId, tintHex: string): boolean {
+export function commitGlassForm(
+  id: GlassFormId,
+  tintHex: string,
+  options?: { skipSync?: boolean },
+): boolean {
   const ok = applyGlassFormToDom(id, tintHex, false);
   if (!ok) return false;
   persistGlassFormState({ formId: id, tintHex });
   previewSnapshot = null;
+  if (!options?.skipSync) scheduleDesignOverlaysSync();
   return true;
 }
 

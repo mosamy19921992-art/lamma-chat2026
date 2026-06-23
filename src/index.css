@@ -9,6 +9,8 @@
 @import "./styles/design-pack-sandbox.css";
 @import "./styles/message-bubble-shapes.css";
 @import "./styles/chase-light-bars.css";
+@import "./styles/sidebar-widget-styles.css";
+@import "./styles/pm-bubble-styles.css";
 @import "tailwindcss";
 
 @theme {
@@ -2996,6 +2998,7 @@ body {
   right: 1.5px !important;
   bottom: 1.5px !important;
   background: rgba(14, 11, 7, 0.92) !important; /* Smoked deep dark mocha backing mask */
+  border: 1px solid rgba(218, 165, 32, 0.18) !important;
   border-radius: 22.5px !important; /* Slightly smaller than parent 24px radius to fit exactly inside 1.5px inset */
   z-index: 1 !important;
   pointer-events: none !important;
@@ -3124,12 +3127,12 @@ body {
   background: rgba(255, 215, 0, 0.65) !important;
 }
 
-/* Make the inner section cards flat and fully transparent */
+/* Make the inner section cards dark — same smoked look as rooms/members (left column was too transparent) */
 .lamma-neutral-glass .lamma-side-column[class*="border-r"] .lamma-section-card,
 .lamma-neutral-glass .lamma-side-column[class*="border-l"] .lamma-section-card {
-  background: rgba(218, 165, 32, 0.005) !important;
-  border: 1px solid rgba(218, 165, 32, 0.05) !important;
-  box-shadow: none !important;
+  background: rgba(14, 11, 7, 0.88) !important;
+  border: 1px solid rgba(218, 165, 32, 0.18) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
 }
 
 /* ==========================================================================

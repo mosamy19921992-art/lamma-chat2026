@@ -1,11 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { ChatScreenProps, OwnerMusicTrack, RoomDjState } from "../lib/chatTypes";
-import { ensureFaceApplied } from "../lib/customFace";
-import { ensureGlassFormApplied } from "../services/design/glassTransparencyService";
-import { ensureColumnCardStyleApplied } from "../services/design/columnCardStyleService";
-import { ensureBubbleShapeApplied } from "../services/design/bubbleShapeService";
 import { restoreUiverseScopedOnLoad } from "../services/design/uiverseScopedImportService";
-import { ensureChaseLightApplied } from "../services/design/chaseLightBarService";
 import { setDesignPreviewActive } from "../services/design/designPreviewDom";
 import { loadUniversalStyleLocal, persistAndApplyUniversalStyle } from "../services/design/universalStyleStorage";
 import type { UniversalStyleConfig } from "../services/design/universalStyleTypes";
@@ -82,7 +77,11 @@ import {
   Trophy,
   AlertCircle,
   Link as LinkIcon,
-  Palette,
+  ZoomIn,
+  ZoomOut,
+  Trash2,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { motion, AnimatePresence, useDragControls } from "motion/react";
 import AMLogo from "./AMLogo.tsx";
@@ -285,6 +284,7 @@ import {
 } from "../lib/customFace";
 import {
   appendPmThreadMessage,
+  clearPrivateConversation,
   createOptimisticPmMessage,
   persistPrivateMessage,
   uploadPrivateMediaFile,
@@ -301,6 +301,36 @@ import {
 import type { SocialPost } from "../lib/socialTypes";
 
 const OWNER_SETTINGS_ROW_ID = "global";
+
+const PM_TEXT_SCALE_MIN = 0.85;
+const PM_TEXT_SCALE_MAX = 1.45;
+const PM_TEXT_SCALE_STEP = 0.1;
+const PM_PANEL_SIZES = [
+  { w: 320, h: 450 },
+  { w: 400, h: 560 },
+  { w: 480, h: 680 },
+] as const;
+
+function readPmTextScale(): number {
+  try {
+    const raw = localStorage.getItem("lamma_pm_text_scale");
+    const value = raw ? parseFloat(raw) : 1;
+    if (!Number.isFinite(value)) return 1;
+    return Math.min(PM_TEXT_SCALE_MAX, Math.max(PM_TEXT_SCALE_MIN, value));
+  } catch {
+    return 1;
+  }
+}
+
+function readPmPanelTier(): number {
+  try {
+    const tier = parseInt(localStorage.getItem("lamma_pm_panel_tier") || "0", 10);
+    if (!Number.isFinite(tier)) return 0;
+    return Math.min(PM_PANEL_SIZES.length - 1, Math.max(0, tier));
+  } catch {
+    return 0;
+  }
+}
 const USE_ROOM_VIRTUAL_THRESHOLD = 30;
 
 function hydrateUniversalStyleFromSettings(
@@ -2618,13 +2648,8 @@ export default function ChatScreen({
   }, [roomDjMap]);
   // Global flags are authoritative from Supabase only — no localStorage cache
 
-  // Re-apply the owner's saved custom design face + glass form after each load.
+  // Overlay styles are applied via designThemeBoot (main + prefetch) — not stale localStorage keys.
   useEffect(() => {
-    ensureFaceApplied();
-    ensureGlassFormApplied();
-    ensureColumnCardStyleApplied();
-    ensureBubbleShapeApplied();
-    ensureChaseLightApplied();
     restoreUiverseScopedOnLoad();
   }, []);
 
@@ -5247,6 +5272,8 @@ export default function ChatScreen({
   const [isPmOpen, setIsPmOpen] = useState(false);
   const [showPmAttachment, setShowPmAttachment] = useState(false);
   const [showPmEmojiPicker, setShowPmEmojiPicker] = useState(false);
+  const [pmTextScale, setPmTextScale] = useState(readPmTextScale);
+  const [pmPanelTier, setPmPanelTier] = useState(readPmPanelTier);
 
   // Available system rooms
   const systemRooms = [
@@ -5311,6 +5338,54 @@ export default function ChatScreen({
     playMessageSound,
     onIncomingPm: handleIncomingPm,
   });
+
+  useEffect(() => {
+    localStorage.setItem("lamma_pm_text_scale", String(pmTextScale));
+  }, [pmTextScale]);
+
+  useEffect(() => {
+    localStorage.setItem("lamma_pm_panel_tier", String(pmPanelTier));
+  }, [pmPanelTier]);
+
+  const adjustPmTextScale = useCallback((delta: number) => {
+    setPmTextScale((prev) => {
+      const next = Math.min(
+        PM_TEXT_SCALE_MAX,
+        Math.max(PM_TEXT_SCALE_MIN, prev + delta * PM_TEXT_SCALE_STEP),
+      );
+      return Math.round(next * 100) / 100;
+    });
+  }, []);
+
+  const handleClearPmConversation = useCallback(async () => {
+    if (!pmTarget || pmTarget.nickname.startsWith("🕵️")) return;
+    if (
+      !window.confirm(
+        `مسح كل رسائل المحادثة مع «${pmTarget.nickname}»؟\n\nسيتم الحذف من جهازك والسيرفر ولا يمكن التراجع.`,
+      )
+    ) {
+      return;
+    }
+
+    const nickname = pmTarget.nickname;
+    try {
+      if (currentUser.uid) {
+        await clearPrivateConversation({
+          currentUserUid: currentUser.uid,
+          targetNickname: nickname,
+          targetUid: pmTarget.uid,
+        });
+      }
+      setPmThreads((prev) => {
+        const next = { ...prev };
+        delete next[nickname];
+        return next;
+      });
+    } catch (error) {
+      console.warn("clearPrivateConversation failed:", error);
+      alert("⚠️ تعذر مسح المحادثة. حاول مرة أخرى.");
+    }
+  }, [currentUser.uid, pmTarget, setPmThreads]);
 
   useEffect(() => {
     isPmOpenRef.current = isPmOpen;
@@ -5528,79 +5603,6 @@ export default function ChatScreen({
     );
   };
 
-  const updatePmComposerText = (
-    transform: (
-      text: string,
-      selectionStart: number,
-      selectionEnd: number,
-    ) => {
-      nextText: string;
-      selectionStart: number;
-      selectionEnd: number;
-    },
-  ) => {
-    const input = pmInputRef.current;
-    const rawText = pmInputText;
-    const selectionStart = input?.selectionStart ?? rawText.length;
-    const selectionEnd = input?.selectionEnd ?? rawText.length;
-    const nextState = transform(rawText, selectionStart, selectionEnd);
-
-    setPmInputText(nextState.nextText);
-    requestAnimationFrame(() => {
-      const liveInput = pmInputRef.current;
-      if (!liveInput) return;
-      liveInput.focus();
-      liveInput.setSelectionRange(
-        nextState.selectionStart,
-        nextState.selectionEnd,
-      );
-    });
-  };
-
-  const wrapPmComposerSelection = (
-    prefix: string,
-    suffix: string,
-    placeholder: string,
-  ) => {
-    updatePmComposerText((text, selectionStart, selectionEnd) => {
-      const selectedText = text.slice(selectionStart, selectionEnd);
-      const innerText = selectedText || placeholder;
-      const inserted = `${prefix}${innerText}${suffix}`;
-      const nextText =
-        text.slice(0, selectionStart) + inserted + text.slice(selectionEnd);
-      const highlightStart = selectionStart + prefix.length;
-      const highlightEnd = highlightStart + innerText.length;
-
-      return {
-        nextText,
-        selectionStart: highlightStart,
-        selectionEnd: highlightEnd,
-      };
-    });
-  };
-
-  const applyPmComposerColor = () => {
-    const suggestedColor =
-      currentUser.color && /^#[0-9a-f]{3,8}$/i.test(currentUser.color)
-        ? currentUser.color
-        : "#10b981";
-    const pickedColor = window
-      .prompt("اكتب لون HEX مثل #10b981 أو #0ea5e9", suggestedColor)
-      ?.trim();
-
-    if (!pickedColor) return;
-    if (!/^#[0-9a-f]{3,8}$/i.test(pickedColor)) {
-      alert("صيغة اللون غير صحيحة. استخدم مثال مثل #10b981");
-      return;
-    }
-
-    wrapPmComposerSelection(
-      `[color=${pickedColor}]`,
-      "[/color]",
-      "نص ملون",
-    );
-  };
-
   // Scroll logic — only auto-scroll when user is already near the bottom
   const handleChatFeedScroll = useCallback(() => {
     const el = feedViewportRef.current;
@@ -5783,6 +5785,7 @@ export default function ChatScreen({
 
   const {
     committedConfig,
+    getEditableDesignConfig,
     tryHandleOwnerStylePrompt,
     applyStyleGlobally,
     cancelStyleSandbox,
@@ -5792,6 +5795,7 @@ export default function ChatScreen({
     previewDesignConfig,
     commitPendingDesignPreview,
     cancelPendingDesignPreview,
+    verifyDesignPreviewDom,
     hasPendingDesignPreview,
     isApplyingStyle,
   } = useUniversalStyleEngine({
@@ -5906,12 +5910,14 @@ export default function ChatScreen({
   const handleInspectCommit = useCallback(async () => {
     setInspectApplying(true);
     try {
-      const ok = await commitPendingDesignPreview();
-      if (ok) {
+      const result = await commitPendingDesignPreview();
+      if (result.ok) {
         setInspectLastSummary("✅ تم حفظ التصميم للجميع.");
         alert("✅ تم تطبيق التصميم على كل المستخدمين.");
       } else {
-        alert("⚠️ فشل الحفظ — تأكد من صلاحيات المالك.");
+        alert(result.localOnly
+          ? `⚠️ ${result.message}\n\n(اتحفظ محلياً على جهازك بس.)`
+          : `⚠️ ${result.message}`);
       }
     } finally {
       setInspectApplying(false);
@@ -5988,8 +5994,8 @@ export default function ChatScreen({
     async (session: StyleSandboxSession) => {
       setApplyingStyleSandboxId(session.id);
       try {
-        const ok = await applyStyleGlobally(session);
-        if (ok) {
+        const result = await applyStyleGlobally(session);
+        if (result.ok) {
           setStyleSandboxes((prev) => ({
             ...prev,
             [session.id]: { ...session, applied: true },
@@ -6103,10 +6109,11 @@ export default function ChatScreen({
           msg={msg}
           targetNickname={pmTarget.nickname}
           spySenderLabel={spySenderLabel}
+          fontScale={pmTextScale}
         />
       );
     },
-    [pmTarget],
+    [pmTarget, pmTextScale],
   );
 
   const activeRoomIdRef = useRef(activeRoomId);
@@ -8392,9 +8399,9 @@ export default function ChatScreen({
               gridTemplateRows: `${leftColumnSectionsPct.store}fr 12px ${leftColumnSectionsPct.radio}fr 12px ${leftColumnSectionsPct.music}fr`,
             }}
           >
-            <div className="min-h-0">
+            <div className="min-h-0 lamma-store-panel">
               <div
-                className="lamma-glass rounded-3xl p-4 lamma-soft-glow overflow-hidden h-full flex flex-col justify-between"
+                className="lamma-glass rounded-3xl p-4 lamma-soft-glow overflow-hidden h-full flex flex-col justify-between lamma-widget-card"
                 data-design-region="column-cards"
               >
                 <div className="flex items-center justify-between">
@@ -8432,7 +8439,7 @@ export default function ChatScreen({
             </div>
 
             <div
-              className="lamma-fire-divider"
+              className="lamma-fire-divider lamma-column-divider"
               onPointerDown={(e) => {
                 if (!leftColumnLayoutRef.current) return;
                 e.preventDefault();
@@ -8474,13 +8481,13 @@ export default function ChatScreen({
               }}
             />
 
-            <div className="min-h-0">
+            <div className="min-h-0 lamma-radio-panel">
               <div
-                className="lamma-glass rounded-3xl p-4 overflow-hidden flex flex-col min-h-0 h-full"
+                className="lamma-glass rounded-3xl p-4 overflow-hidden flex flex-col min-h-0 h-full lamma-widget-card"
                 data-design-region="column-cards"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[color:var(--text-primary)]">
+                <div className="lamma-widget-header flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2">
                     <Radio
                       size={16}
                       className="text-[color:var(--accent-secondary)]"
@@ -8507,53 +8514,52 @@ export default function ChatScreen({
                     )}
                   </button>
                 </div>
-                <div className="mt-3 flex-1 min-h-0 overflow-y-auto">
-                  <div className="rounded-2xl p-3 h-full flex flex-col gap-2 lamma-section-card">
-                    <div className="text-right">
-                      <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
-                        {isRadioPlaying ? "🔊 على الهواء" : "⏸ متوقف"}
-                      </div>
-                      <div className="text-[12px] text-white font-extrabold mt-1 truncate">
-                        {currentRadioStation.name}
-                      </div>
-                      <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1 truncate">
-                        {currentRadioStation.frequency}
-                      </div>
+                <div className="lamma-widget-body mt-3 flex-1 min-h-0 flex flex-col gap-2">
+                  <div className="lamma-widget-now-playing text-right shrink-0">
+                    <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
+                      {isRadioPlaying ? "🔊 على الهواء" : "⏸ متوقف"}
                     </div>
-                    {!canUserControlMusicRadio && (
-                      <div className="rounded-xl bg-white/5 border border-white/10 px-2 py-1.5 text-[9px] text-gray-400 font-bold text-center">
-                        🔊 الاستماع للبث متاح — التحكم بالراديو للمالك أو من يمنحه الصلاحية
-                      </div>
-                    )}
-                    <div className="space-y-1 max-h-28 overflow-y-auto">
-                      {radioStations.map((station) => (
-                        <button
-                          key={station.id}
-                          type="button"
-                          onClick={() => handleSelectRadioStation(station)}
-                          disabled={!canUserControlMusicRadio}
-                          className={`w-full p-1.5 rounded-xl text-[10px] font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item disabled:opacity-50 disabled:cursor-not-allowed ${
-                            currentRadioStation.id === station.id
-                              ? "bg-green-500/10 border-green-500/20 text-green-300"
-                              : "bg-white/5 border-transparent text-gray-300 hover:bg-white/10"
-                          }`}
-                        >
-                          <span>{station.name}</span>
-                          <span className="text-[8px] text-gray-500">
-                            {station.frequency}
-                          </span>
-                        </button>
-                      ))}
+                    <div className="text-[12px] font-extrabold mt-1 truncate lamma-widget-title">
+                      {currentRadioStation.name}
                     </div>
-                    {canUserControlMusicRadio ? (
-                    <div className="mt-auto flex items-center justify-center gap-3 pt-1">
+                    <div className="text-[10px] font-bold mt-1 truncate opacity-70">
+                      {currentRadioStation.frequency}
+                    </div>
+                  </div>
+                  {!canUserControlMusicRadio && (
+                    <div className="lamma-widget-optional rounded-xl bg-white/5 border border-white/10 px-2 py-1.5 text-[9px] font-bold text-center opacity-80">
+                      🔊 الاستماع للبث متاح — التحكم بالراديو للمالك أو من يمنحه الصلاحية
+                    </div>
+                  )}
+                  <div className="lamma-widget-scroll space-y-1">
+                    {radioStations.map((station) => (
+                      <button
+                        key={station.id}
+                        type="button"
+                        onClick={() => handleSelectRadioStation(station)}
+                        disabled={!canUserControlMusicRadio}
+                        className={`lamma-widget-list-item w-full p-1.5 rounded-xl text-[10px] font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item disabled:opacity-50 disabled:cursor-not-allowed ${
+                          currentRadioStation.id === station.id
+                            ? "bg-green-500/10 border-green-500/20 text-green-300"
+                            : "bg-white/5 border-transparent hover:bg-white/10"
+                        }`}
+                      >
+                        <span>{station.name}</span>
+                        <span className="text-[8px] opacity-50">
+                          {station.frequency}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  {canUserControlMusicRadio ? (
+                    <div className="lamma-widget-controls mt-auto flex items-center justify-center gap-3 pt-1">
                       <button
                         type="button"
                         onClick={prevRadioStation}
                         className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
                         title="السابق"
                       >
-                        <ChevronRight size={16} className="text-gray-300" />
+                        <ChevronRight size={16} />
                       </button>
                       <button
                         type="button"
@@ -8573,17 +8579,16 @@ export default function ChatScreen({
                         className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action"
                         title="التالي"
                       >
-                        <ChevronLeft size={16} className="text-gray-300" />
+                        <ChevronLeft size={16} />
                       </button>
                     </div>
-                    ) : null}
-                  </div>
+                  ) : null}
                 </div>
               </div>
             </div>
 
             <div
-              className="lamma-fire-divider"
+              className="lamma-fire-divider lamma-column-divider"
               onPointerDown={(e) => {
                 if (!leftColumnLayoutRef.current) return;
                 e.preventDefault();
@@ -8625,13 +8630,13 @@ export default function ChatScreen({
               }}
             />
 
-            <div className="min-h-0">
+            <div className="min-h-0 lamma-music-panel">
               <div
-                className="lamma-glass rounded-3xl p-4 overflow-hidden h-full flex flex-col"
+                className="lamma-glass rounded-3xl p-4 overflow-hidden h-full flex flex-col min-h-0 lamma-widget-card"
                 data-design-region="column-cards"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[color:var(--text-primary)]">
+                <div className="lamma-widget-header flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2">
                     <Music
                       size={16}
                       className="text-[color:var(--accent-secondary)]"
@@ -8663,7 +8668,7 @@ export default function ChatScreen({
                       type="button"
                       onClick={toggleDjListening}
                       className={`p-2 rounded-xl transition-all cursor-pointer lamma-soft-action ${
-                        isDjListening ? "text-cyan-300" : "text-gray-400"
+                        isDjListening ? "text-cyan-300" : "opacity-60"
                       }`}
                       title={isDjListening ? "كتم DJ" : "استمع لـ DJ"}
                     >
@@ -8671,137 +8676,133 @@ export default function ChatScreen({
                     </button>
                   )}
                 </div>
-                <div className="mt-3 flex-1 min-h-0 overflow-y-auto">
-                  <div className="rounded-2xl p-3 h-full flex flex-col gap-2 lamma-section-card">
-                    {canUserControlMusicRadio && (
-                      <>
+                <div className="lamma-widget-body mt-3 flex-1 min-h-0 flex flex-col gap-2">
+                  {canUserControlMusicRadio && (
+                    <button
+                      type="button"
+                      disabled={isUploadingMusic}
+                      onClick={() => musicUploadInputRef.current?.click()}
+                      className="lamma-widget-optional w-full py-2 rounded-xl text-[10px] font-black bg-cyan-500/10 text-cyan-200 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60 shrink-0"
+                    >
+                      <Upload size={12} />
+                      {isUploadingMusic ? "جاري الرفع…" : "رفع أغاني للقائمة"}
+                    </button>
+                  )}
+                  {!canUserControlMusicRadio && (
+                    <button
+                      type="button"
+                      onClick={toggleDjListening}
+                      className={`lamma-widget-optional w-full py-2 rounded-xl text-[10px] font-black border transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                        isDjListening
+                          ? "bg-cyan-500/15 text-cyan-200 border-cyan-500/30"
+                          : "bg-white/5 border-white/10 hover:bg-white/10"
+                      }`}
+                    >
+                      {isDjListening ? (
+                        <>
+                          <Volume2 size={12} /> 🔊 أستمع للـ DJ
+                        </>
+                      ) : (
+                        <>
+                          <VolumeX size={12} /> 🔇 مكتوم — اضغط للاستماع
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {!canUserControlMusicRadio && activeRoomDj?.isPlaying && (
+                    <div className="lamma-widget-optional rounded-xl bg-cyan-500/10 border border-cyan-500/20 px-2 py-1.5 text-[9px] text-cyan-200 font-bold truncate shrink-0">
+                      🎧 {activeRoomDj.updatedBy || "المالك"} يشغّل: {activeRoomDj.title}
+                    </div>
+                  )}
+                  {!canUserControlMusicRadio && !activeRoomDj?.isPlaying && (
+                    <div className="lamma-widget-optional rounded-xl bg-white/5 border border-white/10 px-2 py-1.5 text-[9px] font-bold text-center opacity-70 shrink-0">
+                      لا يوجد بث DJ حالياً
+                    </div>
+                  )}
+                  <div className="lamma-widget-now-playing text-right shrink-0">
+                    <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
+                      {canUserControlMusicRadio
+                        ? isMusicPlaying
+                          ? "🔊 بث للغرفة"
+                          : "⏸ متوقف"
+                        : isDjListening
+                          ? activeRoomDj?.isPlaying
+                            ? "🔊 تستمع الآن"
+                            : "🔊 جاهز للاستماع"
+                          : "🔇 DJ مكتوم"}
+                    </div>
+                    <div className="text-[12px] font-extrabold mt-1 truncate lamma-widget-title">
+                      {canUserControlMusicRadio
+                        ? currentMusicTrack.title
+                        : activeRoomDj?.title || "—"}
+                    </div>
+                    <div className="text-[10px] font-bold mt-1 truncate opacity-70">
+                      {canUserControlMusicRadio
+                        ? currentMusicTrack.desc
+                        : isDjListening
+                          ? "اختيارك: استماع"
+                          : "اختيارك: كتم"}
+                    </div>
+                  </div>
+                  {canUserControlMusicRadio && (
+                    <>
+                      <div className="lamma-widget-scroll space-y-1">
+                        {djPlaylist.length === 0 ? (
+                          <p className="text-[9px] opacity-50 text-center py-2">
+                            ارفع أغاني لتبدأ البث للغرفة
+                          </p>
+                        ) : (
+                          djPlaylist.map((track) => (
+                            <button
+                              key={track.id}
+                              type="button"
+                              onClick={() => handleSelectMusicTrack(track, true)}
+                              className={`lamma-widget-list-item w-full p-1.5 rounded-xl text-[10px] font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item ${
+                                currentMusicTrack.id === track.id
+                                  ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300"
+                                  : "bg-purple-500/10 border-purple-500/20 text-purple-200"
+                              }`}
+                            >
+                              <span className="truncate">{track.title}</span>
+                              <span className="text-[8px] opacity-50 shrink-0 mr-1">
+                                {track.desc}
+                              </span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                      <div className="lamma-widget-controls mt-auto flex items-center justify-center gap-3 pt-1">
                         <button
                           type="button"
-                          disabled={isUploadingMusic}
-                          onClick={() => musicUploadInputRef.current?.click()}
-                          className="w-full py-2 rounded-xl text-[10px] font-black bg-cyan-500/10 text-cyan-200 border border-cyan-500/20 hover:bg-cyan-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+                          onClick={prevMusicTrack}
+                          disabled={djPlaylist.length === 0}
+                          className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action disabled:opacity-40"
                         >
-                          <Upload size={12} />
-                          {isUploadingMusic ? "جاري الرفع…" : "رفع أغاني للقائمة"}
+                          <ChevronRight size={16} />
                         </button>
-                      </>
-                    )}
-                    {!canUserControlMusicRadio && (
-                      <button
-                        type="button"
-                        onClick={toggleDjListening}
-                        className={`w-full py-2 rounded-xl text-[10px] font-black border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                          isDjListening
-                            ? "bg-cyan-500/15 text-cyan-200 border-cyan-500/30"
-                            : "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10"
-                        }`}
-                      >
-                        {isDjListening ? (
-                          <>
-                            <Volume2 size={12} /> 🔊 أستمع للـ DJ
-                          </>
-                        ) : (
-                          <>
-                            <VolumeX size={12} /> 🔇 مكتوم — اضغط للاستماع
-                          </>
-                        )}
-                      </button>
-                    )}
-                    {!canUserControlMusicRadio && activeRoomDj?.isPlaying && (
-                      <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/20 px-2 py-1.5 text-[9px] text-cyan-200 font-bold truncate">
-                        🎧 {activeRoomDj.updatedBy || "المالك"} يشغّل: {activeRoomDj.title}
-                      </div>
-                    )}
-                    {!canUserControlMusicRadio && !activeRoomDj?.isPlaying && (
-                      <div className="rounded-xl bg-white/5 border border-white/10 px-2 py-1.5 text-[9px] text-gray-400 font-bold text-center">
-                        لا يوجد بث DJ حالياً
-                      </div>
-                    )}
-                    <div className="text-right">
-                      <div className="text-[10px] font-black text-[color:var(--accent-secondary)]">
-                        {canUserControlMusicRadio
-                          ? isMusicPlaying
-                            ? "🔊 بث للغرفة"
-                            : "⏸ متوقف"
-                          : isDjListening
-                            ? activeRoomDj?.isPlaying
-                              ? "🔊 تستمع الآن"
-                              : "🔊 جاهز للاستماع"
-                            : "🔇 DJ مكتوم"}
-                      </div>
-                      <div className="text-[12px] text-white font-extrabold mt-1 truncate">
-                        {canUserControlMusicRadio
-                          ? currentMusicTrack.title
-                          : activeRoomDj?.title || "—"}
-                      </div>
-                      <div className="text-[10px] text-[color:var(--text-secondary)] font-bold mt-1 truncate">
-                        {canUserControlMusicRadio
-                          ? currentMusicTrack.desc
-                          : isDjListening
-                            ? "اختيارك: استماع"
-                            : "اختيارك: كتم"}
-                      </div>
-                    </div>
-                    {canUserControlMusicRadio && (
-                      <>
-                        <div className="space-y-1 max-h-32 overflow-y-auto">
-                          {djPlaylist.length === 0 ? (
-                            <p className="text-[9px] text-gray-500 text-center py-2">
-                              ارفع أغاني لتبدأ البث للغرفة
-                            </p>
+                        <button
+                          type="button"
+                          onClick={toggleMusicPlay}
+                          disabled={!currentMusicTrack.url}
+                          className="p-2.5 rounded-full transition-all cursor-pointer lamma-feature-primary disabled:opacity-40"
+                        >
+                          {isMusicPlaying ? (
+                            <Pause size={16} />
                           ) : (
-                            djPlaylist.map((track) => (
-                              <button
-                                key={track.id}
-                                type="button"
-                                onClick={() => handleSelectMusicTrack(track, true)}
-                                className={`w-full p-1.5 rounded-xl text-[10px] font-black flex items-center justify-between border transition-all cursor-pointer lamma-list-item ${
-                                  currentMusicTrack.id === track.id
-                                    ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300"
-                                    : "bg-purple-500/10 border-purple-500/20 text-purple-200"
-                                }`}
-                              >
-                                <span className="truncate">{track.title}</span>
-                                <span className="text-[8px] text-gray-500 shrink-0 mr-1">
-                                  {track.desc}
-                                </span>
-                              </button>
-                            ))
+                            <Play size={16} className="ml-0.5" />
                           )}
-                        </div>
-                        <div className="mt-auto flex items-center justify-center gap-3 pt-1">
-                          <button
-                            type="button"
-                            onClick={prevMusicTrack}
-                            disabled={djPlaylist.length === 0}
-                            className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action disabled:opacity-40"
-                          >
-                            <ChevronRight size={16} className="text-gray-300" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={toggleMusicPlay}
-                            disabled={!currentMusicTrack.url}
-                            className="p-2.5 rounded-full transition-all cursor-pointer lamma-feature-primary disabled:opacity-40"
-                          >
-                            {isMusicPlaying ? (
-                              <Pause size={16} />
-                            ) : (
-                              <Play size={16} className="ml-0.5" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={nextMusicTrack}
-                            disabled={djPlaylist.length === 0}
-                            className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action disabled:opacity-40"
-                          >
-                            <ChevronLeft size={16} className="text-gray-300" />
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={nextMusicTrack}
+                          disabled={djPlaylist.length === 0}
+                          className="p-2 rounded-xl transition-all cursor-pointer lamma-soft-action disabled:opacity-40"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -10959,7 +10960,7 @@ export default function ChatScreen({
             </div>
 
             <div
-              className="lamma-fire-divider"
+              className="lamma-fire-divider lamma-column-divider"
               onPointerDown={(e) => {
                 if (!rightColumnLayoutRef.current) return;
                 e.preventDefault();
@@ -11158,12 +11159,14 @@ export default function ChatScreen({
             mobileTab === "private"
               ? "absolute inset-x-0 top-0 bottom-0 w-full flex lamma-panel-shell lamma-mobile-pm-fullscreen"
               : isPmOpen
-                ? "hidden md:flex fixed bottom-6 left-6 w-80 h-[450px] rounded-2xl lamma-modal-shell"
+                ? "hidden md:flex fixed bottom-6 left-6 rounded-2xl lamma-modal-shell"
                 : "hidden"
           }`}
           style={
             mobileTab !== "private" && isPmOpen
               ? {
+                  width: PM_PANEL_SIZES[pmPanelTier].w,
+                  height: PM_PANEL_SIZES[pmPanelTier].h,
                   resize: "both",
                   overflow: "hidden",
                   minWidth: "250px",
@@ -11208,6 +11211,67 @@ export default function ChatScreen({
                       {pmTarget.nickname.startsWith("🕵️") ? "🔍 محادثة مراقَبة — للمالك فقط" : "محادثة خاصة"}
                     </div>
                   </div>
+                </div>
+
+                {/* PM tools — zoom text, resize window (desktop), clear chat */}
+                <div
+                  className="flex items-center gap-1"
+                  style={{ display: pmTarget.nickname.startsWith("🕵️") ? "none" : undefined }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => adjustPmTextScale(-1)}
+                    disabled={pmTextScale <= PM_TEXT_SCALE_MIN}
+                    className="w-7 h-7 rounded-lg text-gray-400 flex items-center justify-center lamma-soft-action disabled:opacity-35"
+                    title="تصغير النص"
+                  >
+                    <ZoomOut size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => adjustPmTextScale(1)}
+                    disabled={pmTextScale >= PM_TEXT_SCALE_MAX}
+                    className="w-7 h-7 rounded-lg text-gray-400 flex items-center justify-center lamma-soft-action disabled:opacity-35"
+                    title="تكبير النص"
+                  >
+                    <ZoomIn size={12} />
+                  </button>
+                  {mobileTab !== "private" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPmPanelTier((tier) => Math.max(0, tier - 1))
+                        }
+                        disabled={pmPanelTier <= 0}
+                        className="hidden md:flex w-7 h-7 rounded-lg text-gray-400 items-center justify-center lamma-soft-action disabled:opacity-35"
+                        title="تصغير النافذة"
+                      >
+                        <Minimize2 size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPmPanelTier((tier) =>
+                            Math.min(PM_PANEL_SIZES.length - 1, tier + 1),
+                          )
+                        }
+                        disabled={pmPanelTier >= PM_PANEL_SIZES.length - 1}
+                        className="hidden md:flex w-7 h-7 rounded-lg text-gray-400 items-center justify-center lamma-soft-action disabled:opacity-35"
+                        title="تكبير النافذة"
+                      >
+                        <Maximize2 size={12} />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void handleClearPmConversation()}
+                    className="w-7 h-7 rounded-lg text-red-400/90 flex items-center justify-center lamma-soft-action hover:text-red-300"
+                    title="مسح المحادثة"
+                  >
+                    <Trash2 size={12} />
+                  </button>
                 </div>
 
                 {/* Calling trigger buttons on right of header — hidden for spy threads */}
@@ -11455,14 +11519,6 @@ export default function ChatScreen({
                       size={16}
                       className={`transition-transform duration-300 ${showPmAttachment ? "rotate-45" : ""}`}
                     />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={applyPmComposerColor}
-                    className="flex items-center justify-center transition-all lamma-composer-tool text-gray-500 hover:bg-white/10 hover:text-fuchsia-300"
-                    title="تغيير لون الخط"
-                  >
-                    <Palette size={16} />
                   </button>
                   <button
                     type="button"
@@ -12155,7 +12211,11 @@ export default function ChatScreen({
                     previewDesignPromptAi={previewDesignPromptAi}
                     previewDesignConfig={previewDesignConfig}
                     committedConfig={committedConfig}
+                    getEditableDesignConfig={getEditableDesignConfig}
                     commitPendingDesignPreview={commitPendingDesignPreview}
+                    verifyDesignPreviewDom={verifyDesignPreviewDom}
+                    hasPendingDesignPreview={hasPendingDesignPreview}
+                    isApplyingStyle={isApplyingStyle}
                     cancelPendingDesignPreview={cancelPendingDesignPreview}
                     ownerWriteAccessOk={ownerWriteAccessOk}
                   />

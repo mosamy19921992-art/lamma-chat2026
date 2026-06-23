@@ -1,5 +1,6 @@
 import { supabase } from "../../lib/supabase";
 import { applyUniversalStyleToDom } from "./universalStyleApply";
+import { attachOverlaysToConfig } from "./designOverlayBundle";
 import {
   UNIVERSAL_STYLE_STORAGE_KEY,
   createDefaultUniversalStyle,
@@ -50,12 +51,16 @@ export function saveUniversalStyleLocal(config: UniversalStyleConfig): void {
 export async function syncUniversalStyleToSupabase(
   config: UniversalStyleConfig,
   ownerSettingsRowId = "global",
+  options?: { skipOverlayCollect?: boolean },
 ): Promise<void> {
-  saveUniversalStyleLocal(config);
+  const merged = options?.skipOverlayCollect
+    ? normalizeUniversalStyleConfig(config)
+    : attachOverlaysToConfig(config);
+  saveUniversalStyleLocal(merged);
   if (!supabase) return;
 
   const patch = {
-    universal_style_config: config,
+    universal_style_config: merged,
     updated_at: new Date().toISOString(),
   };
 

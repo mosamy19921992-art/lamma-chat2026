@@ -1,0 +1,80 @@
+/* Private message bubble styles — independent from public chat (data-pm-style on root) */
+
+.lamma-neutral-glass[data-pm-style] .lamma-pm-bubble-own,
+.lamma-neutral-glass[data-pm-style] .lamma-pm-bubble-incoming {
+  border-radius: 16px !important;
+}
+
+.lamma-neutral-glass[data-pm-style="imessage"] .lamma-pm-bubble-own {
+  background: linear-gradient(180deg, #34c759, #30b350) !important;
+  border: none !important;
+  color: #fff !important;
+  border-radius: 18px !important;
+  border-bottom-left-radius: 6px !important;
+}
+
+.lamma-neutral-glass[data-pm-style="imessage"] .lamma-pm-bubble-incoming {
+  background: rgba(60, 60, 67, 0.72) !important;
+  border: none !important;
+  color: #f2f2f7 !important;
+  border-radius: 18px !important;
+  border-bottom-right-radius: 6px !important;
+}
+
+.lamma-neutral-glass[data-pm-style="messenger"] .lamma-pm-bubble-own {
+  background: linear-gradient(135deg, #0084ff, #006aff) !important;
+  border: none !important;
+  color: #fff !important;
+  border-radius: 20px 20px 20px 6px !important;
+}
+
+.lamma-neutral-glass[data-pm-style="messenger"] .lamma-pm-bubble-incoming {
+  background: rgba(24, 28, 36, 0.88) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #e5e7eb !important;
+  border-radius: 20px 20px 6px 20px !important;
+}
+
+.lamma-neutral-glass[data-pm-style="telegram"] .lamma-pm-bubble-own {
+  background: linear-gradient(135deg, #2aabee, #229ed9) !important;
+  border: none !important;
+  color: #fff !important;
+  border-radius: 16px 16px 4px 16px !important;
+}
+
+.lamma-neutral-glass[data-pm-style="telegram"] .lamma-pm-bubble-incoming {
+  background: rgba(33, 42, 52, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: #f0f4f8 !important;
+  border-radius: 16px 16px 16px 4px !important;
+}
+
+.lamma-neutral-glass[data-pm-style="romantic"] .lamma-pm-bubble-own {
+  background: rgba(59, 130, 246, 0.2) !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
+  color: #bfdbfe !important;
+  border-radius: 16px 16px 16px 4px !important;
+}
+
+.lamma-neutral-glass[data-pm-style="romantic"] .lamma-pm-bubble-incoming {
+  background: rgba(244, 63, 94, 0.18) !important;
+  border: 1px solid rgba(244, 63, 94, 0.32) !important;
+  color: #fecdd3 !important;
+  border-radius: 16px 16px 4px 16px !important;
+}
+
+.lamma-neutral-glass[data-pm-style="glass-dark"] .lamma-pm-bubble-own {
+  background: rgba(255, 255, 255, 0.14) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  color: #f8fafc !important;
+}
+
+.lamma-neutral-glass[data-pm-style="glass-dark"] .lamma-pm-bubble-incoming {
+  background: rgba(8, 12, 18, 0.55) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #e2e8f0 !important;
+}

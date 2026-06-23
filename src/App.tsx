@@ -27,6 +27,7 @@ import {
   reconcileGuestSession,
 } from './services/auth/guestAuthService';
 import { ensureFreshAppBuild } from './lib/appCache';
+import { prefetchRemoteDesignTheme } from './services/design/designThemeBoot';
 
 const CHAT_SCREEN_IMPORT = () => import('./components/ChatScreen');
 
@@ -226,10 +227,15 @@ export default function App() {
     return stop;
   }, []);
 
-  // Start downloading the chat bundle immediately so login → chat feels instant.
+  // Start downloading the chat bundle + remote theme as early as possible.
   useEffect(() => {
     void CHAT_SCREEN_IMPORT();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    void prefetchRemoteDesignTheme();
+  }, [user]);
 
   useEffect(() => {
     if (markInviteAccessFromUrl()) {
@@ -465,17 +471,19 @@ export default function App() {
           />
         ) : (
           <Suspense fallback={<ChatLoadingScreen user={user} />}>
-            <ChatScreen
-              key={`${user.uid}-${user.authProvider}`}
-              currentUser={user}
-              onLogout={handleLogout}
-              primaryTheme={primaryTheme}
-              inviteOnlyMode={inviteOnlyMode}
-              hasInviteAccess={hasInviteAccess}
-              onUserSessionUpdate={(patch) => {
-                setUser((prev) => (prev ? { ...prev, ...patch } : prev));
-              }}
-            />
+            <ChatThemeGate user={user}>
+              <ChatScreen
+                key={`${user.uid}-${user.authProvider}`}
+                currentUser={user}
+                onLogout={handleLogout}
+                primaryTheme={primaryTheme}
+                inviteOnlyMode={inviteOnlyMode}
+                hasInviteAccess={hasInviteAccess}
+                onUserSessionUpdate={(patch) => {
+                  setUser((prev) => (prev ? { ...prev, ...patch } : prev));
+                }}
+              />
+            </ChatThemeGate>
           </Suspense>
         )}
 
@@ -487,6 +495,32 @@ export default function App() {
       </div>
     </ErrorBoundary>
   );
+}
+
+function ChatThemeGate({
+  user,
+  children,
+}: {
+  user: UserSession;
+  children: React.ReactNode;
+}) {
+  const [themeReady, setThemeReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void prefetchRemoteDesignTheme().finally(() => {
+      if (!cancelled) setThemeReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!themeReady) {
+    return <ChatLoadingScreen user={user} />;
+  }
+
+  return <>{children}</>;
 }
 
 function AuthBootScreen() {

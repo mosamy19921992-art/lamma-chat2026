@@ -133,10 +133,7 @@ export function useOnlinePresence({
       ) => {
         lastEvent = type;
         const state = channel.presenceState<PresenceMeta>();
-        let count = 0;
-        Object.values(state).forEach((entries) => {
-          count += (entries as PresenceMeta[]).length;
-        });
+        const count = Object.keys(state).length;
         onPresenceUpdate?.({
           type,
           nickname,

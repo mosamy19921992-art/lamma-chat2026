@@ -1,5 +1,6 @@
 import { loadGlassFormTint, DEFAULT_GLASS_TINT } from "./glassTransparencyService";
 import { setDesignPreviewActive } from "./designPreviewDom";
+import { scheduleDesignOverlaysSync } from "./designOverlaySync";
 
 export type ColumnCardStyleId =
   | "neon-ring"
@@ -250,11 +251,16 @@ export function previewColumnCardStyle(id: ColumnCardStyleId, tintHex: string): 
   return applyColumnCardStyleToDom(id, tintHex, true);
 }
 
-export function commitColumnCardStyle(id: ColumnCardStyleId, tintHex: string): boolean {
+export function commitColumnCardStyle(
+  id: ColumnCardStyleId,
+  tintHex: string,
+  options?: { skipSync?: boolean },
+): boolean {
   const ok = applyColumnCardStyleToDom(id, tintHex, false);
   if (!ok) return false;
   persistColumnCardStyle(id, tintHex);
   previewSnapshot = null;
+  if (!options?.skipSync) scheduleDesignOverlaysSync();
   return true;
 }
 

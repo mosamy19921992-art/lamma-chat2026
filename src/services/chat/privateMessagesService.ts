@@ -126,6 +126,41 @@ export async function persistPrivateMessage({
   return data;
 }
 
+export async function clearPrivateConversation(options: {
+  currentUserUid: string;
+  targetNickname: string;
+  targetUid?: string | null;
+}): Promise<void> {
+  const { currentUserUid, targetNickname, targetUid } = options;
+  if (!currentUserUid || !targetNickname.trim()) {
+    throw new Error("تعذر تحديد المحادثة.");
+  }
+
+  if (!supabase) return;
+
+  const nick = targetNickname.trim();
+  const filters = [
+    `and(sender_uid.eq.${currentUserUid},receiver_nickname.eq.${nick})`,
+    `and(receiver_uid.eq.${currentUserUid},sender_nickname.eq.${nick})`,
+  ];
+
+  if (targetUid) {
+    filters.push(
+      `and(sender_uid.eq.${currentUserUid},receiver_uid.eq.${targetUid})`,
+      `and(receiver_uid.eq.${currentUserUid},sender_uid.eq.${targetUid})`,
+    );
+  }
+
+  const { error } = await supabase
+    .from("pm_messages")
+    .delete()
+    .or(filters.join(","));
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function markPrivateMessagesAsRead(
   messageIds: string[],
 ): Promise<void> {

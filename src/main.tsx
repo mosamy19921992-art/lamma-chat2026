@@ -1,6 +1,7 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import './index.css';
+import { bootCachedDesignTheme } from './services/design/designThemeBoot';
 import App from './App.tsx';
 
 function dismissPwaSplash() {
@@ -9,6 +10,8 @@ function dismissPwaSplash() {
   splash.classList.add('pwa-splash--out');
   window.setTimeout(() => splash.remove(), 340);
 }
+
+bootCachedDesignTheme();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

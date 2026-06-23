@@ -1,8 +1,14 @@
 import { loadGlassFormTint, DEFAULT_GLASS_TINT } from "./glassTransparencyService";
 import { setDesignPreviewActive } from "./designPreviewDom";
+import { scheduleDesignOverlaysSync } from "./designOverlaySync";
 
 export type ChaseLightStyleId =
   | "none"
+  | "soft-edge"
+  | "aurora-flow"
+  | "ambient-breathe"
+  | "laser-scan"
+  | "mono-glow"
   | "conic-spin"
   | "liquid-flow"
   | "pulse-glow"
@@ -19,14 +25,29 @@ export interface ChaseLightPreset {
   emoji: string;
 }
 
-export const CHASE_LIGHT_PRESETS: ChaseLightPreset[] = [
-  { id: "none", title: "بدون", subtitle: "إيقاف شريط النور", emoji: "⬜" },
+/** Primary 2026 presets — clean, single-accent, no rainbow by default. */
+export const CHASE_LIGHT_PRESETS_2026: ChaseLightPreset[] = [
+  { id: "none", title: "بدون", subtitle: "إيقاف — افتراضي نظيف", emoji: "⬜" },
+  { id: "soft-edge", title: "Soft Edge", subtitle: "خط gradient رفيع", emoji: "✨" },
+  { id: "aurora-flow", title: "Aurora", subtitle: "لونين accent + cyan", emoji: "🌌" },
+  { id: "ambient-breathe", title: "Ambient", subtitle: "توهج ناعم نابض", emoji: "💫" },
+  { id: "laser-scan", title: "Laser Scan", subtitle: "خط يتحرك على الحافة", emoji: "🔦" },
+  { id: "mono-glow", title: "Mono Glow", subtitle: "لون واحد — بدون رينبو", emoji: "💡" },
+];
+
+/** Legacy presets — kept for saved settings; hidden from main UI. */
+export const CHASE_LIGHT_PRESETS_LEGACY: ChaseLightPreset[] = [
   { id: "conic-spin", title: "Conic Spin", subtitle: "حلقة ملونة دوّارة", emoji: "🌈" },
   { id: "liquid-flow", title: "Liquid Flow", subtitle: "تدرج سائل متحرك", emoji: "💧" },
   { id: "pulse-glow", title: "Pulse Glow", subtitle: "توهج نابض", emoji: "💫" },
   { id: "segment-dash", title: "Segment Dash", subtitle: "شرط متقطع", emoji: "⚡" },
   { id: "rainbow-wave", title: "Rainbow Wave", subtitle: "موجة ألوان", emoji: "🎨" },
   { id: "neon-double", title: "Neon Double", subtitle: "حلقتان نيون", emoji: "💠" },
+];
+
+export const CHASE_LIGHT_PRESETS: ChaseLightPreset[] = [
+  ...CHASE_LIGHT_PRESETS_2026,
+  ...CHASE_LIGHT_PRESETS_LEGACY,
 ];
 
 export interface ChaseLightSettings {
@@ -147,13 +168,17 @@ export function previewChaseLightForTarget(
   return previewChaseLightPatch({ [target]: styleId });
 }
 
-export function commitChaseLightSettings(settings?: ChaseLightSettings): boolean {
+export function commitChaseLightSettings(
+  settings?: ChaseLightSettings,
+  options?: { skipSync?: boolean },
+): boolean {
   const final = normalizeSettings(settings ?? pendingPreview ?? loadChaseLightSettings());
   const ok = applySettingsToDom(final, false);
   if (!ok) return false;
   persistSettings(final);
   previewSnapshot = null;
   pendingPreview = null;
+  if (!options?.skipSync) scheduleDesignOverlaysSync();
   return true;
 }
 

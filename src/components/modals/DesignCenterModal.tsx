@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { DesignStudioModal } from './DesignStudioModal';
+import { DesignShapesPanel } from './DesignShapesPanel';
 import { DesignTemplateGallery } from './DesignTemplateGallery';
 import { DesignImportLibrary } from '../design/DesignImportLibrary';
 import { DesignPreviewBar } from './DesignGlassPreviewBar';
@@ -66,7 +66,12 @@ import {
 } from '../../services/design/universalStyleTypes';
 import { hexToRgba } from '../../lib/chatHelpers';
 
-type DesignSection = "uploads" | "sliders" | "studio" | "library" | "assistant";
+import {
+  commitSidebarWidgetSettings,
+} from '../../services/design/sidebarWidgetStyleService';
+import { commitPmBubbleStyle } from '../../services/design/pmBubbleStyleService';
+
+type DesignSection = "colors" | "shapes" | "uploads";
 
 /** ثيمات 2026 كاملة — كل ثيم يضبط الخلفية (الغامق) + البطاقات + الكتابة + الأساسي + الثانوي معاً. */
 const MODERN_THEME_PRESETS: {
@@ -91,10 +96,11 @@ const MODERN_THEME_PRESETS: {
   { name: "ماجنتا ليلي", bg: "#0c0510", surface: "rgba(28,12,34,0.72)", text: "#fdf4ff", accent: "#d946ef", accent2: "#e879f9" },
 ];
 
-export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode, previewDesignPrompt, previewDesignPromptAi, previewDesignConfig, committedConfig, cancelPendingDesignPreview, commitPendingDesignPreview, ownerWriteAccessOk }: any) => {
+export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode, previewDesignPrompt, previewDesignPromptAi, previewDesignConfig, committedConfig, getEditableDesignConfig, cancelPendingDesignPreview, commitPendingDesignPreview, verifyDesignPreviewDom, hasPendingDesignPreview, isApplyingStyle, ownerWriteAccessOk }: any) => {
   type PreviewKind = "glass" | "face" | "template" | "column" | "import-pack" | "bubble" | "chase" | null;
+  type SaveStatus = "idle" | "preview" | "saving" | "saved" | "local-only" | "error";
 
-  const [section, setSection] = useState<DesignSection>("uploads");
+  const [section, setSection] = useState<DesignSection>("colors");
   const [previewKind, setPreviewKind] = useState<PreviewKind>(null);
   const [activeGlassFormId, setActiveGlassFormId] = useState<GlassFormId | null>(
     () => loadGlassFormId(),
@@ -129,8 +135,62 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
 
   /* ── Sliders + Gemini AI state ── */
   const getBase = (): UniversalStyleConfig => {
+    if (getEditableDesignConfig) return getEditableDesignConfig();
     const cfg = (committedConfig ?? null) as UniversalStyleConfig | null;
     return normalizeUniversalStyleConfig(cfg ?? createDefaultUniversalStyle());
+  };
+
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const commitRef = useRef(commitPendingDesignPreview);
+  const hasPendingRef = useRef(hasPendingDesignPreview);
+  commitRef.current = commitPendingDesignPreview;
+  hasPendingRef.current = hasPendingDesignPreview;
+
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [saveMessage, setSaveMessage] = useState("");
+
+  const reportPreview = (result: { previewApplied?: boolean } | null) => {
+    window.requestAnimationFrame(() => {
+      const verify = verifyDesignPreviewDom?.();
+      if (verify?.ok && verify.previewApplied) {
+        setSaveStatus("preview");
+        setSaveMessage(verify.message);
+      } else if (result?.previewApplied === false || verify?.ok === false) {
+        setSaveStatus("error");
+        setSaveMessage(verify?.message ?? "⚠️ المعاينة لم تصل للشات.");
+      }
+    });
+  };
+
+  const flushSave = async (): Promise<void> => {
+    if (!commitPendingDesignPreview) return;
+    setSaveStatus("saving");
+    const result = await commitPendingDesignPreview();
+    if (result.ok) {
+      setSaveStatus("saved");
+      setSaveMessage(result.message);
+    } else if (result.localOnly) {
+      setSaveStatus("local-only");
+      setSaveMessage(`${result.message}\n(محفوظ على جهازك فقط)`);
+    } else {
+      setSaveStatus("error");
+      setSaveMessage(result.message);
+    }
+  };
+
+  const scheduleAutoSave = () => {
+    if (!isOwnerRole || !commitPendingDesignPreview) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveTimerRef.current = null;
+      void flushSave();
+    }, 700);
+  };
+
+  const previewAndTrack = (config: UniversalStyleConfig) => {
+    const result = previewDesignConfig?.(config);
+    reportPreview(result);
+    scheduleAutoSave();
   };
 
   const defaultBase = createDefaultUniversalStyle();
@@ -148,10 +208,24 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
   const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [aiLastSummary, setAiLastSummary] = useState("");
 
+  useEffect(() => {
+    if (!committedConfig) return;
+    const base = normalizeUniversalStyleConfig(committedConfig);
+    setSliderGlassBlur(base.glass.blurPx);
+    setSliderGlassOpacity(base.glass.opacity);
+    setSliderGlassBorder(base.glass.borderOpacity);
+    setSliderBtnRadius(base.buttons.radiusPx);
+    setSliderBtnGlow(base.buttons.glow);
+    setSliderAccent(base.palette.accent);
+    setSliderAccent2(base.palette.accent2);
+    setSliderBg(base.palette.bg);
+    setSliderText(base.palette.text);
+  }, [committedConfig]);
+
   const applySliderGlassPatch = (glassPatch: Partial<UniversalStyleConfig["glass"]>) => {
     if (!previewDesignConfig || !isOwnerRole) return;
     const base = getBase();
-    previewDesignConfig({ ...base, glass: { ...base.glass, ...glassPatch } });
+    previewAndTrack({ ...base, glass: { ...base.glass, ...glassPatch } });
   };
 
   const applyThemePreset = (preset: typeof MODERN_THEME_PRESETS[number]) => {
@@ -163,7 +237,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     // ثيم نظيف بالكامل: نبدأ من الإعدادات الافتراضية (بدون أنوار/رينبو/تأثيرات عالقة)،
     // ونضبط الألوان + خلفية لون صلبة ظاهرة فعلاً (مش طبقة صورة فوقها).
     const fresh = createDefaultUniversalStyle();
-    previewDesignConfig({
+    previewAndTrack({
       ...fresh,
       label: preset.name,
       palette: {
@@ -184,7 +258,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
   const applyPalettePatch = (patch: Partial<UniversalStyleConfig["palette"]>) => {
     if (!previewDesignConfig || !isOwnerRole) return;
     const base = getBase();
-    previewDesignConfig({ ...base, palette: { ...base.palette, ...patch } });
+    previewAndTrack({ ...base, palette: { ...base.palette, ...patch } });
   };
 
   // تصفية شاملة — تصفّر كل أنظمة التنسيق المتداخلة دفعة واحدة (مصدر "الهبل").
@@ -196,6 +270,15 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     // 1) إطفاء كل أشرطة النور (الأعمدة/الكتابة/الهيدر)
     const tint = loadChaseLightSettings().tintHex || "#6ee7b7";
     commitChaseLightSettings({ columns: "none", composer: "none", header: "none", tintHex: tint, speedSec: 6 });
+    commitSidebarWidgetSettings({
+      radio: "classic",
+      music: "classic",
+      divider: "classic",
+      storeText: "#f8fafc",
+      radioText: "#f8fafc",
+      musicText: "#f8fafc",
+    });
+    commitPmBubbleStyle("classic");
     // 2) إرجاع الزجاج الافتراضي
     applyGlassForm(null);
     // 3) إيقاف الوجه المخصص (نظام ثيمات)
@@ -232,7 +315,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     if (!previewDesignConfig || !isOwnerRole) return;
     setSliderBg(hex);
     const base = getBase();
-    previewDesignConfig({
+    previewAndTrack({
       ...base,
       palette: { ...base.palette, bg: hex },
       backgrounds: {
@@ -270,7 +353,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     }
   };
 
-  const cancelAllPreviews = () => {
+  const cancelShapePreviews = () => {
     if (previewKind === "glass" || isGlassPreviewing) {
       cancelGlassPreview();
       setIsGlassPreviewing(false);
@@ -295,7 +378,6 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     }
     if (previewKind === "import-pack") {
       cancelImportPackVisualPreview();
-      cancelPendingDesignPreview?.();
       setPendingImportPack(null);
     }
     if (previewKind === "bubble") {
@@ -308,17 +390,23 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
       setChaseSettings(loadChaseLightSettings());
       setPendingChaseSummary("");
     }
-    // Always clear the universal-style preview channel too, so the two preview
-    // systems can never overlap/stack on the DOM (fixes the "تداخل").
-    cancelPendingDesignPreview?.();
     setPreviewKind(null);
     setDesignPreviewActive(false);
   };
 
-  /** Switch tabs safely — cancels any active preview first so nothing overlaps. */
+  const cancelAllPreviews = () => {
+    cancelShapePreviews();
+  };
+
+  /** Switch tabs — flush pending color save, cancel shape-only previews. */
   const changeSection = (next: DesignSection) => {
     if (next === section) return;
-    cancelAllPreviews();
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+      void flushSave();
+    }
+    cancelShapePreviews();
     setSection(next);
   };
 
@@ -580,6 +668,10 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
 
   useEffect(() => {
     return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
       cancelGlassPreview();
       cancelFacePreview();
       cancelAssistantPreview?.();
@@ -587,7 +679,9 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
       cancelImportPackVisualPreview();
       cancelBubbleShapePreview();
       cancelChaseLightPreview();
-      cancelPendingDesignPreview?.();
+      if (hasPendingRef.current) {
+        void flushSave();
+      }
       setDesignPreviewActive(false);
     };
   }, []);
@@ -600,18 +694,43 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                         🎨 مركز التصميم
                       </div>
                       <div className="text-[10px] text-gray-400 font-bold mt-1">
-                        ارفع الصور أولاً، ثم غيّر الألوان من الاستوديو، أو استخدم
-                        الاقتراحات الذكية.
+                        معاينة live على الشات → حفظ تلقائي للسيرفر (أو زر حفظ الآن).
                       </div>
+                      {isOwnerRole && (
+                        <div
+                          className={`mt-2 text-[9px] font-bold px-2 py-1.5 rounded-lg whitespace-pre-wrap ${
+                            saveStatus === "saved"
+                              ? "text-emerald-300 bg-emerald-500/10"
+                              : saveStatus === "preview"
+                                ? "text-cyan-300 bg-cyan-500/10"
+                                : saveStatus === "saving" || isApplyingStyle
+                                  ? "text-amber-300 bg-amber-500/10"
+                                  : saveStatus === "local-only"
+                                    ? "text-orange-300 bg-orange-500/10"
+                                    : saveStatus === "error"
+                                      ? "text-rose-300 bg-rose-500/10"
+                                      : ownerWriteAccessOk === false
+                                        ? "text-rose-300 bg-rose-500/10"
+                                        : "text-gray-500 bg-white/5"
+                          }`}
+                        >
+                          {isApplyingStyle || saveStatus === "saving"
+                            ? "⏳ جاري الحفظ على السيرفر…"
+                            : saveMessage ||
+                              (ownerWriteAccessOk === false
+                                ? "⚠️ صلاحية المالك على Supabase مش متاحة — الحفظ هيكون محلي فقط."
+                                : hasPendingDesignPreview
+                                  ? "👀 معاينة نشطة — شوف الشات (إطار cyan) ثم يُحفظ تلقائياً."
+                                  : "✅ جاهز — عدّل أي لون/سلاider وشوف الشات يتغيّر فوراً.")}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1.5 p-1 rounded-2xl lamma-section-card overflow-x-auto">
                       {([
-                        ["uploads", "📤 رفع الصور"],
-                        ["sliders", "🎚️ تحكم مباشر"],
-                        ["studio", "🎛️ ثيمات"],
-                        ["library", "📚 مكتبة"],
-                        ["assistant", "🤖 ذكي"],
+                        ["uploads", "📤 الصور"],
+                        ["colors", "🎨 الألوان"],
+                        ["shapes", "🔷 الشكل"],
                       ] as const).map(([id, label]) => (
                         <button
                           key={id}
@@ -630,7 +749,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                     </div>
 
                     {/* ── تحكم مباشر بالسلايدرات + Gemini AI ── */}
-                    {section === "sliders" && isOwnerRole && (
+                    {section === "colors" && isOwnerRole && (
                       <div className="space-y-4">
                         {/* تصفية شاملة */}
                         <div className="p-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 flex items-center justify-between gap-2">
@@ -664,7 +783,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                                 const result = await askDesignAi(aiPrompt.trim(), base);
                                 if (result.hasChanges && previewDesignConfig) {
                                   const patched = applyDesignAiPatch(base, result.patch);
-                                  previewDesignConfig(patched);
+                                  previewAndTrack(patched);
                                   setSliderGlassBlur(patched.glass.blurPx);
                                   setSliderGlassOpacity(patched.glass.opacity);
                                   setSliderGlassBorder(patched.glass.borderOpacity);
@@ -695,7 +814,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                                 const result = await askDesignAi(aiPrompt.trim(), base);
                                 if (result.hasChanges && previewDesignConfig) {
                                   const patched = applyDesignAiPatch(base, result.patch);
-                                  previewDesignConfig(patched);
+                                  previewAndTrack(patched);
                                   setSliderGlassBlur(patched.glass.blurPx);
                                   setSliderGlassOpacity(patched.glass.opacity);
                                   setSliderGlassBorder(patched.glass.borderOpacity);
@@ -798,7 +917,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                                 const v = parseInt(e.target.value);
                                 setSliderBtnRadius(v);
                                 const base = getBase();
-                                previewDesignConfig?.({ ...base, buttons: { ...base.buttons, radiusPx: v } });
+                                previewAndTrack({ ...base, buttons: { ...base.buttons, radiusPx: v } });
                               }}
                               className="w-full accent-cyan-400"
                             />
@@ -813,7 +932,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                                 const next = !sliderBtnGlow;
                                 setSliderBtnGlow(next);
                                 const base = getBase();
-                                previewDesignConfig?.({ ...base, buttons: { ...base.buttons, glow: next } });
+                                previewAndTrack({ ...base, buttons: { ...base.buttons, glow: next } });
                               }}
                               className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${sliderBtnGlow ? "lamma-accent-btn text-white" : "lamma-tab-soft text-gray-400"}`}
                             >
@@ -941,7 +1060,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                               const base = getBase();
                               const fresh = createDefaultUniversalStyle();
                               // تصفير كل التأثيرات + الـ regions (الرينبو/الشريط/الأنوار) مع الحفاظ على الألوان.
-                              previewDesignConfig({
+                              previewAndTrack({
                                 ...base,
                                 effects: { ...fresh.effects },
                                 regions: fresh.regions,
@@ -958,10 +1077,21 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           <button
                             type="button"
                             onPointerDown={stopDrag}
-                            onClick={() => void commitPendingDesignPreview?.()}
-                            className="flex-1 py-2.5 rounded-xl text-[10px] font-black lamma-accent-btn text-white"
+                            onClick={() => {
+                              if (autoSaveTimerRef.current) {
+                                clearTimeout(autoSaveTimerRef.current);
+                                autoSaveTimerRef.current = null;
+                              }
+                              void flushSave();
+                            }}
+                            disabled={isApplyingStyle}
+                            className="flex-1 py-2.5 rounded-xl text-[10px] font-black lamma-accent-btn text-white disabled:opacity-50"
                           >
-                            ✅ تطبيق نهائي
+                            {isApplyingStyle
+                              ? "⏳ جاري الحفظ…"
+                              : hasPendingDesignPreview
+                                ? "💾 حفظ الآن للجميع"
+                                : "✅ محفوظ على السيرفر"}
                           </button>
                           <button
                             type="button"
@@ -987,11 +1117,8 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                       </div>
                     )}
 
-                    {section === "studio" && isOwnerRole && (
-                      <DesignStudioModal
-                        isOwnerRole={isOwnerRole}
-                        uploadDesignImage={uploadDesignImage}
-                      />
+                    {section === "shapes" && isOwnerRole && (
+                      <DesignShapesPanel onStartInspectMode={onStartInspectMode} />
                     )}
 
                     {section === "uploads" && (
@@ -1210,113 +1337,6 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                       </>
                     )}
 
-                    {section === "library" && isOwnerRole && (
-                      <div className="space-y-4">
-                        {previewKind === "import-pack" && pendingImportPack && (
-                          <DesignPreviewBar
-                            kind="import-pack"
-                            label={`Pack: ${pendingImportPack.emoji} ${pendingImportPack.title}`}
-                            detail={describeImportPackLayers(pendingImportPack)}
-                            tintHex={getImportPackTint(pendingImportPack)}
-                            onCommit={() => void handleCommitImportPack()}
-                            onCancel={handleCancelPreview}
-                          />
-                        )}
-                        <DesignImportLibrary
-                          onApplyToSite={handlePreviewImportPack}
-                          pendingPackId={pendingImportPack?.id}
-                          activePackId={activeImportPackId}
-                        />
-                        <DesignTemplateGallery
-                          onPreviewTemplate={handlePreviewTemplate}
-                          onPreviewFacePreset={handlePreviewFacePreset}
-                          onPreviewGlassForm={handlePreviewGlassForm}
-                          onPreviewColumnStyle={handlePreviewColumnStyle}
-                          onPreviewBubbleShape={handlePreviewBubbleShape}
-                          onPreviewChaseLight={handlePreviewChaseLight}
-                          onCommitPreview={handleCommitPreview}
-                          onCancelPreview={handleCancelPreview}
-                          onTintChange={(hex: string) => {
-                            handleGlassTintChange(hex);
-                            handleColumnTintChange(hex);
-                          }}
-                          onResetGlassForm={handleResetGlassForm}
-                          previewKind={previewKind === "import-pack" ? null : previewKind}
-                          activeGlassFormId={activeGlassFormId}
-                          pendingGlassFormId={pendingGlassFormId}
-                          tintColor={glassTintColor}
-                          pendingColumnStyleId={pendingColumnStyleId}
-                          activeColumnStyleId={activeColumnStyleId}
-                          pendingBubbleShapeId={pendingBubbleShapeId}
-                          activeBubbleShapeId={activeBubbleShapeId}
-                          chaseSettings={chaseSettings}
-                          pendingChaseSummary={pendingChaseSummary}
-                          pendingFacePresetId={pendingFacePresetId}
-                          activeFacePresetId={activeFacePresetId}
-                          pendingTemplateId={pendingTemplateId}
-                          activeTemplateId={activeTemplateId}
-                          pendingTemplateSummary={pendingTemplateSummary}
-                          designPresets={designPresets}
-                          applyDesignPreset={applyDesignPreset}
-                          handleDeleteDesignPreset={handleDeleteDesignPreset}
-                          designPresetName={designPresetName}
-                          setDesignPresetName={setDesignPresetName}
-                          handleSaveDesignPreset={handleSaveDesignPreset}
-                        />
-                      </div>
-                    )}
-
-                    {section === "assistant" && isOwnerRole && (
-                      <div className="space-y-4">
-                        <div className="p-5 rounded-2xl space-y-3 lamma-section-card border border-emerald-500/25">
-                          <div className="text-[12px] font-black text-emerald-300">
-                            ✨ Universal Visual AI Style Engine
-                          </div>
-                          <p className="text-[10px] text-gray-300 leading-relaxed font-bold">
-                            النظام القديم للأوامر الصلبة اتلغى. افتح{" "}
-                            <span className="text-emerald-200">غرفة المالك (Owner)</span>{" "}
-                            واكتب بالعربي أو الإنجليزي — مثلاً:{" "}
-                            <span className="text-white/90">
-                              make the site cyberpunk neon
-                            </span>{" "}
-                            أو{" "}
-                            <span className="text-white/90">fabulous glassmorphic look</span>.
-                          </p>
-                          <ul className="text-[10px] text-gray-400 space-y-1.5 font-bold list-disc list-inside">
-                            <li>معاينة Sandbox داخل الشات قبل أي تطبيق global</li>
-                            <li>Refine متعدد الجولات (مثلاً: make buttons rounder)</li>
-                            <li>Apply Globally يحفظ في Supabase لكل المستخدمين + PWA</li>
-                            <li>خلفيات صورة/فيديو مع overlay تلقائي للقراءة</li>
-                            <li>اكتب «اقتراحات» أو «الألوان مش مناسبة» — البوت يحلل ويقترح إصلاحات</li>
-                            <li>«مكتبة ثيمات» أو «liquid glass» — packs جاهزة iOS + استيراد JSON من النت</li>
-                          </ul>
-                          <p className="text-[9px] text-gray-500">
-                            تبويب Studio أعلاه لرفع الخلفيات اليدوي — المساعد الذكي الآن في الشات فقط.
-                          </p>
-                          {onStartInspectMode ? (
-                            <button
-                              type="button"
-                              onClick={() => onStartInspectMode()}
-                              onPointerDown={stopDrag}
-                              className="w-full mt-2 py-3 rounded-xl font-black text-[11px] transition-all cursor-pointer lamma-accent-btn text-white shadow-[0_0_24px_rgba(16,185,129,0.25)]"
-                            >
-                              🎯 حدّد بالماوس (Inspect Mode)
-                            </button>
-                          ) : null}
-                          {ownerWriteAccessOk === false ? (
-                            <p className="text-[10px] text-amber-300/95 font-bold mt-3 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 leading-relaxed">
-                              ⚠️ حسابك يظهر كـ BOSS لكن Supabase يرفض الحفظ — سجّل دخول
-                              حقيقي وأضف role=owner في جدول user_roles. المعاينة تعمل محلياً
-                              لكن «تطبيق على الكل» لن يُحفظ للجميع.
-                            </p>
-                          ) : null}
-                          <p className="text-[9px] text-gray-500 mt-2 leading-relaxed">
-                            انقر على أي جزء في الشات — هيدر، أعمدة، رسائل، خلفية، أو شريط
-                            الكتابة — ثم طبّق أوامر سريعة مع معاينة حية قبل الحفظ.
-                          </p>
-                        </div>
-                      </div>
-                    )}
                   </div>
     </>
   );

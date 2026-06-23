@@ -18,6 +18,8 @@ import { createDefaultRegions } from "./chatDesignVocabulary";
 
 export type ChatHeaderStyleId = "none" | "flow-strip" | "glass-minimal" | "luxe-gold";
 
+import type { DesignOverlaysBundle } from "./designOverlayBundle";
+
 export interface UniversalStyleConfig {
   version: 1;
   themeId: string;
@@ -62,6 +64,8 @@ export interface UniversalStyleConfig {
   };
   /** Per-region styling — owner design bot vocabulary targets */
   regions: Record<ChatDesignRegion, RegionStyleState>;
+  /** Sidebar widgets, chase lights, glass form, custom face — synced for all browsers */
+  overlays?: DesignOverlaysBundle;
 }
 
 export interface StyleEngineParseResult {
