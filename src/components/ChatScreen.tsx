@@ -198,9 +198,6 @@ import { useSocialFeed } from "../hooks/useSocialFeed";
 import { useWebRTCCalls } from "../hooks/useWebRTCCalls";
 import { useOnlinePresence, type PresenceUpdateEvent } from "../hooks/useOnlinePresence";
 import { resolveEffectiveMemberRole, resolveGranterEffectiveRole } from "../lib/memberRoleResolution";
-import { LuxuryDMList } from "./mobile/LuxuryDMList";
-import { LuxuryDMChat } from "./mobile/LuxuryDMChat";
-import { LuxuryIncomingCallModal } from "./mobile/LuxuryIncomingCallModal";
 import {
   fetchRoomMemberRoles,
   promoteMemberRole,
@@ -13340,37 +13337,6 @@ export default function ChatScreen({
         multiple
         className="hidden"
         onChange={handleOwnerMusicUpload}
-      />
-
-      {/* Luxury Mobile UI - DM Components */}
-      <LuxuryDMList
-        isOpen={showDmList}
-        onClose={handleCloseDmList}
-        onOpenChat={handleOpenDmChat}
-        contacts={sampleDmContacts}
-        currentUser={currentUser}
-      />
-
-      <LuxuryDMChat
-        isOpen={showDmChat}
-        onClose={handleCloseDmChat}
-        contact={selectedDmContact}
-        currentUser={currentUser}
-        onCallAudio={handleDmAudioCall}
-        onCallVideo={handleDmVideoCall}
-      />
-
-      <LuxuryIncomingCallModal
-        isOpen={showIncomingCallModal}
-        caller={incomingCallInfo || { name: "مستخدم", avatar: "م", callType: "audio" }}
-        onAccept={() => {
-          setShowIncomingCallModal(false);
-          // acceptIncoming is from useWebRTCCalls hook - will handle existing incoming call
-        }}
-        onReject={() => {
-          setShowIncomingCallModal(false);
-          // rejectIncoming is from useWebRTCCalls hook - will handle existing incoming call
-        }}
       />
     </div>
   );
