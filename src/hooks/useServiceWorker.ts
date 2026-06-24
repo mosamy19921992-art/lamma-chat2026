@@ -13,7 +13,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 export const PWA_ENABLED = import.meta.env.VITE_ENABLE_PWA === "true";
 const ENABLE_PWA = PWA_ENABLED;
 const CACHE_PREFIXES = ["lamma-"];
-const VERSION_TOKEN = "178225927139";
+const VERSION_TOKEN = "178225968698";
 
 interface ServiceWorkerState {
   needRefresh: boolean;

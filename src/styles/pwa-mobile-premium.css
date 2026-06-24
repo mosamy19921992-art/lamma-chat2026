@@ -213,42 +213,34 @@
     padding-bottom: 4px !important;
   }
 
-  /* Mobile composer — 2 rows: [+] [input] [send] then tool strip */
+  /* Mobile composer — 1 row: [+] [input] [send] with inline tools */
   .lamma-composer-layout {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
-    column-gap: 0.3rem;
-    row-gap: 0.35rem;
-    align-items: end;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
   }
 
   .lamma-composer-slot-attach {
-    grid-column: 1;
-    grid-row: 1;
+    flex-shrink: 0;
   }
 
   .lamma-composer-slot-input {
-    grid-column: 2;
-    grid-row: 1;
+    flex: 1;
     min-width: 0;
   }
 
   .lamma-composer-slot-send {
-    grid-column: 3;
-    grid-row: 1;
+    flex-shrink: 0;
   }
 
   .lamma-composer-tools-wrapper {
-    grid-column: 1 / -1;
-    grid-row: 2;
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.5rem;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding-bottom: 1px;
   }
 
   .lamma-composer-tools-wrapper::-webkit-scrollbar {
@@ -267,6 +259,20 @@
     height: 0;
     overflow: visible;
     position: absolute;
+  /* Fix icon buttons to be clickable */
+  .lamma-header-mini-btn,
+  .lamma-composer-attach-btn,
+  .lamma-composer-send-btn,
+  .lamma-composer-tool-btn {
+    min-width: 40px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
     pointer-events: none;
   }
 
