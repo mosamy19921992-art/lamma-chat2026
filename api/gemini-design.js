@@ -77,7 +77,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "prompt required" });
   }
 
-  const safePrompt = prompt.trim().slice(0, MAX_PROMPT_LEN);
+  const safePrompt = String(prompt.trim()).slice(0, MAX_PROMPT_LEN);
   if (!safePrompt) {
     return res.status(400).json({ error: "prompt required" });
   }
@@ -136,7 +136,7 @@ export default async function handler(req, res) {
     try {
       parsed = JSON.parse(cleaned);
     } catch {
-      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      const jsonMatch = String(cleaned).match(/\{[\s\S]*\}/);
       parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: "خطأ في التحليل", patch: {} };
     }
 
