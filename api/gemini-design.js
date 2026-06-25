@@ -136,7 +136,7 @@ export default async function handler(req, res) {
     try {
       parsed = JSON.parse(cleaned);
     } catch {
-      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      const jsonMatch = String(cleaned).match(/\{[\s\S]*\}/);
       parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: "خطأ في التحليل", patch: {} };
     }
 
