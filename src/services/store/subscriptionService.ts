@@ -81,7 +81,7 @@ export async function saveCustomFeatures(
   if (!supabase) return { error: "Supabase غير متاح" };
   const { error } = await supabase
     .from("owner_settings")
-    .update({ custom_features: features })
+    .update({ custom_features: mongoSanitize.sanitize({ data: features }).data })
     .eq("id", "global");
   return { error: error?.message || null };
 }
