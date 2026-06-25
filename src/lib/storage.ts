@@ -16,7 +16,7 @@ function set<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (err) {
-    console.warn(`[storage] Failed to write "${key}":`, err);
+    console.warn(`[storage] Failed to write "${String(key).replace(/\n|\r/g, ``)}":`, err);
   }
 }
 
@@ -33,7 +33,7 @@ function setString(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
   } catch (err) {
-    console.warn(`[storage] Failed to write string "${key}":`, err);
+    console.warn(`[storage] Failed to write string "${String(key).replace(/\n|\r/g, ``)}":`, err);
   }
 }
 
@@ -41,7 +41,7 @@ function remove(key: string): void {
   try {
     localStorage.removeItem(key);
   } catch (err) {
-    console.warn(`[storage] Failed to remove "${key}":`, err);
+    console.warn(`[storage] Failed to remove "${String(key).replace(/\n|\r/g, ``)}":`, err);
   }
 }
 

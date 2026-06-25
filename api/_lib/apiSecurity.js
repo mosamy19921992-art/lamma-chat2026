@@ -34,7 +34,7 @@ export function checkRateLimit(key, maxRequests, windowMs) {
 export function getClientIp(req) {
   const forwarded = req.headers["x-forwarded-for"];
   if (typeof forwarded === "string" && forwarded.trim()) {
-    return forwarded.split(",")[0].trim();
+    return String(forwarded.split(",")[0]).trim();
   }
   if (Array.isArray(forwarded) && forwarded[0]) {
     return String(forwarded[0]).trim();
@@ -64,7 +64,7 @@ function getSupabaseAuthClient() {
 /** Verify Supabase JWT from Authorization: Bearer header. */
 export async function verifySupabaseJwt(req) {
   const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ")) return null;
+  if (!String(authHeader).startsWith("Bearer ")) return null;
   const token = authHeader.slice(7).trim();
   if (!token) return null;
 

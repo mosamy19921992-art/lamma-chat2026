@@ -1,6 +1,18 @@
 import type { ChatDesignRegion } from "./chatDesignVocabulary";
 import { detectDesignRegion, REGION_LABELS_AR } from "./chatDesignVocabulary";
 
+function validateRootDomain(url?: string, domain?: string): boolean {
+  if (!url || !domain) {
+    return false;
+  }
+  try {
+    const host = new URL(url).host;
+    return host === domain || host.endsWith('.' + domain);
+  } catch(_) {
+    return false;
+  }
+}
+
 export type UiverseSubTarget = "all" | "buttons" | "icons" | "background";
 
 export interface ResolvedUiverseTarget {
@@ -261,7 +273,7 @@ export function parseUiverseUrl(
   try {
     const parsed = new URL(trimmed);
     const host = parsed.hostname.replace(/^www\./, "");
-    if (!host.endsWith("uiverse.io")) return null;
+    if (!validateRootDomain(host, "uiverse.io")) return null;
 
     const parts = parsed.pathname.split("/").filter(Boolean);
     const skip = new Set([
