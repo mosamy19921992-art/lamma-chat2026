@@ -3,6 +3,8 @@
 let audioCtx: AudioContext | null = null;
 let ringTimer: ReturnType<typeof setInterval> | null = null;
 let activeOscillators: OscillatorNode[] = [];
+/** Bumps on every stop — in-flight start() must not arm a new interval after stop. */
+let ringGeneration = 0;
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -37,6 +39,8 @@ function playRingBurst(ctx: AudioContext): void {
 
 export async function startIncomingCallRingtone(): Promise<void> {
   stopIncomingCallRingtone();
+  const generation = ringGeneration;
+
   const ctx = getAudioContext();
   if (!ctx) return;
 
@@ -46,13 +50,23 @@ export async function startIncomingCallRingtone(): Promise<void> {
     // may need user gesture first — visual alert still shows
   }
 
+  if (generation !== ringGeneration) return;
+
   playRingBurst(ctx);
   ringTimer = setInterval(() => {
+    if (generation !== ringGeneration) {
+      if (ringTimer) {
+        clearInterval(ringTimer);
+        ringTimer = null;
+      }
+      return;
+    }
     if (audioCtx) playRingBurst(audioCtx);
   }, 2200);
 }
 
 export function stopIncomingCallRingtone(): void {
+  ringGeneration += 1;
   if (ringTimer) {
     clearInterval(ringTimer);
     ringTimer = null;

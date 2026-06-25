@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { ActivityLog, BanInfo, ChatMember, ProductTab, ProductType, UserSession } from "../../lib/chatTypes";
+import type { ChatReport, ChatReportStatus } from "../../services/chat/chatReportsService";
 
 interface AdminPanelModalProps {
   adminTab: string;
   setAdminTab: (val: any) => void;
   activityLogs: ActivityLog[];
+  chatReports: ChatReport[];
+  onRefreshReports: () => void;
+  onResolveReport: (reportId: string, status: ChatReportStatus) => void;
   bannedUsersList: BanInfo[];
   storeProducts: any[];
   chatMembers: ChatMember[];
@@ -61,6 +65,9 @@ export function AdminPanelModal({
   adminTab,
   setAdminTab,
   activityLogs,
+  chatReports,
+  onRefreshReports,
+  onResolveReport,
   bannedUsersList,
   storeProducts,
   chatMembers,
@@ -155,6 +162,17 @@ export function AdminPanelModal({
           🚫 المطرودين والـ Mega Ban ({bannedUsersList.length})
         </button>
         <button
+          onClick={() => setAdminTab("reports")}
+          className={`pb-2 px-3 text-xs font-black transition-all border-b-2 cursor-pointer shrink-0 ${
+            adminTab === "reports"
+              ? "border-[#a3e635] text-[#a3e635]"
+              : "border-transparent text-gray-405 hover:text-white"
+          }`}
+        >
+          🚩 بلاغات الأعضاء (
+          {chatReports.filter((r) => r.status === "open").length})
+        </button>
+        <button
           onClick={() => setAdminTab("store_mgmt")}
           className={`pb-2 px-3 text-xs font-black transition-all border-b-2 cursor-pointer shrink-0 ${
             adminTab === "store_mgmt"
@@ -199,10 +217,10 @@ export function AdminPanelModal({
             </div>
             <div className="p-2.5 bg-black/40 rounded-xl border border-red-500/10 text-center">
               <div className="text-sm font-black text-red-500">
-                {bannedUsersList.length}
+                {chatReports.filter((r) => r.status === "open").length}
               </div>
               <div className="text-[8.5px] text-gray-400 font-extrabold">
-                العقوبات والبلاغات
+                بلاغات مفتوحة
               </div>
             </div>
             <div className="p-2.5 bg-black/40 rounded-xl border border-cyan-500/10 text-center">
@@ -577,6 +595,99 @@ export function AdminPanelModal({
           {bannedUsersList.length === 0 && (
             <div className="p-8 text-center text-gray-500 text-xs font-bold rounded-2xl lamma-section-card">
               لا يوجد أي أعضاء معاقبين أو محظورين في السجلات، المجتمع آمن.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sub-tab: Member reports */}
+      {adminTab === "reports" && (
+        <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1" dir="rtl">
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={onRefreshReports}
+              className="px-3 py-1.5 text-[9px] font-black rounded-lg lamma-tab-soft text-cyan-200 hover:text-white"
+            >
+              🔄 تحديث البلاغات
+            </button>
+            <span className="text-[10px] text-gray-400 font-bold">
+              {chatReports.filter((r) => r.status === "open").length} مفتوحة
+              · {chatReports.length} إجمالي
+            </span>
+          </div>
+          {chatReports.map((report) => (
+            <div
+              key={report.id}
+              className={`p-3 rounded-xl border text-right ${
+                report.status === "open"
+                  ? "border-amber-500/20 bg-amber-500/5"
+                  : "border-white/5 bg-black/30 opacity-80"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span
+                  className={`text-[8px] px-1.5 py-0.5 rounded font-black ${
+                    report.status === "open"
+                      ? "bg-amber-500/15 text-amber-300"
+                      : report.status === "resolved"
+                        ? "bg-emerald-500/15 text-emerald-300"
+                        : "bg-gray-500/15 text-gray-400"
+                  }`}
+                >
+                  {report.status === "open"
+                    ? "مفتوح"
+                    : report.status === "resolved"
+                      ? "تمت المعالجة"
+                      : "مرفوض"}
+                </span>
+                <span className="text-[10px] text-gray-400">
+                  {new Date(report.createdAt).toLocaleString("ar-EG")}
+                </span>
+              </div>
+              <div className="text-[11px] font-black text-white mb-1">
+                🚩{" "}
+                {report.roomId === "help" && report.reportedNickname === "—"
+                  ? "شكوى / طلب مساعدة"
+                  : `بلاغ على: ${report.reportedNickname}`}
+              </div>
+              <div className="text-[10px] text-gray-400 mb-1">
+                من: {report.reporterNickname} · غرفة: {report.roomName || report.roomId}
+              </div>
+              {report.messageExcerpt && (
+                <div className="text-[10px] text-gray-300 bg-black/30 rounded-lg p-2 mb-1 leading-relaxed">
+                  «{report.messageExcerpt.slice(0, 220)}
+                  {report.messageExcerpt.length > 220 ? "…" : ""}»
+                </div>
+              )}
+              {report.reason && (
+                <div className="text-[9px] text-amber-200/90 mb-2">
+                  سبب إضافي: {report.reason}
+                </div>
+              )}
+              {report.status === "open" && (
+                <div className="flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => onResolveReport(report.id, "dismissed")}
+                    className="px-2.5 py-1 text-[9px] font-bold rounded-lg bg-white/5 text-gray-300 hover:text-white"
+                  >
+                    رفض
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onResolveReport(report.id, "resolved")}
+                    className="px-2.5 py-1 text-[9px] font-bold rounded-lg bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
+                  >
+                    ✅ تمت المعالجة
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+          {chatReports.length === 0 && (
+            <div className="p-8 text-center text-gray-500 text-xs font-bold rounded-2xl lamma-section-card">
+              لا توجد بلاغات حتى الآن.
             </div>
           )}
         </div>

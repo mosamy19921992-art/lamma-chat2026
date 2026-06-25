@@ -23,7 +23,20 @@ function buildHelpMessage(): string {
 - /clear مسح الشاشة تجميلياً
 - /zen وضع التركيز (Zen)
 - /compact وضع العرض المدمج
-- /guard أو /status تقرير بوت الحماية`;
+- /guard أو /status تقرير بوت الحماية
+- /complaint أو /شكوى — كيف ترفع بلاغ
+
+📋 للمساعدة والشكاوى: ادخل غرفة «مساعدة وشكاوى»
+🚩 أو اضغط زر البلاغ 🚩 على أي رسالة مخالفة`;
+}
+
+function buildComplaintGuideMessage(): string {
+  return `📋 رفع شكوى أو بلاغ في شات لمة:
+1️⃣ ادخل غرفة «مساعدة وشكاوى» واكتب تفاصيل المشكلة
+2️⃣ أو اضغط 🚩 على الرسالة المخالفة في أي غرفة
+3️⃣ اذكر اسم العضو + ماذا حدث — الإدارة تراجع البلاغات من لوحة التحكم
+
+⏳ البلاغات تُراجع من فريق الإدارة — لا تنشر بيانات شخصية هنا.`;
 }
 
 function buildGuardStatusMessage({
@@ -157,6 +170,16 @@ export async function handleRoomChatCommand({
         bannedWordsCount,
       }),
     );
+    onInputCleared();
+    return true;
+  }
+
+  if (
+    trimmedText === "/complaint" ||
+    trimmedText === "/شكوى" ||
+    trimmedText === "/بلاغ"
+  ) {
+    onSystemWarning(roomId, buildComplaintGuideMessage());
     onInputCleared();
     return true;
   }

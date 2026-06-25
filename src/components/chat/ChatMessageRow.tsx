@@ -59,6 +59,8 @@ export type ChatMessageRowProps = {
   onAddReaction: (roomId: string, messageId: string, emoji: string) => void;
   onDeleteMessage: (msg: Message) => void;
   canDeleteMessage: (msg: Message) => boolean;
+  onReportMessage?: (msg: Message) => void;
+  canReportMessage?: (msg: Message) => boolean;
   resolveStyleSandboxSession: (msg: Message) => StyleSandboxSession | null;
   onApplyStyleSandbox: (session: StyleSandboxSession) => void;
   onCancelStyleSandbox: (sandboxId: string | undefined) => void;
@@ -81,6 +83,8 @@ function ChatMessageRowInner({
   onAddReaction,
   onDeleteMessage,
   canDeleteMessage,
+  onReportMessage,
+  canReportMessage,
   resolveStyleSandboxSession,
   onApplyStyleSandbox,
   onCancelStyleSandbox,
@@ -248,6 +252,22 @@ function ChatMessageRowInner({
                 >
                   👍
                 </button>
+                {canReportMessage?.(msg) && onReportMessage && (
+                  <>
+                    <div className="w-[1px] h-3 bg-white/20 mx-0.5" />
+                    <button
+                      type="button"
+                      title="بلاغ عن الرسالة"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReportMessage(msg);
+                      }}
+                      className="text-[10px] hover:scale-110 transition-transform cursor-pointer"
+                    >
+                      🚩
+                    </button>
+                  </>
+                )}
                 {canDeleteMessage(msg) && (
                   <>
                     <div className="w-[1px] h-3 bg-white/20 mx-0.5" />

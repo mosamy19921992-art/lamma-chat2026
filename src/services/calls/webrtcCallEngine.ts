@@ -244,6 +244,7 @@ export class WebRTCCallEngine {
       });
 
       const newVideoTrack = newStream.getVideoTracks()[0];
+      if (!newVideoTrack) return false;
 
       if (this.pc) {
         const sender = this.pc.getSenders().find(

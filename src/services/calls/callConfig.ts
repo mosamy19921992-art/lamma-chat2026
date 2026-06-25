@@ -132,8 +132,8 @@ export function getIceServerBundles(): IceServerBundle[] {
 }
 
 /** Faster ICE gathering on call start (free — no paid service). */
-export const ICE_CANDIDATE_POOL_SIZE = 10;
+export const ICE_CANDIDATE_POOL_SIZE = 12;
 
 export const CALL_RING_TIMEOUT_MS = 45_000;
 /** Fail over to 2nd bundle sooner when relay is congested. */
-export const ICE_FAILOVER_DELAY_MS = 4_000;
+export const ICE_FAILOVER_DELAY_MS = 2_500;

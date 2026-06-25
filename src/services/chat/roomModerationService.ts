@@ -7,6 +7,7 @@ export interface RoomModerationResult {
   isCensored: boolean;
   cleanText: string;
   warningMessage: string | null;
+  userAlertMessage: string | null;
   logMsg: string | null;
   logSeverity: ModerationLogSeverity;
 }
@@ -49,6 +50,7 @@ export function moderateRoomMessage({
     isCensored: false,
     cleanText: text,
     warningMessage: null,
+    userAlertMessage: null,
     logMsg: null,
     logSeverity: "info",
   };
@@ -63,6 +65,8 @@ export function moderateRoomMessage({
       isCensored: false,
       cleanText: "",
       warningMessage: `🔥 LC-Fire: تم حجب رسالة العضو (${authorName}) لأنها تحتوي على رابط خارجي.`,
+      userAlertMessage:
+        "⚠️ تم حجب رسالتك — الروابط الخارجية ممنوعة في الغرف العامة. للشكاوى: غرفة «مساعدة وشكاوى» 📋",
       logMsg: `محاولة نشر رابط خارجي من [${authorName}] في غرفة [${roomName}] — تم الحجب تلقائياً.`,
       logSeverity: "danger",
     };
@@ -85,6 +89,8 @@ export function moderateRoomMessage({
       isCensored: false,
       cleanText: "",
       warningMessage: `⚠️ يرجى عدم تكرار نفس الرسالة يا (${authorName}).`,
+      userAlertMessage:
+        "⚠️ تم حجب رسالتك — لا تكرر نفس الرسالة بسرعة (سبام).",
       logMsg: `تكرار رسالة متطابقة (Spam) من [${authorName}] — تم الحجب.`,
       logSeverity: "warn",
     };
@@ -103,6 +109,8 @@ export function moderateRoomMessage({
         isCensored: false,
         cleanText: "",
         warningMessage: `🔥 LC-Fire: تم حجب رسالة العضو (${authorName}) لاحتوائها على كلمة محظورة.`,
+        userAlertMessage:
+          "⚠️ تم حجب رسالتك — تحتوي على كلمة غير مسموحة حسب قوانين الشات.",
         logMsg: `جدار الكلمات: كلمة محظورة وُجدت في رسالة [${authorName}] — الرسالة محجوبة تلقائياً.`,
         logSeverity: "danger",
       };

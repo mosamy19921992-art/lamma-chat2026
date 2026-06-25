@@ -234,6 +234,15 @@ import {
   fetchMyActiveSanctions,
   mapBannedUserRowToBanInfo,
 } from "../services/chat/moderationService";
+import {
+  getCachedChatReports,
+  submitChatReport,
+  subscribeToChatReports,
+  syncChatReportsForStaff,
+  updateChatReportStatus,
+  type ChatReport,
+  type ChatReportStatus,
+} from "../services/chat/chatReportsService";
 import { deleteRoomMessagesByMember } from "../services/chat/roomMessagesModerationService";
 import { formatSupabaseUserError, isRlsDenied } from "../lib/supabaseErrors";
 import { estimateMessageRowHeight } from "../lib/messageLayoutUtils";
@@ -825,6 +834,7 @@ export default function ChatScreen({
   const isManagementRole = isOwnerRole || isAdminRole;
   const isPostsRoom = activeRoomId === POSTS_ROOM_ID;
   const isAdminRoom = activeRoomId === "admin";
+  const isHelpRoom = activeRoomId === "help";
   const isGamesRoom = activeRoomId === "games";
   const canPublishPosts = currentUser.authProvider === "supabase";
   const isRegisteredAccount = currentUser.authProvider === "supabase";
@@ -1644,7 +1654,7 @@ export default function ChatScreen({
     string | null
   >(null);
   const [adminTab, setAdminTab] = useState<
-    "actions" | "logs" | "bans" | "store_mgmt"
+    "actions" | "logs" | "bans" | "reports" | "store_mgmt"
   >("actions");
 
   // Right-click / interactive context menu for members
@@ -2722,6 +2732,14 @@ export default function ChatScreen({
     return [];
   });
 
+  const [chatReports, setChatReports] = useState<ChatReport[]>(() =>
+    getCachedChatReports(),
+  );
+  const openChatReportsCount = useMemo(
+    () => chatReports.filter((r) => r.status === "open").length,
+    [chatReports],
+  );
+
   // Lamma AI Guard Bot Settings & States
   const [isBotEnabled, setIsBotEnabled] = useState<boolean>(() => {
     return localStorage.getItem("lamma_bot_enabled") !== "false";
@@ -3047,12 +3065,7 @@ export default function ChatScreen({
     if (activeCall?.type === "video" && remoteVideoRef.current && remoteStream) {
       void playRemoteMedia(remoteVideoRef.current, remoteStream);
     }
-    const remoteHasVideo = remoteStream?.getVideoTracks().some((t) => t.enabled);
-    if (
-      remoteAudioRef.current &&
-      remoteStream &&
-      (activeCall?.type !== "video" || !remoteHasVideo)
-    ) {
+    if (remoteAudioRef.current && remoteStream) {
       void playRemoteMedia(remoteAudioRef.current, remoteStream);
     }
   }, [activeCall?.type, remoteStream]);
@@ -5251,7 +5264,7 @@ export default function ChatScreen({
     const isAdmin = roleLower === "admin" || isOwner;
 
     if (roomId === "admin" && !isAdmin) {
-      alert("🛡️ غرفة الإدارة والشكاوى متاحة للمشرفين والمالك فقط.");
+      alert("🛡️ غرفة الإدارة متاحة للمشرفين والمالك فقط. للشكاوى: ادخل غرفة «مساعدة وشكاوى» 📋");
       return;
     }
 
@@ -5439,6 +5452,7 @@ export default function ChatScreen({
     { id: "fun", name: "فرفشة", flag: "🥳" },
     { id: "palestine", name: "فلسطين", flag: "🇵🇸" },
     { id: "games", name: "ألعاب", flag: "🎮" },
+    { id: "help", name: "مساعدة وشكاوى", flag: "📋" },
     { id: "admin", name: "الإدارة", flag: "🛡️" },
     { id: "owner", name: "المالك", flag: "👑" },
   ];
@@ -5599,6 +5613,7 @@ export default function ChatScreen({
     "posts-feed":
       "انشر أفكارك ومنشوراتك العامة هنا، وستظهر لكل من يدخل الروم 📰",
     admin: "لوحة رقابة المشرفين، يرجى الحفاظ على النظام 🛡️",
+    help: "مساعدة وشكاوى — اكتب مشكلتك أو استفسارك وسيراجعها فريق الإدارة 📋",
     owner: "جدار المالك السري 👑، يمكنك هنا تعديل وتخصيص كل شيء بضغطة زر!",
   });
   const [isEditingTopic, setIsEditingTopic] = useState(false);
@@ -5922,6 +5937,180 @@ export default function ChatScreen({
       };
     });
   }, [isBotSilent, setRoomMessages]);
+
+  const refreshChatReports = useCallback(async () => {
+    if (isManagementRole) {
+      const merged = await syncChatReportsForStaff();
+      setChatReports(merged);
+      return;
+    }
+    setChatReports(getCachedChatReports());
+  }, [isManagementRole]);
+
+  useEffect(() => {
+    if (!isManagementRole) return;
+    void refreshChatReports();
+    return subscribeToChatReports(() => {
+      void refreshChatReports();
+    });
+  }, [isManagementRole, refreshChatReports]);
+
+  const handleReportMessage = useCallback(
+    async (msg: Message) => {
+      if (msg.type === "system" || msg.author === currentUser.nickname) return;
+
+      const reason = window.prompt(
+        `🚩 بلاغ عن ${msg.author}\n\nاكتب سبباً مختصراً (اختياري):`,
+        "",
+      );
+      if (reason === null) return;
+
+      const roomName =
+        ROOMS_DEF.find((r) => r.id === activeRoomId)?.name || activeRoomId;
+      const excerpt =
+        msg.text?.trim() ||
+        (msg.type === "image"
+          ? "[صورة]"
+          : msg.type === "video"
+            ? "[فيديو]"
+            : "[رسالة]");
+
+      const result = await submitChatReport({
+        reporterUid: currentUser.uid,
+        reporterNickname: currentUser.nickname,
+        reporterColor: currentUser.color,
+        reportedNickname: msg.author,
+        roomId: activeRoomId,
+        roomName,
+        messageId: msg.id,
+        messageExcerpt: excerpt,
+        reason: reason.trim() || undefined,
+      });
+
+      if (!result.ok) {
+        alert(
+          result.error === "already_reported"
+            ? "⚠️ بلّغت عن هذه الرسالة من قبل."
+            : "⚠️ تعذر إرسال البلاغ. حاول مجدداً أو اكتب في غرفة المساعدة.",
+        );
+        return;
+      }
+
+      await refreshChatReports();
+      alert("✅ تم إرسال البلاغ. شكراً — فريق الإدارة سيراجعه.");
+    },
+    [
+      activeRoomId,
+      currentUser.color,
+      currentUser.nickname,
+      currentUser.uid,
+      refreshChatReports,
+    ],
+  );
+
+  const submitHelpRoomTicket = useCallback(
+    async (complaintText: string) => {
+      const excerpt = complaintText.trim();
+      if (!excerpt || excerpt.startsWith("/")) return;
+
+      const result = await submitChatReport({
+        reporterUid: currentUser.uid,
+        reporterNickname: currentUser.nickname,
+        reporterColor: currentUser.color,
+        reportedNickname: "—",
+        roomId: "help",
+        roomName: "مساعدة وشكاوى",
+        messageExcerpt: excerpt,
+        reason: "طلب مساعدة من غرفة المساعدة",
+      });
+
+      if (result.ok) {
+        await refreshChatReports();
+        addLammaBotMessage(
+          "help",
+          "✅ تم استلام شكواك — فريق الإدارة سيراجعها من لوحة البلاغات. شكراً 🙏",
+        );
+      }
+    },
+    [
+      addLammaBotMessage,
+      currentUser.color,
+      currentUser.nickname,
+      currentUser.uid,
+      refreshChatReports,
+    ],
+  );
+
+  useEffect(() => {
+    if (activeRoomId === "admin" && !isManagementRole) {
+      alert(
+        "🛡️ غرفة الإدارة متاحة للمشرفين والمالك فقط. للشكاوى: ادخل غرفة «مساعدة وشكاوى» 📋",
+      );
+      setActiveRoomId("help");
+      return;
+    }
+    if (activeRoomId === "owner" && !isOwnerRole) {
+      alert("🎨 غرفة بوت التصميم متاحة للمالك فقط.");
+      setActiveRoomId("egypt");
+    }
+  }, [activeRoomId, isManagementRole, isOwnerRole]);
+
+  const canReportMessage = useCallback(
+    (msg: Message) => {
+      if (msg.type === "system") return false;
+      if (msg.author === currentUser.nickname) return false;
+      if (/LAMMA|LC-Fire|نظام|🤖|🔥/.test(msg.author)) return false;
+      return true;
+    },
+    [currentUser.nickname],
+  );
+
+  const handleResolveReport = useCallback(
+    async (reportId: string, status: ChatReportStatus) => {
+      const ok = await updateChatReportStatus(
+        reportId,
+        status,
+        currentUser.nickname,
+      );
+      if (ok) {
+        addSystemActivityLog(
+          "demote",
+          reportId,
+          `تحديث حالة بلاغ إلى: ${status}`,
+          currentUser.nickname,
+        );
+        await refreshChatReports();
+      }
+    },
+    [addSystemActivityLog, currentUser.nickname, refreshChatReports],
+  );
+
+  useEffect(() => {
+    if (activeRoomId !== "help") return;
+    const key = "lamma_help_welcome_v1";
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    addLammaBotMessage(
+      "help",
+      `📋 أهلاً في غرفة المساعدة والشكاوى!
+
+• اكتب مشكلتك أو شكواك هنا — فريق الإدارة يراجع الرسائل
+• أو استخدم 🚩 على أي رسالة مخالفة في الغرف الأخرى
+• للأوامر: /complaint أو /شكوى
+
+⏳ يرجى احترام الآداب وعدم نشر بيانات شخصية.`,
+    );
+  }, [activeRoomId, addLammaBotMessage]);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("lamma_rules_tip_v1")) return;
+    if (activeRoomId === "owner" || activeRoomId === "admin") return;
+    sessionStorage.setItem("lamma_rules_tip_v1", "1");
+    addLammaBotMessage(
+      activeRoomId,
+      `🤖 LAMMA SYSTEM: أهلاً في شات لمة! احترم الآداب — للشكاوى: غرفة «مساعدة وشكاوى» 📋 أو زر 🚩 على الرسالة.`,
+    );
+  }, [activeRoomId, addLammaBotMessage]);
 
   const [styleSandboxes, setStyleSandboxes] = useState<
     Record<string, StyleSandboxSession>
@@ -6274,6 +6463,8 @@ export default function ChatScreen({
         onAddReaction={addReaction}
         onDeleteMessage={deleteMessage}
         canDeleteMessage={canDeleteMessage}
+        onReportMessage={(m) => void handleReportMessage(m)}
+        canReportMessage={canReportMessage}
         resolveStyleSandboxSession={resolveStyleSandboxSession}
         onApplyStyleSandbox={handleApplyStyleSandbox}
         onCancelStyleSandbox={cancelStyleSandbox}
@@ -6296,6 +6487,8 @@ export default function ChatScreen({
       memberCosmeticGrants,
       myActiveSession,
       openReactionMsgId,
+      handleReportMessage,
+      canReportMessage,
       resolveStyleSandboxSession,
       subscription,
     ],
@@ -6435,8 +6628,9 @@ export default function ChatScreen({
   });
 
   const handleSendMessage = useCallback(async () => {
+    const trimmed = inputText.trim();
+
     if (isPostsRoom) {
-      const trimmed = inputText.trim();
       if (!trimmed) return;
       if (!canPublishPosts) {
         alert(
@@ -6458,12 +6652,21 @@ export default function ChatScreen({
       return;
     }
 
-    if (inputText.trim()) {
+    const isHelpComplaint =
+      activeRoomId === "help" &&
+      Boolean(trimmed) &&
+      !trimmed.startsWith("/") &&
+      !isManagementRole;
+
+    if (trimmed) {
       bumpUserStat("messagesSent");
     }
     chatStickToBottomRef.current = true;
     try {
       await sendRoomMessage();
+      if (isHelpComplaint) {
+        void submitHelpRoomTicket(trimmed);
+      }
     } catch (error) {
       console.error("sendRoomMessage failed:", error);
       alert(
@@ -6475,14 +6678,17 @@ export default function ChatScreen({
       window.setTimeout(() => scrollChatToBottom("smooth"), 420);
     }
   }, [
+    activeRoomId,
     canPublishPosts,
     inputText,
+    isManagementRole,
     isMobileAppShell,
     isPostsRoom,
     publishPost,
     scrollChatToBottom,
     sendRoomMessage,
     setInputText,
+    submitHelpRoomTicket,
   ]);
 
   useEffect(() => {
@@ -8580,7 +8786,7 @@ export default function ChatScreen({
 
       {/* ================= FOUR-PANEL BODY ================= */}
       <div
-        className={`flex-1 flex overflow-hidden relative min-h-0${
+        className={`flex-1 flex overflow-hidden relative min-h-0 lamma-chat-body-stage${
           isMobileAppShell ? " lamma-pwa-main-stage" : ""
         }`}
       >
@@ -9115,7 +9321,9 @@ export default function ChatScreen({
 
                 {(() => {
                   const visibleRooms = ROOMS_DEF.filter((room) => {
-                    if (room.id === "admin" && !isManagementRole) return false;
+                    if ((room as { staffOnly?: boolean }).staffOnly && !isManagementRole) {
+                      return false;
+                    }
                     if ((room as { ownerOnly?: boolean }).ownerOnly && !isOwnerRole) {
                       return false;
                     }
@@ -10202,12 +10410,22 @@ export default function ChatScreen({
                           </div>
                         </div>
                         <div className="rounded-xl border border-white/6 bg-white/5 p-2.5">
-                          <div className="text-[9px] text-gray-400">الشكاوى المستلمة</div>
+                          <div className="text-[9px] text-gray-400">الشكاوى المفتوحة</div>
                           <div className="mt-0.5 text-[10px] font-black text-white">
-                            {activityLogs.length} إجراء
+                            {openChatReportsCount} بلاغ
                           </div>
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdminTab("reports");
+                          openModal("admin");
+                        }}
+                        className="w-full mt-2 rounded-xl border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-[10px] font-black text-amber-100 transition-all hover:bg-amber-500/20"
+                      >
+                        🚩 مراجعة بلاغات الأعضاء ({openChatReportsCount})
+                      </button>
                       <button
                         type="button"
                         onClick={() => openModal("admin")}
@@ -10217,17 +10435,29 @@ export default function ChatScreen({
                       </button>
                     </div>
                   )}
-                  {/* بنر ترحيبي للأعضاء العاديين */}
-                  {!isAdminRole && !isOwnerRole && (
-                    <div className="rounded-[20px] border border-white/8 bg-white/5 p-4 mb-3">
-                      <div className="flex items-center gap-2 justify-end mb-1">
-                        <span className="text-xs font-black text-white">الإدارة والشكاوى 🛡️</span>
-                      </div>
-                      <p className="text-[10px] text-gray-400 leading-relaxed">
-                        هنا تقدر تتواصل مع الإدارة مباشرة — اكتب شكواك أو استفسارك وسيرد عليك أحد المشرفين.
-                      </p>
+
+                </div>
+              )}
+
+              {isHelpRoom && (
+                <div className="mx-2 mb-3 text-right" dir="rtl">
+                  <div className="rounded-[20px] border border-amber-400/20 bg-gradient-to-br from-black/60 to-amber-900/10 p-4">
+                    <div className="flex items-center gap-2 justify-end mb-2">
+                      <span className="text-sm font-black text-amber-200">مساعدة وشكاوى 📋</span>
                     </div>
-                  )}
+                    <p className="text-[10px] text-gray-400 leading-relaxed mb-2">
+                      اكتب مشكلتك أو شكواك هنا — فريق الإدارة يراجع الرسائل. يمكنك أيضاً الضغط على 🚩
+                      على أي رسالة مخالفة في الغرف الأخرى.
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5 text-[9px]">
+                      <div className="bg-white/5 rounded-xl px-2 py-1.5 text-gray-300">
+                        <span className="text-amber-300 font-bold">/complaint</span> — دليل البلاغ
+                      </div>
+                      <div className="bg-white/5 rounded-xl px-2 py-1.5 text-gray-300">
+                        <span className="text-amber-300 font-bold">🚩</span> — بلاغ على رسالة
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -11251,7 +11481,11 @@ export default function ChatScreen({
                   )}
 
                   {(() => {
-                    const visibleRooms = availableRooms;
+                    const visibleRooms = availableRooms.filter((room: any) => {
+                      if (room.staffOnly && !isManagementRole) return false;
+                      if (room.ownerOnly && !isOwnerRole) return false;
+                      return true;
+                    });
 
                     return ROOM_CATEGORIES.map((category) => {
                       const rooms = visibleRooms.filter(
@@ -12406,6 +12640,9 @@ export default function ChatScreen({
                     adminTab={adminTab}
                     setAdminTab={setAdminTab}
                     activityLogs={activityLogs}
+                    chatReports={chatReports}
+                    onRefreshReports={() => void refreshChatReports()}
+                    onResolveReport={(id, status) => void handleResolveReport(id, status)}
                     bannedUsersList={bannedUsersList}
                     storeProducts={storeProducts}
                     chatMembers={chatMembers}

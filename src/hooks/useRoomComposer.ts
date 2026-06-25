@@ -223,6 +223,7 @@ export function useRoomComposer({
       isCensored,
       cleanText,
       warningMessage,
+      userAlertMessage,
       logMsg,
       logSeverity,
     } = moderateRoomMessage({
@@ -303,6 +304,9 @@ export function useRoomComposer({
     }
 
     if (isBlocked) {
+      if (userAlertMessage) {
+        alert(userAlertMessage);
+      }
       if (warningMessage) {
         addBotSystemWarning(activeRoomId, warningMessage);
       }

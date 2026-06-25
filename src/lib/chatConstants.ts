@@ -11,7 +11,8 @@ export const ROOMS_DEF = [
   { id: "fun", name: "فرفشة", icon: "🥳", count: 0, category: "fun" },
   { id: "games", name: "Games 🎮", icon: "🎮", count: 0, category: "fun" },
   { id: "romance", name: "رومانسية", icon: "💖", count: 0, category: "relations" },
-  { id: "admin", name: "الإدارة والشكاوى", icon: "🛡️", count: 0, category: "social" },
+  { id: "help", name: "مساعدة وشكاوى", icon: "📋", count: 0, category: "social" },
+  { id: "admin", name: "الإدارة", icon: "🛡️", count: 0, category: "private", staffOnly: true },
   { id: "owner", name: "بوت التصميم AI", icon: "🎨", count: 0, category: "private", ownerOnly: true },
 ];
 
