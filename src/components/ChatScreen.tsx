@@ -5897,7 +5897,7 @@ export default function ChatScreen({
       id: `guard-${Date.now()}`,
       author: "🔥 LC-Fire",
       text,
-      color: "#a3e635",
+      color: "#10b981",
       isOwn: false,
       time: timeStr,
       type: "system",
@@ -7985,7 +7985,7 @@ export default function ChatScreen({
                           setActiveSidebarTab("rooms");
                         }
                       }}
-                      className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${isSidebarOpen && activeSidebarTab === "rooms" ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
+                      className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${isSidebarOpen && activeSidebarTab === "rooms" ? "lamma-accent-text-soft lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
                     >
                       <Compass size={10} strokeWidth={2.2} />
                     </HeaderIconButton>
@@ -8004,7 +8004,7 @@ export default function ChatScreen({
                           setActiveSidebarTab("members");
                         }
                       }}
-                      className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${isSidebarOpen && activeSidebarTab === "members" ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
+                      className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${isSidebarOpen && activeSidebarTab === "members" ? "lamma-accent-text-soft lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
                     >
                       <Users size={10} />
                       <span className="absolute -top-0.5 -right-0.5 lamma-icon-dot"></span>
@@ -8032,7 +8032,7 @@ export default function ChatScreen({
                     <HeaderIconButton
                       title="القائمة والإعدادات"
                       onClick={() => toggleDropdown("headerMenu")}
-                      className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${showHeaderMenu ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
+                      className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${showHeaderMenu ? "lamma-accent-text-soft lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
                     >
                       <SettingsIcon size={10} />
                     </HeaderIconButton>
@@ -8088,7 +8088,7 @@ export default function ChatScreen({
                               <Grid
                                 size={16}
                                 className={
-                                  isCompactView ? "text-green-400" : ""
+                                  isCompactView ? "lamma-accent-text" : ""
                                 }
                               />
                               <span>
@@ -8162,7 +8162,7 @@ export default function ChatScreen({
                       >
                         <Grid
                           size={16}
-                          className={isCompactView ? "text-green-400" : ""}
+                          className={isCompactView ? "lamma-accent-text" : ""}
                         />
                         <span>
                           {isCompactView
@@ -8211,7 +8211,7 @@ export default function ChatScreen({
                     <HeaderIconButton
                       title="الرسائل الخاصة"
                       onClick={() => toggleDropdown("pmList")}
-                      className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${showPmListDropdown ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
+                      className={`flex items-center justify-center transition-colors relative cursor-pointer lamma-header-mini-btn ${showPmListDropdown ? "lamma-accent-text-soft lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
                     >
                       <MessageCircle size={11} strokeWidth={2.2} />
                       {Object.keys(pmThreads).length > 0 && (
@@ -8279,7 +8279,7 @@ export default function ChatScreen({
                                 const isSpyThread = nickname.startsWith("🕵️");
                                 const targetUser = chatMembers.find(
                                   (m) => m.nickname === nickname,
-                                ) || { nickname, color: isSpyThread ? "#a78bfa" : "#a3e635" };
+                                ) || { nickname, color: isSpyThread ? "#a78bfa" : "#10b981" };
                                 return (
                                   <div
                                     key={nickname}
@@ -8389,7 +8389,7 @@ export default function ChatScreen({
                             ];
                           const targetUser = chatMembers.find(
                             (m) => m.nickname === nickname,
-                          ) || { nickname, color: "#a3e635" };
+                          ) || { nickname, color: "#10b981" };
                           return (
                             <div
                               key={nickname}
@@ -8466,7 +8466,7 @@ export default function ChatScreen({
                     <HeaderIconButton
                       title="الإشعارات"
                       onClick={() => toggleDropdown("notifications")}
-                      className={`flex items-center justify-center transition-colors relative cursor-pointer ml-1 sm:ml-2 lamma-header-mini-btn ${showNotificationsDropdown ? "text-green-300 lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
+                      className={`flex items-center justify-center transition-colors relative cursor-pointer ml-1 sm:ml-2 lamma-header-mini-btn ${showNotificationsDropdown ? "lamma-accent-text-soft lamma-quiet-power-btn-active" : "text-gray-400 lamma-toolbar-btn"}`}
                     >
                       <Bell size={11} strokeWidth={2.2} />
                       {unreadNotificationsCount > 0 ? (
@@ -9312,7 +9312,7 @@ export default function ChatScreen({
                       }
                       setIsCreateRoomModalOpen(true);
                     }}
-                    className="w-full p-2.5 rounded-xl flex items-center justify-center gap-2 text-green-300 font-extrabold text-[11px] transition-all cursor-pointer lamma-primary-btn"
+                    className="w-full p-2.5 rounded-xl flex items-center justify-center gap-2 lamma-accent-text-soft font-extrabold text-[11px] transition-all cursor-pointer lamma-primary-btn"
                   >
                     <Plus size={14} />
                     <span>إنشاء غرفة خاصة جديدة</span>
@@ -9375,7 +9375,7 @@ export default function ChatScreen({
                                 <span className="text-sm">{room.icon}</span>
                                 <span>{room.name}</span>
                               </div>
-                              <span className="bg-black/60 px-2 py-0.5 rounded-full border border-green-500/10 text-[9px] text-[#a3e635] font-black font-mono">
+                              <span className="bg-black/60 px-2 py-0.5 rounded-full border lamma-accent-border-soft text-[9px] lamma-accent-text-soft font-black font-mono">
                                 {room.count}
                               </span>
                             </div>
@@ -9520,7 +9520,7 @@ export default function ChatScreen({
           <div className="p-3 border-t border-green-500/10 shrink-0 lamma-mobile-sidebar-footer">
             <button
               onClick={handleCopyLink}
-              className="w-full py-2 rounded-xl flex items-center justify-center gap-2 text-green-300 font-black text-[10px] transition-all cursor-pointer lamma-muted-btn"
+              className="w-full py-2 rounded-xl flex items-center justify-center gap-2 lamma-accent-text-soft font-black text-[10px] transition-all cursor-pointer lamma-muted-btn"
             >
               <Share2 size={12} />
               <span>نسخ رابط الشات للمشاركة</span>
@@ -9751,7 +9751,7 @@ export default function ChatScreen({
                 onClick={toggleSearchPop}
                 className={`transition-all lamma-room-strip-action ${
                   showSearchPop
-                    ? "text-green-300 lamma-quiet-power-btn-active"
+                    ? "lamma-accent-text-soft lamma-quiet-power-btn-active"
                     : "text-gray-400 hover:text-white border border-transparent lamma-toolbar-btn"
                 }`}
                 title="البحث عن رسائل وأعضاء"
@@ -9772,7 +9772,7 @@ export default function ChatScreen({
                   }}
                   className={`flex items-center justify-center transition-all flex-shrink-0 lamma-room-strip-action ${
                     showFeaturesTray
-                      ? "text-green-300 lamma-quiet-power-btn-active"
+                      ? "lamma-accent-text-soft lamma-quiet-power-btn-active"
                       : "text-gray-400 hover:text-white lamma-toolbar-btn"
                   }`}
                   title="الميزات الإضافية"
@@ -9825,7 +9825,7 @@ export default function ChatScreen({
                             {waveHeights.map((h, i) => (
                               <span
                                 key={i}
-                                className="w-[3.5px] bg-[#a3e635] rounded-full transition-all duration-300"
+                                className="w-[3.5px] lamma-accent-bg-solid rounded-full transition-all duration-300"
                                 style={{ height: `${h}%` }}
                               />
                             ))}
@@ -9896,7 +9896,7 @@ export default function ChatScreen({
                       </div>
                       <div className="flex items-end justify-center gap-1 h-8 my-2">
                         {waveHeights.map((h, i) => (
-                          <span key={i} className="w-[3.5px] bg-[#a3e635] rounded-full transition-all duration-300" style={{ height: `${h}%` }} />
+                          <span key={i} className="w-[3.5px] lamma-accent-bg-solid rounded-full transition-all duration-300" style={{ height: `${h}%` }} />
                         ))}
                       </div>
                       <div className="flex items-center justify-center gap-3 mt-1">
@@ -10058,7 +10058,7 @@ export default function ChatScreen({
                 }}
                 className={`flex items-center justify-center transition-all lamma-room-strip-action lamma-toolbar-btn md:hidden ${
                   showMembersList
-                    ? "lamma-quiet-power-btn-active text-green-300"
+                    ? "lamma-quiet-power-btn-active lamma-accent-text-soft"
                     : "text-gray-400 hover:text-white"
                 }`}
                 title="تثبيت قائمة الأعضاء"
@@ -10076,8 +10076,8 @@ export default function ChatScreen({
                     onClick={() => toggleDropdown("commands")}
                     className={`transition-all lamma-room-strip-action flex items-center justify-center ${
                       showCommandsDropdown
-                        ? "text-green-300 lamma-quiet-power-btn-active"
-                        : "text-green-400 hover:text-green-300 lamma-toolbar-btn"
+                        ? "lamma-accent-text-soft lamma-quiet-power-btn-active"
+                        : "lamma-accent-text hover-accent-soft lamma-toolbar-btn"
                     }`}
                     title="نظام الأوامر السريعة"
                   >
@@ -10649,7 +10649,7 @@ export default function ChatScreen({
                   type="button"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={() => toggleDropdown("attachment")}
-                  className={`flex items-center justify-center transition-all lamma-composer-tool ${showAttachmentDropdown ? "bg-green-500/20 text-green-400" : "text-gray-400 hover:text-white lamma-toolbar-btn"}`}
+                  className={`flex items-center justify-center transition-all lamma-composer-tool ${showAttachmentDropdown ? "lamma-accent-bg-medium lamma-accent-text-soft" : "text-gray-400 hover:text-white lamma-toolbar-btn"}`}
                   title="إرفاق ملف"
                 >
                   <Plus
@@ -12075,14 +12075,14 @@ export default function ChatScreen({
                   />
                 )}
 
-                <div className="flex items-center lamma-composer-cluster bg-black/60 rounded-xl px-2.5 py-1.5 border border-green-500/10">
+                <div className="flex items-center lamma-composer-cluster bg-black/60 rounded-xl px-2.5 py-1.5 border lamma-accent-border-soft">
                   <button
                     type="button"
                     onClick={() => setShowPmEmojiPicker(!showPmEmojiPicker)}
                     className={`flex items-center justify-center transition-all lamma-composer-tool ${
                       showPmEmojiPicker
-                        ? "bg-green-500/20 text-[#a3e635]"
-                        : "text-gray-500 hover:bg-white/10 hover:text-[#a3e635]"
+                        ? "lamma-accent-bg-medium lamma-accent-text-soft"
+                        : "text-gray-500 hover:bg-white/10 hover-accent-soft"
                     }`}
                     title="إيموجي"
                   >
@@ -12109,7 +12109,7 @@ export default function ChatScreen({
                     className={`flex items-center justify-center transition-all lamma-composer-tool ${
                       isVoiceRecording && voiceRecordingScopeRef.current === "pm"
                         ? "text-red-400 animate-pulse"
-                        : "text-gray-500 hover:bg-white/10 hover:text-[#a3e635]"
+                        : "text-gray-500 hover:bg-white/10 hover-accent-soft"
                     }`}
                     title="رسالة صوتية"
                   >
@@ -13140,7 +13140,7 @@ export default function ChatScreen({
 
                   {/* Messages section */}
                   <div>
-                    <div className="text-[9px] text-[#a3e635] font-black mb-1">
+                    <div className="text-[9px] lamma-accent-text-soft font-black mb-1">
                       رسائل مطابقة:
                     </div>
                     {messages.filter(
@@ -13341,7 +13341,7 @@ export default function ChatScreen({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-[9998] w-[90vw] max-w-sm rounded-2xl p-4 lamma-call-shell border border-green-500/20 shadow-2xl"
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[9998] w-[90vw] max-w-sm rounded-2xl p-4 lamma-call-shell border lamma-accent-border shadow-2xl"
           >
             <div className="text-center space-y-3" dir="rtl">
               <div className="text-3xl animate-pulse">
@@ -13351,7 +13351,7 @@ export default function ChatScreen({
                 مكالمة {incomingCall.type === "video" ? "فيديو" : "صوت"} واردة
               </h3>
               <p className="text-xs text-gray-400">
-                من: <span className="text-green-300 font-bold">{incomingCall.fromNickname}</span>
+                من: <span className="lamma-accent-text-soft font-bold">{incomingCall.fromNickname}</span>
               </p>
               <div className="flex gap-2 pt-1">
                 <button
@@ -13445,7 +13445,7 @@ export default function ChatScreen({
                       </span>
                     )}
                     {activeCall.status === "connected" && (
-                      <span className="text-2xl font-mono font-black text-[#a3e635]">
+                      <span className="text-2xl font-mono font-black lamma-accent-text">
                         {formatCallDuration(activeCall.callDuration)}
                       </span>
                     )}
@@ -13523,7 +13523,7 @@ export default function ChatScreen({
                 )}
                 {activeCall.status === "connected" && (
                   <div className="flex flex-col items-center space-y-1">
-                    <span className="text-xl font-mono font-black text-[#a3e635]">
+                    <span className="text-xl font-mono font-black lamma-accent-text">
                       {formatCallDuration(activeCall.callDuration)}
                     </span>
                     <span className="text-[10px] text-green-400/80">

@@ -209,7 +209,7 @@ export function UserProfileBioPopup({
             <div className="space-y-1">
               <label
                 htmlFor="my-custom-bio-input"
-                className="text-[9px] font-black text-[#a3e635] uppercase select-none"
+                className="text-[9px] font-black lamma-accent-text uppercase select-none"
               >
                 السيرة الذاتية والبيانات الشخصية (Bio):
               </label>

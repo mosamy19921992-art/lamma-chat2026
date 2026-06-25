@@ -25,10 +25,104 @@ html[data-app-theme="dark"] {
   border-bottom-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.1);
 }
 
+.lamma-accent-text-muted {
+  color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.72);
+}
+.lamma-accent-bg-soft {
+  background-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.1) !important;
+}
+.lamma-accent-bg-medium {
+  background-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.2) !important;
+}
+.lamma-accent-border-soft {
+  border-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.1) !important;
+}
+.lamma-accent-border {
+  border-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.2) !important;
+}
+
+.lamma-neutral-glass .lamma-header-mini-btn.lamma-quiet-power-btn-active.lamma-accent-text-soft,
+.lamma-neutral-glass .lamma-quiet-power-btn.lamma-quiet-power-btn-active.lamma-accent-text-soft,
 .lamma-neutral-glass .lamma-header-mini-btn.lamma-quiet-power-btn-active.text-green-300,
 .lamma-neutral-glass .lamma-quiet-power-btn.lamma-quiet-power-btn-active.text-green-300 {
   color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.88) !important;
 }
+
+/* Phase 2 — chat chrome: map legacy green/lime/emerald → accent token (not message feed) */
+.lamma-neutral-glass .lamma-header-actions [class*="text-green-"],
+.lamma-neutral-glass .lamma-header-user-rail [class*="text-green-"],
+.lamma-neutral-glass .lamma-chat-subheader [class*="text-green-"],
+.lamma-neutral-glass .lamma-composer-layout [class*="text-green-"],
+.lamma-neutral-glass .lamma-composer-layout [class*="text-emerald-"],
+.lamma-floating-dropdown [class*="text-green-"],
+.lamma-floating-dropdown [class*="text-emerald-"],
+.lamma-floating-dropdown [class*="text-[#a3e635]"],
+.lamma-floating-dropdown [class*="text-[#10b981]"],
+.lamma-call-shell [class*="text-green-"],
+.lamma-call-shell [class*="text-[#a3e635]"] {
+  color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.88) !important;
+}
+
+.lamma-neutral-glass .lamma-header-actions [class*="text-[#a3e635]"],
+.lamma-neutral-glass .lamma-header-user-rail [class*="text-[#a3e635]"],
+.lamma-neutral-glass .lamma-chat-subheader [class*="text-[#a3e635]"],
+.lamma-neutral-glass .lamma-composer-layout [class*="text-[#a3e635]"] {
+  color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.88) !important;
+}
+
+.lamma-neutral-glass .lamma-header-actions [class*="bg-green-"],
+.lamma-neutral-glass .lamma-header-user-rail [class*="bg-green-"],
+.lamma-neutral-glass .lamma-chat-subheader [class*="bg-green-"],
+.lamma-neutral-glass .lamma-composer-layout [class*="bg-green-"],
+.lamma-floating-dropdown [class*="bg-green-"],
+.lamma-call-shell [class*="bg-green-"] {
+  background-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.12) !important;
+}
+
+.lamma-neutral-glass .lamma-header-actions [class*="border-green-"],
+.lamma-neutral-glass .lamma-header-user-rail [class*="border-green-"],
+.lamma-neutral-glass .lamma-chat-subheader [class*="border-green-"],
+.lamma-neutral-glass .lamma-composer-layout [class*="border-green-"],
+.lamma-floating-dropdown [class*="border-green-"],
+.lamma-call-shell [class*="border-green-"] {
+  border-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.18) !important;
+}
+
+.lamma-floating-dropdown .hover\:bg-white\/10:hover [class*="text-green-"],
+.lamma-floating-dropdown [class*="hover:text-green-"]:hover {
+  color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.92) !important;
+}
+
+.lamma-accent-text.hover-accent-soft:hover,
+.hover-accent-soft:hover {
+  color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.88) !important;
+}
+
+.lamma-accent-bg-solid {
+  background-color: rgb(var(--lamma-header-accent-rgb, 16, 185, 129)) !important;
+}
+
+.lamma-primary-btn.lamma-accent-text-soft,
+.lamma-primary-btn[class*="text-green-"],
+.lamma-muted-btn.lamma-accent-text-soft,
+.lamma-muted-btn[class*="text-green-"] {
+  color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.88) !important;
+}
+
+.lamma-modal-shell .text-emerald-400,
+.lamma-modal-shell .text-emerald-300,
+.lamma-modal-shell .text-emerald-200,
+.lamma-modal-shell .text-emerald-500 { color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.88) !important; }
+.lamma-modal-shell [class*="text-green-"],
+.lamma-modal-shell [class*="text-[#a3e635]"],
+.lamma-modal-shell [class*="text-[#10b981]"] { color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.88) !important; }
+.lamma-modal-shell [class*="border-green-"],
+.lamma-modal-shell [class*="border-emerald-"],
+.lamma-modal-shell [class*="border-[#a3e635]"] { border-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.18) !important; }
+.lamma-modal-shell [class*="bg-green-"],
+.lamma-modal-shell [class*="bg-emerald-"] { background-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.12) !important; }
+.lamma-modal-shell .focus\:border-emerald-500:focus,
+.lamma-modal-shell .focus\:border-green-500:focus { border-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.5) !important; }
 
 .lamma-admin-panel .text-emerald-400 { color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.9) !important; }
 .lamma-admin-panel .text-emerald-300 { color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.82) !important; }
