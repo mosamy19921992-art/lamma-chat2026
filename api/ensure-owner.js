@@ -35,7 +35,7 @@ export default async function handler(req, res) {
 
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7)
+    ? String(authHeader).slice(7)
     : req.headers["x-bootstrap-secret"];
   if (token !== bootstrapSecret) {
     res.status(401).json({ error: "unauthorized" });
