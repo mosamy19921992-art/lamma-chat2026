@@ -1,5 +1,5 @@
-import React from "react";
-import { Eye, EyeOff, Settings as SettingsIcon, VolumeX } from "lucide-react";
+import React, { useState } from "react";
+import { Eye, EyeOff, Settings as SettingsIcon, VolumeX, MessageCircle, Send } from "lucide-react";
 
 interface OwnerPanelProps {
   isSpyMode: boolean;
@@ -24,6 +24,7 @@ interface OwnerPanelProps {
   currentUserNickname: string;
   setBrandLogoUrl: (val: string | null) => void;
   setOwnerBgImage: (val: string | null) => void;
+  onSendAdminMessage?: (targetNickname: string, message: string) => void;
 }
 
 export function OwnerPanelModal({
@@ -49,7 +50,24 @@ export function OwnerPanelModal({
   currentUserNickname,
   setBrandLogoUrl,
   setOwnerBgImage,
+  onSendAdminMessage,
 }: OwnerPanelProps) {
+  const [targetNickname, setTargetNickname] = useState("");
+  const [adminMessage, setAdminMessage] = useState("");
+
+  const handleSendAdminMessage = () => {
+    if (!targetNickname.trim() || !adminMessage.trim()) {
+      alert("الرجاء إدخال اسم المستخدم والرسالة");
+      return;
+    }
+    
+    if (onSendAdminMessage) {
+      onSendAdminMessage(targetNickname.trim(), adminMessage.trim());
+      setTargetNickname("");
+      setAdminMessage("");
+      alert("تم إرسال الرسالة من الأدمن بنجاح!");
+    }
+  };
 
   return (
     <div className="space-y-6 select-none" dir="rtl">
@@ -83,6 +101,44 @@ export function OwnerPanelModal({
           </div>
           <p className="text-[10px] text-gray-500">
             يسمح للمالك بمراقبة كل الرسائل الخاصة للجميع بشكل خفي ودمجها في قائمة الخاص لديك برمز التخفي.
+          </p>
+        </div>
+
+        {/* Send Admin Message */}
+        <div className="p-4 rounded-xl flex flex-col gap-2 lamma-admin-card border border-emerald-500/20 bg-emerald-500/5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-white">
+              <span className="inline-flex items-center gap-1.5">
+                <MessageCircle size={13} className="text-emerald-300" />
+                إرسال رسالة من الأدمن
+              </span>
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <input
+              type="text"
+              placeholder="اسم المستخدم"
+              value={targetNickname}
+              onChange={(e) => setTargetNickname(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-[11px] text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
+            />
+            <textarea
+              placeholder="الرسالة من الأدمن"
+              value={adminMessage}
+              onChange={(e) => setAdminMessage(e.target.value)}
+              rows={2}
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-[11px] text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 resize-none"
+            />
+            <button
+              onClick={handleSendAdminMessage}
+              className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg px-3 py-2 text-[10px] font-bold transition-all shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+            >
+              <Send size={12} />
+              إرسال الرسالة
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-500">
+            إرسال رسالة خاصة من الأدمن للمستخدم المحدد.
           </p>
         </div>
 

@@ -271,6 +271,19 @@
     pointer-events: none;
   }
 
+  .lamma-pwa-app-shell .lamma-header-mini-btn,
+  .lamma-pwa-app-shell .lamma-composer-attach-btn,
+  .lamma-pwa-app-shell .lamma-composer-send-btn,
+  .lamma-pwa-app-shell .lamma-composer-tool-btn {
+    min-width: 40px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   .lamma-composer-radio-host .lamma-feature-shell,
   .lamma-composer-music-host .lamma-feature-shell {
     pointer-events: auto;
