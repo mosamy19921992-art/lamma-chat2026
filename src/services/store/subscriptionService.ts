@@ -292,7 +292,7 @@ export async function savePaymentInfo(
   if (!supabase) return { error: "Supabase غير متاح" };
   const { error } = await supabase
     .from("owner_settings")
-    .update({ payment_info: info })
+    .update({ payment_info: mongoSanitize.sanitize({ data: info }).data })
     .eq("id", "global");
   return { error: error?.message || null };
 }
