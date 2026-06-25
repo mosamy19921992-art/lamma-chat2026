@@ -1,3 +1,4 @@
+import * as mongoSanitize from "express-mongo-sanitize";
 import { supabase } from "../../lib/supabase";
 import { requireAuthenticatedUid } from "../auth/guestAuthService";
 import type { UserProfileRecord } from "../../lib/socialTypes";
@@ -96,7 +97,7 @@ export async function updateUserBio(
   const { error } = await supabase
     .from("user_profiles")
     .update({
-      bio: bio.trim().slice(0, 500),
+      bio: mongoSanitize.sanitize({ data: bio.trim().slice(0, 500) }).data,
       updated_at: new Date().toISOString(),
     })
     .eq("user_uid", userUid);
