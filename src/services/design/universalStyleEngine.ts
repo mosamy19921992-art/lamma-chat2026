@@ -302,7 +302,7 @@ function applySidebarChaseRefinement(
   const next = structuredClone(base);
   next.effects = {
     ...next.effects,
-    sidebarCardChase: true,
+    sidebarCardChase: false,
     chatHeaderStyle: "none",
   };
 
@@ -514,8 +514,7 @@ function syncRegionToGlobalEffects(
 ): void {
   if (region === "column-cards" || region === "side-columns") {
     if (r.chaseBorder) {
-      config.effects.sidebarCardChase = true;
-      config.effects.sidebarChaseOuterOnly = r.outerChaseOnly;
+      config.effects.sidebarCardChase = false;
       config.effects.chatHeaderStyle = "none";
     }
   }

@@ -2958,8 +2958,7 @@ body {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-/* Card edge — calm static theme tint by default (no rotating rainbow).
-   The animated rainbow ring is now opt-in via [data-card-glow="on"]. */
+/* Card edge — calm static theme tint by default (no rotating rainbow). */
 .lamma-neutral-glass .lamma-side-column[class*="border-r"] .lamma-glass::before,
 .lamma-neutral-glass .lamma-side-column[class*="border-l"] .lamma-glass::before {
   content: "" !important;
@@ -2978,21 +2977,6 @@ body {
   z-index: 1 !important;
   pointer-events: none !important;
   opacity: 1 !important;
-}
-
-/* Opt-in animated rainbow ring (only when explicitly enabled) */
-.lamma-neutral-glass[data-card-glow="on"] .lamma-side-column[class*="border-r"] .lamma-glass::before,
-.lamma-neutral-glass[data-card-glow="on"] .lamma-side-column[class*="border-l"] .lamma-glass::before {
-  background: conic-gradient(
-    from 0deg,
-    #ff2a5f 0deg,
-    #ffb515 72deg,
-    #00f0ff 144deg,
-    #10b981 216deg,
-    #d946ef 288deg,
-    #ff2a5f 360deg
-  ) !important;
-  animation: lamma-border-spin 6s linear infinite !important;
 }
 
 /* The solid inner cover card background so the light only appears on the edge as an outer border, with absolutely no reflections inside */
@@ -3191,16 +3175,7 @@ body {
   opacity: 0.95 !important;
 }
 
-/* Opt-in colorful flame swirl on headers (only when enabled) */
-.lamma-neutral-glass[data-card-glow="on"] .lamma-room-header::before,
-.lamma-neutral-glass[data-card-glow="on"] .lamma-topic-shell::before,
-.lamma-neutral-glass[data-card-glow="on"] .lamma-feature-header::before,
-.lamma-neutral-glass[data-card-glow="on"] .lamma-mobile-sidebar-header::before {
-  background: radial-gradient(circle at 12% 25%, rgba(255, 42, 95, 0.16), transparent 50%),
-              radial-gradient(circle at 50% 85%, rgba(255, 181, 21, 0.18), transparent 55%),
-              radial-gradient(circle at 88% 20%, rgba(217, 70, 239, 0.14), transparent 45%),
-              radial-gradient(circle at 100% 90%, rgba(0, 240, 255, 0.1), transparent 40%) !important;
-}
+/* Opt-in colorful flame swirl on headers — legacy, disabled (use chase 2026 on header target) */
 
 /* Perfect flowing fluid running light underline under each of the headers / active horizontal bars */
 .lamma-neutral-glass .lamma-room-header::after,
@@ -3219,24 +3194,6 @@ body {
   z-index: 3 !important;
   pointer-events: none !important;
   box-shadow: none !important;
-}
-
-/* Opt-in animated rainbow underline under headers (only when enabled) */
-.lamma-neutral-glass[data-card-glow="on"] .lamma-room-header::after,
-.lamma-neutral-glass[data-card-glow="on"] .lamma-topic-shell::after,
-.lamma-neutral-glass[data-card-glow="on"] .lamma-feature-header::after,
-.lamma-neutral-glass[data-card-glow="on"] .lamma-mobile-sidebar-header::after {
-  height: 2px !important;
-  background: linear-gradient(90deg,
-    #ff2a5f 0%,
-    #ffb515 25%,
-    #00f0ff 50%,
-    #10b981 75%,
-    #d946ef 100%
-  ) !important;
-  background-size: 200% auto !important;
-  animation: lamma-header-flow 5s linear infinite !important;
-  box-shadow: 0 1.5px 12px rgba(255, 181, 21, 0.5) !important;
 }
 
 @keyframes lamma-header-flow {

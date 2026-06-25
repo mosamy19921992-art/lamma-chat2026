@@ -58,7 +58,13 @@ export function loadUDSSettings(): UDSSettings {
   try {
     const stored = localStorage.getItem(UDS_STORAGE_KEY);
     if (stored) {
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+      const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } as UDSSettings;
+      // rgb-wave removed — migrated to chase-light 2026 neon-beam picker
+      if (parsed.neonBorder === "rgb-wave") {
+        parsed.neonBorder = "none";
+        parsed.applyToBody = false;
+      }
+      return parsed;
     }
   } catch (error) {
     console.error("Failed to load UDS settings:", error);

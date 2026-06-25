@@ -105,7 +105,7 @@ export const PACK_STYLE_SNAPSHOTS: Record<string, PackStyleSnapshot> = {
     },
     buttons: { radiusPx: 14, glow: true, neon: true },
     effects: {
-      sidebarCardChase: true,
+      sidebarCardChase: false,
       sidebarChaseSpeedSec: 5,
       sidebarChaseTint: "#10b981",
       sidebarChaseOuterOnly: true,
@@ -153,7 +153,7 @@ export const PACK_STYLE_SNAPSHOTS: Record<string, PackStyleSnapshot> = {
     glass: { blurPx: 18, opacity: 0.16, borderOpacity: 0.3 },
     buttons: { radiusPx: 12, glow: true, neon: true },
     effects: {
-      sidebarCardChase: true,
+      sidebarCardChase: false,
       sidebarChaseSpeedSec: 4,
       sidebarChaseTint: "#22d3ee",
       sidebarChaseOuterOnly: true,

@@ -23,9 +23,11 @@ import {
 } from "../../services/design/sidebarWidgetStyleService";
 import {
   CHASE_LIGHT_PRESETS_2026,
-  CHASE_LIGHT_PRESETS_LEGACY,
+  buildChaseAllSettings,
   commitChaseLightSettings,
+  getActiveNeonBeamTargets,
   loadChaseLightSettings,
+  NEON_BEAM_ALL_TARGETS,
   NEON_BEAM_COLUMN_TARGETS,
   type ChaseLightSettings,
   type ChaseLightStyleId,
@@ -102,7 +104,6 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
     loadColumnCardStyleId(),
   );
   const [chase, setChase] = useState<ChaseLightSettings>(() => loadChaseLightSettings());
-  const [showLegacyChase, setShowLegacyChase] = useState(false);
 
   const applyBubble = (id: BubbleShapeId) => {
     if (commitBubbleShape(id)) setBubbleId(id);
@@ -168,13 +169,7 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
   };
 
   const applyChaseAll = (styleId: ChaseLightStyleId) => {
-    if (styleId === "neon-beam") return;
-    const next: ChaseLightSettings = {
-      ...chase,
-      columns: styleId,
-      composer: styleId,
-      header: styleId,
-    };
+    const next = buildChaseAllSettings(styleId, chase);
     setChase(next);
     if (commitChaseLightSettings(next)) setChase(loadChaseLightSettings());
   };
@@ -260,14 +255,17 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
         />
       </SectionBlock>
 
-      <SectionBlock title="✨ أشرطة النور 2026" hint="أنماط مختلفة لكل منطقة — خط النيون: اختار البطاقات من تبويب 🎨 الألوان">
+      <SectionBlock title="✨ أشرطة النور 2026" hint="أنماط موحّدة لأي منطقة — خط النيون الدوار: اختيار بطاقة ببطاقة من تبويب 🎨 الألوان">
         {/* تطبيق على الكل دفعة */}
         <div className="grid grid-cols-3 gap-2 mb-3">
           {CHASE_LIGHT_PRESETS_2026.map((p) => {
             const isAllActive =
-              chase.columns === p.id &&
-              chase.composer === p.id &&
-              chase.header === p.id;
+              p.id === "neon-beam"
+                ? getActiveNeonBeamTargets(chase).length === NEON_BEAM_ALL_TARGETS.length
+                : chase.columns === p.id &&
+                  chase.composer === p.id &&
+                  chase.header === p.id &&
+                  (p.id === "none" || getActiveNeonBeamTargets(chase).length === 0);
             return (
               <button
                 key={p.id}
@@ -323,28 +321,6 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
             </div>
           ))}
         </div>
-
-        <button
-          type="button"
-          onClick={() => setShowLegacyChase((v) => !v)}
-          className="mt-2 text-[8px] text-gray-500 font-bold underline"
-        >
-          {showLegacyChase ? "إخفاء الأنماط القديمة" : "▼ أنماط رينبو قديمة"}
-        </button>
-        {showLegacyChase && (
-          <div className="mt-2 grid grid-cols-3 gap-1.5">
-            {CHASE_LIGHT_PRESETS_LEGACY.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => applyChaseAll(p.id)}
-                className="p-2 rounded-xl border border-white/10 text-gray-500 hover:text-white hover:border-white/25 text-[8px] font-black text-center transition-all"
-              >
-                {p.emoji} {p.title}
-              </button>
-            ))}
-          </div>
-        )}
       </SectionBlock>
     </div>
   );

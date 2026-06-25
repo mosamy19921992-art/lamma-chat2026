@@ -1,8 +1,6 @@
 import { setDesignPreviewActive } from "./designPreviewDom";
 import {
   cancelColumnCardPreview,
-  commitColumnCardStyle,
-  previewColumnCardStyle,
 } from "./columnCardStyleService";
 import type { StyleBackgroundLayer, UniversalStyleConfig } from "./universalStyleTypes";
 
@@ -116,35 +114,12 @@ export function applyUniversalStyleToDom(
 
   root.setAttribute("data-us-theme", config.themeId);
 
-  const chase = config.effects?.sidebarCardChase;
-  if (chase) {
-    root.setAttribute("data-us-sidebar-chase", "true");
-    delete root.dataset.columnCardStyle;
-    delete root.dataset.columnCardPreview;
-    root.style.removeProperty("--cc-radius");
-    root.style.removeProperty("--cc-tint-rgb");
-    if (config.effects.sidebarChaseOuterOnly) {
-      root.setAttribute("data-us-chase-outer", "true");
-    } else {
-      root.removeAttribute("data-us-chase-outer");
-    }
-    root.style.setProperty(
-      "--us-chase-speed",
-      `${config.effects.sidebarChaseSpeedSec}s`,
-    );
-    root.style.setProperty("--us-chase-tint", config.effects.sidebarChaseTint);
-    if (options?.preview) {
-      previewColumnCardStyle("neon-ring", config.effects.sidebarChaseTint);
-    } else {
-      commitColumnCardStyle("neon-ring", config.effects.sidebarChaseTint);
-    }
-  } else {
-    root.removeAttribute("data-us-sidebar-chase");
-    root.removeAttribute("data-us-chase-outer");
-    root.style.removeProperty("--us-chase-speed");
-    root.style.removeProperty("--us-chase-tint");
-    cancelColumnCardPreview();
-  }
+  /* Legacy rainbow sidebar chase removed — use chaseLightBarService (2026) instead. */
+  root.removeAttribute("data-us-sidebar-chase");
+  root.removeAttribute("data-us-chase-outer");
+  root.style.removeProperty("--us-chase-speed");
+  root.style.removeProperty("--us-chase-tint");
+  cancelColumnCardPreview();
 
   const headerStyle = config.effects?.chatHeaderStyle ?? "none";
   if (headerStyle !== "none") {

@@ -1,19 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { DesignShapesPanel } from './DesignShapesPanel';
-import { DesignTemplateGallery } from './DesignTemplateGallery';
-import { DesignImportLibrary } from '../design/DesignImportLibrary';
-import { DesignPreviewBar } from './DesignGlassPreviewBar';
-import type { DesignImportPack } from '../../services/design/designImportCatalog';
-import {
-  previewImportPackVisuals,
-  commitImportPackVisuals,
-  cancelImportPackVisualPreview,
-  describeImportPackLayers,
-  getImportPackTint,
-  resolveImportPackStyleConfig,
-} from '../../services/design/designImportApplyService';
-import { applyFace, loadFace, saveFace, FACE_PRESETS, cancelFacePreview, commitFacePreset, getFacePresetLabel, previewFacePreset } from '../../lib/customFace';
-import type { DesignAssistantProposalId } from '../../lib/chatTypes';
+import { applyFace, loadFace, saveFace, cancelFacePreview } from '../../lib/customFace';
 import { setDesignPreviewActive } from '../../services/design/designPreviewDom';
 import {
   applyGlassForm,
@@ -28,28 +15,13 @@ import {
 import {
   cancelColumnCardPreview,
   commitColumnCardStyle,
-  loadColumnCardStyleId,
-  loadColumnCardTint,
-  previewColumnCardStyle,
-  COLUMN_CARD_STYLE_PRESETS,
-  getColumnCardStyleLabel,
   type ColumnCardStyleId,
 } from '../../services/design/columnCardStyleService';
+import { commitBubbleShape, type BubbleShapeId } from '../../services/design/bubbleShapeService';
 import {
-  previewBubbleShape,
-  commitBubbleShape,
-  cancelBubbleShapePreview,
-  loadBubbleShapeId,
-  getBubbleShapeLabel,
-  type BubbleShapeId,
-} from '../../services/design/bubbleShapeService';
-import {
-  previewChaseLightForTarget,
-  previewChaseLightPatch,
   commitChaseLightSettings,
   cancelChaseLightPreview,
   loadChaseLightSettings,
-  updateChaseLightTintPreview,
   previewNeonBeamTargets,
   commitNeonBeamTargets,
   clearNeonBeamTargets,
@@ -57,8 +29,6 @@ import {
   NEON_BEAM_ALL_TARGETS,
   NEON_BEAM_TARGET_LABELS,
   type ChaseLightSettings,
-  type ChaseLightStyleId,
-  type ChaseLightTarget,
   type NeonBeamTargetId,
 } from '../../services/design/chaseLightBarService';
 
@@ -80,18 +50,11 @@ import {
 import { commitPmBubbleStyle } from '../../services/design/pmBubbleStyleService';
 import {
   loadUDSSettings,
-  saveUDSSettings,
   previewUDSSettings,
   commitUDSSettings,
   resetUDSSettings,
-  getNeonBorderLabel,
-  getGlassTextureLabel,
   getPaletteLabel,
-  getPaletteHex,
   type UDSSettings,
-  type UDSNeonBorderStyle,
-  type UDSGlassTextureStyle,
-  type UDSPaletteColor,
 } from '../../services/design/ultimateDesignSystemService';
 import { scheduleDesignOverlaysSync } from '../../services/design/designOverlaySync';
 
@@ -122,7 +85,7 @@ const MEGA_THEMES_2026: {
     column: { id: "neon-ring", tint: "#a78bfa" },
     chase: { columns: "aurora-flow", composer: "soft-edge", header: "none", tintHex: "#a78bfa", speedSec: 5 },
     fx: { holo: false, aurora: true, shimmer: true, float: false, neon: true, rainbow: false, crystal: true, liquid: false },
-    uds: { neonBorder: "rgb-wave", neonBorderColor: "electric-violet", glassTexture: "crystal-glow", glassTint: "electric-violet", palette: "electric-violet", applyToBody: true, applyToContainers: true },
+    uds: { neonBorder: "none", neonBorderColor: "electric-violet", glassTexture: "crystal-glow", glassTint: "electric-violet", palette: "electric-violet", applyToBody: false, applyToContainers: true },
   },
   {
     id: "cyberpunk-fire",
@@ -133,9 +96,16 @@ const MEGA_THEMES_2026: {
     colors: { name: "سيبربانك ناري", bg: "#0a0014", surface: "rgba(20,5,35,0.78)", text: "#f0e6ff", accent: "#ff00ff", accent2: "#00ffff" },
     glass: { id: "smoke-dark", tint: "#ff00ff" },
     column: { id: "neon-ring", tint: "#ff00ff" },
-    chase: { columns: "neon-double", composer: "neon-double", header: "none", tintHex: "#ff00ff", speedSec: 3 },
+    chase: {
+      columns: "neon-beam",
+      composer: "neon-beam",
+      header: "none",
+      tintHex: "#ff00ff",
+      speedSec: 3,
+      neonBeamTargets: ["store", "radio", "music", "rooms", "members", "composer"],
+    },
     fx: { holo: true, aurora: false, shimmer: false, float: false, neon: true, rainbow: true, crystal: false, liquid: true },
-    uds: { neonBorder: "rgb-wave", neonBorderColor: "cyberpunk-pink", glassTexture: "crystal-glow", glassTint: "cyberpunk-pink", palette: "cyberpunk-pink", applyToBody: true, applyToContainers: true },
+    uds: { neonBorder: "none", neonBorderColor: "cyberpunk-pink", glassTexture: "crystal-glow", glassTint: "cyberpunk-pink", palette: "cyberpunk-pink", applyToBody: false, applyToContainers: true },
   },
   {
     id: "ocean-deep",
@@ -265,8 +235,42 @@ const MODERN_THEME_PRESETS: {
   { name: "ماجنتا ليلي", bg: "#0c0510", surface: "rgba(28,12,34,0.72)", text: "#fdf4ff", accent: "#d946ef", accent2: "#e879f9", glass: "smoke-dark", column: "neon-ring", bubble: "telegram" },
 ];
 
-export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode, previewDesignPrompt, previewDesignPromptAi, previewDesignConfig, committedConfig, getEditableDesignConfig, cancelPendingDesignPreview, commitPendingDesignPreview, flushAllDesignPersistence, verifyDesignPreviewDom, hasPendingDesignPreview, isApplyingStyle, ownerWriteAccessOk }: any) => {
-  type PreviewKind = "glass" | "face" | "template" | "column" | "import-pack" | "bubble" | "chase" | null;
+export const DesignCenterModal = ({
+  isOwnerRole,
+  brandLogoUrl,
+  designLogoUploadRef,
+  handleDesignLogoUpload,
+  designLogoInput,
+  setDesignLogoInput,
+  setBrandLogoUrl,
+  activeRoomId,
+  openRooms,
+  designRoomBgUploadRef,
+  handleDesignRoomBgUpload,
+  designRoomBgInput,
+  setDesignRoomBgInput,
+  roomBgMap,
+  setRoomBgMap,
+  designOwnerBgUploadRef,
+  handleDesignOwnerBgUpload,
+  designOwnerBgInput,
+  setDesignOwnerBgInput,
+  setOwnerBgImage,
+  onResetDefaultChatBackground,
+  uploadDesignImage,
+  onStartInspectMode,
+  previewDesignConfig,
+  committedConfig,
+  getEditableDesignConfig,
+  cancelPendingDesignPreview,
+  commitPendingDesignPreview,
+  flushAllDesignPersistence,
+  verifyDesignPreviewDom,
+  hasPendingDesignPreview,
+  isApplyingStyle,
+  ownerWriteAccessOk,
+}: any) => {
+  type PreviewKind = "glass" | "chase" | null;
   type SaveStatus = "idle" | "preview" | "saving" | "saved" | "local-only" | "error";
 
   const [section, setSection] = useState<DesignSection>("colors");
@@ -277,30 +281,13 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
   const [pendingGlassFormId, setPendingGlassFormId] = useState<GlassFormId | null>(null);
   const [isGlassPreviewing, setIsGlassPreviewing] = useState(false);
   const [glassTintColor, setGlassTintColor] = useState(() => loadGlassFormTint());
-  const [pendingFacePresetId, setPendingFacePresetId] = useState<string | null>(null);
-  const [activeFacePresetId, setActiveFacePresetId] = useState<string | null>(null);
-  const [pendingTemplateId, setPendingTemplateId] = useState<DesignAssistantProposalId | null>(null);
-  const [pendingTemplateSummary, setPendingTemplateSummary] = useState("");
-  const [activeTemplateId, setActiveTemplateId] = useState<DesignAssistantProposalId | null>(null);
-  const [pendingColumnStyleId, setPendingColumnStyleId] = useState<ColumnCardStyleId | null>(null);
-  const [activeColumnStyleId, setActiveColumnStyleId] = useState<ColumnCardStyleId | null>(
-    () => loadColumnCardStyleId(),
-  );
-  const [columnTintColor, setColumnTintColor] = useState(() => loadColumnCardTint());
   const [columnUploading, setColumnUploading] = useState<string | null>(null);
-  const [pendingImportPack, setPendingImportPack] = useState<DesignImportPack | null>(null);
-  const [activeImportPackId, setActiveImportPackId] = useState<string | null>(null);
-  const [pendingBubbleShapeId, setPendingBubbleShapeId] = useState<BubbleShapeId | null>(null);
-  const [activeBubbleShapeId, setActiveBubbleShapeId] = useState<BubbleShapeId>(() =>
-    loadBubbleShapeId(),
-  );
   const [chaseSettings, setChaseSettings] = useState<ChaseLightSettings>(() =>
     loadChaseLightSettings(),
   );
   const [neonBeamPicks, setNeonBeamPicks] = useState<NeonBeamTargetId[]>(() =>
     getActiveNeonBeamTargets(),
   );
-  const [pendingChaseSummary, setPendingChaseSummary] = useState("");
   const rightColUploadRef = useRef<HTMLInputElement>(null);
   const centerColUploadRef = useRef<HTMLInputElement>(null);
   const leftColUploadRef = useRef<HTMLInputElement>(null);
@@ -417,7 +404,9 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
           setSliderAccent2(preset.accent2);
         }
       }
-    } catch {}
+    } catch {
+      /* ignore malformed saved preset */
+    }
   }, []);
 
   const applySliderGlassPatch = (glassPatch: Partial<UniversalStyleConfig["glass"]>) => {
@@ -488,7 +477,6 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     }
     if (preset.column) {
       commitColumnCardStyle(preset.column, preset.accent);
-      setActiveColumnStyleId(preset.column);
     }
     if (preset.bubble) {
       commitBubbleShape(preset.bubble);
@@ -520,7 +508,9 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
         accent: preset.accent,
         accent2: preset.accent2
       }));
-    } catch {}
+    } catch {
+      /* localStorage unavailable — non-fatal */
+    }
   };
 
   // تصفية شاملة — تصفّر كل أنظمة التنسيق المتداخلة دفعة واحدة (مصدر "الهبل").
@@ -529,9 +519,26 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     if (!window.confirm("هيتم تصفير كل تأثيرات التصميم (الأنوار، الرينبو، الزجاج، الوجه المخصص) والرجوع لشكل نظيف افتراضي للجميع. متأكد؟")) {
       return;
     }
-    // 1) إطفاء كل أشرطة النور (الأعمدة/الكتابة/الهيدر)
+    // 1) إطفاء كل أشرطة النور (الأعمدة/الكتابة/الهيدر + خط النيون)
+    clearNeonBeamTargets();
     const tint = loadChaseLightSettings().tintHex || "#6ee7b7";
-    commitChaseLightSettings({ columns: "none", composer: "none", header: "none", tintHex: tint, speedSec: 6 });
+    commitChaseLightSettings({
+      columns: "none",
+      composer: "none",
+      header: "none",
+      neonBeamTargets: [],
+      tintHex: tint,
+      speedSec: 6,
+    });
+    resetUDSSettings();
+    setUdsSettings(loadUDSSettings());
+    const offFx = FX_LIST.reduce(
+      (acc, fx) => ({ ...acc, [fx.id]: false }),
+      {} as Record<FxId, boolean>,
+    );
+    try { localStorage.setItem("lamma_fx_on", JSON.stringify(offFx)); } catch { /* non-fatal */ }
+    FX_LIST.forEach(({ id }) => document.body.classList.remove(`lamma-fx-${id}`));
+    setFxOn(offFx);
     commitSidebarWidgetSettings({
       radio: "classic",
       music: "classic",
@@ -696,34 +703,10 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
       setActiveGlassFormId(loadGlassFormId());
       setGlassTintColor(loadGlassFormTint());
     }
-    if (previewKind === "face") {
-      cancelFacePreview();
-      setPendingFacePresetId(null);
-    }
-    if (previewKind === "template") {
-      cancelAssistantPreview?.();
-      setPendingTemplateId(null);
-      setPendingTemplateSummary("");
-    }
-    if (previewKind === "column") {
-      cancelColumnCardPreview();
-      setPendingColumnStyleId(null);
-      setActiveColumnStyleId(loadColumnCardStyleId());
-      setColumnTintColor(loadColumnCardTint());
-    }
-    if (previewKind === "import-pack") {
-      cancelImportPackVisualPreview();
-      setPendingImportPack(null);
-    }
-    if (previewKind === "bubble") {
-      cancelBubbleShapePreview();
-      setPendingBubbleShapeId(null);
-      setActiveBubbleShapeId(loadBubbleShapeId());
-    }
     if (previewKind === "chase") {
       cancelChaseLightPreview();
       setChaseSettings(loadChaseLightSettings());
-      setPendingChaseSummary("");
+      setNeonBeamPicks(getActiveNeonBeamTargets());
     }
     setPreviewKind(null);
     setDesignPreviewActive(false);
@@ -760,143 +743,6 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     }
   };
 
-  const handleColumnTintChange = (hex: string) => {
-    setColumnTintColor(hex);
-    if (pendingColumnStyleId) {
-      previewColumnCardStyle(pendingColumnStyleId, hex);
-    }
-    if (previewKind === "chase") {
-      updateChaseLightTintPreview(hex);
-      setChaseSettings((s) => ({ ...s, tintHex: hex }));
-    }
-  };
-
-  const handlePreviewBubbleShape = (shapeId: BubbleShapeId) => {
-    cancelAllPreviews();
-    // تطبيق فوري عند الضغط (بدل معاينة تحتاج تأكيد منفصل).
-    if (commitBubbleShape(shapeId)) {
-      setActiveBubbleShapeId(shapeId);
-      setPendingBubbleShapeId(null);
-      setPreviewKind(null);
-      setDesignPreviewActive(false);
-    } else {
-      alert("⚠️ افتح غرفة شات عادية (مش غرفة القيادة) عشان تشوف شكل الفقاعات يتغيّر.");
-    }
-  };
-
-  const handleCommitBubbleShape = () => {
-    if (!pendingBubbleShapeId) return;
-    const label = getBubbleShapeLabel(pendingBubbleShapeId);
-    if (commitBubbleShape(pendingBubbleShapeId)) {
-      setActiveBubbleShapeId(pendingBubbleShapeId);
-      setPendingBubbleShapeId(null);
-      setPreviewKind(null);
-      setDesignPreviewActive(false);
-      alert(`✅ تم تطبيق شكل الفقاعات «${label}».`);
-    } else {
-      alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
-    }
-  };
-
-  const handlePreviewChaseLight = (
-    target: ChaseLightTarget,
-    styleId: ChaseLightStyleId,
-  ) => {
-    if (previewKind !== "chase") {
-      cancelAllPreviews();
-    }
-    setPreviewKind("chase");
-    previewChaseLightForTarget(target, styleId);
-    setChaseSettings((prev) => {
-      const base = previewKind === "chase" ? prev : loadChaseLightSettings();
-      return { ...base, [target]: styleId };
-    });
-    const targetLabel =
-      target === "columns" ? "الأعمدة" : target === "composer" ? "الكتابة" : "الهيدر";
-    setPendingChaseSummary(`${targetLabel}: ${styleId}`);
-    setDesignPreviewActive(true);
-  };
-
-  const handleCommitChaseLight = () => {
-    previewChaseLightPatch(chaseSettings);
-    if (commitChaseLightSettings(chaseSettings)) {
-      setChaseSettings(loadChaseLightSettings());
-      setPendingChaseSummary("");
-      setPreviewKind(null);
-      setDesignPreviewActive(false);
-      alert("✅ تم تطبيق أشرطة النور.");
-    } else {
-      alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
-    }
-  };
-
-  const toggleNeonBeamTarget = (target: NeonBeamTargetId) => {
-    const next = neonBeamPicks.includes(target)
-      ? neonBeamPicks.filter((id) => id !== target)
-      : [...neonBeamPicks, target];
-    setNeonBeamPicks(next);
-    previewNeonBeamTargets(next, 4);
-    setPreviewKind("chase");
-    setDesignPreviewActive(true);
-    setPendingChaseSummary(
-      next.length
-        ? `شريط نيون: ${next.map((id) => NEON_BEAM_TARGET_LABELS[id]).join(" · ")}`
-        : "",
-    );
-  };
-
-  const handleCommitNeonBeamPicks = () => {
-    if (commitNeonBeamTargets(neonBeamPicks, { speedSec: 4 })) {
-      setChaseSettings(loadChaseLightSettings());
-      setNeonBeamPicks(getActiveNeonBeamTargets());
-      setPreviewKind(null);
-      setDesignPreviewActive(false);
-      setPendingChaseSummary("");
-      scheduleDesignOverlaysSync();
-    } else {
-      alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
-    }
-  };
-
-  const handleClearNeonBeam = () => {
-    setNeonBeamPicks([]);
-    if (clearNeonBeamTargets()) {
-      setChaseSettings(loadChaseLightSettings());
-      setPreviewKind(null);
-      setDesignPreviewActive(false);
-      setPendingChaseSummary("");
-      scheduleDesignOverlaysSync();
-    }
-  };
-
-  const handlePreviewColumnStyle = (styleId: ColumnCardStyleId) => {
-    cancelAllPreviews();
-    // تطبيق فوري عند الضغط (بدل معاينة تحتاج تأكيد منفصل).
-    if (commitColumnCardStyle(styleId, columnTintColor)) {
-      setActiveColumnStyleId(styleId === "neon-ring" ? null : styleId);
-      setPendingColumnStyleId(null);
-      setPreviewKind(null);
-      setDesignPreviewActive(false);
-    } else {
-      alert("⚠️ افتح غرفة شات عادية (مش غرفة القيادة) عشان تشوف شكل البطاقات يتغيّر.");
-    }
-  };
-
-  const handleCommitColumnStyle = () => {
-    if (!pendingColumnStyleId) return;
-    const label = getColumnCardStyleLabel(pendingColumnStyleId);
-    if (commitColumnCardStyle(pendingColumnStyleId, columnTintColor)) {
-      setActiveColumnStyleId(
-        pendingColumnStyleId === "neon-ring" ? null : pendingColumnStyleId,
-      );
-      setPendingColumnStyleId(null);
-      setPreviewKind(null);
-      alert(`✅ تم تطبيق شكل بطاقات الأعمدة «${label}».`);
-    } else {
-      alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
-    }
-  };
-
   const handleCommitGlassForm = () => {
     if (!pendingGlassFormId) return;
     const preset = GLASS_FORM_PRESETS.find((p) => p.id === pendingGlassFormId);
@@ -912,123 +758,40 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     }
   };
 
-  const handleCancelGlassPreview = () => {
-    cancelAllPreviews();
-  };
-
-  const handlePreviewFacePreset = (presetId: string) => {
-    cancelAllPreviews();
-    if (previewFacePreset(presetId)) {
-      setPreviewKind("face");
-      setPendingFacePresetId(presetId);
-      setDesignPreviewActive(true);
-    }
-  };
-
-  const handleCommitFacePreset = () => {
-    if (!pendingFacePresetId) return;
-    const label = getFacePresetLabel(pendingFacePresetId);
-    if (commitFacePreset(pendingFacePresetId)) {
-      setActiveFacePresetId(pendingFacePresetId);
-      setPendingFacePresetId(null);
-      setPreviewKind(null);
-      setDesignPreviewActive(false);
-      alert(`✅ تم تطبيق سمة «${label}».`);
-    }
-  };
-
-  const handlePreviewTemplate = (templateId: DesignAssistantProposalId) => {
-    cancelAllPreviews();
-    const info = previewAssistantPreset?.(templateId);
-    if (!info) return;
-    setPreviewKind("template");
-    setPendingTemplateId(info.id);
-    setPendingTemplateSummary(info.summary);
-  };
-
-  const handleCommitTemplate = () => {
-    if (!pendingTemplateId) return;
-    const title = commitAssistantPreset?.(pendingTemplateId);
-    if (title) {
-      setActiveTemplateId(pendingTemplateId);
-      setPendingTemplateId(null);
-      setPendingTemplateSummary("");
-      setPreviewKind(null);
-      alert(`✅ تم تطبيق «${title}».`);
-    }
-  };
-
-  const handleSmartRecommendPreview = () => {
-    cancelAllPreviews();
-    const info = previewRecommendedAssistantTemplate?.();
-    if (!info) return;
-    setPreviewKind("template");
-    setPendingTemplateId(info.id);
-    setPendingTemplateSummary(info.summary);
-  };
-
-  const handlePreviewImportPack = (pack: DesignImportPack) => {
-    cancelAllPreviews();
-    setPreviewKind("import-pack");
-    setPendingImportPack(pack);
-    previewImportPackVisuals(pack);
-    const styleConfig = resolveImportPackStyleConfig(pack);
-    if (previewDesignConfig) {
-      previewDesignConfig(styleConfig);
-    } else if (previewDesignPrompt && pack.stylePrompt) {
-      previewDesignPrompt(pack.stylePrompt);
-    }
-    if (pack.templateId) {
-      const info = previewAssistantPreset?.(pack.templateId);
-      if (info) {
-        setPendingTemplateId(info.id);
-        setPendingTemplateSummary(info.summary);
-      }
-    }
+  const toggleNeonBeamTarget = (target: NeonBeamTargetId) => {
+    const next = neonBeamPicks.includes(target)
+      ? neonBeamPicks.filter((id) => id !== target)
+      : [...neonBeamPicks, target];
+    setNeonBeamPicks(next);
+    previewNeonBeamTargets(next, 4);
+    setPreviewKind("chase");
     setDesignPreviewActive(true);
   };
 
-  const handleCommitImportPack = async () => {
-    if (!pendingImportPack) return;
-    const pack = pendingImportPack;
-    const title = pack.title;
-    try {
-      if (ownerWriteAccessOk === false && pack.stylePrompt) {
-        alert(
-          "⚠️ الزجاج والبطاقات تُحفظ محلياً — لكن الألوان العامة تحتاج صلاحية owner على Supabase (user_roles).",
-        );
-      }
-      commitImportPackVisuals(pack);
-      if (pack.templateId) {
-        commitAssistantPreset?.(pack.templateId);
-      }
-      if (pack.stylePrompt && commitPendingDesignPreview) {
-        await commitPendingDesignPreview();
-      }
-      setActiveImportPackId(pack.id);
-      setPendingImportPack(null);
-      setPendingTemplateId(null);
-      setPendingTemplateSummary("");
+  const handleCommitNeonBeamPicks = () => {
+    if (commitNeonBeamTargets(neonBeamPicks, { speedSec: 4 })) {
+      setChaseSettings(loadChaseLightSettings());
+      setNeonBeamPicks(getActiveNeonBeamTargets());
       setPreviewKind(null);
       setDesignPreviewActive(false);
-      alert(`✅ تم تطبيق pack «${title}» (${describeImportPackLayers(pack)}).`);
-    } catch {
-      alert("⚠️ تعذر إكمال التطبيق — جرّب «إلغاء» ثم أعد المعاينة.");
+      scheduleDesignOverlaysSync();
+    } else {
+      alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
     }
   };
 
-  const handleCancelPreview = () => {
-    cancelAllPreviews();
+  const handleClearNeonBeam = () => {
+    setNeonBeamPicks([]);
+    if (clearNeonBeamTargets()) {
+      setChaseSettings(loadChaseLightSettings());
+      setPreviewKind(null);
+      setDesignPreviewActive(false);
+      scheduleDesignOverlaysSync();
+    }
   };
 
-  const handleCommitPreview = () => {
-    if (previewKind === "glass") handleCommitGlassForm();
-    else if (previewKind === "face") handleCommitFacePreset();
-    else if (previewKind === "template") handleCommitTemplate();
-    else if (previewKind === "column") handleCommitColumnStyle();
-    else if (previewKind === "bubble") handleCommitBubbleShape();
-    else if (previewKind === "chase") handleCommitChaseLight();
-    else if (previewKind === "import-pack") void handleCommitImportPack();
+  const handleCancelGlassPreview = () => {
+    cancelAllPreviews();
   };
 
   const handleResetGlassForm = () => {
@@ -1048,10 +811,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
       }
       cancelGlassPreview();
       cancelFacePreview();
-      cancelAssistantPreview?.();
       cancelColumnCardPreview();
-      cancelImportPackVisualPreview();
-      cancelBubbleShapePreview();
       cancelChaseLightPreview();
       if (hasPendingRef.current) {
         void flushSave();
@@ -1087,13 +847,13 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
 
   useEffect(() => {
     FX_LIST.forEach(({ id }) => document.body.classList.toggle(`lamma-fx-${id}`, fxOn[id]));
-    try { localStorage.setItem("lamma_fx_on", JSON.stringify(fxOn)); } catch {}
+    try { localStorage.setItem("lamma_fx_on", JSON.stringify(fxOn)); } catch { /* non-fatal */ }
   }, [fxOn]);
 
   const toggleFx = (id: FxId) => {
     setFxOn((prev) => {
       const next = { ...prev, [id]: !prev[id] };
-      try { localStorage.setItem("lamma_fx_on", JSON.stringify(next)); } catch {}
+      try { localStorage.setItem("lamma_fx_on", JSON.stringify(next)); } catch { /* non-fatal */ }
       setTimeout(() => scheduleDesignOverlaysSync(), 80);
       return next;
     });
@@ -1108,13 +868,13 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     setActiveGlassFormId(theme.glass.id);
     // 3) أعمدة
     commitColumnCardStyle(theme.column.id, theme.column.tint);
-    setActiveColumnStyleId(theme.column.id);
-    // 4) أنوار النور
+    // 4) أنوار النور 2026
     commitChaseLightSettings(theme.chase);
-    setChaseSettings(theme.chase);
+    setChaseSettings(loadChaseLightSettings());
+    setNeonBeamPicks(getActiveNeonBeamTargets());
     // 5) تأثيرات FX
     const nextFx = theme.fx;
-    try { localStorage.setItem("lamma_fx_on", JSON.stringify(nextFx)); } catch {}
+    try { localStorage.setItem("lamma_fx_on", JSON.stringify(nextFx)); } catch { /* non-fatal */ }
     Object.entries(nextFx).forEach(([id, on]) => {
       document.body.classList.toggle(`lamma-fx-${id}`, !!on);
     });
@@ -1139,13 +899,19 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
       });
       commitGlassForm("smoke-dark", "#ff00ff");
       setActiveGlassFormId("smoke-dark");
+      commitNeonBeamTargets(
+        ["store", "radio", "music", "rooms", "members", "composer"],
+        { speedSec: 4 },
+      );
+      setChaseSettings(loadChaseLightSettings());
+      setNeonBeamPicks(getActiveNeonBeamTargets());
       const udsNeon: UDSSettings = {
-        neonBorder: "rgb-wave",
+        neonBorder: "none",
         neonBorderColor: "cyberpunk-pink",
         glassTexture: "crystal-glow",
         glassTint: "cyberpunk-pink",
         palette: "cyberpunk-pink",
-        applyToBody: true,
+        applyToBody: false,
         applyToContainers: true,
       };
       commitUDSSettings(udsNeon);
@@ -1358,6 +1124,17 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                             disabled={!isOwnerRole}
                             onClick={() => {
                               if (!previewDesignConfig || !isOwnerRole) return;
+                              clearNeonBeamTargets();
+                              commitChaseLightSettings({
+                                columns: "none",
+                                composer: "none",
+                                header: "none",
+                                neonBeamTargets: [],
+                                tintHex: loadChaseLightSettings().tintHex,
+                                speedSec: 6,
+                              });
+                              setChaseSettings(loadChaseLightSettings());
+                              setNeonBeamPicks([]);
                               const base = getBase();
                               const fresh = createDefaultUniversalStyle();
                               previewAndTrack({ ...base, effects: { ...fresh.effects }, regions: fresh.regions });
@@ -1795,34 +1572,6 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           </div>
                         </div>
 
-                        {/* تفعيل/إيقاف شريط الضوء الدوار — مدمج هنا كزر سريع */}
-                        <button
-                          type="button"
-                          onPointerDown={stopDrag}
-                          disabled={!isOwnerRole}
-                          onClick={() => {
-                            const isOn = udsSettings.neonBorder === "rgb-wave";
-                            const next: UDSSettings = {
-                              ...udsSettings,
-                              neonBorder: isOn ? "none" : "rgb-wave",
-                              neonBorderColor: "cyberpunk-pink",
-                              applyToBody: !isOn,
-                              applyToContainers: !isOn,
-                            };
-                            commitUDSSettings(next);
-                            setUdsSettings(next);
-                            scheduleDesignOverlaysSync();
-                          }}
-                          className={`w-full py-2.5 rounded-xl text-[11px] font-black transition-all disabled:opacity-40 flex items-center justify-center gap-2 ${
-                            udsSettings.neonBorder === "rgb-wave"
-                              ? "bg-gradient-to-r from-fuchsia-600 via-cyan-500 to-violet-600 text-white shadow-[0_0_20px_rgba(255,0,255,0.4)]"
-                              : "lamma-tab-soft hover:text-white"
-                          }`}
-                        >
-                          <span className={udsSettings.neonBorder === "rgb-wave" ? "animate-spin" : ""} style={{ animationDuration: "3s" }}>✦</span>
-                          {udsSettings.neonBorder === "rgb-wave" ? "🔴 إيقاف شريط النيون الدوار" : "✨ شريط النيون الدوار على البطاقات"}
-                        </button>
-
                         {/* 🪄 سحر التصميم 2026 — تأثيرات مستقلة */}
                         <div className="p-4 rounded-2xl lamma-section-card space-y-3">
                           <div className="flex items-center gap-2">
@@ -1919,7 +1668,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                         {/* Neon Borders & Effects */}
                         <div className="p-4 rounded-2xl lamma-section-card space-y-3">
                           <div className="text-[11px] text-cyan-300 font-black">💫 أشرطة النيون والمؤثرات</div>
-                          <div className="text-[10px] text-gray-400">اختر تأثير الحدود النيون المتحرك</div>
+                          <div className="text-[10px] text-gray-400">تأثيرات حدود إضافية (خط النيون الدوار على البطاقات: تبويب 🎨 الألوان)</div>
                           
                           <div className="grid grid-cols-2 gap-2">
                             {[
@@ -1927,7 +1676,6 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                               { id: "led-strip" as const, label: "شريط LED متحرك" },
                               { id: "pulsing-glow" as const, label: "نبض إضاءة" },
                               { id: "border-aura" as const, label: "هالة ضوئية" },
-                              { id: "rgb-wave" as const, label: "موجة RGB" },
                               { id: "static-cyber" as const, label: "خط سيبر ثابت" },
                             ].map((style) => (
                               <button
