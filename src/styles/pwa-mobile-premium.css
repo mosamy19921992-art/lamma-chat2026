@@ -384,16 +384,16 @@
   }
 
   .lamma-pwa-app-shell .lamma-composer-tool {
-    width: 1.28rem !important;
-    height: 1.28rem !important;
-    min-width: 1.28rem !important;
-    min-height: 1.28rem !important;
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
     border-radius: 999px;
   }
 
   .lamma-pwa-app-shell .lamma-composer-tool svg {
-    width: 11px !important;
-    height: 11px !important;
+    width: 18px !important;
+    height: 18px !important;
   }
 
   .lamma-pwa-app-shell .lamma-composer-layout .lamma-toolbar-btn,
@@ -404,31 +404,31 @@
   }
 
   .lamma-pwa-app-shell .lamma-composer-field {
-    height: 1.72rem !important;
-    min-height: 1.72rem !important;
-    padding-top: 0.22rem !important;
-    padding-bottom: 0.22rem !important;
-    font-size: 15px !important;
-    line-height: 1.2 !important;
+    height: auto !important;
+    min-height: 44px !important;
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+    font-size: 16px !important;
+    line-height: 1.25 !important;
   }
 
   .lamma-pwa-app-shell .lamma-composer-slot-send {
-    width: 1.72rem !important;
-    height: 1.72rem !important;
-    min-width: 1.72rem !important;
-    min-height: 1.72rem !important;
-    box-shadow: 0 4px 10px rgba(24, 181, 123, 0.18) !important;
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    box-shadow: 0 4px 10px rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.18) !important;
   }
 
   .lamma-pwa-app-shell .lamma-composer-slot-send svg {
-    width: 11px !important;
-    height: 11px !important;
+    width: 18px !important;
+    height: 18px !important;
   }
 
   .lamma-pwa-app-shell .lamma-composer-tools-wrapper {
-    gap: 0.08rem !important;
+    gap: 0.12rem !important;
     padding-top: 0 !important;
-    min-height: 1.28rem;
+    min-height: 44px;
   }
 
   /* تقليل رعشة القوائم المنبثقة على الموبايل */

@@ -10,6 +10,38 @@ html[data-app-theme="dark"] {
   --ui-motion-fast: 180ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ── Lamma accent (semantic — prefer over hardcoded green/lime hex) ── */
+.lamma-accent-text {
+  color: rgb(var(--lamma-header-accent-rgb, 16, 185, 129));
+}
+.lamma-accent-text-soft {
+  color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.88);
+}
+.lamma-accent-tab-active {
+  border-color: rgb(var(--lamma-header-accent-rgb, 16, 185, 129)) !important;
+  color: rgb(var(--lamma-header-accent-rgb, 16, 185, 129)) !important;
+}
+.lamma-accent-tab-bar {
+  border-bottom-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.1);
+}
+
+.lamma-neutral-glass .lamma-header-mini-btn.lamma-quiet-power-btn-active.text-green-300,
+.lamma-neutral-glass .lamma-quiet-power-btn.lamma-quiet-power-btn-active.text-green-300 {
+  color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.88) !important;
+}
+
+.lamma-admin-panel .text-emerald-400 { color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.9) !important; }
+.lamma-admin-panel .text-emerald-300 { color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.82) !important; }
+.lamma-admin-panel .text-emerald-200 { color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.75) !important; }
+.lamma-admin-panel .text-emerald-500 { color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.95) !important; }
+.lamma-admin-panel .border-emerald-500\/10 { border-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.1) !important; }
+.lamma-admin-panel .border-emerald-500\/35 { border-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.35) !important; }
+.lamma-admin-panel .bg-emerald-500\/10 { background-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.1) !important; }
+.lamma-admin-panel .bg-emerald-500\/15 { background-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.15) !important; }
+.lamma-admin-panel .bg-emerald-500\/20 { background-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.2) !important; }
+.lamma-admin-panel .focus\:border-emerald-500\/50:focus { border-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.5) !important; }
+.lamma-admin-panel .hover\:bg-emerald-500:hover { background-color: rgb(var(--lamma-header-accent-rgb, 16, 185, 129)) !important; }
+
 html[data-app-theme="amoled"] {
   --bg-primary: #000000;
   --bg-secondary: #040404;
@@ -150,8 +182,7 @@ html[data-app-theme="amoled"]
     min-height: 44px;
   }
 
-  /* PWA mobile — شريط الغرفة + الكتابة مضغوط (يلغي 44px العام) */
-  .lamma-pwa-app-shell .lamma-composer-tool,
+  /* PWA mobile — شريط الغرفة مضغوط؛ الكتابة 44px (touch + منع zoom على iOS) */
   .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-strip-action,
   .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-header:last-child .lamma-toolbar-btn {
     width: 1.28rem !important;
@@ -160,20 +191,32 @@ html[data-app-theme="amoled"]
     min-height: 1.28rem !important;
   }
 
+  .lamma-pwa-app-shell .lamma-composer-tool {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
   .lamma-pwa-app-shell .lamma-composer-slot-send {
-    width: 1.72rem !important;
-    height: 1.72rem !important;
-    min-width: 1.72rem !important;
-    min-height: 1.72rem !important;
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
   }
 
   .lamma-pwa-app-shell .lamma-composer-field {
-    font-size: 15px !important;
-    min-height: 2rem !important;
-    height: 2rem !important;
+    font-size: 16px !important;
+    min-height: 44px !important;
+    height: auto !important;
   }
 
   .lamma-pwa-app-shell .lamma-composer-tool svg,
+  .lamma-pwa-app-shell .lamma-composer-slot-send svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
   .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-strip-action svg,
   .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-header:last-child .lamma-toolbar-btn svg {
     width: 11px !important;

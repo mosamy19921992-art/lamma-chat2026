@@ -226,3 +226,40 @@ body.lamma-fx-liquid .lamma-neutral-glass .lamma-store-panel button.flex-1:hover
   bottom: -30%;
   opacity: 0.9;
 }
+
+/* ── Mobile performance profile — lighter glass, fewer infinite animations ── */
+@media (max-width: 767px) {
+  body.lamma-fx-shimmer .lamma-neutral-glass .lamma-side-column[class*="border-r"] [data-design-region="column-cards"].lamma-glass::after,
+  body.lamma-fx-shimmer .lamma-neutral-glass .lamma-side-column[class*="border-l"] [data-design-region="column-cards"].lamma-glass::after,
+  body.lamma-fx-shimmer .lamma-neutral-glass .lamma-store-panel [data-design-region="column-cards"]::after,
+  body.lamma-fx-shimmer .lamma-neutral-glass .lamma-radio-panel [data-design-region="column-cards"]::after,
+  body.lamma-fx-shimmer .lamma-neutral-glass .lamma-music-panel [data-design-region="column-cards"]::after,
+  body.lamma-fx-shimmer .lamma-neutral-glass .lamma-rooms-panel [data-design-region="column-cards"]::after {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+
+  body.lamma-fx-holo .lamma-section-card > div:first-child,
+  body.lamma-fx-holo .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"] > div:first-child .font-black {
+    animation: none !important;
+    background: none !important;
+    -webkit-text-fill-color: inherit !important;
+    color: inherit !important;
+  }
+
+  body.lamma-fx-liquid .lamma-accent-btn::before,
+  body.lamma-fx-liquid .lamma-tab-soft::before,
+  body.lamma-fx-liquid .lamma-send-orb::before,
+  body.lamma-fx-liquid .lamma-neutral-glass .lamma-composer-layout .lamma-composer-slot-send::before,
+  body.lamma-fx-liquid .lamma-neutral-glass .lamma-store-panel button.flex-1::before {
+    display: none !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-glass,
+  .lamma-pwa-app-shell .lamma-feature-shell,
+  .lamma-neutral-glass .lamma-room-header,
+  .lamma-neutral-glass .lamma-feature-header {
+    -webkit-backdrop-filter: blur(10px) saturate(1.05) !important;
+    backdrop-filter: blur(10px) saturate(1.05) !important;
+  }
+}

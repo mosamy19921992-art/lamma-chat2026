@@ -128,14 +128,14 @@ export function AdminPanelModal({
   }, []);
 
   return (
-    <div className="space-y-5 select-none" dir="rtl">
+    <div className="lamma-admin-panel space-y-5 select-none" dir="rtl">
       {/* Tabs triggers */}
-      <div className="flex border-b border-green-500/10 pb-0.5 gap-2 select-none overflow-x-auto scroller-hidden">
+      <div className="flex border-b lamma-accent-tab-bar pb-0.5 gap-2 select-none overflow-x-auto scroller-hidden">
         <button
           onClick={() => setAdminTab("actions")}
           className={`pb-2 px-3 text-xs font-black transition-all border-b-2 cursor-pointer shrink-0 ${
             adminTab === "actions"
-              ? "border-[#a3e635] text-[#a3e635]"
+              ? "lamma-accent-tab-active"
               : "border-transparent text-gray-405 hover:text-white"
           }`}
         >
@@ -145,7 +145,7 @@ export function AdminPanelModal({
           onClick={() => setAdminTab("logs")}
           className={`pb-2 px-3 text-xs font-black transition-all border-b-2 cursor-pointer shrink-0 ${
             adminTab === "logs"
-              ? "border-[#a3e635] text-[#a3e635]"
+              ? "lamma-accent-tab-active"
               : "border-transparent text-gray-405 hover:text-white"
           }`}
         >
@@ -155,7 +155,7 @@ export function AdminPanelModal({
           onClick={() => setAdminTab("bans")}
           className={`pb-2 px-3 text-xs font-black transition-all border-b-2 cursor-pointer shrink-0 ${
             adminTab === "bans"
-              ? "border-[#a3e635] text-[#a3e635]"
+              ? "lamma-accent-tab-active"
               : "border-transparent text-gray-405 hover:text-white"
           }`}
         >
@@ -165,7 +165,7 @@ export function AdminPanelModal({
           onClick={() => setAdminTab("reports")}
           className={`pb-2 px-3 text-xs font-black transition-all border-b-2 cursor-pointer shrink-0 ${
             adminTab === "reports"
-              ? "border-[#a3e635] text-[#a3e635]"
+              ? "lamma-accent-tab-active"
               : "border-transparent text-gray-405 hover:text-white"
           }`}
         >
@@ -176,7 +176,7 @@ export function AdminPanelModal({
           onClick={() => setAdminTab("store_mgmt")}
           className={`pb-2 px-3 text-xs font-black transition-all border-b-2 cursor-pointer shrink-0 ${
             adminTab === "store_mgmt"
-              ? "border-[#a3e635] text-[#a3e635]"
+              ? "lamma-accent-tab-active"
               : "border-transparent text-gray-405 hover:text-white"
           }`}
         >
