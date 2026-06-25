@@ -128,7 +128,7 @@ export default async function handler(req, res) {
     console.log("Gemini ok via model:", usedModel, "user:", user.id);
     const data = await geminiRes.json();
     const parts = data?.candidates?.[0]?.content?.parts ?? [];
-    const rawText = parts.map((p) => p?.text ?? "").join("").trim() || "{}";
+    const rawText = String(parts.map((p) => p?.text ?? "").join("")).trim() || "{}";
 
     const cleaned = String(rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")).trim();
 
