@@ -107,9 +107,7 @@ export function ShareModal({ isOpen, onClose, appLink }: ShareModalProps) {
                   <button
                     onClick={handleCopy}
                     className={`px-4 py-2.5 rounded-lg font-black text-xs transition-all flex-shrink-0 cursor-pointer ${
-                      copiedLink
-                        ? "lamma-feature-primary"
-                        : "lamma-feature-primary"
+                      "lamma-feature-primary"
                     }`}
                   >
                     {copiedLink ? "✅ تم النسخ!" : "إنسخ الرابط"}
