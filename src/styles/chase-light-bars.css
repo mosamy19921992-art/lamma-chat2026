@@ -1,0 +1,582 @@
+/* ── Chase Light Bar Effects 2026 ──
+   Reads data-chase-columns / data-chase-composer / data-chase-header
+   set by chaseLightBarService.ts on .lamma-neutral-glass root.
+   Each target gets its own light strip style. */
+
+/* ── Keyframes ── */
+@keyframes lamma-chase-aurora {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes lamma-chase-breathe {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@keyframes lamma-chase-laser {
+  0% { transform: translateX(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes lamma-chase-pulse-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(var(--chase-tint-rgb, 110,231,183), 0.3); }
+  50% { box-shadow: 0 0 16px rgba(var(--chase-tint-rgb, 110,231,183), 0.7); }
+}
+
+@keyframes lamma-chase-conic-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes lamma-chase-liquid {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+@keyframes lamma-chase-segment {
+  0% { background-position: 0 0; }
+  100% { background-position: 40px 0; }
+}
+
+@keyframes lamma-chase-rainbow {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes lamma-neon-beam-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Shared base for all chase targets ── */
+.lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"])
+  .lamma-side-column[class*="border-r"] .lamma-glass,
+.lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"])
+  .lamma-side-column[class*="border-l"] .lamma-glass,
+.lamma-neutral-glass[data-chase-composer]:not([data-chase-composer="none"])
+  .lamma-composer-bar,
+.lamma-neutral-glass[data-chase-header]:not([data-chase-header="none"])
+  .lamma-header {
+  position: relative !important;
+}
+
+/* ── COLUMNS target ── */
+
+/* soft-edge */
+.lamma-neutral-glass[data-chase-columns="soft-edge"]
+  .lamma-side-column[class*="border-r"] .lamma-glass::before,
+.lamma-neutral-glass[data-chase-columns="soft-edge"]
+  .lamma-side-column[class*="border-l"] .lamma-glass::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  padding: 1.5px !important;
+  background: linear-gradient(135deg,
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.6),
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.15)) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  pointer-events: none !important;
+  z-index: 3 !important;
+}
+
+/* aurora-flow */
+.lamma-neutral-glass[data-chase-columns="aurora-flow"]
+  .lamma-side-column[class*="border-r"] .lamma-glass::before,
+.lamma-neutral-glass[data-chase-columns="aurora-flow"]
+  .lamma-side-column[class*="border-l"] .lamma-glass::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  padding: 2px !important;
+  background: linear-gradient(90deg,
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.7),
+    rgba(56, 189, 248, 0.7),
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.7)) !important;
+  background-size: 200% 100% !important;
+  animation: lamma-chase-aurora var(--chase-speed, 6s) linear infinite !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  pointer-events: none !important;
+  z-index: 3 !important;
+}
+
+/* neon-beam — thin rotating border line (owner picks each card/edge via data-neon-beam-targets) */
+.lamma-neutral-glass[data-neon-beam~="store"] .lamma-store-panel .lamma-glass::before,
+.lamma-neutral-glass[data-neon-beam~="radio"] .lamma-radio-panel .lamma-glass::before,
+.lamma-neutral-glass[data-neon-beam~="music"] .lamma-music-panel .lamma-glass::before,
+.lamma-neutral-glass[data-neon-beam~="rooms"] .lamma-rooms-panel .lamma-glass::before,
+.lamma-neutral-glass[data-neon-beam~="members"] .lamma-members-panel .lamma-glass::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  padding: 2.5px !important;
+  background: conic-gradient(
+    from 0deg,
+    #ff006e 0deg,
+    #ec4899 45deg,
+    #c026d3 90deg,
+    #7c3aed 135deg,
+    #00f5d4 225deg,
+    #22d3ee 270deg,
+    #ff006e 360deg
+  ) !important;
+  animation: lamma-neon-beam-spin var(--chase-speed, 4s) linear infinite !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  filter:
+    drop-shadow(0 0 4px rgba(255, 0, 110, 0.75))
+    drop-shadow(0 0 10px rgba(0, 245, 212, 0.45)) !important;
+  pointer-events: none !important;
+  z-index: 4 !important;
+}
+
+.lamma-neutral-glass[data-neon-beam~="store"] .lamma-store-panel .lamma-glass,
+.lamma-neutral-glass[data-neon-beam~="radio"] .lamma-radio-panel .lamma-glass,
+.lamma-neutral-glass[data-neon-beam~="music"] .lamma-music-panel .lamma-glass,
+.lamma-neutral-glass[data-neon-beam~="rooms"] .lamma-rooms-panel .lamma-glass,
+.lamma-neutral-glass[data-neon-beam~="members"] .lamma-members-panel .lamma-glass {
+  position: relative !important;
+  box-shadow:
+    0 0 18px rgba(255, 0, 110, 0.12),
+    0 0 28px rgba(0, 245, 212, 0.08) !important;
+}
+
+/* ambient-breathe */
+.lamma-neutral-glass[data-chase-columns="ambient-breathe"]
+  .lamma-side-column[class*="border-r"] .lamma-glass,
+.lamma-neutral-glass[data-chase-columns="ambient-breathe"]
+  .lamma-side-column[class*="border-l"] .lamma-glass {
+  animation: lamma-chase-pulse-glow 4s ease-in-out infinite !important;
+}
+
+/* laser-scan */
+.lamma-neutral-glass[data-chase-columns="laser-scan"]
+  .lamma-side-column[class*="border-r"] .lamma-glass::before,
+.lamma-neutral-glass[data-chase-columns="laser-scan"]
+  .lamma-side-column[class*="border-l"] .lamma-glass::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 2px !important;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(var(--chase-tint-rgb, 110,231,183), 1),
+    transparent) !important;
+  animation: lamma-chase-laser var(--chase-speed, 6s) linear infinite !important;
+  pointer-events: none !important;
+  z-index: 3 !important;
+  border-radius: inherit !important;
+}
+
+/* mono-glow */
+.lamma-neutral-glass[data-chase-columns="mono-glow"]
+  .lamma-side-column[class*="border-r"] .lamma-glass,
+.lamma-neutral-glass[data-chase-columns="mono-glow"]
+  .lamma-side-column[class*="border-l"] .lamma-glass {
+  box-shadow:
+    0 0 12px rgba(var(--chase-tint-rgb, 110,231,183), 0.25),
+    inset 0 0 8px rgba(var(--chase-tint-rgb, 110,231,183), 0.08) !important;
+}
+
+/* conic-spin (legacy) */
+.lamma-neutral-glass[data-chase-columns="conic-spin"]
+  .lamma-side-column[class*="border-r"] .lamma-glass::before,
+.lamma-neutral-glass[data-chase-columns="conic-spin"]
+  .lamma-side-column[class*="border-l"] .lamma-glass::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: -2px !important;
+  border-radius: inherit !important;
+  background: conic-gradient(
+    from 0deg,
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.8),
+    rgba(255, 181, 21, 0.6),
+    rgba(0, 240, 255, 0.6),
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.8)) !important;
+  animation: lamma-chase-conic-spin var(--chase-speed, 6s) linear infinite !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+}
+
+/* liquid-flow (legacy) */
+.lamma-neutral-glass[data-chase-columns="liquid-flow"]
+  .lamma-side-column[class*="border-r"] .lamma-glass::before,
+.lamma-neutral-glass[data-chase-columns="liquid-flow"]
+  .lamma-side-column[class*="border-l"] .lamma-glass::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  padding: 2px !important;
+  background: linear-gradient(90deg,
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.6),
+    rgba(167, 139, 250, 0.6),
+    rgba(56, 189, 248, 0.6),
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.6)) !important;
+  background-size: 300% 100% !important;
+  animation: lamma-chase-liquid 8s linear infinite !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  pointer-events: none !important;
+  z-index: 3 !important;
+}
+
+/* pulse-glow (legacy) */
+.lamma-neutral-glass[data-chase-columns="pulse-glow"]
+  .lamma-side-column[class*="border-r"] .lamma-glass,
+.lamma-neutral-glass[data-chase-columns="pulse-glow"]
+  .lamma-side-column[class*="border-l"] .lamma-glass {
+  animation: lamma-chase-pulse-glow 3s ease-in-out infinite !important;
+}
+
+/* segment-dash (legacy) */
+.lamma-neutral-glass[data-chase-columns="segment-dash"]
+  .lamma-side-column[class*="border-r"] .lamma-glass::before,
+.lamma-neutral-glass[data-chase-columns="segment-dash"]
+  .lamma-side-column[class*="border-l"] .lamma-glass::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  padding: 2px !important;
+  background: repeating-linear-gradient(90deg,
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.7) 0 10px,
+    transparent 10px 20px) !important;
+  animation: lamma-chase-segment 1.5s linear infinite !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  pointer-events: none !important;
+  z-index: 3 !important;
+}
+
+/* rainbow-wave (legacy) */
+.lamma-neutral-glass[data-chase-columns="rainbow-wave"]
+  .lamma-side-column[class*="border-r"] .lamma-glass::before,
+.lamma-neutral-glass[data-chase-columns="rainbow-wave"]
+  .lamma-side-column[class*="border-l"] .lamma-glass::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  padding: 2px !important;
+  background: linear-gradient(90deg,
+    #ff006e, #ffbe0b, #06d6a0, #00f5d4, #7209b7, #ff006e) !important;
+  background-size: 200% 100% !important;
+  animation: lamma-chase-aurora 4s linear infinite, lamma-chase-rainbow 6s linear infinite !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  pointer-events: none !important;
+  z-index: 3 !important;
+}
+
+/* neon-double (legacy) */
+.lamma-neutral-glass[data-chase-columns="neon-double"]
+  .lamma-side-column[class*="border-r"] .lamma-glass,
+.lamma-neutral-glass[data-chase-columns="neon-double"]
+  .lamma-side-column[class*="border-l"] .lamma-glass {
+  box-shadow:
+    0 0 8px rgba(var(--chase-tint-rgb, 110,231,183), 0.4),
+    0 0 16px rgba(var(--chase-tint-rgb, 110,231,183), 0.2),
+    inset 0 0 6px rgba(var(--chase-tint-rgb, 110,231,183), 0.1) !important;
+}
+
+/* ── COMPOSER target ── */
+.lamma-neutral-glass[data-chase-composer="soft-edge"] .lamma-composer-bar {
+  border: 1.5px solid rgba(var(--chase-tint-rgb, 110,231,183), 0.35) !important;
+}
+.lamma-neutral-glass[data-chase-composer="aurora-flow"] .lamma-composer-bar {
+  border: 2px solid transparent !important;
+  background-image: linear-gradient(#0a0e14, #0a0e14),
+    linear-gradient(90deg,
+      rgba(var(--chase-tint-rgb, 110,231,183), 0.7),
+      rgba(56, 189, 248, 0.7),
+      rgba(var(--chase-tint-rgb, 110,231,183), 0.7)) !important;
+  background-size: 100% 100%, 200% 100% !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  animation: lamma-chase-aurora var(--chase-speed, 6s) linear infinite !important;
+}
+.lamma-neutral-glass[data-chase-composer="ambient-breathe"] .lamma-composer-bar {
+  animation: lamma-chase-pulse-glow 4s ease-in-out infinite !important;
+}
+.lamma-neutral-glass[data-chase-composer="laser-scan"] .lamma-composer-bar::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 2px !important;
+  background: linear-gradient(90deg, transparent,
+    rgba(var(--chase-tint-rgb, 110,231,183), 1), transparent) !important;
+  animation: lamma-chase-laser var(--chase-speed, 6s) linear infinite !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
+}
+.lamma-neutral-glass[data-chase-composer="mono-glow"] .lamma-composer-bar {
+  box-shadow: 0 0 12px rgba(var(--chase-tint-rgb, 110,231,183), 0.2) !important;
+}
+.lamma-neutral-glass[data-neon-beam~="composer"] .lamma-composer-bar,
+.lamma-neutral-glass[data-chase-composer="neon-beam"] .lamma-composer-bar {
+  position: relative !important;
+}
+.lamma-neutral-glass[data-neon-beam~="composer"] .lamma-composer-bar::before,
+.lamma-neutral-glass[data-chase-composer="neon-beam"] .lamma-composer-bar::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  padding: 2.5px !important;
+  background: conic-gradient(
+    from 0deg,
+    #ff006e 0deg,
+    #ec4899 45deg,
+    #c026d3 90deg,
+    #7c3aed 135deg,
+    #00f5d4 225deg,
+    #22d3ee 270deg,
+    #ff006e 360deg
+  ) !important;
+  animation: lamma-neon-beam-spin var(--chase-speed, 4s) linear infinite !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  filter:
+    drop-shadow(0 0 4px rgba(255, 0, 110, 0.75))
+    drop-shadow(0 0 10px rgba(0, 245, 212, 0.45)) !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
+}
+.lamma-neutral-glass[data-neon-beam~="composer"] .lamma-composer-bar > *,
+.lamma-neutral-glass[data-chase-composer="neon-beam"] .lamma-composer-bar > * {
+  position: relative !important;
+  z-index: 2 !important;
+}
+.lamma-neutral-glass[data-chase-composer="conic-spin"] .lamma-composer-bar {
+  border: 2px solid transparent !important;
+  background-image: conic-gradient(
+    from 0deg,
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.8),
+    rgba(255, 181, 21, 0.6),
+    rgba(0, 240, 255, 0.6),
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.8)) !important;
+  animation: lamma-chase-conic-spin var(--chase-speed, 6s) linear infinite !important;
+}
+.lamma-neutral-glass[data-chase-composer="liquid-flow"] .lamma-composer-bar {
+  border: 2px solid transparent !important;
+  background-image: linear-gradient(#0a0e14, #0a0e14),
+    linear-gradient(90deg,
+      rgba(var(--chase-tint-rgb, 110,231,183), 0.6),
+      rgba(167, 139, 250, 0.6),
+      rgba(56, 189, 248, 0.6),
+      rgba(var(--chase-tint-rgb, 110,231,183), 0.6)) !important;
+  background-size: 100% 100%, 300% 100% !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  animation: lamma-chase-liquid 8s linear infinite !important;
+}
+.lamma-neutral-glass[data-chase-composer="pulse-glow"] .lamma-composer-bar {
+  animation: lamma-chase-pulse-glow 3s ease-in-out infinite !important;
+}
+.lamma-neutral-glass[data-chase-composer="segment-dash"] .lamma-composer-bar {
+  border: 2px solid transparent !important;
+  background-image: linear-gradient(#0a0e14, #0a0e14),
+    repeating-linear-gradient(90deg,
+      rgba(var(--chase-tint-rgb, 110,231,183), 0.7) 0 10px,
+      transparent 10px 20px) !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  animation: lamma-chase-segment 1.5s linear infinite !important;
+}
+.lamma-neutral-glass[data-chase-composer="rainbow-wave"] .lamma-composer-bar {
+  border: 2px solid transparent !important;
+  background-image: linear-gradient(#0a0e14, #0a0e14),
+    linear-gradient(90deg, #ff006e, #ffbe0b, #06d6a0, #00f5d4, #7209b7, #ff006e) !important;
+  background-size: 100% 100%, 200% 100% !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  animation: lamma-chase-aurora 4s linear infinite !important;
+}
+.lamma-neutral-glass[data-chase-composer="neon-double"] .lamma-composer-bar {
+  box-shadow:
+    0 0 8px rgba(var(--chase-tint-rgb, 110,231,183), 0.4),
+    0 0 16px rgba(var(--chase-tint-rgb, 110,231,183), 0.2) !important;
+}
+
+/* ── HEADER target ── */
+.lamma-neutral-glass[data-chase-header="soft-edge"] .lamma-header {
+  border-bottom: 1.5px solid rgba(var(--chase-tint-rgb, 110,231,183), 0.35) !important;
+}
+.lamma-neutral-glass[data-chase-header="aurora-flow"] .lamma-header {
+  border-bottom: 2px solid transparent !important;
+  border-image: linear-gradient(90deg,
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.7),
+    rgba(56, 189, 248, 0.7),
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.7)) !important;
+  border-image-slice: 1 !important;
+}
+.lamma-neutral-glass[data-chase-header="ambient-breathe"] .lamma-header {
+  box-shadow: 0 0 12px rgba(var(--chase-tint-rgb, 110,231,183), 0.15) !important;
+  animation: lamma-chase-breathe 4s ease-in-out infinite !important;
+}
+.lamma-neutral-glass[data-chase-header="laser-scan"] .lamma-header::after {
+  content: "" !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 2px !important;
+  background: linear-gradient(90deg, transparent,
+    rgba(var(--chase-tint-rgb, 110,231,183), 1), transparent) !important;
+  animation: lamma-chase-laser var(--chase-speed, 6s) linear infinite !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
+}
+.lamma-neutral-glass[data-chase-header="mono-glow"] .lamma-header {
+  box-shadow: 0 2px 12px rgba(var(--chase-tint-rgb, 110,231,183), 0.15) !important;
+}
+.lamma-neutral-glass[data-neon-beam~="header"] .lamma-header,
+.lamma-neutral-glass[data-chase-header="neon-beam"] .lamma-header {
+  position: relative !important;
+}
+.lamma-neutral-glass[data-neon-beam~="header"] .lamma-header::before,
+.lamma-neutral-glass[data-chase-header="neon-beam"] .lamma-header::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  padding: 2.5px !important;
+  background: conic-gradient(
+    from 0deg,
+    #ff006e 0deg,
+    #ec4899 45deg,
+    #c026d3 90deg,
+    #7c3aed 135deg,
+    #00f5d4 225deg,
+    #22d3ee 270deg,
+    #ff006e 360deg
+  ) !important;
+  animation: lamma-neon-beam-spin var(--chase-speed, 4s) linear infinite !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  filter:
+    drop-shadow(0 0 4px rgba(255, 0, 110, 0.75))
+    drop-shadow(0 0 10px rgba(0, 245, 212, 0.45)) !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+.lamma-neutral-glass[data-neon-beam~="header"] .lamma-header > *,
+.lamma-neutral-glass[data-chase-header="neon-beam"] .lamma-header > * {
+  position: relative !important;
+  z-index: 1 !important;
+}
+.lamma-neutral-glass[data-chase-header="conic-spin"] .lamma-header {
+  border-bottom: 2px solid rgba(var(--chase-tint-rgb, 110,231,183), 0.5) !important;
+  box-shadow: 0 0 8px rgba(var(--chase-tint-rgb, 110,231,183), 0.2) !important;
+}
+.lamma-neutral-glass[data-chase-header="liquid-flow"] .lamma-header {
+  border-bottom: 2px solid transparent !important;
+  border-image: linear-gradient(90deg,
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.6),
+    rgba(167, 139, 250, 0.6),
+    rgba(56, 189, 248, 0.6),
+    rgba(var(--chase-tint-rgb, 110,231,183), 0.6)) !important;
+  border-image-slice: 1 !important;
+}
+.lamma-neutral-glass[data-chase-header="pulse-glow"] .lamma-header {
+  box-shadow: 0 0 12px rgba(var(--chase-tint-rgb, 110,231,183), 0.2) !important;
+  animation: lamma-chase-breathe 3s ease-in-out infinite !important;
+}
+.lamma-neutral-glass[data-chase-header="segment-dash"] .lamma-header {
+  border-bottom: 2px solid rgba(var(--chase-tint-rgb, 110,231,183), 0.3) !important;
+}
+.lamma-neutral-glass[data-chase-header="rainbow-wave"] .lamma-header {
+  border-bottom: 2px solid transparent !important;
+  border-image: linear-gradient(90deg, #ff006e, #ffbe0b, #06d6a0, #00f5d4, #7209b7, #ff006e) !important;
+  border-image-slice: 1 !important;
+}
+.lamma-neutral-glass[data-chase-header="neon-double"] .lamma-header {
+  box-shadow:
+    0 2px 8px rgba(var(--chase-tint-rgb, 110,231,183), 0.3),
+    0 4px 16px rgba(var(--chase-tint-rgb, 110,231,183), 0.15) !important;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .lamma-neutral-glass[data-chase-columns] *,
+  .lamma-neutral-glass[data-chase-composer] *,
+  .lamma-neutral-glass[data-chase-header] * {
+    animation: none !important;
+  }
+}
+
+/* Design Center — live preview card for neon beam strip */
+.lamma-neon-beam-preview {
+  position: relative;
+  width: 100%;
+  max-width: 168px;
+  height: 210px;
+  margin-inline: auto;
+  border-radius: 16px;
+  background: rgba(6, 10, 18, 0.96);
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.45);
+}
+
+.lamma-neon-beam-preview::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 3px;
+  background: conic-gradient(
+    from 0deg,
+    #ff006e 0deg,
+    #ec4899 45deg,
+    #c026d3 90deg,
+    #7c3aed 135deg,
+    #00f5d4 225deg,
+    #22d3ee 270deg,
+    #ff006e 360deg
+  );
+  animation: lamma-neon-beam-spin 3.5s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  filter:
+    drop-shadow(0 0 6px rgba(255, 0, 110, 0.85))
+    drop-shadow(0 0 14px rgba(0, 245, 212, 0.5));
+}
+
+.lamma-neon-beam-preview::after {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border-radius: 10px;
+  background: radial-gradient(circle at 30% 20%, rgba(255, 0, 110, 0.08), transparent 55%),
+    radial-gradient(circle at 75% 80%, rgba(0, 245, 212, 0.07), transparent 50%);
+  pointer-events: none;
+}

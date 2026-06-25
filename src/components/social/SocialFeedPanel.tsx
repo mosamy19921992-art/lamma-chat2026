@@ -193,7 +193,7 @@ export function SocialFeedPanel({
                   })}`}
                 >
                   <span
-                    style={prestigeClass ? undefined : { color: nameColor }}
+                    style={{ color: nameColor }}
                     className={`font-bold text-[12px] lamma-author-name ${prestigeClass}`}
                   >
                     {cleanName}

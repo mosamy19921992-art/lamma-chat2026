@@ -174,7 +174,7 @@ function ChatMessageRowInner({
             })}`}
           >
             <span
-              style={prestigeClass ? undefined : { color: nameColor }}
+              style={{ color: nameColor }}
               className={`font-bold text-[11px] group-hover/author:underline lamma-author-name ${prestigeClass}`}
             >
               {cleanName}
@@ -290,7 +290,7 @@ function ChatMessageRowInner({
 
       <div className="flex-1 min-w-0 pt-0">
         <div
-          className={`lamma-message ${isCompactView ? "text-[11px] px-3 py-2.5" : "text-[12px] px-3 py-2.5"} leading-relaxed text-gray-100 break-words ${
+          className={`lamma-message ${isCompactView ? "text-[11px] px-3 py-2.5" : "text-[12px] px-3 py-2.5"} leading-relaxed break-words ${
             isChatColumnExpanded
               ? "max-w-full"
               : "max-w-[min(820px,100%)]"

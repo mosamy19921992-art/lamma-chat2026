@@ -1,0 +1,494 @@
+/*
+  ╔══════════════════════════════════════════════════╗
+  ║   iOS Magic — Premium Mobile Experience 2026    ║
+  ║   Spring physics · Frosted glass · Micro-joy    ║
+  ╚══════════════════════════════════════════════════╝
+*/
+
+/* ──────────────────────────────────────────────────
+   SPRING PHYSICS TOKENS
+────────────────────────────────────────────────── */
+:root {
+  --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --spring-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring-snappy: cubic-bezier(0.4, 0, 0.2, 1);
+  --ios-blur: blur(28px) saturate(1.9);
+  --ios-blur-heavy: blur(40px) saturate(2.2);
+  --ios-radius: 22px;
+  --ios-radius-sm: 14px;
+}
+
+/* ══════════════════════════════════════════════════
+   MOBILE ONLY
+══════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+
+  /* ──────────────────────────────────────────────
+     HEADER — iOS translucent frosted bar
+  ────────────────────────────────────────────── */
+  .lamma-pwa-app-shell .lamma-header {
+    backdrop-filter: var(--ios-blur-heavy) !important;
+    -webkit-backdrop-filter: var(--ios-blur-heavy) !important;
+    background:
+      radial-gradient(circle at 18% 0%, rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.08), transparent 44%),
+      rgba(6, 10, 16, 0.78) !important;
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.09) !important;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 6px 24px rgba(0, 0, 0, 0.22) !important;
+    padding: 0.25rem 0.5rem !important;
+    min-height: 54px !important;
+  }
+
+  /* Fix header actions alignment */
+  .lamma-pwa-app-shell .lamma-header-actions {
+    padding: 0.15rem 0.25rem !important;
+    gap: 0.1rem !important;
+    margin-left: 0.25rem !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-header-mini-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     BOTTOM NAV — iOS Tab Bar Magic
+  ────────────────────────────────────────────── */
+  .lamma-pwa-bottom-nav {
+    background: transparent !important;
+  }
+
+  .lamma-pwa-bottom-nav-inner {
+    background: rgba(8, 11, 16, 0.94) !important;
+    backdrop-filter: var(--ios-blur-heavy) !important;
+    -webkit-backdrop-filter: var(--ios-blur-heavy) !important;
+    border-top: 0.5px solid rgba(255, 255, 255, 0.09) !important;
+    padding: 7px 12px 9px !important;
+    gap: 3px !important;
+    box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.04) !important;
+  }
+
+  .lamma-pwa-bottom-nav-item {
+    border-radius: 16px !important;
+    position: relative;
+    overflow: hidden;
+    transition:
+      transform 240ms var(--spring-bounce),
+      background 200ms ease,
+      box-shadow 200ms ease !important;
+    -webkit-tap-highlight-color: transparent !important;
+    will-change: transform;
+    padding: 6px 4px !important;
+  }
+
+  .lamma-pwa-bottom-nav-item:active {
+    transform: scale(0.86) !important;
+  }
+
+  /* tap ripple */
+  .lamma-pwa-bottom-nav-item::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transition: opacity 120ms ease;
+    pointer-events: none;
+  }
+
+  .lamma-pwa-bottom-nav-item:active::before {
+    opacity: 1;
+  }
+
+  /* Active state — glowing pill */
+  .lamma-pwa-bottom-nav-item-active {
+    background: linear-gradient(
+      160deg,
+      rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.26) 0%,
+      rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.1) 100%
+    ) !important;
+    box-shadow:
+      0 0 18px rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  }
+
+  .lamma-pwa-bottom-nav-icon {
+    width: 20px !important;
+    height: 20px !important;
+    transition: transform 240ms var(--spring-bounce), color 180ms ease !important;
+  }
+
+  .lamma-pwa-bottom-nav-icon svg {
+    width: 18px !important;
+    height: 18px !important;
+    stroke-width: 1.6 !important;
+  }
+
+  .lamma-pwa-bottom-nav-item-active .lamma-pwa-bottom-nav-icon {
+    color: rgb(var(--lamma-header-accent-rgb, 16, 185, 129)) !important;
+    filter: drop-shadow(0 0 4px rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.6));
+    transform: scale(1.1) translateY(-0.5px);
+    transition: transform 300ms var(--spring-bounce), filter 200ms ease, color 180ms ease !important;
+  }
+
+  .lamma-pwa-bottom-nav-label {
+    font-size: 8px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.03em !important;
+    transition: color 180ms ease !important;
+  }
+
+  .lamma-pwa-bottom-nav-item-active .lamma-pwa-bottom-nav-label {
+    color: rgb(var(--lamma-header-accent-rgb, 16, 185, 129)) !important;
+    font-weight: 700 !important;
+  }
+
+  /* Unread dot — bounce pulse */
+  .lamma-pwa-bottom-nav-dot {
+    animation: iosDotPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes iosDotPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.4); }
+    50% { transform: scale(1.15); box-shadow: 0 0 0 4px rgba(248, 113, 113, 0); }
+  }
+
+  /* ──────────────────────────────────────────────
+     MESSAGES — Appear & Feel
+  ────────────────────────────────────────────── */
+  @keyframes msgAppear {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .lamma-message {
+    animation: msgAppear 300ms var(--spring-smooth) both;
+    border-radius: 18px !important;
+    transition:
+      transform 200ms var(--spring-bounce),
+      box-shadow 200ms ease !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  .lamma-message:active {
+    transform: scale(0.975) !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     COMPOSER — iOS Messages Style
+  ────────────────────────────────────────────── */
+  .lamma-pwa-composer-stack {
+    background: rgba(7, 10, 15, 0.93) !important;
+    backdrop-filter: var(--ios-blur) !important;
+    -webkit-backdrop-filter: var(--ios-blur) !important;
+    border-top: 0.5px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.25) !important;
+    padding: 8px 10px 6px !important;
+  }
+
+  .lamma-composer-field {
+    border-radius: 22px !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 10px 16px !important;
+    font-size: 15px !important;
+    line-height: 1.42 !important;
+    transition:
+      background 200ms ease,
+      border-color 200ms ease,
+      box-shadow 200ms ease !important;
+  }
+
+  .lamma-composer-field:focus {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.45) !important;
+    box-shadow: 0 0 0 3px rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.12) !important;
+    outline: none !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     ALL BUTTONS — Spring press physics
+  ────────────────────────────────────────────── */
+  .lamma-header-mini-btn,
+  .lamma-toolbar-btn,
+  .lamma-composer-tool {
+    transition:
+      transform 220ms var(--spring-bounce),
+      opacity 150ms ease,
+      box-shadow 180ms ease !important;
+    -webkit-tap-highlight-color: transparent !important;
+    will-change: transform;
+  }
+
+  .lamma-header-mini-btn:active,
+  .lamma-toolbar-btn:active,
+  .lamma-composer-tool:active {
+    transform: scale(0.82) !important;
+    opacity: 0.85 !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     ROOM LIST — iOS style tap response
+  ────────────────────────────────────────────── */
+  .lamma-list-item {
+    transition:
+      transform 180ms var(--spring-bounce),
+      background 160ms ease !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  .lamma-list-item:active {
+    transform: scale(0.97) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     SIDEBAR — Spring slide-in
+  ────────────────────────────────────────────── */
+  .lamma-mobile-sidebar-shell {
+    transition: transform 380ms var(--spring-smooth) !important;
+    box-shadow: -24px 0 80px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  @keyframes iosSidebarIn {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+  }
+
+  .lamma-mobile-sidebar-shell.lamma-mobile-sidebar-open {
+    animation: iosSidebarIn 380ms var(--spring-smooth) forwards !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     CARDS — iOS rounded feel + spring tap
+  ────────────────────────────────────────────── */
+  .lamma-section-card,
+  .lamma-admin-card {
+    border-radius: 20px !important;
+    transition: transform 200ms var(--spring-bounce) !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  .lamma-section-card:active,
+  .lamma-admin-card:active {
+    transform: scale(0.975) !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     ALL BUTTONS — Ensure 44px touch targets
+  ────────────────────────────────────────────── */
+  button,
+  [role="button"],
+  .lamma-header-mini-btn,
+  .lamma-toolbar-btn,
+  .lamma-composer-tool,
+  .lamma-tab-soft,
+  .lamma-accent-btn {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+
+  /* Small buttons can be smaller but still have invisible touch target */
+  .lamma-composer-tool,
+  .lamma-header-mini-btn {
+    position: relative;
+  }
+
+  .lamma-composer-tool::before,
+  .lamma-header-mini-btn::before {
+    content: "";
+    position: absolute;
+    inset: -8px;
+    z-index: -1;
+  }
+
+  /* ──────────────────────────────────────────────
+     POPOVERS / PANELS — Bottom sheet entry + backdrop
+  ────────────────────────────────────────────── */
+  @keyframes iosSheetUp {
+    from { transform: translateY(28px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  @keyframes iosBackdropFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .lamma-popover-shell {
+    animation: iosSheetUp 340ms var(--spring-smooth) both !important;
+    border-radius: 24px !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  /* Modal backdrop */
+  [class*="modal-backdrop"],
+  [class*="overlay-backdrop"],
+  .lamma-mobile-sidebar-backdrop {
+    animation: iosBackdropFade 280ms ease both !important;
+    backdrop-filter: blur(6px) saturate(1.3) !important;
+    -webkit-backdrop-filter: blur(6px) saturate(1.3) !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     HAPTIC VISUAL CUES — Ripple & Scale
+  ────────────────────────────────────────────── */
+  .lamma-tab-soft,
+  .lamma-accent-btn,
+  .lamma-list-item {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lamma-tab-soft::after,
+  .lamma-accent-btn::after,
+  .lamma-list-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 200ms ease, transform 200ms ease;
+    pointer-events: none;
+  }
+
+  .lamma-tab-soft:active::after,
+  .lamma-accent-btn:active::after,
+  .lamma-list-item:active::after {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+
+  /* ──────────────────────────────────────────────
+     SAFE AREA — Notch handling
+  ────────────────────────────────────────────── */
+  .lamma-pwa-app-shell .lamma-header {
+    padding-top: env(safe-area-inset-top, 0px) !important;
+  }
+
+  .lamma-pwa-bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+
+  .lamma-mobile-sidebar-shell {
+    padding-top: env(safe-area-inset-top, 0px) !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     MODAL — Center sheet with bounce
+  ────────────────────────────────────────────── */
+  @keyframes iosModalBounce {
+    0%   { transform: scale(0.85); opacity: 0; }
+    50%  { transform: scale(1.02); }
+    100% { transform: scale(1);    opacity: 1; }
+  }
+
+  [class*="modal-content"],
+  [class*="modal-inner"] {
+    animation: iosModalBounce 400ms var(--spring-bounce) both !important;
+    border-radius: 28px !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     AVATARS — Tap bounce
+  ────────────────────────────────────────────── */
+  .lamma-avatar {
+    transition: transform 220ms var(--spring-bounce) !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  .lamma-avatar:active {
+    transform: scale(0.88) !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     SCROLLBARS — iOS-style invisible
+  ────────────────────────────────────────────── */
+  .lamma-chat-feed-viewport,
+  .lamma-fire-scroll {
+    scrollbar-width: none !important;
+  }
+
+  .lamma-chat-feed-viewport::-webkit-scrollbar,
+  .lamma-fire-scroll::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     OWN BUBBLE — Accent glow 
+  ────────────────────────────────────────────── */
+  .lamma-neutral-glass .lamma-msg-bubble-own {
+    box-shadow:
+      0 4px 16px rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     ONLINE INDICATOR — breathing glow
+  ────────────────────────────────────────────── */
+  @keyframes onlinePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5); }
+    50%       { box-shadow: 0 0 0 4px rgba(52, 211, 153, 0); }
+  }
+
+  [class*="online-dot"],
+  [class*="bg-green-400"][class*="rounded-full"],
+  [class*="bg-emerald"][class*="rounded-full"] {
+    animation: onlinePulse 2.2s ease-in-out infinite !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     INPUT KEYBOARD RISE — smooth composer lift
+  ────────────────────────────────────────────── */
+  .lamma-pwa-app-shell.lamma-keyboard-open .lamma-pwa-composer-stack {
+    transition: none !important;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  /* ──────────────────────────────────────────────
+     SWIPE OVERLAY — darkened backdrop
+  ────────────────────────────────────────────── */
+  .lamma-mobile-sidebar-backdrop {
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    transition: opacity 300ms ease !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   GLOBAL — SEND PULSE (all sizes)
+══════════════════════════════════════════════════ */
+@keyframes iosSendPulse {
+  0%   { transform: scale(1); }
+  25%  { transform: scale(0.82); }
+  60%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.lamma-ios-send-pulse {
+  animation: iosSendPulse 380ms var(--spring-bounce) !important;
+}
+
+/* ══════════════════════════════════════════════════
+   GLOBAL — NEW MESSAGE NOTIFICATION BOUNCE
+══════════════════════════════════════════════════ */
+@keyframes iosBadgeBounce {
+  0%   { transform: scale(0.5); opacity: 0; }
+  55%  { transform: scale(1.18); }
+  75%  { transform: scale(0.92); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.lamma-pwa-bottom-nav-dot {
+  animation: iosBadgeBounce 450ms var(--spring-bounce) both, iosDotPulse 2s ease-in-out 450ms infinite;
+}

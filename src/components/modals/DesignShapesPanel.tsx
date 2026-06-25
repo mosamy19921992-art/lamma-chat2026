@@ -26,6 +26,7 @@ import {
   CHASE_LIGHT_PRESETS_LEGACY,
   commitChaseLightSettings,
   loadChaseLightSettings,
+  NEON_BEAM_COLUMN_TARGETS,
   type ChaseLightSettings,
   type ChaseLightStyleId,
   type ChaseLightTarget,
@@ -90,9 +91,10 @@ function SectionBlock({
 
 interface DesignShapesPanelProps {
   onStartInspectMode?: () => void;
+  isOwnerRole?: boolean;
 }
 
-export function DesignShapesPanel({ onStartInspectMode }: DesignShapesPanelProps) {
+export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: DesignShapesPanelProps) {
   const [bubbleId, setBubbleId] = useState<BubbleShapeId>(() => loadBubbleShapeId());
   const [pmId, setPmId] = useState<PmBubbleStyleId>(() => loadPmBubbleStyleId());
   const [widgets, setWidgets] = useState(() => loadSidebarWidgetSettings());
@@ -127,7 +129,38 @@ export function DesignShapesPanel({ onStartInspectMode }: DesignShapesPanelProps
   };
 
   const applyChaseTarget = (target: ChaseLightTarget, styleId: ChaseLightStyleId) => {
-    const next = { ...chase, [target]: styleId };
+    let next: ChaseLightSettings = { ...chase, [target]: styleId };
+    if (styleId === "neon-beam" && target === "columns") {
+      next = {
+        ...next,
+        neonBeamTargets: [
+          ...NEON_BEAM_COLUMN_TARGETS,
+          ...(next.neonBeamTargets ?? []).filter(
+            (id) => !NEON_BEAM_COLUMN_TARGETS.includes(id),
+          ),
+        ],
+      };
+    } else if (styleId === "neon-beam" && (target === "composer" || target === "header")) {
+      next = {
+        ...next,
+        neonBeamTargets: [...new Set([...(next.neonBeamTargets ?? []), target])],
+      };
+    } else if (styleId !== "neon-beam" && target === "columns") {
+      next = {
+        ...next,
+        neonBeamTargets: (next.neonBeamTargets ?? []).filter(
+          (id) => !NEON_BEAM_COLUMN_TARGETS.includes(id),
+        ),
+      };
+    } else if (
+      styleId !== "neon-beam" &&
+      (target === "composer" || target === "header")
+    ) {
+      next = {
+        ...next,
+        neonBeamTargets: (next.neonBeamTargets ?? []).filter((id) => id !== target),
+      };
+    }
     setChase(next);
     if (commitChaseLightSettings(next)) {
       setChase(loadChaseLightSettings());
@@ -135,6 +168,7 @@ export function DesignShapesPanel({ onStartInspectMode }: DesignShapesPanelProps
   };
 
   const applyChaseAll = (styleId: ChaseLightStyleId) => {
+    if (styleId === "neon-beam") return;
     const next: ChaseLightSettings = {
       ...chase,
       columns: styleId,
@@ -147,6 +181,11 @@ export function DesignShapesPanel({ onStartInspectMode }: DesignShapesPanelProps
 
   return (
     <div className="space-y-4" dir="rtl">
+      {!isOwnerRole && (
+        <div className="p-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 text-[10px] text-amber-300 font-black text-center">
+          👑 تعديل الأشكال للمالك بس — المعاينة متاحة للجميع
+        </div>
+      )}
       {onStartInspectMode ? (
         <button
           type="button"
@@ -221,74 +260,91 @@ export function DesignShapesPanel({ onStartInspectMode }: DesignShapesPanelProps
         />
       </SectionBlock>
 
-      <SectionBlock title="✨ أشرطة النور 2026" hint="أنظف — بدون رينبو افتراضياً">
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {CHASE_LIGHT_PRESETS_2026.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => applyChaseAll(p.id)}
-              className={`px-2 py-1.5 rounded-lg text-[8px] font-black border transition-all ${
-                chase.columns === p.id &&
-                chase.composer === p.id &&
-                chase.header === p.id
-                  ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-200"
-                  : "border-white/10 text-gray-400 hover:text-white"
-              }`}
-            >
-              {p.emoji} {p.title}
-            </button>
+      <SectionBlock title="✨ أشرطة النور 2026" hint="أنماط مختلفة لكل منطقة — خط النيون: اختار البطاقات من تبويب 🎨 الألوان">
+        {/* تطبيق على الكل دفعة */}
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          {CHASE_LIGHT_PRESETS_2026.map((p) => {
+            const isAllActive =
+              chase.columns === p.id &&
+              chase.composer === p.id &&
+              chase.header === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => applyChaseAll(p.id)}
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border transition-all hover:scale-[1.03] active:scale-[0.97] ${
+                  isAllActive
+                    ? "border-cyan-400/60 bg-cyan-500/15 shadow-[0_0_12px_rgba(6,182,212,0.25)]"
+                    : "border-white/10 bg-white/[0.04] hover:border-white/25 hover:bg-white/[0.07]"
+                }`}
+              >
+                <span className="text-xl leading-none">{p.emoji}</span>
+                <span className={`text-[8px] font-black text-center leading-tight ${isAllActive ? "text-cyan-300" : "text-gray-300"}`}>
+                  {p.title}
+                </span>
+                {isAllActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#22d3ee]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* تطبيق لكل منطقة */}
+        <div className="space-y-2">
+          <div className="text-[9px] text-gray-400 font-black">🎯 تخصيص لكل منطقة:</div>
+          {(
+            [
+              ["header", "📌 الهيدر"],
+              ["columns", "🃏 الأعمدة"],
+              ["composer", "⌨️ شريط الكتابة"],
+            ] as const
+          ).map(([target, label]) => (
+            <div key={target} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07]">
+              <div className="text-[9px] font-black text-gray-300 mb-1.5">{label}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {CHASE_LIGHT_PRESETS_2026.map((p) => (
+                  <button
+                    key={`${target}-${p.id}`}
+                    type="button"
+                    onClick={() => applyChaseTarget(target, p.id)}
+                    title={p.title}
+                    className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black border transition-all ${
+                      chase[target] === p.id
+                        ? "border-amber-400/60 bg-amber-500/15 text-amber-200 shadow-[0_0_8px_rgba(245,158,11,0.2)]"
+                        : "border-white/10 text-gray-400 hover:text-white hover:border-white/25"
+                    }`}
+                  >
+                    {p.emoji} {p.title}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
-        <div className="text-[9px] text-gray-500 font-bold mb-1">أو لكل منطقة:</div>
-        {(
-          [
-            ["columns", "🃏 الأعمدة"],
-            ["composer", "⌨️ الكتابة"],
-            ["header", "📌 الهيدر"],
-          ] as const
-        ).map(([target, label]) => (
-          <div key={target} className="mb-2">
-            <div className="text-[8px] font-black text-gray-400 mb-1">{label}</div>
-            <div className="flex flex-wrap gap-1">
-              {CHASE_LIGHT_PRESETS_2026.map((p) => (
-                <button
-                  key={`${target}-${p.id}`}
-                  type="button"
-                  onClick={() => applyChaseTarget(target, p.id)}
-                  className={`px-1.5 py-1 rounded-md text-[7px] font-black border ${
-                    chase[target] === p.id
-                      ? "border-amber-400/50 bg-amber-500/10 text-amber-200"
-                      : "border-white/10 text-gray-500"
-                  }`}
-                >
-                  {p.emoji}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
+
         <button
           type="button"
           onClick={() => setShowLegacyChase((v) => !v)}
-          className="text-[8px] text-gray-500 font-bold underline"
+          className="mt-2 text-[8px] text-gray-500 font-bold underline"
         >
-          {showLegacyChase ? "إخفاء الأنماط القديمة" : "متقدّم — أنماط رينبو قديمة"}
+          {showLegacyChase ? "إخفاء الأنماط القديمة" : "▼ أنماط رينبو قديمة"}
         </button>
-        {showLegacyChase ? (
-          <div className="mt-2 flex flex-wrap gap-1">
+        {showLegacyChase && (
+          <div className="mt-2 grid grid-cols-3 gap-1.5">
             {CHASE_LIGHT_PRESETS_LEGACY.map((p) => (
               <button
                 key={p.id}
                 type="button"
                 onClick={() => applyChaseAll(p.id)}
-                className="px-1.5 py-1 rounded-md text-[7px] font-black border border-white/10 text-gray-500"
+                className="p-2 rounded-xl border border-white/10 text-gray-500 hover:text-white hover:border-white/25 text-[8px] font-black text-center transition-all"
               >
                 {p.emoji} {p.title}
               </button>
             ))}
           </div>
-        ) : null}
+        )}
       </SectionBlock>
     </div>
   );

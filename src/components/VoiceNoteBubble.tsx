@@ -156,7 +156,7 @@ export function VoiceRecorderBar({
 
   return (
     <div
-      className="absolute bottom-full left-0 right-0 mb-2 mx-1 rounded-2xl px-3 py-2 flex items-center justify-between gap-2 lamma-popover-shell border border-red-500/30 bg-black/90 z-50"
+      className="fixed bottom-[88px] left-3 right-3 rounded-2xl px-3 py-2 flex items-center justify-between gap-2 border border-red-500/30 bg-black/95 z-[200] shadow-2xl"
       dir="rtl"
     >
       <div className="flex items-center gap-2 text-red-400 animate-pulse">

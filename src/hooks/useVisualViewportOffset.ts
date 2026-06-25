@@ -34,7 +34,17 @@ export function useVisualViewportLayout(enabled = true): VisualViewportLayout {
       const visualHeight = vv.height;
       const top = Math.max(0, vv.offsetTop);
       const insetBottom = Math.max(0, layoutHeight - visualHeight - top);
+      const ae = document.activeElement;
+      const composerFocused =
+        ae instanceof HTMLElement &&
+        (ae.id === "messageInput" ||
+          ae.tagName === "TEXTAREA" ||
+          (ae.tagName === "INPUT" &&
+            ["text", "search", "email", "password"].includes(
+              (ae as HTMLInputElement).type,
+            )));
       const keyboardLikelyOpen =
+        composerFocused &&
         visualHeight > 0 &&
         visualHeight < layoutHeight * 0.78 &&
         insetBottom > 80;
@@ -52,17 +62,28 @@ export function useVisualViewportLayout(enabled = true): VisualViewportLayout {
       });
     };
 
-    update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    window.addEventListener("orientationchange", update);
-    window.addEventListener("resize", update);
+    let raf = 0;
+    const scheduleUpdate = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    };
+
+    scheduleUpdate();
+    vv.addEventListener("resize", scheduleUpdate);
+    vv.addEventListener("scroll", scheduleUpdate);
+    window.addEventListener("orientationchange", scheduleUpdate);
+    window.addEventListener("resize", scheduleUpdate);
+    document.addEventListener("focusin", scheduleUpdate);
+    document.addEventListener("focusout", scheduleUpdate);
 
     return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-      window.removeEventListener("orientationchange", update);
-      window.removeEventListener("resize", update);
+      cancelAnimationFrame(raf);
+      vv.removeEventListener("resize", scheduleUpdate);
+      vv.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("orientationchange", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      document.removeEventListener("focusin", scheduleUpdate);
+      document.removeEventListener("focusout", scheduleUpdate);
     };
   }, [enabled]);
 

@@ -14,6 +14,7 @@ import type { Message } from "../lib/chatTypes";
 import {
   applyUniversalStyleToDom,
   clearUniversalStylePreviewDomOnly,
+  ensureTextColorPresetApplied,
   ensureUniversalStyleApplied,
 } from "../services/design/universalStyleApply";
 import { readUniversalStyleDomState } from "../services/design/designPreviewDom";
@@ -116,6 +117,14 @@ export function useUniversalStyleEngine({
       cancelled = true;
     };
   }, [ownerSettingsRowId]);
+
+  useEffect(() => {
+    const config = normalizeUniversalStyleConfig(
+      loadUniversalStyleLocal() ?? createDefaultUniversalStyle(),
+    );
+    ensureUniversalStyleApplied(config, { preview: false });
+    ensureTextColorPresetApplied();
+  }, []);
 
   const beginLivePreview = useCallback(
     (config: UniversalStyleConfig): boolean => {

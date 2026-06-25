@@ -43,6 +43,41 @@ function clampOverlay(v: number): number {
   return Math.max(0, Math.min(0.75, v));
 }
 
+/** Sync text tokens across Universal Style, Custom Face, and ui-polish layers. */
+export function syncPaletteTextTokens(
+  root: HTMLElement,
+  palette: {
+    text: string;
+    accent: string;
+    accent2?: string;
+    muted?: string;
+  },
+): void {
+  root.style.setProperty("--us-text", palette.text);
+  root.style.setProperty("--us-accent", palette.accent);
+  if (palette.accent2) {
+    root.style.setProperty("--us-accent-2", palette.accent2);
+  }
+  if (palette.muted) {
+    root.style.setProperty("--us-muted", palette.muted);
+  }
+  root.style.setProperty("--face-text", palette.text);
+  root.style.setProperty("--face-accent", palette.accent);
+  root.style.setProperty("--ui-bubble-other-text", palette.text);
+  root.style.setProperty("--ui-text-meta", palette.muted || palette.accent);
+  // Side columns (store/radio/music + rooms/m members) read these tokens
+  root.style.setProperty("--text-primary", palette.text);
+  root.style.setProperty(
+    "--text-secondary",
+    palette.muted || palette.accent2 || palette.accent,
+  );
+  root.style.setProperty("--accent-primary", palette.accent);
+  root.style.setProperty("--accent-secondary", palette.accent2 || palette.accent);
+  root.style.setProperty("--lamma-sidebar-store-text", palette.text);
+  root.style.setProperty("--lamma-sidebar-radio-text", palette.text);
+  root.style.setProperty("--lamma-sidebar-music-text", palette.text);
+}
+
 export function applyUniversalStyleToDom(
   config: UniversalStyleConfig,
   options?: { preview?: boolean },
@@ -61,10 +96,7 @@ export function applyUniversalStyleToDom(
 
   root.style.setProperty("--us-bg", config.palette.bg);
   root.style.setProperty("--us-surface", config.palette.surface);
-  root.style.setProperty("--us-accent", config.palette.accent);
-  root.style.setProperty("--us-accent-2", config.palette.accent2);
-  root.style.setProperty("--us-text", config.palette.text);
-  root.style.setProperty("--us-muted", config.palette.muted);
+  syncPaletteTextTokens(root, config.palette);
 
   root.style.setProperty("--us-glass-blur", `${config.glass.blurPx}px`);
   root.style.setProperty("--us-glass-opacity", String(config.glass.opacity));
@@ -145,6 +177,33 @@ export function ensureUniversalStyleApplied(
     ensureUniversalStyleApplied(config, options, attempt + 1),
   );
   return false;
+}
+
+/** Apply saved quick text preset once the chat shell is mounted. */
+export function ensureTextColorPresetApplied(attempt = 0): boolean {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return false;
+  const root = getRoot();
+  if (!root) {
+    if (attempt < 24) {
+      window.requestAnimationFrame(() => ensureTextColorPresetApplied(attempt + 1));
+    }
+    return false;
+  }
+  try {
+    const raw = localStorage.getItem("lamma_text_color_preset");
+    if (!raw) return false;
+    const preset = JSON.parse(raw) as { text?: string; accent?: string; accent2?: string };
+    if (!preset.text || !preset.accent) return false;
+    syncPaletteTextTokens(root, {
+      text: preset.text,
+      accent: preset.accent,
+      accent2: preset.accent2,
+    });
+    root.setAttribute("data-universal-style", "active");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function applyChatRegionsToDom(

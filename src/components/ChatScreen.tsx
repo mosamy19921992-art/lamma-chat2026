@@ -4296,6 +4296,7 @@ export default function ChatScreen({
   const commandsBtnRef = useRef<HTMLButtonElement>(null);
   const attachmentBtnRef = useRef<HTMLButtonElement>(null);
   const composerMoreBtnRef = useRef<HTMLButtonElement>(null);
+  const emojiBtnRef = useRef<HTMLButtonElement>(null);
 
   const closeAllDropdowns = useCallback(() => {
     setShowAttachmentDropdown(false);
@@ -5720,6 +5721,23 @@ export default function ChatScreen({
       document.body.classList.remove(cls);
     };
   }, [isMobileAppShell, vvLayout.keyboardOpen]);
+
+  useEffect(() => {
+    if (!isMobileAppShell) return;
+    const cls = "lamma-modal-open";
+    const open = Boolean(activeModal) || hasFloatingDropdownOpen;
+    if (open) {
+      document.documentElement.classList.add(cls);
+      document.body.classList.add(cls);
+    } else {
+      document.documentElement.classList.remove(cls);
+      document.body.classList.remove(cls);
+    }
+    return () => {
+      document.documentElement.classList.remove(cls);
+      document.body.classList.remove(cls);
+    };
+  }, [isMobileAppShell, activeModal, hasFloatingDropdownOpen]);
 
   useEffect(() => {
     if (isPostsRoom) {
@@ -7363,8 +7381,8 @@ export default function ChatScreen({
           ? " lamma-pwa-app-shell"
           : " h-[100dvh] min-h-[100dvh]"
       }${vvLayout.keyboardOpen ? " lamma-keyboard-open" : ""}${
-        designInspectActive ? " lamma-design-inspect-active" : ""
-      }`}
+        activeModal || hasFloatingDropdownOpen ? " lamma-modal-open" : ""
+      }${designInspectActive ? " lamma-design-inspect-active" : ""}`}
       style={
         isMobileAppShell && vvLayout.keyboardOpen && vvLayout.shellHeight
           ? {
@@ -9167,7 +9185,7 @@ export default function ChatScreen({
                               })}`}
                             >
                               <span
-                                style={prestigeClass ? undefined : { color: m.color }}
+                                style={{ color: m.color }}
                                 className={`font-bold text-[11px] truncate leading-tight lamma-author-name ${prestigeClass}`}
                               >
                                 {cleanName}
@@ -9225,7 +9243,7 @@ export default function ChatScreen({
             data-design-region="room-header-strip"
           >
           {/* Room Top Bar: Topic & System Actions */}
-          <div className="flex items-stretch justify-between min-h-[34px] shrink-0 lamma-fire-underline lamma-room-header">
+          <div className="flex items-stretch justify-between min-h-[28px] md:min-h-[34px] shrink-0 lamma-fire-underline lamma-room-header">
             {/* Topic Side (Right) */}
             <div
               className="flex-1 flex flex-col justify-center px-2.5 border-l border-white/10 group/topic cursor-pointer relative lamma-topic-shell"
@@ -9278,7 +9296,7 @@ export default function ChatScreen({
             </div>
 
             {/* System Actions Side (Left) — join/leave ticker */}
-            <div className="w-[116px] sm:w-[148px] md:w-[188px] flex items-center justify-center px-2 py-0 relative overflow-hidden lamma-frost-ticker border-r border-white/10">
+            <div className="w-[96px] sm:w-[148px] md:w-[188px] flex items-center justify-center px-1.5 py-0 relative overflow-hidden lamma-frost-ticker border-r border-white/10">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`${roomEntryTicker.kind}-${roomEntryTicker.nickname || "standby"}`}
@@ -9290,7 +9308,7 @@ export default function ChatScreen({
                 >
                   {roomEntryTicker.kind === "join" ? (
                     <>
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-400/25">
+                      <span className="lamma-room-ticker-icon flex h-7 w-7 md:h-7 md:w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-400/25">
                         <LogIn
                           size={14}
                           className="text-emerald-300"
@@ -9314,7 +9332,7 @@ export default function ChatScreen({
                     </>
                   ) : roomEntryTicker.kind === "leave" ? (
                     <>
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-500/10 border border-gray-400/20">
+                      <span className="lamma-room-ticker-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-500/10 border border-gray-400/20">
                         <LogIn
                           size={14}
                           className="text-gray-400 rotate-180"
@@ -9338,7 +9356,7 @@ export default function ChatScreen({
                     </>
                   ) : (
                     <>
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-400/20">
+                      <span className="lamma-room-ticker-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-400/20">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                       </span>
                       <div className="flex flex-col text-left mr-1 justify-center min-w-0">
@@ -9366,7 +9384,7 @@ export default function ChatScreen({
 
           {/* Header section replicating the top of chat log / Room Tabs - matching Ad Banner size & width */}
           <div
-            className="w-full px-2 flex items-center justify-between shrink-0 z-10 h-[30px] lamma-fire-underline lamma-room-header"
+            className="w-full px-2 flex items-center justify-between shrink-0 z-10 h-[24px] md:h-[30px] lamma-fire-underline lamma-room-header"
             dir="rtl"
           >
             {/* Tabs Container */}
@@ -9430,7 +9448,7 @@ export default function ChatScreen({
             </div>
 
             {/* Left aligned utility action icons inside room header */}
-            <div className="flex items-center gap-1.5 shrink-0 ml-1 relative">
+            <div className="flex items-center gap-1 shrink-0 ml-1 relative">
               <button
                 onClick={toggleSearchPop}
                 className={`transition-all lamma-room-strip-action ${
@@ -9440,7 +9458,7 @@ export default function ChatScreen({
                 }`}
                 title="البحث عن رسائل وأعضاء"
               >
-                <Search size={14} />
+                <Search size={12} />
               </button>
 
               {/* Features Tray Toggle */}
@@ -9462,7 +9480,7 @@ export default function ChatScreen({
                   title="الميزات الإضافية"
                 >
                   <Plus
-                    size={14}
+                    size={12}
                     className={`transition-transform duration-300 ${showFeaturesTray ? "rotate-45" : ""}`}
                   />
                 </button>
@@ -9599,14 +9617,19 @@ export default function ChatScreen({
 
               {isManagementRole && (
               <div
-                className={`relative dropdown-container ${isPostsRoom ? "hidden" : ""}`}
+                className={`relative dropdown-container flex items-center ${isPostsRoom ? "hidden" : ""}`}
               >
                 <button
+                  type="button"
                   onClick={() => toggleDropdown("privacy")}
-                  className={`p-1 px-1.5 rounded-md hover:bg-white/5 transition-all flex ${showPrivacyDropdown ? "bg-red-500/10 text-[#f43f5e]" : "text-[#f43f5e] hover:text-red-400"}`}
+                  className={`flex items-center justify-center transition-all lamma-room-strip-action lamma-toolbar-btn ${
+                    showPrivacyDropdown
+                      ? "lamma-quiet-power-btn-active bg-red-500/10 text-[#f43f5e]"
+                      : "text-[#f43f5e] hover:text-red-400"
+                  }`}
                   title="الرقابة والأمان (إدارة)"
                 >
-                  <Shield size={14} />
+                  <Shield size={12} />
                 </button>
 
                 <AnimatePresence>
@@ -9735,10 +9758,14 @@ export default function ChatScreen({
                   setShowMembersList(true);
                   setIsSidebarOpen(true);
                 }}
-                className={`p-1 px-1.5 rounded-md transition-all flex md:hidden ${showMembersList ? "lamma-quiet-power-btn-active text-green-300" : "text-gray-400 hover:text-white lamma-toolbar-btn"}`}
+                className={`flex items-center justify-center transition-all lamma-room-strip-action lamma-toolbar-btn md:hidden ${
+                  showMembersList
+                    ? "lamma-quiet-power-btn-active text-green-300"
+                    : "text-gray-400 hover:text-white"
+                }`}
                 title="تثبيت قائمة الأعضاء"
               >
-                <Users size={14} />
+                <Users size={12} />
               </button>
 
               {(isOwnerRole || isAdminRole) && (
@@ -9756,7 +9783,7 @@ export default function ChatScreen({
                     }`}
                     title="نظام الأوامر السريعة"
                   >
-                    <Terminal size={14} />
+                    <Terminal size={12} />
                   </button>
 
                   <FloatingDropdownPortal
@@ -10357,7 +10384,7 @@ export default function ChatScreen({
 
               {/* Games button removed — games live in the Games room */}
 
-              <div className="hidden md:flex items-center shrink-0 lamma-composer-cluster lamma-composer-desktop-only">
+              <div className="hidden items-center shrink-0 lamma-composer-cluster lamma-composer-desktop-only">
                 <button
                   type="button"
                   onClick={() => {
@@ -10394,7 +10421,7 @@ export default function ChatScreen({
                 <button
                   type="button"
                   onClick={() => toggleDropdown("radio")}
-                  className={`hidden md:flex items-center justify-center transition-all lamma-composer-tool ${showRadioDropdown ? "lamma-quiet-power-btn-active text-green-300" : "text-gray-400 hover:text-white lamma-quiet-power-btn"}`}
+                  className="hidden"
                   title="راديو لمة"
                 >
                   <Radio size={14} />
@@ -10513,7 +10540,7 @@ export default function ChatScreen({
                 <button
                   type="button"
                   onClick={() => toggleDropdown("music")}
-                  className={`hidden md:flex items-center justify-center transition-all lamma-composer-tool ${showMusicDropdown ? "lamma-quiet-power-btn-active text-cyan-300" : "text-gray-400 hover:text-white lamma-quiet-power-btn"}`}
+                  className="hidden"
                   title="DJ الغرفة"
                 >
                   <Music size={14} />
@@ -10733,14 +10760,14 @@ export default function ChatScreen({
                       : "المشاهدة متاحة للجميع، والنشر للمسجلين فقط"
                     : "اكتب رسالة..."
                 }
-                className={`flex-1 min-w-0 w-full bg-transparent border-0 focus:ring-0 text-xs focus:outline-none px-2 text-right lamma-composer-field lamma-composer-slot-input ${isPostsRoom ? "min-h-[76px] resize-none py-2" : "h-9 resize-none py-2 leading-5"}`}
+                className={`flex-1 min-w-0 w-full bg-transparent border-0 focus:ring-0 text-xs focus:outline-none px-2 text-right lamma-composer-field lamma-composer-slot-input ${isPostsRoom ? "min-h-[76px] resize-none py-2" : "h-8 md:h-9 resize-none py-1.5 md:py-2 leading-5"}`}
               />
 
               <button
                 type="button"
                 onClick={handleSendMessage}
                 disabled={isPostsRoom && !canPublishPosts}
-                className="md:hidden w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all flex-shrink-0 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed lamma-send-orb lamma-composer-slot-send"
+                className="md:hidden w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center active:scale-95 transition-all flex-shrink-0 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed lamma-send-orb lamma-composer-slot-send"
                 title={isPostsRoom ? "نشر" : "إرسال"}
               >
                 <Send size={15} className="rotate-180" />
@@ -10775,6 +10802,7 @@ export default function ChatScreen({
                 className={`relative dropdown-container lamma-composer-slot-tool shrink-0 ${isPostsRoom ? "hidden" : ""}`}
               >
                 <button
+                  ref={emojiBtnRef}
                   type="button"
                   onClick={() => toggleDropdown("emoji")}
                   className="flex items-center justify-center text-[#b7d96d] transition-all lamma-toolbar-btn lamma-composer-tool"
@@ -10782,35 +10810,31 @@ export default function ChatScreen({
                 >
                   <Smile size={14} />
                 </button>
-                <AnimatePresence>
-                  {showEmojiPicker && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute bottom-full right-0 mb-4 rounded-2xl p-3 w-64 z-50 max-h-[300px] flex flex-col lamma-popover-shell"
-                    >
-                      <div className="text-[10px] text-gray-400 font-bold mb-2 flex-shrink-0">
-                        الرموز التعبيرية
-                      </div>
-                      <div className="grid grid-cols-6 gap-2 overflow-y-auto">
-                        {EMOTICONS.map((e) => (
-                          <button
-                            key={e}
-                            onClick={() => {
-                              setInputText((prev) => prev + e);
-                              setShowEmojiPicker(false);
-                            }}
-                            className="p-1 hover:bg-white/10 rounded-lg text-xl transition-all cursor-pointer flex items-center justify-center flex-shrink-0"
-                          >
-                            {e}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <FloatingDropdownPortal
+                  open={showEmojiPicker}
+                  anchorRef={emojiBtnRef}
+                  align="end"
+                  placement="above"
+                  className="rounded-2xl p-3 w-64 max-h-[300px] flex flex-col lamma-popover-shell"
+                >
+                  <div className="text-[10px] text-gray-400 font-bold mb-2 flex-shrink-0">
+                    الرموز التعبيرية
+                  </div>
+                  <div className="grid grid-cols-6 gap-2 overflow-y-auto">
+                    {EMOTICONS.map((e) => (
+                      <button
+                        key={e}
+                        onClick={() => {
+                          setInputText((prev) => prev + e);
+                          setShowEmojiPicker(false);
+                        }}
+                        className="p-1 hover:bg-white/10 rounded-lg text-xl transition-all cursor-pointer flex items-center justify-center flex-shrink-0"
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </FloatingDropdownPortal>
               </div>
 
               <div className="relative dropdown-container flex-shrink-0 lamma-composer-slot-tool">
@@ -11096,7 +11120,7 @@ export default function ChatScreen({
               gridTemplateRows: `${rightColumnSectionsPct.rooms}fr 12px ${rightColumnSectionsPct.members}fr`,
             }}
           >
-            <div className="min-h-0">
+            <div className="min-h-0 lamma-rooms-panel">
               <div
                 className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full"
                 data-design-region="column-cards"
@@ -11235,7 +11259,7 @@ export default function ChatScreen({
               }}
             />
 
-            <div className="min-h-0">
+            <div className="min-h-0 lamma-members-panel">
               <div
                 className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full"
                 data-design-region="column-cards"
@@ -11345,7 +11369,7 @@ export default function ChatScreen({
                                 })}`}
                               >
                                 <span
-                                  style={prestigeClass ? undefined : { color: m.color }}
+                                  style={{ color: m.color }}
                                   className={`font-bold text-[12px] truncate leading-tight lamma-author-name ${prestigeClass}`}
                                 >
                                   {cleanName}

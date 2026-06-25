@@ -50,9 +50,16 @@ import {
   cancelChaseLightPreview,
   loadChaseLightSettings,
   updateChaseLightTintPreview,
+  previewNeonBeamTargets,
+  commitNeonBeamTargets,
+  clearNeonBeamTargets,
+  getActiveNeonBeamTargets,
+  NEON_BEAM_ALL_TARGETS,
+  NEON_BEAM_TARGET_LABELS,
   type ChaseLightSettings,
   type ChaseLightStyleId,
   type ChaseLightTarget,
+  type NeonBeamTargetId,
 } from '../../services/design/chaseLightBarService';
 
 import {
@@ -64,6 +71,7 @@ import {
   normalizeUniversalStyleConfig,
   type UniversalStyleConfig,
 } from '../../services/design/universalStyleTypes';
+import { syncPaletteTextTokens } from '../../services/design/universalStyleApply';
 import { hexToRgba } from '../../lib/chatHelpers';
 
 import {
@@ -85,8 +93,151 @@ import {
   type UDSGlassTextureStyle,
   type UDSPaletteColor,
 } from '../../services/design/ultimateDesignSystemService';
+import { scheduleDesignOverlaysSync } from '../../services/design/designOverlaySync';
 
-type DesignSection = "colors" | "shapes" | "uploads" | "ultimate";
+type DesignSection = "colors" | "shapes" | "uploads" | "ultimate" | "mega";
+
+/** ثيمات Mega 2026 — كل ثيم يضبط الألوان + الزجاج + الأعمدة + الأنوار + التأثيرات + UDS دفعة واحدة. */
+const MEGA_THEMES_2026: {
+  id: string;
+  name: string;
+  emoji: string;
+  hint: string;
+  preview: string;
+  colors: { name: string; bg: string; surface: string; text: string; accent: string; accent2: string };
+  glass: { id: GlassFormId; tint: string };
+  column: { id: ColumnCardStyleId; tint: string };
+  chase: ChaseLightSettings;
+  fx: Record<string, boolean>;
+  uds: UDSSettings;
+}[] = [
+  {
+    id: "violet-night",
+    name: "ليل بنفسجي",
+    emoji: "💜",
+    hint: "نيون بنفسجي + زجاج كريستالي",
+    preview: "linear-gradient(135deg, #0b0813 0%, #1c1628 60%, rgba(167,139,250,0.25) 100%)",
+    colors: { name: "ليل بنفسجي", bg: "#0b0813", surface: "rgba(19,15,29,0.75)", text: "#f0e6ff", accent: "#a78bfa", accent2: "#7c3aed" },
+    glass: { id: "crystal", tint: "#a78bfa" },
+    column: { id: "neon-ring", tint: "#a78bfa" },
+    chase: { columns: "aurora-flow", composer: "soft-edge", header: "none", tintHex: "#a78bfa", speedSec: 5 },
+    fx: { holo: false, aurora: true, shimmer: true, float: false, neon: true, rainbow: false, crystal: true, liquid: false },
+    uds: { neonBorder: "rgb-wave", neonBorderColor: "electric-violet", glassTexture: "crystal-glow", glassTint: "electric-violet", palette: "electric-violet", applyToBody: true, applyToContainers: true },
+  },
+  {
+    id: "cyberpunk-fire",
+    name: "سيبربانك ناري",
+    emoji: "🔥",
+    hint: "ماجنتا + سيان + LED دوار",
+    preview: "linear-gradient(135deg, #0a0014 0%, #1a0028 50%, rgba(255,0,255,0.2) 75%, rgba(0,255,255,0.1) 100%)",
+    colors: { name: "سيبربانك ناري", bg: "#0a0014", surface: "rgba(20,5,35,0.78)", text: "#f0e6ff", accent: "#ff00ff", accent2: "#00ffff" },
+    glass: { id: "smoke-dark", tint: "#ff00ff" },
+    column: { id: "neon-ring", tint: "#ff00ff" },
+    chase: { columns: "neon-double", composer: "neon-double", header: "none", tintHex: "#ff00ff", speedSec: 3 },
+    fx: { holo: true, aurora: false, shimmer: false, float: false, neon: true, rainbow: true, crystal: false, liquid: true },
+    uds: { neonBorder: "rgb-wave", neonBorderColor: "cyberpunk-pink", glassTexture: "crystal-glow", glassTint: "cyberpunk-pink", palette: "cyberpunk-pink", applyToBody: true, applyToContainers: true },
+  },
+  {
+    id: "ocean-deep",
+    name: "أعماق المحيط",
+    emoji: "🌊",
+    hint: "أزرق سماوي + زجاج سائل",
+    preview: "linear-gradient(135deg, #030a14 0%, #071828 60%, rgba(6,182,212,0.2) 100%)",
+    colors: { name: "أعماق المحيط", bg: "#030a14", surface: "rgba(7,24,40,0.72)", text: "#e0f4ff", accent: "#06b6d4", accent2: "#0ea5e9" },
+    glass: { id: "ios-liquid", tint: "#06b6d4" },
+    column: { id: "ios-sheet", tint: "#06b6d4" },
+    chase: { columns: "aurora-flow", composer: "soft-edge", header: "none", tintHex: "#06b6d4", speedSec: 6 },
+    fx: { holo: false, aurora: true, shimmer: true, float: true, neon: false, rainbow: false, crystal: false, liquid: false },
+    uds: { neonBorder: "pulsing-glow", neonBorderColor: "neon-cyan", glassTexture: "ios-ultra-blur", glassTint: "neon-cyan", palette: "neon-cyan", applyToBody: false, applyToContainers: true },
+  },
+  {
+    id: "emerald-forest",
+    name: "غابة زمردية",
+    emoji: "🌿",
+    hint: "أخضر + بطاقات طائرة",
+    preview: "linear-gradient(135deg, #020f08 0%, #0a2016 60%, rgba(16,185,129,0.2) 100%)",
+    colors: { name: "غابة زمردية", bg: "#020f08", surface: "rgba(10,32,22,0.78)", text: "#ecfdf5", accent: "#10b981", accent2: "#34d399" },
+    glass: { id: "ghost", tint: "#10b981" },
+    column: { id: "liquid-ring", tint: "#10b981" },
+    chase: { columns: "soft-edge", composer: "none", header: "none", tintHex: "#10b981", speedSec: 7 },
+    fx: { holo: true, aurora: true, shimmer: false, float: true, neon: false, rainbow: false, crystal: false, liquid: false },
+    uds: { neonBorder: "border-aura", neonBorderColor: "aurora-green", glassTexture: "velvet-blur", glassTint: "aurora-green", palette: "aurora-green", applyToBody: false, applyToContainers: true },
+  },
+  {
+    id: "gold-luxe",
+    name: "ذهبي فاخر",
+    emoji: "✨",
+    hint: "ذهب ملكي + كريستال LED",
+    preview: "linear-gradient(135deg, #0f0b00 0%, #1e1500 60%, rgba(251,191,36,0.25) 100%)",
+    colors: { name: "ذهبي فاخر", bg: "#0f0b00", surface: "rgba(26,20,0,0.8)", text: "#fef9e7", accent: "#fbbf24", accent2: "#f59e0b" },
+    glass: { id: "mirror", tint: "#fbbf24" },
+    column: { id: "crystal", tint: "#fbbf24" },
+    chase: { columns: "soft-edge", composer: "none", header: "none", tintHex: "#fbbf24", speedSec: 5 },
+    fx: { holo: false, aurora: false, shimmer: true, float: false, neon: false, rainbow: false, crystal: true, liquid: true },
+    uds: { neonBorder: "led-strip", neonBorderColor: "gold-eclipse", glassTexture: "dark-mirror", glassTint: "gold-eclipse", palette: "gold-eclipse", applyToBody: false, applyToContainers: true },
+  },
+  {
+    id: "ice-crystal",
+    name: "جليد كريستالي",
+    emoji: "❄️",
+    hint: "أبيض جليدي + قوس قزح",
+    preview: "linear-gradient(135deg, #030810 0%, #0a1428 60%, rgba(186,230,253,0.2) 100%)",
+    colors: { name: "جليد كريستالي", bg: "#030810", surface: "rgba(10,20,40,0.65)", text: "#f0f8ff", accent: "#bae6fd", accent2: "#7dd3fc" },
+    glass: { id: "ios-vibrancy", tint: "#caf0f8" },
+    column: { id: "ios-inset", tint: "#caf0f8" },
+    chase: { columns: "none", composer: "none", header: "none", tintHex: "#caf0f8", speedSec: 8 },
+    fx: { holo: false, aurora: false, shimmer: true, float: false, neon: false, rainbow: true, crystal: true, liquid: false },
+    uds: { neonBorder: "static-cyber", neonBorderColor: "minimalist-white", glassTexture: "ios-ultra-blur", glassTint: "minimalist-white", palette: "minimalist-white", applyToBody: false, applyToContainers: true },
+  },
+  {
+    id: "deep-space",
+    name: "الفضاء العميق",
+    emoji: "🌌",
+    hint: "أورورا فضائية + طائرة",
+    preview: "linear-gradient(135deg, #010208 0%, #020510 50%, rgba(99,102,241,0.2) 75%, rgba(124,58,237,0.1) 100%)",
+    colors: { name: "الفضاء العميق", bg: "#010208", surface: "rgba(5,8,20,0.82)", text: "#e2e8f0", accent: "#6366f1", accent2: "#8b5cf6" },
+    glass: { id: "ios-widget", tint: "#6366f1" },
+    column: { id: "frosted", tint: "#6366f1" },
+    chase: { columns: "aurora-flow", composer: "soft-edge", header: "none", tintHex: "#6366f1", speedSec: 5 },
+    fx: { holo: false, aurora: true, shimmer: false, float: true, neon: true, rainbow: false, crystal: false, liquid: false },
+    uds: { neonBorder: "pulsing-glow", neonBorderColor: "electric-violet", glassTexture: "dark-mirror", glassTint: "electric-violet", palette: "deep-space-blue", applyToBody: false, applyToContainers: true },
+  },
+  {
+    id: "dark-minimal",
+    name: "داكن نظيف",
+    emoji: "🌑",
+    hint: "بسيط وسريع — بلا تأثيرات",
+    preview: "linear-gradient(135deg, #060a12 0%, #0f1318 100%)",
+    colors: { name: "داكن نظيف", bg: "#060a12", surface: "rgba(15,19,24,0.8)", text: "#f1f5f9", accent: "#6366f1", accent2: "#818cf8" },
+    glass: { id: "classic", tint: "#6366f1" },
+    column: { id: "soft-round", tint: "#6366f1" },
+    chase: { columns: "none", composer: "none", header: "none", tintHex: "#6366f1", speedSec: 6 },
+    fx: { holo: false, aurora: false, shimmer: false, float: false, neon: false, rainbow: false, crystal: false, liquid: false },
+    uds: { neonBorder: "none", neonBorderColor: "deep-space-blue", glassTexture: "soft-frosted", glassTint: "none", palette: "deep-space-blue", applyToBody: false, applyToContainers: true },
+  },
+];
+
+/** نماذج ألوان الكتابة — تركز على ألوان النصوص في الغرف والبطاقات. */
+const TEXT_COLOR_PRESETS: {
+  name: string;
+  text: string;
+  accent: string;
+  accent2: string;
+  emoji: string;
+}[] = [
+  { name: "أبيض كلاسيك", text: "#f1f5f9", accent: "#3b82f6", accent2: "#06b6d4", emoji: "⚪" },
+  { name: "رمادي ناعم", text: "#f8fafc", accent: "#64748b", accent2: "#94a3b8", emoji: "🔘" },
+  { name: "أزرق سماوي", text: "#e0f2fe", accent: "#0ea5e9", accent2: "#38bdf8", emoji: "🔵" },
+  { name: "بنفسجي ليلي", text: "#f5f3ff", accent: "#a855f7", accent2: "#c084fc", emoji: "💜" },
+  { name: "وردي ناعم", text: "#fdf2f8", accent: "#ec4899", accent2: "#f472b6", emoji: "🌸" },
+  { name: "أخضر زمردي", text: "#ecfdf5", accent: "#10b981", accent2: "#34d399", emoji: "💚" },
+  { name: "ذهبي فاخر", text: "#fefce8", accent: "#f59e0b", accent2: "#fbbf24", emoji: "🌟" },
+  { name: "برتقالي دافئ", text: "#fff7ed", accent: "#f97316", accent2: "#fb923c", emoji: "🧡" },
+  { name: "أحمر حيوي", text: "#fef2f2", accent: "#ef4444", accent2: "#fb7185", emoji: "❤️" },
+  { name: "تركواز ليلي", text: "#f0fdfa", accent: "#14b8a6", accent2: "#2dd4bf", emoji: "💠" },
+  { name: "نيلي عميق", text: "#eef2ff", accent: "#6366f1", accent2: "#818cf8", emoji: "💎" },
+  { name: "ماجنتا نيون", text: "#fdf4ff", accent: "#d946ef", accent2: "#e879f9", emoji: "🔮" },
+];
 
 /** ثيمات 2026 كاملة — كل ثيم يضبط الخلفية (الغامق) + البطاقات + الكتابة + الأساسي + الثانوي معاً. */
 const MODERN_THEME_PRESETS: {
@@ -96,19 +247,22 @@ const MODERN_THEME_PRESETS: {
   text: string;
   accent: string;
   accent2: string;
+  glass?: GlassFormId;
+  column?: ColumnCardStyleId;
+  bubble?: BubbleShapeId;
 }[] = [
-  { name: "ميدنايت أزرق", bg: "#060a12", surface: "rgba(18,24,32,0.72)", text: "#f1f5f9", accent: "#3b82f6", accent2: "#06b6d4" },
-  { name: "فحمي بنفسجي", bg: "#0a0710", surface: "rgba(26,18,38,0.72)", text: "#f5f3ff", accent: "#a855f7", accent2: "#6366f1" },
-  { name: "أسود زمردي", bg: "#05080a", surface: "rgba(12,22,18,0.72)", text: "#ecfdf5", accent: "#10b981", accent2: "#34d399" },
-  { name: "جرافيت ذهبي", bg: "#0a0a0a", surface: "rgba(24,22,16,0.75)", text: "#fafaf9", accent: "#f59e0b", accent2: "#fbbf24" },
-  { name: "نبيذي وردي", bg: "#100509", surface: "rgba(34,12,20,0.72)", text: "#fdf2f8", accent: "#ec4899", accent2: "#f472b6" },
-  { name: "نيلي عميق", bg: "#070815", surface: "rgba(16,18,40,0.72)", text: "#eef2ff", accent: "#6366f1", accent2: "#818cf8" },
-  { name: "تركواز ليلي", bg: "#04100f", surface: "rgba(10,28,26,0.72)", text: "#f0fdfa", accent: "#14b8a6", accent2: "#2dd4bf" },
-  { name: "رمادي حديث", bg: "#0b0d10", surface: "rgba(22,26,32,0.74)", text: "#f8fafc", accent: "#64748b", accent2: "#94a3b8" },
-  { name: "أحمر فحمي", bg: "#0e0507", surface: "rgba(32,12,14,0.72)", text: "#fef2f2", accent: "#ef4444", accent2: "#fb7185" },
-  { name: "برتقالي غروب", bg: "#100a05", surface: "rgba(34,22,12,0.72)", text: "#fff7ed", accent: "#f97316", accent2: "#fb923c" },
-  { name: "سماوي جليدي", bg: "#050d12", surface: "rgba(12,26,34,0.72)", text: "#ecfeff", accent: "#06b6d4", accent2: "#22d3ee" },
-  { name: "ماجنتا ليلي", bg: "#0c0510", surface: "rgba(28,12,34,0.72)", text: "#fdf4ff", accent: "#d946ef", accent2: "#e879f9" },
+  { name: "ميدنايت أزرق", bg: "#060a12", surface: "rgba(18,24,32,0.72)", text: "#f1f5f9", accent: "#3b82f6", accent2: "#06b6d4", glass: "crystal", column: "neon-ring", bubble: "default" },
+  { name: "فحمي بنفسجي", bg: "#0a0710", surface: "rgba(26,18,38,0.72)", text: "#f5f3ff", accent: "#a855f7", accent2: "#6366f1", glass: "smoke-dark", column: "neon-ring", bubble: "whatsapp" },
+  { name: "أسود زمردي", bg: "#05080a", surface: "rgba(12,22,18,0.72)", text: "#ecfdf5", accent: "#10b981", accent2: "#34d399", glass: "ghost", column: "liquid-ring", bubble: "ios" },
+  { name: "جرافيت ذهبي", bg: "#0a0a0a", surface: "rgba(24,22,16,0.75)", text: "#fafaf9", accent: "#f59e0b", accent2: "#fbbf24", glass: "mirror", column: "crystal", bubble: "default" },
+  { name: "نبيذي وردي", bg: "#100509", surface: "rgba(34,12,20,0.72)", text: "#fdf2f8", accent: "#ec4899", accent2: "#f472b6", glass: "smoke-dark", column: "soft-round", bubble: "facebook" },
+  { name: "نيلي عميق", bg: "#070815", surface: "rgba(16,18,40,0.72)", text: "#eef2ff", accent: "#6366f1", accent2: "#818cf8", glass: "ios-vibrancy", column: "ios-inset", bubble: "ios" },
+  { name: "تركواز ليلي", bg: "#04100f", surface: "rgba(10,28,26,0.72)", text: "#f0fdfa", accent: "#14b8a6", accent2: "#2dd4bf", glass: "ios-liquid", column: "ios-sheet", bubble: "ios" },
+  { name: "رمادي حديث", bg: "#0b0d10", surface: "rgba(22,26,32,0.74)", text: "#f8fafc", accent: "#64748b", accent2: "#94a3b8", glass: "classic", column: "soft-round", bubble: "default" },
+  { name: "أحمر فحمي", bg: "#0e0507", surface: "rgba(32,12,14,0.72)", text: "#fef2f2", accent: "#ef4444", accent2: "#fb7185", glass: "smoke-dark", column: "neon-ring", bubble: "whatsapp" },
+  { name: "برتقالي غروب", bg: "#100a05", surface: "rgba(34,22,12,0.72)", text: "#fff7ed", accent: "#f97316", accent2: "#fb923c", glass: "mirror", column: "crystal", bubble: "facebook" },
+  { name: "سماوي جليدي", bg: "#050d12", surface: "rgba(12,26,34,0.72)", text: "#ecfeff", accent: "#06b6d4", accent2: "#22d3ee", glass: "ios-vibrancy", column: "ios-inset", bubble: "ios" },
+  { name: "ماجنتا ليلي", bg: "#0c0510", surface: "rgba(28,12,34,0.72)", text: "#fdf4ff", accent: "#d946ef", accent2: "#e879f9", glass: "smoke-dark", column: "neon-ring", bubble: "telegram" },
 ];
 
 export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssistantProposal, previewAssistantPreset, commitAssistantPreset, cancelAssistantPreview, previewRecommendedAssistantTemplate, assistantAudit, assistantFindings, assistantProposal, handleApplyAssistantProposal, setAssistantProposal, lastAppliedDesignSnapshot, handleRestoreLastDesignSnapshot, brandLogoUrl, designLogoUploadRef, handleDesignLogoUpload, designLogoInput, setDesignLogoInput, setBrandLogoUrl, activeRoomId, openRooms, designRoomBgUploadRef, handleDesignRoomBgUpload, designRoomBgInput, setDesignRoomBgInput, roomBgMap, setRoomBgMap, designOwnerBgUploadRef, handleDesignOwnerBgUpload, designOwnerBgInput, setDesignOwnerBgInput, setOwnerBgImage, onResetDefaultChatBackground, uploadDesignImage, designPresets, designPresetName, setDesignPresetName, handleSaveDesignPreset, applyDesignPreset, handleDeleteDesignPreset, onStartInspectMode, previewDesignPrompt, previewDesignPromptAi, previewDesignConfig, committedConfig, getEditableDesignConfig, cancelPendingDesignPreview, commitPendingDesignPreview, flushAllDesignPersistence, verifyDesignPreviewDom, hasPendingDesignPreview, isApplyingStyle, ownerWriteAccessOk }: any) => {
@@ -142,6 +296,9 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
   );
   const [chaseSettings, setChaseSettings] = useState<ChaseLightSettings>(() =>
     loadChaseLightSettings(),
+  );
+  const [neonBeamPicks, setNeonBeamPicks] = useState<NeonBeamTargetId[]>(() =>
+    getActiveNeonBeamTargets(),
   );
   const [pendingChaseSummary, setPendingChaseSummary] = useState("");
   const rightColUploadRef = useRef<HTMLInputElement>(null);
@@ -245,6 +402,24 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     setSliderText(base.palette.text);
   }, [committedConfig]);
 
+  // Load saved text color preset from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('lamma_text_color_preset');
+      if (saved) {
+        const preset = JSON.parse(saved);
+        if (preset.text && preset.accent && preset.accent2) {
+          const root = (document.querySelector('.lamma-neutral-glass') || document.body) as HTMLElement;
+          syncPaletteTextTokens(root, preset);
+          root.setAttribute('data-universal-style', 'active');
+          setSliderText(preset.text);
+          setSliderAccent(preset.accent);
+          setSliderAccent2(preset.accent2);
+        }
+      }
+    } catch {}
+  }, []);
+
   const applySliderGlassPatch = (glassPatch: Partial<UniversalStyleConfig["glass"]>) => {
     if (!previewDesignConfig || !isOwnerRole) return;
     const base = getBase();
@@ -257,8 +432,37 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     setSliderAccent2(preset.accent2);
     setSliderBg(preset.bg);
     setSliderText(preset.text);
-    // ثيم نظيف بالكامل: نبدأ من الإعدادات الافتراضية (بدون أنوار/رينبو/تأثيرات عالقة)،
-    // ونضبط الألوان + خلفية لون صلبة ظاهرة فعلاً (مش طبقة صورة فوقها).
+
+    // Reset all conflicting systems before applying theme
+    // 1) Reset customFace (الوجه المخصص)
+    try {
+      const f = { ...loadFace(), enabled: false };
+      saveFace(f);
+      applyFace(f);
+    } catch { /* ignore */ }
+
+    // 2) Reset chase lights (أشرطة النور)
+    const tint = loadChaseLightSettings().tintHex || "#6ee7b7";
+    commitChaseLightSettings({ columns: "none", composer: "none", header: "none", tintHex: tint, speedSec: 6 });
+
+    // 3) Reset sidebar widgets
+    commitSidebarWidgetSettings({
+      radio: "classic",
+      music: "classic",
+      divider: "classic",
+      storeText: "#f8fafc",
+      radioText: "#f8fafc",
+      musicText: "#f8fafc",
+    });
+
+    // 4) Reset PM bubble style
+    commitPmBubbleStyle("classic");
+
+    // 5) Reset glass form
+    applyGlassForm(null);
+    setActiveGlassFormId(null);
+
+    // 6) Apply the theme with clean slate
     const fresh = createDefaultUniversalStyle();
     previewAndTrack({
       ...fresh,
@@ -276,12 +480,47 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
         global: { kind: "color", value: preset.bg, overlayOpacity: 0, blurPx: 0 },
       },
     });
+
+    // 7) Apply integrated glass, column, and bubble shapes
+    if (preset.glass) {
+      commitGlassForm(preset.glass, preset.accent);
+      setActiveGlassFormId(preset.glass);
+    }
+    if (preset.column) {
+      commitColumnCardStyle(preset.column, preset.accent);
+      setActiveColumnStyleId(preset.column);
+    }
+    if (preset.bubble) {
+      commitBubbleShape(preset.bubble);
+    }
   };
 
   const applyPalettePatch = (patch: Partial<UniversalStyleConfig["palette"]>) => {
     if (!previewDesignConfig || !isOwnerRole) return;
     const base = getBase();
     previewAndTrack({ ...base, palette: { ...base.palette, ...patch } });
+  };
+
+  const applyTextColorPreset = (preset: typeof TEXT_COLOR_PRESETS[number]) => {
+    setSliderText(preset.text);
+    setSliderAccent(preset.accent);
+    setSliderAccent2(preset.accent2);
+
+    const root = (document.querySelector('.lamma-neutral-glass') || document.body) as HTMLElement;
+    syncPaletteTextTokens(root, preset);
+    root.setAttribute('data-universal-style', 'active');
+
+    if (previewDesignConfig && isOwnerRole) {
+      applyPalettePatch({ text: preset.text, accent: preset.accent, accent2: preset.accent2 });
+    }
+
+    try {
+      localStorage.setItem('lamma_text_color_preset', JSON.stringify({
+        text: preset.text,
+        accent: preset.accent,
+        accent2: preset.accent2
+      }));
+    } catch {}
   };
 
   // تصفية شاملة — تصفّر كل أنظمة التنسيق المتداخلة دفعة واحدة (مصدر "الهبل").
@@ -310,14 +549,31 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
       saveFace(f);
       applyFace(f);
     } catch { /* ignore */ }
-    // 4) ثيم نظيف افتراضي + حفظ للكل
+    // 4) Wait for DOM updates to complete before applying theme
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // 5) ثيم نظيف افتراضي + حفظ للكل
     if (previewDesignConfig) {
       previewDesignConfig(createDefaultUniversalStyle());
-      if (commitPendingDesignPreview) await commitPendingDesignPreview();
+      if (commitPendingDesignPreview) {
+        const result = await commitPendingDesignPreview();
+        if (!result.ok) {
+          alert("⚠️ حدث خطأ أثناء حفظ التغييرات. حاول مرة أخرى.");
+          return;
+        }
+      }
     }
-    // 5) خلفية افتراضية
+    
+    // 6) Wait for theme to apply to DOM
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // 7) خلفية افتراضية
     onResetDefaultChatBackground?.();
-    // إعادة ضبط حالة السلايدرز
+    
+    // 8) Wait for background to update
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // 9) إعادة ضبط حالة السلايدرز
     const d = createDefaultUniversalStyle();
     setSliderGlassBlur(d.glass.blurPx);
     setSliderGlassOpacity(d.glass.opacity);
@@ -330,14 +586,70 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     setSliderText(d.palette.text);
     setActiveGlassFormId(null);
     setChaseSettings(loadChaseLightSettings());
+    
+    // 10) Final verification before showing success
+    await new Promise(resolve => setTimeout(resolve, 100));
     alert("✅ تم رجوع التصميم لوضع نظيف افتراضي. اختر ثيم 2026 من جديد لو حبيت.");
   };
 
   // الخلفية لازم تتغير في طبقة backgrounds.global (مش بس palette.bg) عشان تظهر فعلاً.
+  // Helper function to calculate color luminance
+  const getLuminance = (hex: string): number => {
+    const rgb = hex.replace('#', '').match(/.{2}/g);
+    if (!rgb || rgb.length !== 3) return 0;
+    
+    const [r, g, b] = rgb.map(x => {
+      const val = parseInt(x, 16) / 255;
+      return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+    });
+    
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+
+  // Helper function to check contrast ratio
+  const getContrastRatio = (color1: string, color2: string): number => {
+    const lum1 = getLuminance(color1);
+    const lum2 = getLuminance(color2);
+    const brightest = Math.max(lum1, lum2);
+    const darkest = Math.min(lum1, lum2);
+    return (brightest + 0.05) / (darkest + 0.05);
+  };
+
   const applyBgColor = (hex: string) => {
     if (!previewDesignConfig || !isOwnerRole) return;
     setSliderBg(hex);
     const base = getBase();
+    
+    // Check contrast with current surface color
+    const surfaceColor = base.palette.surface;
+    const contrast = getContrastRatio(hex, surfaceColor);
+    
+    // If contrast is poor (below WCAG AA standard of 4.5:1), suggest better surface color
+    if (contrast < 4.5) {
+      const bgLum = getLuminance(hex);
+      // Choose appropriate surface color based on background luminance
+      const suggestedSurface = bgLum > 0.5 
+        ? 'rgba(15, 23, 42, 0.85)'  // Dark surface for light background
+        : 'rgba(243, 244, 246, 0.85)'; // Light surface for dark background
+      
+      if (window.confirm(`⚠️ تباين ضعيف بين الخلفية والبطاقات (${contrast.toFixed(1)}:1).\n\nنقترح تغيير لون البطاقات لتحسين القراءة. هل تريد التطبيق؟`)) {
+        previewAndTrack({
+          ...base,
+          palette: { 
+            ...base.palette, 
+            bg: hex, 
+            surface: suggestedSurface,
+            text: bgLum > 0.5 ? '#0f172a' : '#f8fafc' // Adjust text color too
+          },
+          backgrounds: {
+            ...base.backgrounds,
+            global: { kind: "color", value: hex, overlayOpacity: 0, blurPx: 0 },
+          },
+        });
+        return;
+      }
+    }
+    
     previewAndTrack({
       ...base,
       palette: { ...base.palette, bg: hex },
@@ -515,6 +827,45 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
       alert("✅ تم تطبيق أشرطة النور.");
     } else {
       alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
+    }
+  };
+
+  const toggleNeonBeamTarget = (target: NeonBeamTargetId) => {
+    const next = neonBeamPicks.includes(target)
+      ? neonBeamPicks.filter((id) => id !== target)
+      : [...neonBeamPicks, target];
+    setNeonBeamPicks(next);
+    previewNeonBeamTargets(next, 4);
+    setPreviewKind("chase");
+    setDesignPreviewActive(true);
+    setPendingChaseSummary(
+      next.length
+        ? `شريط نيون: ${next.map((id) => NEON_BEAM_TARGET_LABELS[id]).join(" · ")}`
+        : "",
+    );
+  };
+
+  const handleCommitNeonBeamPicks = () => {
+    if (commitNeonBeamTargets(neonBeamPicks, { speedSec: 4 })) {
+      setChaseSettings(loadChaseLightSettings());
+      setNeonBeamPicks(getActiveNeonBeamTargets());
+      setPreviewKind(null);
+      setDesignPreviewActive(false);
+      setPendingChaseSummary("");
+      scheduleDesignOverlaysSync();
+    } else {
+      alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
+    }
+  };
+
+  const handleClearNeonBeam = () => {
+    setNeonBeamPicks([]);
+    if (clearNeonBeamTargets()) {
+      setChaseSettings(loadChaseLightSettings());
+      setPreviewKind(null);
+      setDesignPreviewActive(false);
+      setPendingChaseSummary("");
+      scheduleDesignOverlaysSync();
     }
   };
 
@@ -709,6 +1060,123 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
     };
   }, []);
 
+  const FX_LIST = [
+    { id: "holo",    emoji: "🌈", label: "نص هولوجرافيك",  hint: "عناوين البطاقات بألوان قوس قزح" },
+    { id: "aurora",  emoji: "🌌", label: "خلفية أورورا",    hint: "شفق قطبي خلف البطاقات" },
+    { id: "shimmer", emoji: "💎", label: "شيمر زجاجي",      hint: "شريط لمعة يمر على البطاقات" },
+    { id: "float",   emoji: "🌿", label: "بطاقات طائرة",    hint: "أعمدة الشات تطفو بنعومة" },
+    { id: "neon",    emoji: "💜", label: "نيون ينبض",        hint: "الأزرار الأساسية تضيء" },
+    { id: "rainbow", emoji: "🎨", label: "حدود قوس قزح",    hint: "إطار ملون حول البطاقات" },
+    { id: "crystal", emoji: "✦",  label: "بريق كريستال",    hint: "نجوم لمعة على زوايا البطاقات" },
+    { id: "liquid",  emoji: "💧", label: "أزرار سائلة",     hint: "الأزرار تملأ بمائع نيوني" },
+  ] as const;
+  type FxId = typeof FX_LIST[number]["id"];
+
+  const [fxOn, setFxOn] = useState<Record<FxId, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem("lamma_fx_on");
+      const parsed = saved ? (JSON.parse(saved) as Partial<Record<FxId, boolean>>) : {};
+      return FX_LIST.reduce(
+        (acc, fx) => ({ ...acc, [fx.id]: parsed[fx.id] ?? false }),
+        {} as Record<FxId, boolean>,
+      );
+    } catch {
+      return FX_LIST.reduce((acc, fx) => ({ ...acc, [fx.id]: false }), {} as Record<FxId, boolean>);
+    }
+  });
+
+  useEffect(() => {
+    FX_LIST.forEach(({ id }) => document.body.classList.toggle(`lamma-fx-${id}`, fxOn[id]));
+    try { localStorage.setItem("lamma_fx_on", JSON.stringify(fxOn)); } catch {}
+  }, [fxOn]);
+
+  const toggleFx = (id: FxId) => {
+    setFxOn((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try { localStorage.setItem("lamma_fx_on", JSON.stringify(next)); } catch {}
+      setTimeout(() => scheduleDesignOverlaysSync(), 80);
+      return next;
+    });
+  };
+
+  const applyMegaTheme = (theme: typeof MEGA_THEMES_2026[number]) => {
+    if (!isOwnerRole) return;
+    // 1) ألوان
+    applyThemePreset(theme.colors);
+    // 2) زجاج
+    commitGlassForm(theme.glass.id, theme.glass.tint);
+    setActiveGlassFormId(theme.glass.id);
+    // 3) أعمدة
+    commitColumnCardStyle(theme.column.id, theme.column.tint);
+    setActiveColumnStyleId(theme.column.id);
+    // 4) أنوار النور
+    commitChaseLightSettings(theme.chase);
+    setChaseSettings(theme.chase);
+    // 5) تأثيرات FX
+    const nextFx = theme.fx;
+    try { localStorage.setItem("lamma_fx_on", JSON.stringify(nextFx)); } catch {}
+    Object.entries(nextFx).forEach(([id, on]) => {
+      document.body.classList.toggle(`lamma-fx-${id}`, !!on);
+    });
+    setFxOn(nextFx as Record<FxId, boolean>);
+    // 6) UDS
+    commitUDSSettings(theme.uds);
+    setUdsSettings(theme.uds);
+    // 7) sync للكل
+    setTimeout(() => scheduleDesignOverlaysSync(), 80);
+  };
+
+  const applyBot2026 = (preset: "neon-glass" | "ios-liquid") => {
+    if (!isOwnerRole) return;
+    if (preset === "neon-glass") {
+      applyThemePreset({
+        name: "نيون زجاجي",
+        bg: "#0a0014",
+        surface: "rgba(20,5,35,0.75)",
+        text: "#f0e6ff",
+        accent: "#ff00ff",
+        accent2: "#00ffff",
+      });
+      commitGlassForm("smoke-dark", "#ff00ff");
+      setActiveGlassFormId("smoke-dark");
+      const udsNeon: UDSSettings = {
+        neonBorder: "rgb-wave",
+        neonBorderColor: "cyberpunk-pink",
+        glassTexture: "crystal-glow",
+        glassTint: "cyberpunk-pink",
+        palette: "cyberpunk-pink",
+        applyToBody: true,
+        applyToContainers: true,
+      };
+      commitUDSSettings(udsNeon);
+      setUdsSettings(udsNeon);
+      scheduleDesignOverlaysSync();
+    } else {
+      applyThemePreset({
+        name: "آيفون زجاجي",
+        bg: "#0a1628",
+        surface: "rgba(22,30,48,0.65)",
+        text: "#e2e8f0",
+        accent: "#6366f1",
+        accent2: "#818cf8",
+      });
+      commitGlassForm("ios-liquid", "#818cf8");
+      setActiveGlassFormId("ios-liquid");
+      const udsIos: UDSSettings = {
+        neonBorder: "none",
+        neonBorderColor: "deep-space-blue",
+        glassTexture: "ios-ultra-blur",
+        glassTint: "deep-space-blue",
+        palette: "deep-space-blue",
+        applyToBody: false,
+        applyToContainers: true,
+      };
+      commitUDSSettings(udsIos);
+      setUdsSettings(udsIos);
+      scheduleDesignOverlaysSync();
+    }
+  };
+
   return (
     <>
                   <div className="space-y-4 select-none" dir="rtl">
@@ -751,6 +1219,7 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
 
                     <div className="flex items-center gap-1.5 p-1 rounded-2xl lamma-section-card overflow-x-auto">
                       {([
+                        ["mega", "⚡ ثيمات"],
                         ["uploads", "📤 الصور"],
                         ["colors", "🎨 الألوان"],
                         ["shapes", "🔷 الشكل"],
@@ -772,6 +1241,135 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                       ))}
                     </div>
 
+                    {/* ⚡ ثيمات Mega 2026 */}
+                    {section === "mega" && (
+                      <div className="space-y-4">
+                        {!isOwnerRole && (
+                          <div className="p-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 text-[10px] text-amber-300 font-black text-center">
+                            👑 الثيمات الكاملة للمالك بس
+                          </div>
+                        )}
+
+                        {/* ── بوت التصميم السريع ── */}
+                        <div className="p-4 rounded-2xl space-y-3" style={{ background: "linear-gradient(135deg, rgba(10,0,20,0.7), rgba(15,5,30,0.7))", border: "1px solid rgba(255,0,255,0.18)" }}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[12px] text-emerald-300 font-black">🤖 بوت التصميم السريع</span>
+                            <span className="text-[9px] text-gray-500 font-bold px-2 py-0.5 rounded-full bg-white/5">ضغطة = ثيم كامل</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              type="button"
+                              onPointerDown={stopDrag}
+                              onClick={() => applyBot2026("neon-glass")}
+                              disabled={!isOwnerRole}
+                              className="flex flex-col items-center gap-2 p-3 rounded-2xl transition-all disabled:opacity-40 hover:scale-[1.02] active:scale-[0.97]"
+                              style={{ background: "linear-gradient(135deg, #0a0014, #200040)", border: "1px solid rgba(255,0,255,0.35)", boxShadow: "0 0 20px rgba(255,0,255,0.12)" }}
+                            >
+                              <div className="w-full h-12 rounded-xl flex items-center justify-center gap-3" style={{ background: "linear-gradient(135deg, #0a0014, #200040)" }}>
+                                <span className="w-5 h-5 rounded-full" style={{ background: "#ff00ff", boxShadow: "0 0 14px #ff00ff" }} />
+                                <span className="w-5 h-5 rounded-full" style={{ background: "#00ffff", boxShadow: "0 0 14px #00ffff" }} />
+                              </div>
+                              <span className="text-[10px] text-fuchsia-300 font-black">💠 Neon Glassmorphism</span>
+                              <span className="text-[8px] text-gray-500">RGB Wave · Crystal Glass</span>
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={stopDrag}
+                              onClick={() => applyBot2026("ios-liquid")}
+                              disabled={!isOwnerRole}
+                              className="flex flex-col items-center gap-2 p-3 rounded-2xl transition-all disabled:opacity-40 hover:scale-[1.02] active:scale-[0.97]"
+                              style={{ background: "linear-gradient(135deg, #0a1628, #1a2860)", border: "1px solid rgba(99,102,241,0.35)", boxShadow: "0 0 20px rgba(99,102,241,0.12)" }}
+                            >
+                              <div className="w-full h-12 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0a1628, #1a2860)" }}>
+                                <span className="text-2xl">🧧</span>
+                              </div>
+                              <span className="text-[10px] text-indigo-300 font-black">🧧 iOS Liquid Glass</span>
+                              <span className="text-[8px] text-gray-500">Ultra Blur · Squircle</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* ── Mega 2026 — ثيمات ضغطة واحدة ── */}
+                        <div className="p-4 rounded-2xl space-y-3" style={{ background: "linear-gradient(135deg, rgba(5,0,15,0.85), rgba(10,5,25,0.85))", border: "1px solid rgba(139,92,246,0.28)" }}>
+                          <div>
+                            <div className="text-[12px] text-purple-300 font-black">⚡ Mega 2026 — ثيمات كاملة</div>
+                            <div className="text-[9px] text-gray-400 font-bold mt-0.5">ألوان + زجاج + أعمدة + أشرطة نور + تأثيرات كلها دفعة واحدة للجميع</div>
+                          </div>
+                          <div className="grid grid-cols-4 gap-2">
+                            {MEGA_THEMES_2026.map((theme) => (
+                              <button
+                                key={theme.id}
+                                type="button"
+                                onPointerDown={stopDrag}
+                                onClick={() => applyMegaTheme(theme)}
+                                disabled={!isOwnerRole}
+                                title={theme.hint}
+                                className="group flex flex-col items-center gap-1.5 p-2.5 rounded-2xl transition-all disabled:opacity-40 hover:scale-[1.05] active:scale-[0.96]"
+                                style={{ background: theme.preview, border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}
+                              >
+                                <span className="text-xl leading-none">{theme.emoji}</span>
+                                <span className="text-[9px] text-white font-black text-center leading-tight">{theme.name}</span>
+                                <span className="text-[7px] text-white/50 font-bold text-center leading-tight">{theme.hint}</span>
+                                <span className="flex gap-1 mt-0.5">
+                                  <span className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ background: theme.colors.accent }} />
+                                  <span className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ background: theme.colors.accent2 }} />
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* ── ثيمات الألوان السريعة ── */}
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                          <div className="text-[11px] text-cyan-300 font-black">🌈 ثيمات الألوان السريعة</div>
+                          <div className="text-[9px] text-gray-400">كل ثيم يضبط الألوان فوراً — معاينة live على الشات.</div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {MODERN_THEME_PRESETS.map((preset) => {
+                              const isActive =
+                                sliderAccent.toLowerCase() === preset.accent.toLowerCase() &&
+                                sliderBg.toLowerCase() === preset.bg.toLowerCase();
+                              return (
+                                <button
+                                  key={preset.name}
+                                  type="button"
+                                  onPointerDown={stopDrag}
+                                  onClick={() => applyThemePreset(preset)}
+                                  disabled={!isOwnerRole}
+                                  title={preset.name}
+                                  className={`group flex flex-col items-center gap-1 p-2 rounded-xl transition-all disabled:opacity-40 ${
+                                    isActive ? "ring-1 ring-cyan-400/60 bg-white/10" : "hover:bg-white/5"
+                                  }`}
+                                >
+                                  <span
+                                    className="w-full h-9 rounded-lg border border-white/10 flex items-center justify-center gap-1.5"
+                                    style={{ background: preset.bg }}
+                                  >
+                                    <span className="w-3.5 h-3.5 rounded-full shadow-inner" style={{ background: preset.accent }} />
+                                    <span className="w-3.5 h-3.5 rounded-full shadow-inner" style={{ background: preset.accent2 }} />
+                                  </span>
+                                  <span className="text-[8px] text-gray-300 font-bold truncate w-full text-center">{preset.name}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <button
+                            type="button"
+                            onPointerDown={stopDrag}
+                            disabled={!isOwnerRole}
+                            onClick={() => {
+                              if (!previewDesignConfig || !isOwnerRole) return;
+                              const base = getBase();
+                              const fresh = createDefaultUniversalStyle();
+                              previewAndTrack({ ...base, effects: { ...fresh.effects }, regions: fresh.regions });
+                            }}
+                            className="w-full py-2 rounded-xl text-[10px] font-black lamma-tab-soft hover:text-white disabled:opacity-40"
+                          >
+                            🚫 إطفاء كل الأنوار والرينبو
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* ── تحكم مباشر بالسلايدرات + Gemini AI ── */}
                     {section === "colors" && isOwnerRole && (
                       <div className="space-y-4">
@@ -789,6 +1387,61 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           >
                             رجوع نظيف
                           </button>
+                        </div>
+
+                        {/* شريط النيون — خط على الحافة + اختيار البطاقات */}
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                          <div className="text-[11px] text-fuchsia-300 font-black">💠 خط النيون الدوّار</div>
+                          <div className="text-[10px] text-gray-400 font-bold">
+                            خط رفيع بيلف على الحافة بس — اختار البطاقات والحواف اللي عايزها، مش الكل مرة واحدة.
+                          </div>
+                          <div className="flex flex-col sm:flex-row items-center gap-4 py-2">
+                            <div className="lamma-neon-beam-preview shrink-0" aria-hidden="true" />
+                            <div className="flex-1 w-full space-y-2">
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {NEON_BEAM_ALL_TARGETS.map((targetId) => {
+                                  const active = neonBeamPicks.includes(targetId);
+                                  return (
+                                    <button
+                                      key={targetId}
+                                      type="button"
+                                      onPointerDown={stopDrag}
+                                      onClick={() => toggleNeonBeamTarget(targetId)}
+                                      className={`px-2.5 py-2 rounded-xl text-[9px] font-black border transition-all text-right ${
+                                        active
+                                          ? "border-fuchsia-400/60 bg-fuchsia-500/15 text-fuchsia-200 shadow-[0_0_10px_rgba(236,72,153,0.2)]"
+                                          : "border-white/10 text-gray-400 hover:text-white hover:border-white/25"
+                                      }`}
+                                    >
+                                      {NEON_BEAM_TARGET_LABELS[targetId]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <button
+                                type="button"
+                                onPointerDown={stopDrag}
+                                onClick={handleCommitNeonBeamPicks}
+                                disabled={neonBeamPicks.length === 0}
+                                className="w-full py-3 rounded-xl text-[11px] font-black transition-all lamma-accent-btn text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                {neonBeamPicks.length
+                                  ? `✅ تطبيق الخط على ${neonBeamPicks.length} عنصر`
+                                  : "اختر بطاقة أو حافة الأول"}
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={stopDrag}
+                                onClick={handleClearNeonBeam}
+                                className="w-full py-2 rounded-xl text-[10px] font-black lamma-tab-soft text-gray-400 hover:text-white"
+                              >
+                                ⬜ إيقاف خط النيون
+                              </button>
+                              <p className="text-[9px] text-gray-500 font-bold text-center">
+                                الهيدر وشريط الكتابة: من الأزرار فوق · باقي الأنماط: تبويب 🔷 الشكل
+                              </p>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Gemini AI */}
@@ -924,6 +1577,106 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           </div>
                         </div>
 
+                        {/* Glass presets */}
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                          <div className="text-[11px] text-cyan-300 font-black">🪟 نماذج الزجاج</div>
+                          <div className="text-[9px] text-gray-400">اختر نمط زجاج جاهز — معاينة live على الشات.</div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {GLASS_FORM_PRESETS.map((preset) => {
+                              const isActive = activeGlassFormId === preset.id;
+                              return (
+                                <button
+                                  key={preset.id}
+                                  type="button"
+                                  onPointerDown={stopDrag}
+                                  onClick={() => handlePreviewGlassForm(preset.id)}
+                                  disabled={!isOwnerRole}
+                                  title={`${preset.title} - ${preset.subtitle}`}
+                                  className={`group flex flex-col items-center gap-1 p-2 rounded-xl transition-all disabled:opacity-40 ${
+                                    isActive ? "ring-1 ring-cyan-400/60 bg-white/10" : "hover:bg-white/5"
+                                  }`}
+                                >
+                                  <span
+                                    className="w-full h-9 rounded-lg border border-white/10 flex items-center justify-center text-lg"
+                                    style={{
+                                      background: preset.previewPanelBg,
+                                      backdropFilter: preset.previewPanelBlur,
+                                      borderColor: preset.previewPanelBorder,
+                                    }}
+                                  >
+                                    {preset.emoji}
+                                  </span>
+                                  <span className="text-[8px] text-gray-300 font-bold truncate w-full text-center">{preset.title}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {isGlassPreviewing && (
+                            <div className="flex gap-2 pt-2">
+                              <button
+                                type="button"
+                                onPointerDown={stopDrag}
+                                onClick={handleCommitGlassForm}
+                                className="flex-1 py-2 rounded-xl text-[10px] font-black lamma-accent-btn text-white"
+                              >
+                                ✅ تطبيق
+                              </button>
+                              <button
+                                type="button"
+                                onPointerDown={stopDrag}
+                                onClick={handleCancelGlassPreview}
+                                className="flex-1 py-2 rounded-xl text-[10px] font-black lamma-tab-soft text-gray-400"
+                              >
+                                ❌ إلغاء
+                              </button>
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onPointerDown={stopDrag}
+                            disabled={!isOwnerRole}
+                            onClick={handleResetGlassForm}
+                            className="w-full py-2 rounded-xl text-[10px] font-black lamma-tab-soft hover:text-white disabled:opacity-40"
+                          >
+                            🔄 رجوع للوضع الافتراضي
+                          </button>
+                        </div>
+
+                        {/* Text color presets */}
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                          <div className="text-[11px] text-cyan-300 font-black">🎨 نماذج ألوان الكتابة</div>
+                          <div className="text-[9px] text-gray-400">ألوان النصوص في الغرف والبطاقات — معاينة live على الشات.</div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {TEXT_COLOR_PRESETS.map((preset) => {
+                              const isActive =
+                                sliderText.toLowerCase() === preset.text.toLowerCase() &&
+                                sliderAccent.toLowerCase() === preset.accent.toLowerCase();
+                              return (
+                                <button
+                                  key={preset.name}
+                                  type="button"
+                                  onPointerDown={stopDrag}
+                                  onClick={() => applyTextColorPreset(preset)}
+                                  disabled={!isOwnerRole}
+                                  title={`${preset.name} - كتابة: ${preset.text}, أساسي: ${preset.accent}`}
+                                  className={`group flex flex-col items-center gap-1 p-2 rounded-xl transition-all disabled:opacity-40 ${
+                                    isActive ? "ring-1 ring-cyan-400/60 bg-white/10" : "hover:bg-white/5"
+                                  }`}
+                                >
+                                  <span
+                                    className="w-full h-9 rounded-lg border border-white/10 flex items-center justify-center gap-1.5"
+                                    style={{ background: preset.text }}
+                                  >
+                                    <span className="w-3.5 h-3.5 rounded-full shadow-inner" style={{ background: preset.accent }} />
+                                    <span className="w-3.5 h-3.5 rounded-full shadow-inner" style={{ background: preset.accent2 }} />
+                                  </span>
+                                  <span className="text-[8px] text-gray-300 font-bold truncate w-full text-center">{preset.emoji} {preset.name}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
                         {/* Button / input sliders */}
                         <div className="p-4 rounded-2xl lamma-section-card space-y-4">
                           <div className="text-[11px] text-cyan-300 font-black">🔘 الأزرار</div>
@@ -1042,58 +1795,64 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                           </div>
                         </div>
 
-                        {/* ثيمات 2026 الكاملة — ضغطة واحدة */}
+                        {/* تفعيل/إيقاف شريط الضوء الدوار — مدمج هنا كزر سريع */}
+                        <button
+                          type="button"
+                          onPointerDown={stopDrag}
+                          disabled={!isOwnerRole}
+                          onClick={() => {
+                            const isOn = udsSettings.neonBorder === "rgb-wave";
+                            const next: UDSSettings = {
+                              ...udsSettings,
+                              neonBorder: isOn ? "none" : "rgb-wave",
+                              neonBorderColor: "cyberpunk-pink",
+                              applyToBody: !isOn,
+                              applyToContainers: !isOn,
+                            };
+                            commitUDSSettings(next);
+                            setUdsSettings(next);
+                            scheduleDesignOverlaysSync();
+                          }}
+                          className={`w-full py-2.5 rounded-xl text-[11px] font-black transition-all disabled:opacity-40 flex items-center justify-center gap-2 ${
+                            udsSettings.neonBorder === "rgb-wave"
+                              ? "bg-gradient-to-r from-fuchsia-600 via-cyan-500 to-violet-600 text-white shadow-[0_0_20px_rgba(255,0,255,0.4)]"
+                              : "lamma-tab-soft hover:text-white"
+                          }`}
+                        >
+                          <span className={udsSettings.neonBorder === "rgb-wave" ? "animate-spin" : ""} style={{ animationDuration: "3s" }}>✦</span>
+                          {udsSettings.neonBorder === "rgb-wave" ? "🔴 إيقاف شريط النيون الدوار" : "✨ شريط النيون الدوار على البطاقات"}
+                        </button>
+
+                        {/* 🪄 سحر التصميم 2026 — تأثيرات مستقلة */}
                         <div className="p-4 rounded-2xl lamma-section-card space-y-3">
-                          <div className="text-[11px] text-cyan-300 font-black">🌈 ثيمات 2026 — اختر بضغطة</div>
-                          <div className="text-[10px] text-gray-400">كل ثيم يضبط الخلفية الغامقة + البطاقات + الكتابة + الألوان معاً (معاينة)، ثم «تطبيق نهائي».</div>
-                          <div className="grid grid-cols-3 gap-2">
-                            {MODERN_THEME_PRESETS.map((preset) => {
-                              const isActive =
-                                sliderAccent.toLowerCase() === preset.accent.toLowerCase() &&
-                                sliderBg.toLowerCase() === preset.bg.toLowerCase();
-                              return (
-                                <button
-                                  key={preset.name}
-                                  type="button"
-                                  onPointerDown={stopDrag}
-                                  onClick={() => applyThemePreset(preset)}
-                                  title={preset.name}
-                                  className={`group flex flex-col items-center gap-1 p-1.5 rounded-xl transition-all ${
-                                    isActive ? "bg-white/10 ring-1 ring-cyan-400/60" : "hover:bg-white/5"
-                                  }`}
-                                >
-                                  <span
-                                    className="w-full h-8 rounded-lg shadow-inner border border-white/10 flex items-center justify-center gap-1"
-                                    style={{ background: preset.bg }}
-                                  >
-                                    <span className="w-3 h-3 rounded-full" style={{ background: preset.accent }} />
-                                    <span className="w-3 h-3 rounded-full" style={{ background: preset.accent2 }} />
-                                  </span>
-                                  <span className="text-[8px] text-gray-400 font-bold truncate w-full text-center">
-                                    {preset.name}
-                                  </span>
-                                </button>
-                              );
-                            })}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[12px] text-violet-300 font-black">🪄 سحر التصميم 2026</span>
                           </div>
-                          <button
-                            type="button"
-                            onPointerDown={stopDrag}
-                            onClick={() => {
-                              if (!previewDesignConfig || !isOwnerRole) return;
-                              const base = getBase();
-                              const fresh = createDefaultUniversalStyle();
-                              // تصفير كل التأثيرات + الـ regions (الرينبو/الشريط/الأنوار) مع الحفاظ على الألوان.
-                              previewAndTrack({
-                                ...base,
-                                effects: { ...fresh.effects },
-                                regions: fresh.regions,
-                              });
-                            }}
-                            className="w-full py-2 rounded-xl text-[10px] font-black lamma-tab-soft hover:text-white"
-                          >
-                            🚫 إطفاء كل الأنوار والرينبو والتأثيرات
-                          </button>
+                          <div className="text-[10px] text-gray-500">كل تأثير مستقل — فعّل وأوقف كل واحد بشكل منفصل.</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {FX_LIST.map((fx) => (
+                              <button
+                                key={fx.id}
+                                type="button"
+                                onPointerDown={stopDrag}
+                                onClick={() => toggleFx(fx.id)}
+                                disabled={!isOwnerRole}
+                                className={`p-3 rounded-xl text-right transition-all disabled:opacity-40 ${
+                                  fxOn[fx.id]
+                                    ? "bg-violet-500/20 border border-violet-400/40 shadow-[0_0_12px_rgba(139,92,246,0.2)]"
+                                    : "lamma-tab-soft hover:bg-white/5 border border-transparent"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-[11px] font-black">{fx.emoji} {fx.label}</span>
+                                  <span className={`w-2 h-2 rounded-full flex-shrink-0 transition-all ${
+                                    fxOn[fx.id] ? "bg-emerald-400 shadow-[0_0_6px_#10b981]" : "bg-gray-600"
+                                  }`} />
+                                </div>
+                                <div className="text-[9px] text-gray-500">{fx.hint}</div>
+                              </button>
+                            ))}
+                          </div>
                         </div>
 
                         {/* Apply / Cancel bar for sliders */}
@@ -1141,11 +1900,11 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                       </div>
                     )}
 
-                    {section === "shapes" && isOwnerRole && (
-                      <DesignShapesPanel onStartInspectMode={onStartInspectMode} />
+                    {section === "shapes" && (
+                      <DesignShapesPanel onStartInspectMode={onStartInspectMode} isOwnerRole={isOwnerRole} />
                     )}
 
-                    {section === "ultimate" && (
+                    {section === "ultimate" && isOwnerRole && (
                       <div className="space-y-4">
                         {/* Header */}
                         <div className="p-4 rounded-2xl lamma-section-card">
@@ -1507,7 +2266,14 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                       </div>
                     )}
 
-                    {section === "uploads" && (
+                    {section === "ultimate" && !isOwnerRole && (
+                      <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 text-center">
+                        <div className="text-[11px] text-amber-300 font-black">👑 Ultimate Design System للمالك بس</div>
+                        <div className="text-[9px] text-gray-400 font-bold mt-1">نظام تصميم متقدم — أشرطة نيون، زجاج كريستالي، لوحة ألوان المستقبل</div>
+                      </div>
+                    )}
+
+                    {section === "uploads" && isOwnerRole && (
                       <>
                     <div className="p-4 rounded-2xl space-y-3 lamma-section-card">
                       <div className="text-[11px] text-cyan-300 font-black">
@@ -1721,6 +2487,27 @@ export const DesignCenterModal = ({ isOwnerRole, runAssistantAudit, queueAssista
                       </div>
                     </div>
                       </>
+                    )}
+
+                    {section === "uploads" && !isOwnerRole && (
+                      <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 text-center">
+                        <div className="text-[11px] text-amber-300 font-black">👑 رفع الصور للمالك بس</div>
+                        <div className="text-[9px] text-gray-400 font-bold mt-1">شعار الغرفة، خلفيات الغرف، صور الأعمدة</div>
+                      </div>
+                    )}
+
+                    {section === "colors" && !isOwnerRole && (
+                      <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 text-center">
+                        <div className="text-[11px] text-amber-300 font-black">👑 تعديل الألوان للمالك بس</div>
+                        <div className="text-[9px] text-gray-400 font-bold mt-1">سلايدرات الزجاج، الأزرار، الألوان الرئيسية</div>
+                      </div>
+                    )}
+
+                    {section === "mega" && !isOwnerRole && (
+                      <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 text-center">
+                        <div className="text-[11px] text-amber-300 font-black">👑 الثيمات الكاملة للمالك بس</div>
+                        <div className="text-[9px] text-gray-400 font-bold mt-1">بوت التصميم، Mega 2026، ثيمات الألوان السريعة</div>
+                      </div>
                     )}
 
                   </div>

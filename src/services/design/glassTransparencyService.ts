@@ -9,7 +9,9 @@ export type GlassFormId =
   | "ghost"
   | "ios-vibrancy"
   | "ios-liquid"
-  | "ios-widget";
+  | "ios-widget"
+  | "fully-transparent"
+  | "background-reveal";
 
 export interface GlassFormPreset {
   id: GlassFormId;
@@ -146,6 +148,28 @@ export const GLASS_FORM_PRESETS: GlassFormPreset[] = [
     previewPanelBlur: "blur(12px)",
     previewPanelBorder: "rgba(255,255,255,0.35)",
     previewBackdrop: "linear-gradient(145deg, #f1f5f9, #94a3b8)",
+  },
+  {
+    id: "fully-transparent",
+    title: "شفافية كاملة",
+    subtitle: "بدون خلفية نهائياً — فقط حدود خفيفة",
+    emoji: "🫧",
+    blurLabel: "0px",
+    previewPanelBg: "transparent",
+    previewPanelBlur: "none",
+    previewPanelBorder: "rgba(255,255,255,0.08)",
+    previewBackdrop: "linear-gradient(145deg, #0a1628, #1e3a5f)",
+  },
+  {
+    id: "background-reveal",
+    title: "إظهار الخلفية 2026",
+    subtitle: "بطاقات شفافة جداً — الخلفية باينة من وراها",
+    emoji: "🖼️",
+    blurLabel: "8px",
+    previewPanelBg: "rgba(255,255,255,0.03)",
+    previewPanelBlur: "blur(4px)",
+    previewPanelBorder: "rgba(255,255,255,0.15)",
+    previewBackdrop: "linear-gradient(145deg, #0a1628, #1e3a5f)",
   },
 ];
 

@@ -69,12 +69,12 @@ export function FloatingDropdownPortal({
     <AnimatePresence>
       {open && (
         <motion.div
-          initial={{ opacity: 0, y: placement === "above" ? 8 : -8, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: placement === "above" ? 8 : -8, scale: 0.96 }}
+          initial={{ opacity: 0, y: placement === "above" ? 6 : -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: placement === "above" ? 6 : -6 }}
           transition={{ duration: 0.14 }}
           style={style}
-          className={`lamma-floating-dropdown hidden md:block ${className}`.trim()}
+          className={`lamma-floating-dropdown ${className}`.trim()}
           onMouseDown={(e) => e.stopPropagation()}
         >
           {children}

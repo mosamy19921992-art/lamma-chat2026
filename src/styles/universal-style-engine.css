@@ -5,7 +5,99 @@
   background-color: var(--us-bg, #060a12);
 }
 
-.lamma-neutral-glass[data-universal-style="active"][data-us-global-media="true"][data-us-global-video] .lamma-active-wallpaper {
+/* Text color overrides for specific elements — !important to override hardcoded theme colors */
+.lamma-neutral-glass[data-universal-style="active"] .lamma-side-column,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-glass,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-frost-glass,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-list-panel,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-modal-shell,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-popover-shell,
+.lamma-neutral-glass[data-universal-style="active"] .sidebar-container,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-mobile-sidebar-shell {
+  color: var(--us-text, var(--text-primary)) !important;
+}
+
+/* Message text colors — !important to override hardcoded bubble colors */
+.lamma-neutral-glass[data-universal-style="active"] .lamma-message,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-msg-bubble,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-msg-content,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-msg-bubble-own,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-msg-bubble-system {
+  color: var(--us-text, var(--text-primary)) !important;
+}
+
+/* Header and navigation text */
+.lamma-neutral-glass[data-universal-style="active"] .lamma-header,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-toolbar,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-pwa-bottom-nav,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-header-mini-btn {
+  color: var(--us-text, var(--text-primary)) !important;
+}
+
+/* Input and composer text */
+.lamma-neutral-glass[data-universal-style="active"] .lamma-composer-field,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-chat-input-shell,
+.lamma-neutral-glass[data-universal-style="active"] input[type="text"],
+.lamma-neutral-glass[data-universal-style="active"] textarea {
+  color: var(--us-text, var(--text-primary)) !important;
+}
+
+/* Button text */
+.lamma-neutral-glass[data-universal-style="active"] .lamma-toolbar-btn,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-header-mini-btn,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-pwa-bottom-nav-item,
+.lamma-neutral-glass[data-universal-style="active"] button.primaryBtn,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-pwa-bottom-nav-item-active {
+  color: var(--us-text, var(--text-primary)) !important;
+}
+
+/* Links and accent-colored text */
+.lamma-neutral-glass[data-universal-style="active"] a,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-accent-text,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-msg-meta {
+  color: var(--us-accent, var(--us-text, var(--text-primary))) !important;
+}
+
+/* PM bubbles */
+.lamma-neutral-glass[data-universal-style="active"] .lamma-pm-bubble-own,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-pm-bubble-incoming {
+  color: var(--us-text, var(--text-primary)) !important;
+}
+
+/* Member names and nicknames */
+.lamma-neutral-glass[data-universal-style="active"] .lamma-member-name,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-nickname,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-username {
+  color: var(--us-accent, var(--us-text, var(--text-primary))) !important;
+}
+
+/* System messages */
+.lamma-neutral-glass[data-universal-style="active"] .lamma-system-message,
+.lamma-neutral-glass[data-universal-style="active"] .lamma-msg-bubble-system {
+  color: var(--us-text, var(--text-primary)) !important;
+}
+
+/* Aurora shell — override golden hardcoded text when universal style is active */
+.lamma-neutral-glass[data-universal-style="active"][data-app-shell="aurora"] .lamma-composer-field,
+.lamma-neutral-glass[data-universal-style="active"][data-app-shell="aurora"] input[type="text"],
+.lamma-neutral-glass[data-universal-style="active"][data-app-shell="aurora"] textarea,
+.lamma-neutral-glass[data-universal-style="active"][data-app-shell="aurora"] .lamma-message,
+.lamma-neutral-glass[data-universal-style="active"][data-app-shell="aurora"] .lamma-msg-bubble-own,
+.lamma-neutral-glass[data-universal-style="active"][data-app-shell="aurora"] .lamma-msg-bubble-system,
+.lamma-neutral-glass[data-universal-style="active"][data-app-shell="aurora"] .lamma-msg-meta {
+  color: var(--us-text, var(--text-primary)) !important;
+}
+
+.lamma-neutral-glass[data-universal-style="active"][data-app-shell="aurora"] .lamma-msg-meta {
+  color: var(--us-accent, var(--us-text, var(--text-primary))) !important;
+}
+
+.lamma-neutral-glass[data-universal-style="active"][data-app-shell="aurora"]
+  .lamma-message:not(.lamma-msg-bubble-own):not(.lamma-msg-bubble-system) {
+  color: var(--us-text, var(--ui-bubble-other-text, var(--text-primary))) !important;
+}
+
+.lamma-neutral-glass[data-universal-style="active"] [data-us-global-media="true"][data-us-global-video] .lamma-active-wallpaper {
   background-image: none !important;
 }
 
@@ -564,7 +656,7 @@
 .lamma-neutral-glass[data-us-bubbles-neutral="true"] .lamma-message:not(.lamma-msg-bubble-own) {
   background: rgba(18, 22, 28, 0.88) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
-  color: #e2e8f0 !important;
+  color: var(--us-text, #e2e8f0) !important;
 }
 
 .lamma-neutral-glass[data-us-bubbles-neutral="true"] .lamma-msg-bubble-own {

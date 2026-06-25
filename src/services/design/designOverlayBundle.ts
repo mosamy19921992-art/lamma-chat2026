@@ -25,6 +25,12 @@ import {
   normalizeUniversalStyleConfig,
   type UniversalStyleConfig,
 } from "./universalStyleTypes";
+import {
+  loadUDSSettings,
+  saveUDSSettings,
+  applyUDSSettings,
+  type UDSSettings,
+} from "./ultimateDesignSystemService";
 
 export interface DesignOverlaysBundle {
   version: 1;
@@ -41,9 +47,20 @@ export interface DesignOverlaysBundle {
   bubbleShape: BubbleShapeId;
   pmBubble: PmBubbleStyleId;
   customFace: CustomFace;
+  /** UDS neon/glass settings — synced so all visitors see owner's effects */
+  uds?: UDSSettings;
+  /** Magic 2026 FX body-class toggles — synced so all visitors see owner's effects */
+  fx2026?: Record<string, boolean>;
 }
 
 const skipSync = { skipSync: true as const };
+
+function loadFx2026(): Record<string, boolean> {
+  try {
+    const s = localStorage.getItem("lamma_fx_on");
+    return s ? (JSON.parse(s) as Record<string, boolean>) : {};
+  } catch { return {}; }
+}
 
 export function collectDesignOverlays(): DesignOverlaysBundle {
   const glass = loadGlassFormState();
@@ -62,6 +79,8 @@ export function collectDesignOverlays(): DesignOverlaysBundle {
     bubbleShape: loadBubbleShapeId(),
     pmBubble: loadPmBubbleStyleId(),
     customFace: loadFace(),
+    uds: loadUDSSettings(),
+    fx2026: loadFx2026(),
   };
 }
 
@@ -91,6 +110,16 @@ export function applyDesignOverlays(bundle: Partial<DesignOverlaysBundle> | unde
   if (bundle.customFace) {
     saveFace(bundle.customFace);
     applyFace(bundle.customFace);
+  }
+  if (bundle.uds) {
+    saveUDSSettings(bundle.uds);
+    applyUDSSettings(bundle.uds);
+  }
+  if (bundle.fx2026) {
+    try { localStorage.setItem("lamma_fx_on", JSON.stringify(bundle.fx2026)); } catch {}
+    Object.entries(bundle.fx2026).forEach(([id, on]) => {
+      document.body.classList.toggle(`lamma-fx-${id}`, !!on);
+    });
   }
 }
 

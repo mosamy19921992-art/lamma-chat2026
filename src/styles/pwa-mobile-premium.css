@@ -144,13 +144,13 @@
     min-height: 44px;
     border: none;
     background: transparent;
-    color: rgba(148, 163, 184, 0.95);
+    color: var(--us-muted, rgba(148, 163, 184, 0.95));
     border-radius: 12px;
     -webkit-tap-highlight-color: transparent;
   }
 
   .lamma-pwa-bottom-nav-item-active {
-    color: #ecfdf5;
+    color: var(--us-accent, #ecfdf5);
     background: linear-gradient(
       180deg,
       rgba(16, 185, 129, 0.22),
@@ -176,7 +176,7 @@
   }
 
   .lamma-pwa-bottom-nav-item-active .lamma-pwa-bottom-nav-icon {
-    color: #a7f3d0;
+    color: var(--us-accent, #a7f3d0);
   }
 
   .lamma-pwa-bottom-nav-label {
@@ -213,45 +213,46 @@
     padding-bottom: 4px !important;
   }
 
-  /* Mobile composer — 2 rows: [+] [input] [send] then tool strip */
-  .lamma-composer-layout {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
-    column-gap: 0.3rem;
-    row-gap: 0.35rem;
-    align-items: end;
+  /* Mobile composer — single row: [+] [tools] [input] [send] */
+  .lamma-pwa-app-shell .lamma-composer-layout {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.18rem;
   }
 
-  .lamma-composer-slot-attach {
-    grid-column: 1;
-    grid-row: 1;
+  .lamma-pwa-app-shell .lamma-composer-slot-attach {
+    order: 1;
+    flex: 0 0 auto;
   }
 
-  .lamma-composer-slot-input {
-    grid-column: 2;
-    grid-row: 1;
-    min-width: 0;
-  }
-
-  .lamma-composer-slot-send {
-    grid-column: 3;
-    grid-row: 1;
-  }
-
-  .lamma-composer-tools-wrapper {
-    grid-column: 1 / -1;
-    grid-row: 2;
+  .lamma-pwa-app-shell .lamma-composer-tools-wrapper {
+    order: 2;
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    width: auto;
+    max-width: 5.75rem;
+    gap: 0.1rem;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding-bottom: 1px;
+    padding-bottom: 0;
   }
 
-  .lamma-composer-tools-wrapper::-webkit-scrollbar {
+  .lamma-pwa-app-shell .lamma-composer-slot-input {
+    order: 3;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .lamma-pwa-app-shell .lamma-composer-slot-send {
+    order: 4;
+    flex: 0 0 auto;
+  }
+
+  .lamma-pwa-app-shell .lamma-composer-tools-wrapper::-webkit-scrollbar {
     display: none;
   }
 
@@ -282,6 +283,172 @@
 
   .lamma-pwa-app-shell .lamma-room-header {
     flex-shrink: 0;
+  }
+
+  /* ── شريط الغرفة تحت الهيدر — أيقونات أصغر وأخف ── */
+  .lamma-pwa-app-shell .lamma-chat-subheader {
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+    box-shadow: none;
+  }
+
+  .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-header:first-child {
+    min-height: 26px;
+  }
+
+  .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-header:last-child {
+    height: 24px;
+  }
+
+  .lamma-pwa-app-shell .lamma-chat-subheader .lamma-topic-pin {
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 0.35rem;
+    font-size: 8px;
+    box-shadow: none;
+  }
+
+  .lamma-pwa-app-shell .lamma-chat-subheader .lamma-frost-ticker {
+    width: 5.5rem !important;
+    max-width: 42%;
+  }
+
+  .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-ticker-icon {
+    width: 1.2rem !important;
+    height: 1.2rem !important;
+    border-radius: 0.45rem;
+  }
+
+  .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-ticker-icon svg {
+    width: 10px !important;
+    height: 10px !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-strip-action,
+  .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-header:last-child .lamma-toolbar-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    border-radius: 0.4rem;
+    box-shadow: none !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    vertical-align: middle;
+  }
+
+  .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-tab {
+    min-width: 3.4rem !important;
+    padding-top: 0.2rem !important;
+    padding-bottom: 0.15rem !important;
+    box-shadow: none;
+  }
+
+  .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-tab span:first-child {
+    font-size: 10px !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-chat-subheader .lamma-quiet-power-btn-active {
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.22) !important;
+    background: rgba(16, 185, 129, 0.1) !important;
+    border-color: rgba(16, 185, 129, 0.22) !important;
+  }
+
+  /* ── شريط الكتابة — أنحف وأنعم ── */
+  .lamma-pwa-app-shell .lamma-pwa-composer-stack {
+    background: rgba(5, 8, 12, 0.96);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .lamma-pwa-app-shell .lamma-composer-layout.lamma-chat-input-shell {
+    padding: 0.3rem 0.45rem 0.35rem !important;
+    gap: 0.2rem !important;
+    row-gap: 0.28rem !important;
+    border-radius: 14px 14px 0 0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-bottom: none !important;
+    background: rgba(7, 10, 14, 0.92) !important;
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.22) !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-composer-tool {
+    width: 1.28rem !important;
+    height: 1.28rem !important;
+    min-width: 1.28rem !important;
+    min-height: 1.28rem !important;
+    border-radius: 999px;
+  }
+
+  .lamma-pwa-app-shell .lamma-composer-tool svg {
+    width: 11px !important;
+    height: 11px !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-composer-layout .lamma-toolbar-btn,
+  .lamma-pwa-app-shell .lamma-composer-layout .lamma-quiet-power-btn {
+    box-shadow: none !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-composer-field {
+    height: 1.72rem !important;
+    min-height: 1.72rem !important;
+    padding-top: 0.22rem !important;
+    padding-bottom: 0.22rem !important;
+    font-size: 15px !important;
+    line-height: 1.2 !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-composer-slot-send {
+    width: 1.72rem !important;
+    height: 1.72rem !important;
+    min-width: 1.72rem !important;
+    min-height: 1.72rem !important;
+    box-shadow: 0 4px 10px rgba(24, 181, 123, 0.18) !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-composer-slot-send svg {
+    width: 11px !important;
+    height: 11px !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-composer-tools-wrapper {
+    gap: 0.08rem !important;
+    padding-top: 0 !important;
+    min-height: 1.28rem;
+  }
+
+  /* تقليل رعشة القوائم المنبثقة على الموبايل */
+  .lamma-pwa-app-shell .lamma-floating-dropdown {
+    will-change: opacity;
+  }
+
+  .lamma-pwa-app-shell.lamma-modal-open,
+  html.lamma-modal-open body {
+    overflow: hidden !important;
+    overscroll-behavior: none;
+  }
+
+  .lamma-pwa-app-shell .lamma-chat-input-shell {
+    padding-bottom: 2px !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-header-actions {
+    align-items: center;
+    gap: 0.15rem;
+  }
+
+  .lamma-pwa-app-shell .lamma-header-actions .lamma-header-mini-btn {
+    width: 1.35rem !important;
+    height: 1.35rem !important;
+    min-width: 1.35rem !important;
+    min-height: 1.35rem !important;
+    padding: 0.1rem !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-header-actions .lamma-header-mini-btn svg {
+    width: 11px !important;
+    height: 11px !important;
   }
 
   .lamma-neutral-glass .lamma-header-mini-btn svg {

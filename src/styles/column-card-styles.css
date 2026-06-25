@@ -260,3 +260,81 @@
     background-position: 100% 50%;
   }
 }
+
+/* ── Fully Transparent glass form ──
+   Cards become see-through with only a hairline border.
+   Overrides the default glass-form styling from the top of this file. */
+.lamma-neutral-glass[data-glass-form="fully-transparent"]:not([data-column-card-style]) .lamma-side-column[class*="border-r"] .lamma-glass,
+.lamma-neutral-glass[data-glass-form="fully-transparent"]:not([data-column-card-style]) .lamma-side-column[class*="border-l"] .lamma-glass,
+.lamma-neutral-glass[data-glass-form="fully-transparent"][data-column-card-style="neon-ring"] .lamma-side-column[class*="border-r"] .lamma-glass,
+.lamma-neutral-glass[data-glass-form="fully-transparent"][data-column-card-style="neon-ring"] .lamma-side-column[class*="border-l"] .lamma-glass {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: var(--gf-column-radius, 24px) !important;
+  box-shadow: none !important;
+}
+
+.lamma-neutral-glass[data-glass-form="fully-transparent"]:not([data-column-card-style]) .lamma-side-column .lamma-glass::before,
+.lamma-neutral-glass[data-glass-form="fully-transparent"]:not([data-column-card-style]) .lamma-side-column .lamma-glass::after,
+.lamma-neutral-glass[data-glass-form="fully-transparent"][data-column-card-style="neon-ring"] .lamma-side-column .lamma-glass::before,
+.lamma-neutral-glass[data-glass-form="fully-transparent"][data-column-card-style="neon-ring"] .lamma-side-column .lamma-glass::after {
+  display: none !important;
+  content: none !important;
+  animation: none !important;
+}
+
+/* Also apply transparent glass to composer and header for consistency */
+.lamma-neutral-glass[data-glass-form="fully-transparent"] .lamma-composer-bar {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.lamma-neutral-glass[data-glass-form="fully-transparent"] .lamma-header {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ── Background Reveal glass form 2026 ──
+   Cards are extremely transparent with minimal blur to show the background image clearly.
+   Perfect for showcasing custom room backgrounds. */
+.lamma-neutral-glass[data-glass-form="background-reveal"]:not([data-column-card-style]) .lamma-side-column[class*="border-r"] .lamma-glass,
+.lamma-neutral-glass[data-glass-form="background-reveal"]:not([data-column-card-style]) .lamma-side-column[class*="border-l"] .lamma-glass,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-column-card-style="neon-ring"] .lamma-side-column[class*="border-r"] .lamma-glass,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-column-card-style="neon-ring"] .lamma-side-column[class*="border-l"] .lamma-glass {
+  background: rgba(255, 255, 255, 0.03) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(4px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: var(--gf-column-radius, 24px) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.lamma-neutral-glass[data-glass-form="background-reveal"]:not([data-column-card-style]) .lamma-side-column .lamma-glass::before,
+.lamma-neutral-glass[data-glass-form="background-reveal"]:not([data-column-card-style]) .lamma-side-column .lamma-glass::after,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-column-card-style="neon-ring"] .lamma-side-column .lamma-glass::before,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-column-card-style="neon-ring"] .lamma-side-column .lamma-glass::after {
+  display: none !important;
+  content: none !important;
+  animation: none !important;
+}
+
+/* Apply background-reveal glass to composer and header for consistency */
+.lamma-neutral-glass[data-glass-form="background-reveal"] .lamma-composer-bar {
+  background: rgba(255, 255, 255, 0.03) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(4px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+.lamma-neutral-glass[data-glass-form="background-reveal"] .lamma-header {
+  background: rgba(255, 255, 255, 0.03) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(4px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+}

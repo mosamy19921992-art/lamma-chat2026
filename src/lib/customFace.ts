@@ -392,6 +392,21 @@ export function applyFace(face: CustomFace): boolean {
   root.style.setProperty("--face-accent", normalizeHex(face.accent));
   root.style.setProperty("--face-accent-rgb", hexToRgb(face.accent));
   root.style.setProperty("--face-text", normalizeHex(face.text));
+  root.style.setProperty("--face-accent", normalizeHex(face.accent));
+  const universalStyleActive = root.getAttribute("data-universal-style") === "active";
+  if (!universalStyleActive) {
+    root.style.setProperty("--us-text", normalizeHex(face.text));
+    root.style.setProperty("--us-accent", normalizeHex(face.accent));
+    root.style.setProperty("--ui-bubble-other-text", normalizeHex(face.text));
+    root.style.setProperty("--ui-text-meta", normalizeHex(face.accent));
+    root.style.setProperty("--text-primary", normalizeHex(face.text));
+    root.style.setProperty("--text-secondary", normalizeHex(face.accent));
+    root.style.setProperty("--accent-primary", normalizeHex(face.accent));
+    root.style.setProperty("--accent-secondary", normalizeHex(face.accent));
+    root.style.setProperty("--lamma-sidebar-store-text", normalizeHex(face.text));
+    root.style.setProperty("--lamma-sidebar-radio-text", normalizeHex(face.text));
+    root.style.setProperty("--lamma-sidebar-music-text", normalizeHex(face.text));
+  }
   root.style.setProperty("--face-frame-r", fr ?? "214");
   root.style.setProperty("--face-frame-g", fg ?? "179");
   root.style.setProperty("--face-frame-b", fb ?? "91");
