@@ -1,3 +1,4 @@
+import * as mongoSanitize from "express-mongo-sanitize";
 import { supabase } from "../../lib/supabase";
 import type { RoomDjState } from "../../lib/chatTypes";
 import { filterSafeMediaUrl } from "../../lib/chatHelpers";
@@ -118,7 +119,7 @@ export async function persistRoomDjState(
   if (supabase) {
     const { error } = await supabase
       .from("owner_settings")
-      .update({ room_dj_map: next })
+      .update({ room_dj_map: mongoSanitize.sanitize({ data: next }).data })
       .eq("id", settingsRowId);
     if (error) {
       console.warn("Failed to sync room DJ state", error);
