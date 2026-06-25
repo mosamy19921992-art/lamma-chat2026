@@ -65,7 +65,7 @@ function getSupabaseAuthClient() {
 export async function verifySupabaseJwt(req) {
   const authHeader = req.headers.authorization || "";
   if (!authHeader.startsWith("Bearer ")) return null;
-  const token = authHeader.slice(7).trim();
+  const token = String(authHeader.slice(7)).trim();
   if (!token) return null;
 
   const client = getSupabaseAuthClient();
