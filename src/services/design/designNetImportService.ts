@@ -1,6 +1,18 @@
 import type { DesignImportPack } from "./designImportCatalog";
 import { isSafeHttpUrl } from "../../lib/chatHelpers";
 
+function validateRootDomain(url?: string, domain?: string): boolean {
+  if (!url || !domain) {
+    return false;
+  }
+  try {
+    const host = new URL(url).host;
+    return host === domain || host.endsWith('.' + domain);
+  } catch(_) {
+    return false;
+  }
+}
+
 const IMPORT_STORAGE_KEY = "lamma_design_imported_packs";
 const MAX_IMPORTED = 24;
 
@@ -73,7 +85,7 @@ export async function fetchDesignPackFromUrl(
     if (
       !contentType.includes("json") &&
       !trimmed.endsWith(".json") &&
-      !trimmed.includes("raw.githubusercontent")
+      !validateRootDomain(trimmed, "raw.github")
     ) {
       return { pack: null, error: "الرابط لازم يرجّع JSON (ملف ثيم)." };
     }

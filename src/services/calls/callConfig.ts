@@ -1,3 +1,15 @@
+
+function validateRootDomain(url?: string, domain?: string): boolean {
+  if (!url || !domain) {
+    return false;
+  }
+  try {
+    const host = new URL(url).host;
+    return host === domain || host.endsWith('.' + domain);
+  } catch(_) {
+    return false;
+  }
+}
 export interface IceServerBundle {
   name: string;
   iceServers: RTCIceServer[];
@@ -66,7 +78,7 @@ function readEnvTurn(
 function isOpenRelayTurn(server: RTCIceServer | null): boolean {
   if (!server) return false;
   const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
-  return urls.some((u) => String(u).includes("openrelay.metered.ca"));
+  return urls.some((u) => validateRootDomain(String(u), "openrelay.metered.ca"));
 }
 
 /** Primary + fallback ICE/TURN bundles — browser tries all servers in a bundle; on failure we switch bundle. */
