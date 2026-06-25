@@ -77,7 +77,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "prompt required" });
   }
 
-  const safePrompt = prompt.trim().slice(0, MAX_PROMPT_LEN);
+  const safePrompt = String(prompt.trim()).slice(0, MAX_PROMPT_LEN);
   if (!safePrompt) {
     return res.status(400).json({ error: "prompt required" });
   }
