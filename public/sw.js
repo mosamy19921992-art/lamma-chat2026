@@ -5,6 +5,18 @@
 //  - Network-First  for HTML / routes
 //  - Offline fallback page
 
+function validateRootDomain(url, domain) {
+  if (!url || !domain) {
+    return false;
+  }
+  try {
+    const host = new URL(url).host;
+    return host === domain || host.endsWith('.' + domain);
+  } catch(_) {
+    return false;
+  }
+}
+
 const VERSION = "lamma-178234800010";
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
@@ -82,7 +94,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   // 1. Supabase realtime / API — always network only to avoid stale or sensitive data
-  if (url.host.includes("supabase.co")) {
+  if (validateRootDomain(url.host, "supabase.co")) {
     event.respondWith(networkOnly(request));
     return;
   }
