@@ -135,7 +135,7 @@ export function ShareModal({ isOpen, onClose, appLink }: ShareModalProps) {
                   أو وجّه كاميرا موبايلك (أو موبايل صديقك) نحو الكود ده للدخول
                   فوراً:
                 </span>
-                <div className="bg-white p-2.5 rounded-2xl inline-block border-2 border-[#a3e635]/20 shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
+                <div className="bg-white p-2.5 rounded-2xl inline-block border-2 lamma-accent-border-soft shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
                   <img
                     loading="lazy"
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(appLink)}`}

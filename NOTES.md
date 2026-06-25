@@ -54,7 +54,25 @@
 
 ## 🖼 التصميم
 - الهوية: أخضر لامع + أسود + ذهب VIP
-- Tokens في `src/index.css`: `--accent-primary`, `--accent-secondary`
+- Tokens في `src/index.css`: `--accent-primary`, `--accent-secondary`, `--lamma-header-accent-rgb`
+
+### ✅ UI/UX Polish — مرحلة 1 + 2 (مغلقة — يونيو 2026)
+**Production:** https://lamma-arabic-chat-room.vercel.app  
+**Commits:** `d4f6e1e` (Phase 1) · `0437cbf` (Phase 1 close) · `021e6dc` (Phase 2)  
+**Deploy:** `dpl_BYzYspFLSaZELL3NrUrHz8JcMuzP`
+
+| المرحلة | المحتوى |
+|---|---|
+| **1** | PWA composer 44px touch · input 16px (iOS) · Admin accent tokens · mobile FX تخفيف |
+| **2** | توحيد accent في chrome (هيدر، قوائم، composer، مكالمات) + `lamma-modal-shell` + أزرار primary/muted |
+
+**ملفات رئيسية:** `src/styles/ui-polish-audit.css`, `pwa-mobile-premium.css`, `ios-magic.css`, `design-fx-2026-fixes.css`, `AdminPanelModal.tsx`, `ChatScreen.tsx` (chrome فقط)
+
+**كلاسات tokens:** `lamma-accent-text`, `lamma-accent-text-soft`, `lamma-accent-tab-active`, `lamma-accent-bg-soft/medium`, `lamma-accent-border-soft`
+
+**متعمد لم يُمس:** `AMLogo.tsx` (هوية) · ألوان نيك المستخدمين في الرسائل · إشعارات yellow/blue/red
+
+**اختبار يدوي على موبايل (PWA/Safari):** شريط الكتابة · zoom · أزرار composer · help room `/complaint`
 
 ## 💬 لهجة المستخدم
 - عامية مصرية

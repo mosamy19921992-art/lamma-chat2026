@@ -454,7 +454,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
 
                 {isOwnProfile && (
                   <div className="p-4 rounded-2xl lamma-section-card space-y-3">
-                    <div className="text-[11px] font-black text-[#a3e635]">
+                    <div className="text-[11px] font-black lamma-accent-text-soft">
                       السيرة الذاتية (Bio)
                     </div>
                     <p className="text-[10px] text-gray-400 leading-relaxed">
@@ -477,7 +477,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                 {/* Fingerprint Metadata Section — staff viewing other members only */}
                 {showStaffTools && (
                 <div className="space-y-1.5">
-                  <div className="text-[9px] font-black text-[#a3e635] tracking-wide uppercase">
+                  <div className="text-[9px] font-black lamma-accent-text-soft tracking-wide uppercase">
                     بصمة المعرف الرقمي ومواصفات الاتصال الفني (Device Signature)
                   </div>
                   <div className="p-3 rounded-2xl space-y-2 text-[10px] font-mono text-gray-300 lamma-section-card">
@@ -491,7 +491,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                       <span className="text-gray-500 select-none">
                         بصمة الجهاز الفنية:
                       </span>{" "}
-                      <span className="text-[#a3e635]">
+                      <span className="lamma-accent-text-soft">
                         {selectedProfileMember.fingerprint}
                       </span>
                     </div>
@@ -893,7 +893,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                                     e.target.value as MemberRole,
                                   );
                                 }}
-                                className="bg-black/60 border border-green-500/25 p-1 rounded-xl text-[9px] text-[#a3e635] font-black focus:ring-0 focus:outline-none focus:border-green-500 disabled:opacity-50"
+                                className="bg-black/60 border border-green-500/25 p-1 rounded-xl text-[9px] lamma-accent-text-soft font-black focus:ring-0 focus:outline-none focus:border-green-500 disabled:opacity-50"
                               >
                                 <option value="user">👨 MEMBER (إزالة)</option>
                                 {grantableRoles.map((r) => (
@@ -919,7 +919,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                             <div className="pt-2.5 border-t border-white/5 space-y-3">
                               {/* Custom Permissions Controls exclusively handled by owner */}
                               <div className="p-3 bg-black/60 border border-green-500/25 rounded-2xl space-y-2.5">
-                                <div className="text-[10px] font-black text-[#a3e635] flex items-center gap-1.5 border-b border-green-500/10 pb-1.5">
+                                <div className="text-[10px] font-black lamma-accent-text-soft flex items-center gap-1.5 border-b border-green-500/10 pb-1.5">
                                   <span className="inline-flex items-center gap-1.5">
                                     <Shield
                                       size={13}

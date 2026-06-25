@@ -98,7 +98,7 @@ function ChatMessageRowInner({
     msg.author === myActiveSession.nickname ? subscription : null;
   const cleanName = getShortenedNickname(msg.author);
   const nameColor = isSystem
-    ? "#a3e635"
+    ? "#10b981"
     : msg.author === myActiveSession.nickname
       ? myActiveSession.color
       : msg.color;
