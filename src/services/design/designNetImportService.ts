@@ -71,7 +71,7 @@ export async function fetchDesignPackFromUrl(
     }
     const contentType = res.headers.get("content-type") || "";
     if (
-      !contentType.includes("json") &&
+      !String(contentType).includes("json") &&
       !trimmed.endsWith(".json") &&
       !trimmed.includes("raw.githubusercontent")
     ) {
