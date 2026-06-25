@@ -33,7 +33,7 @@ function setString(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
   } catch (err) {
-    console.warn(`[storage] Failed to write string "${key}":`, err);
+    console.warn(`[storage] Failed to write string "${String(key).replace(/\n|\r/g, ``)}":`, err);
   }
 }
 

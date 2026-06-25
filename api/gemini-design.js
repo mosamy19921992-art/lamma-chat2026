@@ -130,7 +130,7 @@ export default async function handler(req, res) {
     const parts = data?.candidates?.[0]?.content?.parts ?? [];
     const rawText = parts.map((p) => p?.text ?? "").join("").trim() || "{}";
 
-    const cleaned = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+    const cleaned = String(rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")).trim();
 
     let parsed;
     try {

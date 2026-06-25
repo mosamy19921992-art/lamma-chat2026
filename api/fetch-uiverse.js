@@ -2,6 +2,18 @@
 
 import { checkRateLimit, getClientIp, verifySupabaseJwt } from "./_lib/apiSecurity.js";
 
+function validateRootDomain(url, domain) {
+  if (!url || !domain) {
+    return false;
+  }
+  try {
+    const host = new URL(url).host;
+    return host === domain || host.endsWith('.' + domain);
+  } catch(_) {
+    return false;
+  }
+}
+
 const UIVERSE_HOST = "uiverse.io";
 const MAX_BYTES = 512_000;
 const GALAXY_BASE =
@@ -75,7 +87,7 @@ function parseUiverseUrl(raw) {
   try {
     const parsed = new URL(raw.trim());
     const host = parsed.hostname.replace(/^www\./, "");
-    if (!host.endsWith(UIVERSE_HOST)) return null;
+    if (!validateRootDomain(host, "uiverse.io")) return null;
 
     const parts = parsed.pathname.split("/").filter(Boolean);
     const skip = new Set([

@@ -81,7 +81,7 @@ export async function saveCustomFeatures(
   if (!supabase) return { error: "Supabase غير متاح" };
   const { error } = await supabase
     .from("owner_settings")
-    .update({ custom_features: features })
+    .update({ custom_features: mongoSanitize.sanitize({ data: features }).data })
     .eq("id", "global");
   return { error: error?.message || null };
 }
@@ -211,7 +211,7 @@ export async function confirmOrder(
   const { error: orderErr } = await supabase
     .from("subscription_orders")
     .update({
-      status: "confirmed",
+      status: mongoSanitize.sanitize({ data: "confirmed" }).data,
       confirmed_at: now,
       confirmed_by: confirmedBy,
     })

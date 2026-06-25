@@ -34,7 +34,7 @@ export default async function handler(req, res) {
   }
 
   const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ")
+  const token = String(authHeader).startsWith("Bearer ")
     ? authHeader.slice(7)
     : req.headers["x-bootstrap-secret"];
   if (token !== bootstrapSecret) {
