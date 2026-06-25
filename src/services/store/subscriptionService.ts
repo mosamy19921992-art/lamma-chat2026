@@ -1,3 +1,4 @@
+import * as mongoSanitize from "express-mongo-sanitize";
 import { supabase } from "../../lib/supabase";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -245,7 +246,7 @@ export async function rejectOrder(
   if (!supabase) return { error: "Supabase غير متاح" };
   const { error } = await supabase
     .from("subscription_orders")
-    .update({ status: "rejected", owner_note: ownerNote })
+    .update({ status: mongoSanitize.sanitize({ data: "rejected" }).data, owner_note: ownerNote })
     .eq("id", orderId);
   return { error: error?.message || null };
 }
@@ -291,7 +292,7 @@ export async function savePaymentInfo(
   if (!supabase) return { error: "Supabase غير متاح" };
   const { error } = await supabase
     .from("owner_settings")
-    .update({ payment_info: info })
+    .update({ payment_info: mongoSanitize.sanitize({ data: info }).data })
     .eq("id", "global");
   return { error: error?.message || null };
 }

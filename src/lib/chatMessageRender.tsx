@@ -121,7 +121,7 @@ export function LazyYoutubeEmbed({
   return (
     <div className={containerClassName}>
       <div className="relative pb-[56.25%] h-0">
-        <iframe
+        <iframe sandbox
           title="YouTube Video Player"
           src={`https://www.youtube.com/embed/${videoId}`}
           frameBorder="0"

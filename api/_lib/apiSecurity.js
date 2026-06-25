@@ -64,7 +64,7 @@ function getSupabaseAuthClient() {
 /** Verify Supabase JWT from Authorization: Bearer header. */
 export async function verifySupabaseJwt(req) {
   const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ")) return null;
+  if (!String(authHeader).startsWith("Bearer ")) return null;
   const token = authHeader.slice(7).trim();
   if (!token) return null;
 
