@@ -13,6 +13,7 @@
 @import "./styles/pm-bubble-styles.css";
 @import "./styles/ui-polish-audit.css";
 @import "./styles/ultimate-design-system.css";
+@import "./styles/design-fx-2026-fixes.css";
 @import "tailwindcss";
 
 @theme {
@@ -5574,12 +5575,14 @@ body.lamma-magic-2026 .lamma-section-card::after {
   33%     { color: #00ffcc; text-shadow: 0 0 8px #00ffcc; }
   66%     { color: #c084fc; text-shadow: 0 0 8px #a855f7; }
 }
-body.lamma-fx-holo .lamma-section-card > div:first-child {
+body.lamma-fx-holo .lamma-section-card > div:first-child,
+body.lamma-fx-holo .lamma-neutral-glass .lamma-side-column .lamma-widget-card > div:first-child .font-black {
   animation: lamma-color-cycle 3s linear infinite;
 }
 
 /* ── 2. AURORA — شفق قطبي خلف البطاقات ── */
-body.lamma-fx-aurora .lamma-section-card {
+body.lamma-fx-aurora .lamma-section-card,
+body.lamma-fx-aurora .lamma-neutral-glass .lamma-side-column .lamma-widget-card {
   box-shadow:
     0 0 40px rgba(99,102,241,0.10),
     0 0 80px rgba(6,182,212,0.06),
@@ -5589,11 +5592,13 @@ body.lamma-fx-aurora .lamma-section-card {
 }
 
 /* ── 3. SHIMMER — شريط لمعة يمر على البطاقات ── */
-body.lamma-fx-shimmer .lamma-section-card {
+body.lamma-fx-shimmer .lamma-section-card,
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-side-column .lamma-widget-card {
   position: relative;
   overflow: hidden;
 }
-body.lamma-fx-shimmer .lamma-section-card::after {
+body.lamma-fx-shimmer .lamma-section-card::after,
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-side-column .lamma-widget-card::after {
   content: '';
   position: absolute;
   top: 0; left: 0;
@@ -5606,6 +5611,9 @@ body.lamma-fx-shimmer .lamma-section-card::after {
 }
 body.lamma-fx-shimmer .lamma-section-card:nth-child(2)::after { animation-delay: 1.3s; }
 body.lamma-fx-shimmer .lamma-section-card:nth-child(3)::after { animation-delay: 2.6s; }
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-store-panel .lamma-widget-card::after { animation-delay: 0.4s; }
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-radio-panel .lamma-widget-card::after { animation-delay: 1.2s; }
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-music-panel .lamma-widget-card::after { animation-delay: 2s; }
 
 /* ── 4. FLOAT — الأعمدة تطفو (بدون will-change لتجنب مشاكل GPU) ── */
 body.lamma-fx-float .lamma-column-shell {
@@ -5633,17 +5641,20 @@ body.lamma-fx-neon .lamma-quiet-power-btn:hover {
   50%     { outline-color: rgba(0,255,128,0.55);  box-shadow: 0 0 12px rgba(0,255,128,0.1); }
   75%     { outline-color: rgba(0,191,255,0.55);  box-shadow: 0 0 12px rgba(0,191,255,0.1); }
 }
-body.lamma-fx-rainbow .lamma-section-card {
+body.lamma-fx-rainbow .lamma-section-card,
+body.lamma-fx-rainbow .lamma-neutral-glass .lamma-side-column .lamma-widget-card {
   outline: 1.5px solid rgba(255,0,128,0.5);
   outline-offset: 0;
   animation: lamma-rainbow-outline 4s linear infinite;
 }
 
 /* ── 7. CRYSTAL — نجوم بريق على البطاقات ── */
-body.lamma-fx-crystal .lamma-section-card {
+body.lamma-fx-crystal .lamma-section-card,
+body.lamma-fx-crystal .lamma-neutral-glass .lamma-side-column .lamma-widget-card {
   position: relative;
 }
-body.lamma-fx-crystal .lamma-section-card::before {
+body.lamma-fx-crystal .lamma-section-card::before,
+body.lamma-fx-crystal .lamma-neutral-glass .lamma-side-column .lamma-widget-card::before {
   content: '✦';
   position: absolute;
   top: 7px; right: 8px;

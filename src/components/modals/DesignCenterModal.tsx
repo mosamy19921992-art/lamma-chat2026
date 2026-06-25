@@ -10,6 +10,7 @@ import {
   loadGlassFormTint,
   previewGlassForm,
   GLASS_FORM_PRESETS,
+  GLASS_TINT_SWATCHES,
   type GlassFormId,
 } from '../../services/design/glassTransparencyService';
 import {
@@ -38,6 +39,7 @@ import {
 } from '../../services/design/designAiService';
 import {
   createDefaultUniversalStyle,
+  ensureReadablePalette,
   normalizeUniversalStyleConfig,
   type UniversalStyleConfig,
 } from '../../services/design/universalStyleTypes';
@@ -49,6 +51,7 @@ import {
 } from '../../services/design/sidebarWidgetStyleService';
 import { commitPmBubbleStyle } from '../../services/design/pmBubbleStyleService';
 import {
+  applyUDSSettings,
   loadUDSSettings,
   previewUDSSettings,
   commitUDSSettings,
@@ -396,12 +399,31 @@ export const DesignCenterModal = ({
       if (saved) {
         const preset = JSON.parse(saved);
         if (preset.text && preset.accent && preset.accent2) {
+          const base = normalizeUniversalStyleConfig(null);
+          const readable = ensureReadablePalette({
+            ...base.palette,
+            text: preset.text,
+            accent: preset.accent,
+            accent2: preset.accent2,
+          });
+          if (readable.text !== preset.text) {
+            try {
+              localStorage.setItem(
+                'lamma_text_color_preset',
+                JSON.stringify({
+                  text: readable.text,
+                  accent: preset.accent,
+                  accent2: preset.accent2,
+                }),
+              );
+            } catch { /* non-fatal */ }
+          }
           const root = (document.querySelector('.lamma-neutral-glass') || document.body) as HTMLElement;
-          syncPaletteTextTokens(root, preset);
+          syncPaletteTextTokens(root, readable);
           root.setAttribute('data-universal-style', 'active');
-          setSliderText(preset.text);
-          setSliderAccent(preset.accent);
-          setSliderAccent2(preset.accent2);
+          setSliderText(readable.text);
+          setSliderAccent(readable.accent);
+          setSliderAccent2(readable.accent2);
         }
       }
     } catch {
@@ -486,7 +508,8 @@ export const DesignCenterModal = ({
   const applyPalettePatch = (patch: Partial<UniversalStyleConfig["palette"]>) => {
     if (!previewDesignConfig || !isOwnerRole) return;
     const base = getBase();
-    previewAndTrack({ ...base, palette: { ...base.palette, ...patch } });
+    const palette = ensureReadablePalette({ ...base.palette, ...patch });
+    previewAndTrack({ ...base, palette });
   };
 
   const applyTextColorPreset = (preset: typeof TEXT_COLOR_PRESETS[number]) => {
@@ -548,6 +571,10 @@ export const DesignCenterModal = ({
       musicText: "#f8fafc",
     });
     commitPmBubbleStyle("classic");
+    commitBubbleShape("default");
+    commitColumnCardStyle("neon-ring", loadGlassFormTint());
+    setNeonBeamPicks([]);
+    try { localStorage.removeItem("lamma_text_color_preset"); } catch { /* non-fatal */ }
     // 2) إرجاع الزجاج الافتراضي
     applyGlassForm(null);
     // 3) إيقاف الوجه المخصص (نظام ثيمات)
@@ -562,13 +589,22 @@ export const DesignCenterModal = ({
     // 5) ثيم نظيف افتراضي + حفظ للكل
     if (previewDesignConfig) {
       previewDesignConfig(createDefaultUniversalStyle());
-      if (commitPendingDesignPreview) {
+      if (flushAllDesignPersistence) {
+        const result = await flushAllDesignPersistence();
+        if (!result.ok && !result.localOnly) {
+          alert("⚠️ حدث خطأ أثناء حفظ التغييرات. حاول مرة أخرى.");
+          return;
+        }
+      } else if (commitPendingDesignPreview) {
         const result = await commitPendingDesignPreview();
         if (!result.ok) {
           alert("⚠️ حدث خطأ أثناء حفظ التغييرات. حاول مرة أخرى.");
           return;
         }
+        scheduleDesignOverlaysSync();
       }
+    } else {
+      scheduleDesignOverlaysSync();
     }
     
     // 6) Wait for theme to apply to DOM
@@ -719,6 +755,11 @@ export const DesignCenterModal = ({
   /** Switch tabs — flush pending color save, cancel shape-only previews. */
   const changeSection = (next: DesignSection) => {
     if (next === section) return;
+    if (section === "ultimate" && next !== "ultimate") {
+      applyUDSSettings(loadUDSSettings());
+      setUdsSettings(loadUDSSettings());
+      setUdsPreviewActive(false);
+    }
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current);
       autoSaveTimerRef.current = null;
@@ -726,6 +767,12 @@ export const DesignCenterModal = ({
     }
     cancelShapePreviews();
     setSection(next);
+  };
+
+  const previewUds = (settings: UDSSettings) => {
+    setUdsSettings(settings);
+    previewUDSSettings(settings);
+    setUdsPreviewActive(true);
   };
 
   const handlePreviewGlassForm = (formId: GlassFormId) => {
@@ -859,6 +906,21 @@ export const DesignCenterModal = ({
     });
   };
 
+  const persistMegaThemeBundle = async () => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    if (flushAllDesignPersistence) {
+      await flushAllDesignPersistence();
+      return;
+    }
+    if (commitPendingDesignPreview) {
+      await commitPendingDesignPreview();
+    }
+    scheduleDesignOverlaysSync();
+  };
+
   const applyMegaTheme = (theme: typeof MEGA_THEMES_2026[number]) => {
     if (!isOwnerRole) return;
     // 1) ألوان
@@ -882,8 +944,8 @@ export const DesignCenterModal = ({
     // 6) UDS
     commitUDSSettings(theme.uds);
     setUdsSettings(theme.uds);
-    // 7) sync للكل
-    setTimeout(() => scheduleDesignOverlaysSync(), 80);
+    // 7) sync للكل (ألوان + overlays معاً)
+    void persistMegaThemeBundle();
   };
 
   const applyBot2026 = (preset: "neon-glass" | "ios-liquid") => {
@@ -916,7 +978,7 @@ export const DesignCenterModal = ({
       };
       commitUDSSettings(udsNeon);
       setUdsSettings(udsNeon);
-      scheduleDesignOverlaysSync();
+      void persistMegaThemeBundle();
     } else {
       applyThemePreset({
         name: "آيفون زجاجي",
@@ -939,7 +1001,7 @@ export const DesignCenterModal = ({
       };
       commitUDSSettings(udsIos);
       setUdsSettings(udsIos);
-      scheduleDesignOverlaysSync();
+      void persistMegaThemeBundle();
     }
   };
 
@@ -1138,6 +1200,7 @@ export const DesignCenterModal = ({
                               const base = getBase();
                               const fresh = createDefaultUniversalStyle();
                               previewAndTrack({ ...base, effects: { ...fresh.effects }, regions: fresh.regions });
+                              scheduleDesignOverlaysSync();
                             }}
                             className="w-full py-2 rounded-xl text-[10px] font-black lamma-tab-soft hover:text-white disabled:opacity-40"
                           >
@@ -1168,9 +1231,9 @@ export const DesignCenterModal = ({
 
                         {/* شريط النيون — خط على الحافة + اختيار البطاقات */}
                         <div className="p-4 rounded-2xl lamma-section-card space-y-3">
-                          <div className="text-[11px] text-fuchsia-300 font-black">💠 خط النيون الدوّار</div>
+                          <div className="text-[11px] text-fuchsia-300 font-black">💠 إطار نيون</div>
                           <div className="text-[10px] text-gray-400 font-bold">
-                            خط رفيع بيلف على الحافة بس — اختار البطاقات والحواف اللي عايزها، مش الكل مرة واحدة.
+                            خط رفيع يلف على محيط البطاقة/الحافة — مش رينبو كامل. اختار كل عنصر لوحده.
                           </div>
                           <div className="flex flex-col sm:flex-row items-center gap-4 py-2">
                             <div className="lamma-neon-beam-preview shrink-0" aria-hidden="true" />
@@ -1215,7 +1278,7 @@ export const DesignCenterModal = ({
                                 ⬜ إيقاف خط النيون
                               </button>
                               <p className="text-[9px] text-gray-500 font-bold text-center">
-                                الهيدر وشريط الكتابة: من الأزرار فوق · باقي الأنماط: تبويب 🔷 الشكل
+                                خط النيون الدوّار: اختار بطاقة ببطاقة من الأزرار فوق · إضاءة الحواف (Aurora/Laser): تبويب 🔷 الشكل
                               </p>
                             </div>
                           </div>
@@ -1388,6 +1451,27 @@ export const DesignCenterModal = ({
                               );
                             })}
                           </div>
+                          <div className="space-y-1">
+                            <div className="text-[9px] text-gray-400">لون حافة البطاقات (مع النموذج المختار)</div>
+                            <div className="flex flex-wrap gap-2">
+                              {GLASS_TINT_SWATCHES.map((hex) => (
+                                <button
+                                  key={hex}
+                                  type="button"
+                                  onPointerDown={stopDrag}
+                                  disabled={!isOwnerRole}
+                                  onClick={() => handleGlassTintChange(hex)}
+                                  title={hex}
+                                  className={`w-7 h-7 rounded-lg border-2 transition-transform hover:scale-110 disabled:opacity-40 ${
+                                    glassTintColor.toLowerCase() === hex.toLowerCase()
+                                      ? "border-white ring-1 ring-cyan-400"
+                                      : "border-white/20"
+                                  }`}
+                                  style={{ background: hex }}
+                                />
+                              ))}
+                            </div>
+                          </div>
                           {isGlassPreviewing && (
                             <div className="flex gap-2 pt-2">
                               <button
@@ -1508,7 +1592,7 @@ export const DesignCenterModal = ({
                                 const v = e.target.value;
                                 setSliderAccent(v);
                                 const base = getBase();
-                                previewDesignConfig?.({ ...base, palette: { ...base.palette, accent: v } });
+                                previewAndTrack({ ...base, palette: { ...base.palette, accent: v } });
                               }}
                               className="w-8 h-8 rounded-lg border-0 cursor-pointer bg-transparent"
                             />
@@ -1524,7 +1608,7 @@ export const DesignCenterModal = ({
                                 const v = e.target.value;
                                 setSliderAccent2(v);
                                 const base = getBase();
-                                previewDesignConfig?.({ ...base, palette: { ...base.palette, accent2: v } });
+                                previewAndTrack({ ...base, palette: { ...base.palette, accent2: v } });
                               }}
                               className="w-8 h-8 rounded-lg border-0 cursor-pointer bg-transparent"
                             />
@@ -1562,9 +1646,13 @@ export const DesignCenterModal = ({
                               value={sliderText}
                               onPointerDown={stopDrag}
                               onChange={(e) => {
-                                const v = e.target.value;
-                                setSliderText(v);
-                                applyPalettePatch({ text: v });
+                                const base = getBase();
+                                const readable = ensureReadablePalette({
+                                  ...base.palette,
+                                  text: e.target.value,
+                                });
+                                setSliderText(readable.text);
+                                applyPalettePatch({ text: readable.text });
                               }}
                               className="w-8 h-8 rounded-lg border-0 cursor-pointer bg-transparent"
                             />
@@ -1630,6 +1718,10 @@ export const DesignCenterModal = ({
                             onPointerDown={stopDrag}
                             onClick={() => {
                               cancelPendingDesignPreview?.();
+                              cancelShapePreviews();
+                              applyUDSSettings(loadUDSSettings());
+                              setUdsSettings(loadUDSSettings());
+                              setUdsPreviewActive(false);
                               const base = getBase();
                               setSliderGlassBlur(base.glass.blurPx);
                               setSliderGlassOpacity(base.glass.opacity);
@@ -1685,7 +1777,7 @@ export const DesignCenterModal = ({
                                 onClick={() => {
                                   const newSettings = { ...udsSettings, neonBorder: style.id };
                                   setUdsSettings(newSettings);
-                                  previewUDSSettings(newSettings);
+                                  previewUds(newSettings);
                                   setUdsPreviewActive(true);
                                 }}
                                 className={`p-3 rounded-xl text-[10px] font-black transition-all ${
@@ -1718,7 +1810,7 @@ export const DesignCenterModal = ({
                                     onClick={() => {
                                       const newSettings = { ...udsSettings, neonBorderColor: c.id };
                                       setUdsSettings(newSettings);
-                                      previewUDSSettings(newSettings);
+                                      previewUds(newSettings);
                                     }}
                                     className={`w-8 h-8 rounded-lg border-2 transition-all ${
                                       udsSettings.neonBorderColor === c.id
@@ -1743,7 +1835,7 @@ export const DesignCenterModal = ({
                                 onClick={() => {
                                   const newSettings = { ...udsSettings, applyToBody: !udsSettings.applyToBody };
                                   setUdsSettings(newSettings);
-                                  previewUDSSettings(newSettings);
+                                  previewUds(newSettings);
                                 }}
                                 className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${
                                   udsSettings.applyToBody
@@ -1766,7 +1858,7 @@ export const DesignCenterModal = ({
                                 onClick={() => {
                                   const newSettings = { ...udsSettings, applyToContainers: !udsSettings.applyToContainers };
                                   setUdsSettings(newSettings);
-                                  previewUDSSettings(newSettings);
+                                  previewUds(newSettings);
                                 }}
                                 className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${
                                   udsSettings.applyToContainers
@@ -1801,7 +1893,7 @@ export const DesignCenterModal = ({
                                 onClick={() => {
                                   const newSettings = { ...udsSettings, glassTexture: style.id };
                                   setUdsSettings(newSettings);
-                                  previewUDSSettings(newSettings);
+                                  previewUds(newSettings);
                                   setUdsPreviewActive(true);
                                 }}
                                 className={`p-3 rounded-xl text-[10px] font-black transition-all ${
@@ -1835,7 +1927,7 @@ export const DesignCenterModal = ({
                                     onClick={() => {
                                       const newSettings = { ...udsSettings, glassTint: c.id };
                                       setUdsSettings(newSettings);
-                                      previewUDSSettings(newSettings);
+                                      previewUds(newSettings);
                                     }}
                                     className={`px-3 py-2 rounded-xl text-[10px] font-black border-2 transition-all ${
                                       udsSettings.glassTint === c.id
@@ -1861,7 +1953,7 @@ export const DesignCenterModal = ({
                                 onClick={() => {
                                   const newSettings = { ...udsSettings, applyToContainers: !udsSettings.applyToContainers };
                                   setUdsSettings(newSettings);
-                                  previewUDSSettings(newSettings);
+                                  previewUds(newSettings);
                                 }}
                                 className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${
                                   udsSettings.applyToContainers
@@ -1898,7 +1990,7 @@ export const DesignCenterModal = ({
                                 onClick={() => {
                                   const newSettings = { ...udsSettings, palette: c.id };
                                   setUdsSettings(newSettings);
-                                  previewUDSSettings(newSettings);
+                                  previewUds(newSettings);
                                   setUdsPreviewActive(true);
                                 }}
                                 className={`w-full aspect-square rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1 ${
@@ -1938,7 +2030,7 @@ export const DesignCenterModal = ({
                                 onClick={() => {
                                   const newSettings = { ...udsSettings, neonBorder: preview.style };
                                   setUdsSettings(newSettings);
-                                  previewUDSSettings(newSettings);
+                                  previewUds(newSettings);
                                   setUdsPreviewActive(true);
                                 }}
                                 style={{ backgroundColor: "#0a0a0a" }}
@@ -1963,7 +2055,7 @@ export const DesignCenterModal = ({
                                 onClick={() => {
                                   const newSettings = { ...udsSettings, glassTexture: preview.style };
                                   setUdsSettings(newSettings);
-                                  previewUDSSettings(newSettings);
+                                  previewUds(newSettings);
                                   setUdsPreviewActive(true);
                                 }}
                                 style={{ backgroundColor: "rgba(255,255,255,0.1)" }}

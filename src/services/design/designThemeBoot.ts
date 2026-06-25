@@ -1,7 +1,11 @@
 /**
  * Boot + prefetch design theme to prevent old-theme flash on login/refresh.
  */
-import { applyDesignOverlays } from "./designOverlayBundle";
+import {
+  applyDesignOverlays,
+  collectDesignOverlays,
+  ensureAllDesignOverlaysApplied,
+} from "./designOverlayBundle";
 import { applyUniversalStyleToDom } from "./universalStyleApply";
 import {
   loadUniversalStyleFromSupabase,
@@ -17,16 +21,26 @@ const OWNER_SETTINGS_ROW_ID = "global";
 
 let remoteReadyPromise: Promise<UniversalStyleConfig | null> | null = null;
 
-function applyFullDesignTheme(config: UniversalStyleConfig): void {
+function applyFullDesignTheme(
+  config: UniversalStyleConfig,
+  options?: { overlaysFromConfig?: boolean },
+): void {
   const normalized = normalizeUniversalStyleConfig(config);
   applyUniversalStyleToDom(normalized, { preview: false });
-  applyDesignOverlays(normalized.overlays);
+  if (options?.overlaysFromConfig && normalized.overlays?.version === 1) {
+    applyDesignOverlays(normalized.overlays);
+  } else {
+    applyDesignOverlays(collectDesignOverlays());
+  }
+  ensureAllDesignOverlaysApplied();
 }
 
 /** Synchronous — run in main.tsx before first React paint. */
 export function bootCachedDesignTheme(): void {
   const cached = loadUniversalStyleLocal();
-  applyFullDesignTheme(cached ?? createDefaultUniversalStyle());
+  applyFullDesignTheme(cached ?? createDefaultUniversalStyle(), {
+    overlaysFromConfig: false,
+  });
 }
 
 /** Fetch remote theme once; shared by App prefetch + ChatScreen hook. */
@@ -37,7 +51,7 @@ export function prefetchRemoteDesignTheme(
     remoteReadyPromise = loadUniversalStyleFromSupabase(ownerSettingsRowId).then(
       (loaded) => {
         if (loaded) {
-          applyFullDesignTheme(loaded);
+          applyFullDesignTheme(loaded, { overlaysFromConfig: true });
           return normalizeUniversalStyleConfig(loaded);
         }
         return loadUniversalStyleLocal();

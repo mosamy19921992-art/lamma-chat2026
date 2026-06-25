@@ -42,9 +42,11 @@
   --uds-emerald-spark-rgb: 46, 196, 182;
 }
 
-/* ----------------------------------------------------------------------------
-   NEON BORDERS & EFFECTS COLLECTION
-   ---------------------------------------------------------------------------- */
+body[data-uds-palette] {
+  --accent-primary: var(--uds-active-accent, var(--accent-primary));
+  --accent-secondary: var(--uds-active-accent, var(--accent-secondary));
+}
+
 
 /* 1. Moving LED Strip - 360° rotating conic gradient border */
 .uds-neon-led-strip {

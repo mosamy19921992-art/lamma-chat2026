@@ -28,11 +28,13 @@ import {
   getActiveNeonBeamTargets,
   loadChaseLightSettings,
   NEON_BEAM_ALL_TARGETS,
-  NEON_BEAM_COLUMN_TARGETS,
   type ChaseLightSettings,
   type ChaseLightStyleId,
   type ChaseLightTarget,
 } from "../../services/design/chaseLightBarService";
+
+/** Edge glow presets — neon line is separate (Colors tab → خط النيون). */
+const CHASE_EDGE_PRESETS = CHASE_LIGHT_PRESETS_2026.filter((p) => p.id !== "neon-beam");
 import {
   COLUMN_CARD_STYLE_PRESETS,
   commitColumnCardStyle,
@@ -45,10 +47,12 @@ function PresetGrid<T extends string>({
   presets,
   activeId,
   onSelect,
+  disabled = false,
 }: {
   presets: { id: T; title: string; emoji: string }[];
   activeId: T;
   onSelect: (id: T) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
@@ -56,8 +60,9 @@ function PresetGrid<T extends string>({
         <button
           key={p.id}
           type="button"
+          disabled={disabled}
           onClick={() => onSelect(p.id)}
-          className={`p-2 rounded-xl border text-center transition-all ${
+          className={`p-2 rounded-xl border text-center transition-all disabled:opacity-40 disabled:pointer-events-none ${
             activeId === p.id
               ? "border-cyan-400/60 bg-cyan-500/10 ring-1 ring-cyan-400/40"
               : "border-white/10 bg-white/[0.04] hover:border-white/25"
@@ -106,22 +111,26 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
   const [chase, setChase] = useState<ChaseLightSettings>(() => loadChaseLightSettings());
 
   const applyBubble = (id: BubbleShapeId) => {
+    if (!isOwnerRole) return;
     if (commitBubbleShape(id)) setBubbleId(id);
     else alert("⚠️ افتح غرفة شات عادية (مش غرفة القيادة) لتطبيق شكل الفقاعات.");
   };
 
   const applyPm = (id: PmBubbleStyleId) => {
+    if (!isOwnerRole) return;
     if (commitPmBubbleStyle(id)) setPmId(id);
     else alert("⚠️ افتح غرفة شات لتطبيق شكل الخاص.");
   };
 
   const applyWidget = (patch: Partial<typeof widgets>) => {
+    if (!isOwnerRole) return;
     const next = { ...widgets, ...patch };
     if (commitSidebarWidgetSettings(next)) setWidgets(next);
     else alert("⚠️ افتح غرفة شات لتطبيق شكل الراديو/الموسيقى/الفاصل.");
   };
 
   const applyColumn = (id: ColumnCardStyleId) => {
+    if (!isOwnerRole) return;
     if (commitColumnCardStyle(id, loadColumnCardTint())) {
       setColumnId(id === "neon-ring" ? null : id);
     } else {
@@ -130,33 +139,10 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
   };
 
   const applyChaseTarget = (target: ChaseLightTarget, styleId: ChaseLightStyleId) => {
+    if (!isOwnerRole) return;
+    if (styleId === "neon-beam") return;
     let next: ChaseLightSettings = { ...chase, [target]: styleId };
-    if (styleId === "neon-beam" && target === "columns") {
-      next = {
-        ...next,
-        neonBeamTargets: [
-          ...NEON_BEAM_COLUMN_TARGETS,
-          ...(next.neonBeamTargets ?? []).filter(
-            (id) => !NEON_BEAM_COLUMN_TARGETS.includes(id),
-          ),
-        ],
-      };
-    } else if (styleId === "neon-beam" && (target === "composer" || target === "header")) {
-      next = {
-        ...next,
-        neonBeamTargets: [...new Set([...(next.neonBeamTargets ?? []), target])],
-      };
-    } else if (styleId !== "neon-beam" && target === "columns") {
-      next = {
-        ...next,
-        neonBeamTargets: (next.neonBeamTargets ?? []).filter(
-          (id) => !NEON_BEAM_COLUMN_TARGETS.includes(id),
-        ),
-      };
-    } else if (
-      styleId !== "neon-beam" &&
-      (target === "composer" || target === "header")
-    ) {
+    if (target === "composer" || target === "header") {
       next = {
         ...next,
         neonBeamTargets: (next.neonBeamTargets ?? []).filter((id) => id !== target),
@@ -169,6 +155,11 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
   };
 
   const applyChaseAll = (styleId: ChaseLightStyleId) => {
+    if (!isOwnerRole) return;
+    if (styleId === "neon-beam") {
+      alert("💠 خط النيون الدوّار — من تبويب 🎨 الألوان، اختار كل بطاقة لوحدها.");
+      return;
+    }
     const next = buildChaseAllSettings(styleId, chase);
     setChase(next);
     if (commitChaseLightSettings(next)) setChase(loadChaseLightSettings());
@@ -192,11 +183,11 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
       ) : null}
 
       <SectionBlock title="💬 فقاعات الشات العام" hint="WhatsApp · iOS · Telegram">
-        <PresetGrid presets={BUBBLE_SHAPE_PRESETS} activeId={bubbleId} onSelect={applyBubble} />
+        <PresetGrid presets={BUBBLE_SHAPE_PRESETS} activeId={bubbleId} onSelect={applyBubble} disabled={!isOwnerRole} />
       </SectionBlock>
 
       <SectionBlock title="🔒 فورمات المحادثة الخاصة" hint="مستقل عن شكل الشات العام">
-        <PresetGrid presets={PM_BUBBLE_STYLE_PRESETS} activeId={pmId} onSelect={applyPm} />
+        <PresetGrid presets={PM_BUBBLE_STYLE_PRESETS} activeId={pmId} onSelect={applyPm} disabled={!isOwnerRole} />
       </SectionBlock>
 
       <SectionBlock title="🎨 ألوان نص البطاقات" hint="متجر VIP · راديو · موسيقى — كل بطاقة لون مستقل">
@@ -213,6 +204,7 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
               <input
                 type="color"
                 value={value}
+                disabled={!isOwnerRole}
                 onChange={(e) => applyWidget({ [key]: e.target.value })}
                 className="w-8 h-8 rounded-lg border border-white/15 cursor-pointer bg-transparent"
                 aria-label={label}
@@ -228,6 +220,7 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
           presets={RADIO_PANEL_PRESETS}
           activeId={widgets.radio}
           onSelect={(id) => applyWidget({ radio: id as RadioPanelStyleId })}
+          disabled={!isOwnerRole}
         />
       </SectionBlock>
 
@@ -236,6 +229,7 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
           presets={MUSIC_PANEL_PRESETS}
           activeId={widgets.music}
           onSelect={(id) => applyWidget({ music: id as MusicPanelStyleId })}
+          disabled={!isOwnerRole}
         />
       </SectionBlock>
 
@@ -244,34 +238,35 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
           presets={COLUMN_DIVIDER_PRESETS}
           activeId={widgets.divider}
           onSelect={(id) => applyWidget({ divider: id as ColumnDividerStyleId })}
+          disabled={!isOwnerRole}
         />
       </SectionBlock>
 
       <SectionBlock title="🃏 بطاقات الأعمدة">
         <PresetGrid
-          presets={COLUMN_CARD_STYLE_PRESETS.slice(0, 8)}
+          presets={COLUMN_CARD_STYLE_PRESETS}
           activeId={columnId ?? "neon-ring"}
           onSelect={applyColumn}
+          disabled={!isOwnerRole}
         />
       </SectionBlock>
 
-      <SectionBlock title="✨ أشرطة النور 2026" hint="أنماط موحّدة لأي منطقة — خط النيون الدوار: اختيار بطاقة ببطاقة من تبويب 🎨 الألوان">
+      <SectionBlock title="✨ إضاءة الحواف" hint="Soft / Aurora / Laser — خط النيون الدوّار من تبويب 🎨 الألوان (بطاقة ببطاقة)">
         {/* تطبيق على الكل دفعة */}
         <div className="grid grid-cols-3 gap-2 mb-3">
-          {CHASE_LIGHT_PRESETS_2026.map((p) => {
+          {CHASE_EDGE_PRESETS.map((p) => {
             const isAllActive =
-              p.id === "neon-beam"
-                ? getActiveNeonBeamTargets(chase).length === NEON_BEAM_ALL_TARGETS.length
-                : chase.columns === p.id &&
-                  chase.composer === p.id &&
-                  chase.header === p.id &&
-                  (p.id === "none" || getActiveNeonBeamTargets(chase).length === 0);
+              chase.columns === p.id &&
+              chase.composer === p.id &&
+              chase.header === p.id &&
+              getActiveNeonBeamTargets(chase).length === 0;
             return (
               <button
                 key={p.id}
                 type="button"
+                disabled={!isOwnerRole}
                 onClick={() => applyChaseAll(p.id)}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border transition-all hover:scale-[1.03] active:scale-[0.97] ${
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border transition-all hover:scale-[1.03] active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none ${
                   isAllActive
                     ? "border-cyan-400/60 bg-cyan-500/15 shadow-[0_0_12px_rgba(6,182,212,0.25)]"
                     : "border-white/10 bg-white/[0.04] hover:border-white/25 hover:bg-white/[0.07]"
@@ -302,10 +297,11 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
             <div key={target} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07]">
               <div className="text-[9px] font-black text-gray-300 mb-1.5">{label}</div>
               <div className="flex flex-wrap gap-1.5">
-                {CHASE_LIGHT_PRESETS_2026.map((p) => (
+                {CHASE_EDGE_PRESETS.map((p) => (
                   <button
                     key={`${target}-${p.id}`}
                     type="button"
+                    disabled={!isOwnerRole}
                     onClick={() => applyChaseTarget(target, p.id)}
                     title={p.title}
                     className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black border transition-all ${

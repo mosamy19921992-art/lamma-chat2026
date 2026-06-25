@@ -1,8 +1,13 @@
 import { setDesignPreviewActive } from "./designPreviewDom";
+import { ensureAllDesignOverlaysApplied } from "./designOverlayBundle";
 import {
   cancelColumnCardPreview,
 } from "./columnCardStyleService";
-import type { StyleBackgroundLayer, UniversalStyleConfig } from "./universalStyleTypes";
+import {
+  ensureReadablePalette,
+  type StyleBackgroundLayer,
+  type UniversalStyleConfig,
+} from "./universalStyleTypes";
 
 const ROOT_SELECTOR = ".lamma-neutral-glass";
 
@@ -147,7 +152,11 @@ export function ensureUniversalStyleApplied(
   attempt = 0,
 ): boolean {
   const ok = applyUniversalStyleToDom(config, options);
-  if (ok || attempt >= 24 || typeof window === "undefined") return ok;
+  if (ok) {
+    ensureAllDesignOverlaysApplied();
+    return true;
+  }
+  if (attempt >= 24 || typeof window === "undefined") return false;
   window.requestAnimationFrame(() =>
     ensureUniversalStyleApplied(config, options, attempt + 1),
   );
@@ -169,11 +178,31 @@ export function ensureTextColorPresetApplied(attempt = 0): boolean {
     if (!raw) return false;
     const preset = JSON.parse(raw) as { text?: string; accent?: string; accent2?: string };
     if (!preset.text || !preset.accent) return false;
-    syncPaletteTextTokens(root, {
+    const bg =
+      getComputedStyle(root).getPropertyValue("--us-bg").trim() || "#060a12";
+    const readable = ensureReadablePalette({
+      bg,
+      surface: "rgba(18, 24, 32, 0.72)",
       text: preset.text,
       accent: preset.accent,
-      accent2: preset.accent2,
+      accent2: preset.accent2 ?? preset.accent,
+      muted: preset.accent2 ?? preset.accent,
     });
+    if (readable.text !== preset.text) {
+      try {
+        localStorage.setItem(
+          "lamma_text_color_preset",
+          JSON.stringify({
+            text: readable.text,
+            accent: preset.accent,
+            accent2: preset.accent2 ?? preset.accent,
+          }),
+        );
+      } catch {
+        /* non-fatal */
+      }
+    }
+    syncPaletteTextTokens(root, readable);
     root.setAttribute("data-universal-style", "active");
     return true;
   } catch {

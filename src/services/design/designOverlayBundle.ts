@@ -2,21 +2,24 @@
  * Collect / apply sidebar overlay settings bundled in universal_style_config.overlays.
  */
 import { applyFace, loadFace, saveFace, type CustomFace } from "../../lib/customFace";
-import { loadBubbleShapeId, commitBubbleShape, type BubbleShapeId } from "./bubbleShapeService";
-import { loadChaseLightSettings, commitChaseLightSettings, type ChaseLightSettings } from "./chaseLightBarService";
+import { ensureBubbleShapeApplied, loadBubbleShapeId, commitBubbleShape, type BubbleShapeId } from "./bubbleShapeService";
+import { ensureChaseLightApplied, loadChaseLightSettings, commitChaseLightSettings, type ChaseLightSettings } from "./chaseLightBarService";
 import {
+  ensureColumnCardStyleApplied,
   loadColumnCardStyleId,
   loadColumnCardTint,
   commitColumnCardStyle,
   type ColumnCardStyleId,
 } from "./columnCardStyleService";
 import {
+  ensureGlassFormApplied,
   loadGlassFormState,
   commitGlassForm,
   type GlassFormId,
 } from "./glassTransparencyService";
-import { loadPmBubbleStyleId, commitPmBubbleStyle, type PmBubbleStyleId } from "./pmBubbleStyleService";
+import { ensurePmBubbleStyleApplied, loadPmBubbleStyleId, commitPmBubbleStyle, type PmBubbleStyleId } from "./pmBubbleStyleService";
 import {
+  ensureSidebarWidgetStylesApplied,
   loadSidebarWidgetSettings,
   commitSidebarWidgetSettings,
   type SidebarWidgetSettings,
@@ -116,7 +119,7 @@ export function applyDesignOverlays(bundle: Partial<DesignOverlaysBundle> | unde
     applyUDSSettings(bundle.uds);
   }
   if (bundle.fx2026) {
-    try { localStorage.setItem("lamma_fx_on", JSON.stringify(bundle.fx2026)); } catch {}
+    try { localStorage.setItem("lamma_fx_on", JSON.stringify(bundle.fx2026)); } catch { /* non-fatal */ }
     Object.entries(bundle.fx2026).forEach(([id, on]) => {
       document.body.classList.toggle(`lamma-fx-${id}`, !!on);
     });
@@ -130,4 +133,47 @@ export function attachOverlaysToConfig(
     ...normalizeUniversalStyleConfig(config),
     overlays: collectDesignOverlays(),
   };
+}
+
+const FX2026_IDS = [
+  "holo",
+  "aurora",
+  "shimmer",
+  "float",
+  "neon",
+  "rainbow",
+  "crystal",
+  "liquid",
+] as const;
+
+/** Restore Magic 2026 FX body classes from localStorage (survives refresh). */
+export function applyFx2026FromLocalStorage(): void {
+  if (typeof document === "undefined") return;
+  const parsed = loadFx2026();
+  FX2026_IDS.forEach((id) => {
+    document.body.classList.toggle(`lamma-fx-${id}`, !!parsed[id]);
+  });
+}
+
+/** Re-apply every shape/glass/chase overlay from live localStorage keys. */
+export function ensureAllDesignOverlaysApplied(attempt = 0): void {
+  if (typeof window === "undefined") return;
+  applyDesignOverlays(collectDesignOverlays());
+  applyFx2026FromLocalStorage();
+  applyUDSSettings(loadUDSSettings());
+
+  const root = document.querySelector(".lamma-neutral-glass");
+  if (!root) {
+    if (attempt < 24) {
+      window.requestAnimationFrame(() => ensureAllDesignOverlaysApplied(attempt + 1));
+    }
+    return;
+  }
+
+  ensureChaseLightApplied();
+  ensureGlassFormApplied();
+  ensureBubbleShapeApplied();
+  ensureColumnCardStyleApplied();
+  ensureSidebarWidgetStylesApplied();
+  ensurePmBubbleStyleApplied();
 }

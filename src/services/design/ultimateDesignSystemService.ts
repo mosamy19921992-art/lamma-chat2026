@@ -3,6 +3,8 @@
  * Manages the application of neon borders, glassmorphic textures, and futuristic palette
  */
 
+import { scheduleDesignOverlaysSync } from "./designOverlaySync";
+
 export type UDSNeonBorderStyle = 
   | "none"
   | "led-strip"
@@ -124,15 +126,46 @@ function getGlassTextureClass(style: UDSGlassTextureStyle): string {
 }
 
 /**
- * Get data attribute value for color
+ * Get data attribute value for color — CSS expects short tokens on data-color / data-tint.
  */
-function getColorDataAttr(color: UDSPaletteColor): string {
-  return color;
+function paletteToNeonColor(color: UDSPaletteColor): string {
+  switch (color) {
+    case "neon-cyan":
+      return "cyan";
+    case "aurora-green":
+      return "green";
+    case "electric-violet":
+      return "violet";
+    case "gold-eclipse":
+      return "gold";
+    case "cyberpunk-pink":
+    default:
+      return "pink";
+  }
 }
 
-/**
- * Apply UDS settings to the DOM
- */
+function paletteToGlassTint(color: UDSPaletteColor | "none"): string | null {
+  if (color === "none") return null;
+  switch (color) {
+    case "neon-cyan":
+      return "cyan";
+    case "electric-violet":
+      return "violet";
+    case "gold-eclipse":
+      return "gold";
+    case "carbon-dark":
+    case "minimalist-white":
+    case "deep-space-blue":
+      return "dark";
+    case "aurora-green":
+      return "cyan";
+    case "cyberpunk-pink":
+    default:
+      return "pink";
+  }
+}
+
+
 export function applyUDSSettings(settings: UDSSettings): void {
   const body = document.body;
   
@@ -158,10 +191,16 @@ export function applyUDSSettings(settings: UDSSettings): void {
   
   udsClasses.forEach(cls => body.classList.remove(cls));
   
-  // Remove UDS data attributes
+  // Remove UDS data attributes (legacy + current)
   body.removeAttribute("data-uds-neon-color");
   body.removeAttribute("data-uds-glass-tint");
   body.removeAttribute("data-uds-palette");
+  body.removeAttribute("data-color");
+  body.removeAttribute("data-tint");
+  body.style.removeProperty("--uds-active-accent");
+  
+  const neonCssColor = paletteToNeonColor(settings.neonBorderColor);
+  const glassCssTint = paletteToGlassTint(settings.glassTint);
   
   // Apply to body
   if (settings.applyToBody && settings.neonBorder === "led-strip") {
@@ -172,7 +211,7 @@ export function applyUDSSettings(settings: UDSSettings): void {
     const neonClass = getNeonBorderClass(settings.neonBorder);
     if (neonClass) {
       body.classList.add(neonClass);
-      body.setAttribute("data-uds-neon-color", getColorDataAttr(settings.neonBorderColor));
+      body.setAttribute("data-color", neonCssColor);
     }
   }
   
@@ -180,14 +219,15 @@ export function applyUDSSettings(settings: UDSSettings): void {
     const glassClass = getGlassTextureClass(settings.glassTexture);
     if (glassClass) {
       body.classList.add(glassClass);
-      if (settings.glassTint !== "none") {
-        body.setAttribute("data-uds-glass-tint", getColorDataAttr(settings.glassTint));
+      if (glassCssTint) {
+        body.setAttribute("data-tint", glassCssTint);
       }
     }
   }
   
-  // Apply palette
-  body.setAttribute("data-uds-palette", getColorDataAttr(settings.palette));
+  // Palette drives global accent variable for chat chrome
+  body.setAttribute("data-uds-palette", settings.palette);
+  body.style.setProperty("--uds-active-accent", getPaletteHex(settings.palette));
   
   // Apply to main containers
   if (settings.applyToContainers) {
@@ -196,6 +236,7 @@ export function applyUDSSettings(settings: UDSSettings): void {
     );
     
     containers.forEach(container => {
+      const el = container as HTMLElement;
       // Remove all container-specific UDS classes
       const containerClasses = [
         "uds-container-ios-blur",
@@ -209,13 +250,18 @@ export function applyUDSSettings(settings: UDSSettings): void {
         "uds-container-rgb-wave",
         "uds-container-static-cyber",
       ];
-      containerClasses.forEach(cls => container.classList.remove(cls));
+      containerClasses.forEach(cls => el.classList.remove(cls));
+      el.removeAttribute("data-color");
+      el.removeAttribute("data-tint");
       
       // Apply glass texture to containers
       if (settings.glassTexture !== "none") {
         const containerClass = getContainerGlassClass(settings.glassTexture);
         if (containerClass) {
-          container.classList.add(containerClass);
+          el.classList.add(containerClass);
+          if (glassCssTint) {
+            el.setAttribute("data-tint", glassCssTint);
+          }
         }
       }
       
@@ -223,7 +269,8 @@ export function applyUDSSettings(settings: UDSSettings): void {
       if (settings.neonBorder !== "none") {
         const neonClass = getContainerNeonClass(settings.neonBorder);
         if (neonClass) {
-          container.classList.add(neonClass);
+          el.classList.add(neonClass);
+          el.setAttribute("data-color", neonCssColor);
         }
       }
     });
@@ -283,6 +330,7 @@ export function previewUDSSettings(settings: UDSSettings): void {
 export function commitUDSSettings(settings: UDSSettings): void {
   saveUDSSettings(settings);
   applyUDSSettings(settings);
+  scheduleDesignOverlaysSync();
 }
 
 /**
@@ -292,6 +340,12 @@ export function resetUDSSettings(): void {
   const defaultSettings = { ...DEFAULT_SETTINGS };
   saveUDSSettings(defaultSettings);
   applyUDSSettings(defaultSettings);
+  scheduleDesignOverlaysSync();
+}
+
+export function ensureUDSSettingsApplied(): void {
+  if (typeof document === "undefined") return;
+  applyUDSSettings(loadUDSSettings());
 }
 
 /**

@@ -214,6 +214,57 @@ function hexToRgbTriplet(hex: string): string {
   return `${r}, ${g}, ${b}`;
 }
 
+const GF_VAR_KEYS = [
+  "--gf-blur",
+  "--gf-sat",
+  "--gf-top",
+  "--gf-bottom",
+  "--gf-sheen",
+  "--gf-column-radius",
+] as const;
+
+/** Per-preset glass tuning — makes presets visually distinct on chat columns. */
+const GLASS_FORM_DOM_VARS: Record<
+  GlassFormId,
+  {
+    blur: string;
+    sat: string;
+    top: string;
+    bottom: string;
+    sheen: string;
+    columnRadius: string;
+  }
+> = {
+  classic: { blur: "28px", sat: "1.3", top: "0.10", bottom: "0.82", sheen: "0.20", columnRadius: "24px" },
+  "ultra-clear": { blur: "44px", sat: "1.55", top: "0.07", bottom: "0.78", sheen: "0.16", columnRadius: "24px" },
+  "soft-read": { blur: "20px", sat: "1.2", top: "0.16", bottom: "0.88", sheen: "0.14", columnRadius: "22px" },
+  "solid-focus": { blur: "12px", sat: "1.1", top: "0.22", bottom: "0.92", sheen: "0.10", columnRadius: "18px" },
+  mirror: { blur: "36px", sat: "1.45", top: "0.22", bottom: "0.80", sheen: "0.28", columnRadius: "24px" },
+  "smoke-dark": { blur: "32px", sat: "1.15", top: "0.06", bottom: "0.90", sheen: "0.08", columnRadius: "24px" },
+  crystal: { blur: "26px", sat: "1.35", top: "0.09", bottom: "0.84", sheen: "0.18", columnRadius: "20px" },
+  ghost: { blur: "48px", sat: "1.6", top: "0.04", bottom: "0.72", sheen: "0.12", columnRadius: "26px" },
+  "ios-vibrancy": { blur: "52px", sat: "1.7", top: "0.06", bottom: "0.76", sheen: "0.15", columnRadius: "24px" },
+  "ios-liquid": { blur: "40px", sat: "1.5", top: "0.18", bottom: "0.80", sheen: "0.24", columnRadius: "28px" },
+  "ios-widget": { blur: "24px", sat: "1.25", top: "0.22", bottom: "0.86", sheen: "0.22", columnRadius: "20px" },
+  "fully-transparent": { blur: "0px", sat: "1", top: "0", bottom: "0", sheen: "0", columnRadius: "24px" },
+  "background-reveal": { blur: "8px", sat: "1.05", top: "0.03", bottom: "0.5", sheen: "0.06", columnRadius: "24px" },
+};
+
+function clearGlassFormVars(root: HTMLElement): void {
+  GF_VAR_KEYS.forEach((key) => root.style.removeProperty(key));
+}
+
+function applyGlassFormVars(root: HTMLElement, id: GlassFormId): void {
+  const vars = GLASS_FORM_DOM_VARS[id];
+  if (!vars) return;
+  root.style.setProperty("--gf-blur", vars.blur);
+  root.style.setProperty("--gf-sat", vars.sat);
+  root.style.setProperty("--gf-top", vars.top);
+  root.style.setProperty("--gf-bottom", vars.bottom);
+  root.style.setProperty("--gf-sheen", vars.sheen);
+  root.style.setProperty("--gf-column-radius", vars.columnRadius);
+}
+
 function applyGlassFormToDom(
   id: GlassFormId | null,
   tintHex: string,
@@ -227,12 +278,14 @@ function applyGlassFormToDom(
     delete root.dataset.glassPreview;
     root.style.removeProperty("--gf-custom-rgb");
     root.style.removeProperty("--gf-accent");
+    clearGlassFormVars(root);
     if (!isPreview) setDesignPreviewActive(false);
   } else {
     root.dataset.glassForm = id;
     root.dataset.glassPreview = isPreview ? "true" : "false";
     root.style.setProperty("--gf-custom-rgb", hexToRgbTriplet(tintHex));
     root.style.setProperty("--gf-accent", tintHex);
+    applyGlassFormVars(root, id);
     if (isPreview) setDesignPreviewActive(true);
     else {
       delete root.dataset.glassPreview;

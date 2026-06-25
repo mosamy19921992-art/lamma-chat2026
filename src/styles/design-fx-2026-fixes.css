@@ -1,0 +1,228 @@
+/**
+ * FX 2026 fixes — side-column glass uses ::before/::after for smoked backing (index.css)
+ * and neon frame (chase-light-bars.css), which blocked shimmer/crystal/holo/rainbow.
+ */
+
+/* All chat column cards (VIP, radio, music, rooms, members) */
+body.lamma-fx-holo .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"],
+body.lamma-fx-aurora .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"],
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"],
+body.lamma-fx-rainbow .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"],
+body.lamma-fx-crystal .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"] {
+  position: relative;
+}
+
+/* ── HOLO: gradient text (index.css forces solid color on .font-black) ── */
+@keyframes lamma-holo-text-shift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+body.lamma-fx-holo .lamma-section-card > div:first-child,
+body.lamma-fx-holo .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"] > div:first-child .font-black {
+  background: linear-gradient(90deg, #ff66cc, #00ffcc, #a855f7, #ff66cc) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  animation: lamma-holo-text-shift 3s linear infinite !important;
+  text-shadow: none !important;
+}
+
+/* ── AURORA: stronger glow on all column cards ── */
+body.lamma-fx-aurora .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"] {
+  box-shadow:
+    0 0 48px rgba(99, 102, 241, 0.22),
+    0 0 96px rgba(6, 182, 212, 0.14),
+    0 0 32px rgba(168, 85, 247, 0.12),
+    inset 0 0 24px rgba(99, 102, 241, 0.06) !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+/* ── SHIMMER: reclaim ::after from smoked glass mask ── */
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-side-column[class*="border-r"] [data-design-region="column-cards"].lamma-glass::after,
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-side-column[class*="border-l"] [data-design-region="column-cards"].lamma-glass::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 38% !important;
+  height: 100% !important;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.14),
+    transparent
+  ) !important;
+  border: none !important;
+  border-radius: inherit !important;
+  animation: lamma-glass-sweep 3.8s ease-in-out infinite !important;
+  z-index: 4 !important;
+  pointer-events: none !important;
+  opacity: 1 !important;
+}
+
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-store-panel [data-design-region="column-cards"]::after {
+  animation-delay: 0.4s !important;
+}
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-radio-panel [data-design-region="column-cards"]::after {
+  animation-delay: 1.2s !important;
+}
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-music-panel [data-design-region="column-cards"]::after {
+  animation-delay: 2s !important;
+}
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-rooms-panel [data-design-region="column-cards"]::after {
+  animation-delay: 0.8s !important;
+}
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-members-panel [data-design-region="column-cards"]::after {
+  animation-delay: 1.6s !important;
+}
+
+/* Neon frame uses ::before — keep smoked ::after off when shimmer needs the layer */
+body.lamma-fx-shimmer .lamma-neutral-glass[data-neon-beam-targets] .lamma-side-column .lamma-glass::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.14),
+    transparent
+  ) !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 38% !important;
+  height: 100% !important;
+  border: none !important;
+  animation: lamma-glass-sweep 3.8s ease-in-out infinite !important;
+  z-index: 4 !important;
+}
+
+/* ── RAINBOW: outline is clipped by overflow:hidden — use animated box-shadow ring ── */
+@keyframes lamma-rainbow-ring {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px rgba(255, 0, 128, 0.65),
+      0 0 20px rgba(255, 0, 128, 0.2);
+  }
+  25% {
+    box-shadow:
+      0 0 0 2px rgba(255, 215, 0, 0.65),
+      0 0 20px rgba(255, 215, 0, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(0, 255, 128, 0.65),
+      0 0 20px rgba(0, 255, 128, 0.2);
+  }
+  75% {
+    box-shadow:
+      0 0 0 2px rgba(0, 191, 255, 0.65),
+      0 0 20px rgba(0, 191, 255, 0.2);
+  }
+}
+
+body.lamma-fx-rainbow .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"] {
+  outline: none !important;
+  animation: lamma-rainbow-ring 4s linear infinite !important;
+}
+
+/* ── CRYSTAL: sparkle on header row (glass ::before is reserved for neon / glass-form) ── */
+body.lamma-fx-crystal .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"] > div:first-child {
+  position: relative;
+  z-index: 3;
+}
+
+body.lamma-fx-crystal .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"] > div:first-child::after,
+body.lamma-fx-crystal .lamma-section-card::before {
+  content: "✦" !important;
+  position: absolute !important;
+  top: 0 !important;
+  inset-inline-end: 0 !important;
+  font-size: 11px !important;
+  line-height: 1 !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  text-shadow: 0 0 8px rgba(150, 220, 255, 0.8) !important;
+  animation: lamma-crystal-spin 2.5s ease-in-out infinite !important;
+  pointer-events: none !important;
+  z-index: 6 !important;
+  background: none !important;
+  border: none !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+body.lamma-fx-crystal .lamma-neutral-glass .lamma-radio-panel [data-design-region="column-cards"] > div:first-child::after {
+  animation-delay: 0.9s !important;
+  content: "✧" !important;
+  color: rgba(150, 220, 255, 0.55) !important;
+}
+
+body.lamma-fx-crystal .lamma-neutral-glass .lamma-music-panel [data-design-region="column-cards"] > div:first-child::after {
+  animation-delay: 1.8s !important;
+}
+
+/* Hide broken crystal rule on glass ::before (neon / glass gradient wins there) */
+body.lamma-fx-crystal .lamma-neutral-glass .lamma-side-column .lamma-glass.lamma-widget-card::before,
+body.lamma-fx-crystal .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"].lamma-glass::before {
+  content: none !important;
+  display: none !important;
+}
+
+/* ── NEON + LIQUID: Design Center + composer send + primary chat CTAs ── */
+body.lamma-fx-neon .lamma-accent-btn,
+body.lamma-fx-neon .lamma-send-orb,
+body.lamma-fx-neon .lamma-neutral-glass .lamma-composer-layout .lamma-composer-slot-send,
+body.lamma-fx-neon .lamma-neutral-glass .lamma-store-panel button.flex-1 {
+  box-shadow:
+    0 0 14px rgba(99, 102, 241, 0.6),
+    0 0 32px rgba(6, 182, 212, 0.35),
+    inset 0 0 10px rgba(99, 102, 241, 0.18) !important;
+}
+
+body.lamma-fx-liquid .lamma-accent-btn,
+body.lamma-fx-liquid .lamma-tab-soft,
+body.lamma-fx-liquid .lamma-send-orb,
+body.lamma-fx-liquid .lamma-neutral-glass .lamma-composer-layout .lamma-composer-slot-send,
+body.lamma-fx-liquid .lamma-neutral-glass .lamma-store-panel button.flex-1 {
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
+}
+
+body.lamma-fx-liquid .lamma-accent-btn::before,
+body.lamma-fx-liquid .lamma-tab-soft::before,
+body.lamma-fx-liquid .lamma-send-orb::before,
+body.lamma-fx-liquid .lamma-neutral-glass .lamma-composer-layout .lamma-composer-slot-send::before,
+body.lamma-fx-liquid .lamma-neutral-glass .lamma-store-panel button.flex-1::before {
+  content: "";
+  position: absolute;
+  bottom: -60%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(99, 102, 241, 0.85) 0%,
+    rgba(6, 182, 212, 0.5) 45%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  transition: bottom 0.5s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.5s;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.lamma-fx-liquid .lamma-accent-btn:hover::before,
+body.lamma-fx-liquid .lamma-tab-soft:hover::before,
+body.lamma-fx-liquid .lamma-send-orb:hover::before,
+body.lamma-fx-liquid .lamma-neutral-glass .lamma-composer-layout .lamma-composer-slot-send:hover::before,
+body.lamma-fx-liquid .lamma-neutral-glass .lamma-store-panel button.flex-1:hover::before {
+  bottom: -30%;
+  opacity: 0.9;
+}

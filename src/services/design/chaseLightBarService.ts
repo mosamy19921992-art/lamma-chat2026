@@ -59,7 +59,7 @@ export interface ChaseLightPreset {
 /** Primary 2026 presets — clean, single-accent, no rainbow by default. */
 export const CHASE_LIGHT_PRESETS_2026: ChaseLightPreset[] = [
   { id: "none", title: "بدون", subtitle: "إيقاف — افتراضي نظيف", emoji: "⬜" },
-  { id: "neon-beam", title: "شريط نيون", subtitle: "وردي → بنفسجي → سيان دوّار", emoji: "💠" },
+  { id: "neon-beam", title: "إطار نيون", subtitle: "إطار ملوّن — يتبع شكل البطاقة أو الهيدر", emoji: "💠" },
   { id: "soft-edge", title: "Soft Edge", subtitle: "خط gradient رفيع", emoji: "✨" },
   { id: "aurora-flow", title: "Aurora", subtitle: "لونين accent + cyan", emoji: "🌌" },
   { id: "ambient-breathe", title: "Ambient", subtitle: "توهج ناعم نابض", emoji: "💫" },
@@ -133,10 +133,10 @@ export function getActiveNeonBeamTargets(
 
 function syncNeonBeamChaseFlags(settings: ChaseLightSettings): ChaseLightSettings {
   const targets = new Set(settings.neonBeamTargets ?? []);
-  const hasColumnNeon = NEON_BEAM_COLUMN_TARGETS.some((id) => targets.has(id));
   return {
     ...settings,
-    columns: hasColumnNeon ? "neon-beam" : settings.columns === "neon-beam" ? "none" : settings.columns,
+    // neon-beam on columns is legacy — column cards use neonBeamTargets only
+    columns: settings.columns === "neon-beam" ? "none" : settings.columns,
     composer: targets.has("composer")
       ? "neon-beam"
       : settings.composer === "neon-beam"
@@ -150,14 +150,9 @@ function syncNeonBeamChaseFlags(settings: ChaseLightSettings): ChaseLightSetting
   };
 }
 
-/** Keep neonBeamTargets in sync with columns/composer/header neon-beam flags. */
+/** Sync composer/header flags into neonBeamTargets — never auto-fill all column cards. */
 function hydrateNeonBeamTargets(settings: ChaseLightSettings): ChaseLightSettings {
   const targets = new Set(settings.neonBeamTargets ?? []);
-  if (settings.columns === "neon-beam") {
-    NEON_BEAM_COLUMN_TARGETS.forEach((id) => targets.add(id));
-  } else {
-    NEON_BEAM_COLUMN_TARGETS.forEach((id) => targets.delete(id));
-  }
   if (settings.composer === "neon-beam") {
     targets.add("composer");
   } else {
@@ -170,6 +165,7 @@ function hydrateNeonBeamTargets(settings: ChaseLightSettings): ChaseLightSetting
   }
   return {
     ...settings,
+    columns: settings.columns === "neon-beam" ? "none" : settings.columns,
     neonBeamTargets: NEON_BEAM_ALL_TARGETS.filter((id) => targets.has(id)),
   };
 }
@@ -212,12 +208,16 @@ export function buildChaseAllSettings(
       neonBeamTargets: [],
     });
   }
+  if (styleId === "neon-beam") {
+    // خط النيون = اختيار بطاقة ببطاقة من تبويب الألوان — مش «طبّق على الكل»
+    return normalizeSettings(current);
+  }
   return normalizeSettings({
     ...current,
     columns: styleId,
     composer: styleId,
     header: styleId,
-    neonBeamTargets: styleId === "neon-beam" ? [...NEON_BEAM_ALL_TARGETS] : [],
+    neonBeamTargets: [],
   });
 }
 
@@ -295,13 +295,15 @@ export function commitChaseLightSettings(
   options?: { skipSync?: boolean },
 ): boolean {
   const final = normalizeSettings(settings ?? pendingPreview ?? loadChaseLightSettings());
-  const ok = applySettingsToDom(final, false);
-  if (!ok) return false;
   persistSettings(final);
   previewSnapshot = null;
   pendingPreview = null;
+  const ok = applySettingsToDom(final, false);
+  if (!ok) {
+    ensureChaseLightApplied();
+  }
   if (!options?.skipSync) scheduleDesignOverlaysSync();
-  return true;
+  return ok || true;
 }
 
 export function cancelChaseLightPreview(): boolean {
@@ -359,11 +361,6 @@ export function commitNeonBeamTargets(
       : base.header === "neon-beam"
         ? "none"
         : base.header,
-    columns: NEON_BEAM_COLUMN_TARGETS.some((id) => set.has(id))
-      ? "neon-beam"
-      : base.columns === "neon-beam"
-        ? "none"
-        : base.columns,
     speedSec: options?.speedSec ?? base.speedSec,
   });
   return commitChaseLightSettings(next);

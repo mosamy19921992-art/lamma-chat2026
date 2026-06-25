@@ -27,10 +27,10 @@
     0 12px 36px rgba(0, 0, 0, 0.45) !important;
 }
 
-.lamma-neutral-glass[data-glass-form]:not([data-column-card-style]) .lamma-side-column .lamma-glass::before,
-.lamma-neutral-glass[data-glass-form]:not([data-column-card-style]) .lamma-side-column .lamma-glass::after,
-.lamma-neutral-glass[data-glass-form][data-column-card-style="neon-ring"] .lamma-side-column .lamma-glass::before,
-.lamma-neutral-glass[data-glass-form][data-column-card-style="neon-ring"] .lamma-side-column .lamma-glass::after {
+.lamma-neutral-glass[data-glass-form]:not([data-column-card-style]):not([data-neon-beam-targets]) .lamma-side-column .lamma-glass::before,
+.lamma-neutral-glass[data-glass-form]:not([data-column-card-style]):not([data-neon-beam-targets]) .lamma-side-column .lamma-glass::after,
+.lamma-neutral-glass[data-glass-form][data-column-card-style="neon-ring"]:not([data-neon-beam-targets]) .lamma-side-column .lamma-glass::before,
+.lamma-neutral-glass[data-glass-form][data-column-card-style="neon-ring"]:not([data-neon-beam-targets]) .lamma-side-column .lamma-glass::after {
   display: none !important;
   content: none !important;
   animation: none !important;
@@ -62,7 +62,7 @@
   position: relative !important;
 }
 
-.lamma-neutral-glass[data-column-card-style]:not([data-column-card-style="neon-ring"]):not([data-column-card-style="liquid-ring"]) .lamma-side-column .lamma-glass::before {
+.lamma-neutral-glass[data-column-card-style]:not([data-column-card-style="neon-ring"]):not([data-column-card-style="liquid-ring"]):not([data-neon-beam-targets]) .lamma-side-column .lamma-glass::before {
   display: none !important;
   content: none !important;
   animation: none !important;
@@ -286,6 +286,7 @@
 }
 
 /* Also apply transparent glass to composer and header for consistency */
+.lamma-neutral-glass[data-glass-form="fully-transparent"] .lamma-composer-layout,
 .lamma-neutral-glass[data-glass-form="fully-transparent"] .lamma-composer-bar {
   background: transparent !important;
   -webkit-backdrop-filter: none !important;
@@ -315,16 +316,23 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
 }
 
-.lamma-neutral-glass[data-glass-form="background-reveal"]:not([data-column-card-style]) .lamma-side-column .lamma-glass::before,
-.lamma-neutral-glass[data-glass-form="background-reveal"]:not([data-column-card-style]) .lamma-side-column .lamma-glass::after,
-.lamma-neutral-glass[data-glass-form="background-reveal"][data-column-card-style="neon-ring"] .lamma-side-column .lamma-glass::before,
-.lamma-neutral-glass[data-glass-form="background-reveal"][data-column-card-style="neon-ring"] .lamma-side-column .lamma-glass::after {
+.lamma-neutral-glass[data-glass-form="background-reveal"]:not([data-column-card-style]):not([data-neon-beam-targets]) .lamma-side-column .lamma-glass::before,
+.lamma-neutral-glass[data-glass-form="background-reveal"]:not([data-column-card-style]):not([data-neon-beam-targets]) .lamma-side-column .lamma-glass::after,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-column-card-style="neon-ring"]:not([data-neon-beam-targets]) .lamma-side-column .lamma-glass::before,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-column-card-style="neon-ring"]:not([data-neon-beam-targets]) .lamma-side-column .lamma-glass::after {
   display: none !important;
   content: none !important;
   animation: none !important;
 }
 
+/* With neon frame active, only ::before is the neon ring — never the glass-form edge pseudo */
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets] .lamma-side-column .lamma-glass::after {
+  display: none !important;
+  content: none !important;
+}
+
 /* Apply background-reveal glass to composer and header for consistency */
+.lamma-neutral-glass[data-glass-form="background-reveal"] .lamma-composer-layout,
 .lamma-neutral-glass[data-glass-form="background-reveal"] .lamma-composer-bar {
   background: rgba(255, 255, 255, 0.03) !important;
   -webkit-backdrop-filter: blur(4px) !important;
