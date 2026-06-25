@@ -41,7 +41,7 @@ function remove(key: string): void {
   try {
     localStorage.removeItem(key);
   } catch (err) {
-    console.warn(`[storage] Failed to remove "${key}":`, err);
+    console.warn(`[storage] Failed to remove "${String(key).replace(/\n|\r/g, ``)}":`, err);
   }
 }
 
