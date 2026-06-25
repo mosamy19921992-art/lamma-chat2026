@@ -41,6 +41,7 @@ html[data-app-theme="dark"] {
 .lamma-admin-panel .bg-emerald-500\/20 { background-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.2) !important; }
 .lamma-admin-panel .focus\:border-emerald-500\/50:focus { border-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.5) !important; }
 .lamma-admin-panel .hover\:bg-emerald-500:hover { background-color: rgb(var(--lamma-header-accent-rgb, 16, 185, 129)) !important; }
+.lamma-admin-panel .hover\:bg-emerald-500\/25:hover { background-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.25) !important; }
 
 html[data-app-theme="amoled"] {
   --bg-primary: #000000;
