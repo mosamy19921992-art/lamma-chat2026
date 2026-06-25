@@ -142,7 +142,6 @@ export function usePrivateMessages({
 }: UsePrivateMessagesOptions) {
   const [pmTarget, setPmTarget] = useState<PMTargetState | null>(null);
   const [pmInputText, setPmInputText] = useState("");
-  const [isPmTyping] = useState(false);
   const pmThreadsStorageKey = `lamma_pm_threads_${currentUser.uid || currentUser.nickname}`;
   const [pmThreads, setPmThreads] = useState<Record<string, PMThreadMessage[]>>(
     () => loadPmThreadsFromStorage(pmThreadsStorageKey),
@@ -438,7 +437,6 @@ export function usePrivateMessages({
     pmMessages,
     pmInputText,
     setPmInputText,
-    isPmTyping,
   };
 }
 

@@ -83,6 +83,7 @@ import {
   Maximize2,
   Minimize2,
   MoreHorizontal,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence, useDragControls } from "motion/react";
 import AMLogo from "./AMLogo.tsx";
@@ -1912,28 +1913,41 @@ export default function ChatScreen({
     (msg: Message) => {
       if (!msg?.id) return;
       const roomId = activeRoomId;
-      let previousMessages: Message[] = [];
+      const messageId = msg.id;
+      let removedMessage: Message | undefined;
+
       setRoomMessages((prev) => {
-        previousMessages = prev[roomId] || [];
-        const next = previousMessages.filter((m) => m.id !== msg.id);
-        return { ...prev, [roomId]: next };
+        const list = prev[roomId] || [];
+        removedMessage = list.find((m) => m.id === messageId);
+        if (!removedMessage) return prev;
+        return {
+          ...prev,
+          [roomId]: list.filter((m) => m.id !== messageId),
+        };
       });
-      if (supabase) {
-        supabase
-          .from("messages")
-          .delete()
-          .eq("id", msg.id)
-          .then(({ error }) => {
-            if (error) {
-              console.error("Error deleting message from Supabase:", error);
-              setRoomMessages((prev) => ({
-                ...prev,
-                [roomId]: previousMessages,
-              }));
-              alert("❌ تعذر حذف الرسالة. حاول مرة أخرى.");
+
+      if (!supabase) return;
+
+      void supabase
+        .from("messages")
+        .delete()
+        .eq("id", messageId)
+        .then(({ error }) => {
+          if (error) {
+            console.error("Error deleting message from Supabase:", error);
+            if (removedMessage) {
+              setRoomMessages((prev) => {
+                const list = prev[roomId] || [];
+                if (list.some((m) => m.id === messageId)) return prev;
+                return {
+                  ...prev,
+                  [roomId]: [...list, removedMessage!],
+                };
+              });
             }
-          });
-      }
+            alert("❌ تعذر حذف الرسالة. حاول مرة أخرى.");
+          }
+        });
     },
     [activeRoomId],
   );
@@ -4377,7 +4391,7 @@ export default function ChatScreen({
         !isPmOpenRef.current &&
         (mobileTabRef.current === "chat" || !isMobileAppShell);
 
-      if (viewingPublicChat && !mentionMatch) return;
+      if (viewingPublicChat && !mentionMatch && !document.hidden) return;
 
       const roomLabel =
         ROOMS_DEF.find((room) => room.id === roomId)?.name || roomId;
@@ -5479,7 +5493,7 @@ export default function ChatScreen({
         pmTargetNicknameRef.current === payload.senderNickname &&
         (mobileTabRef.current === "private" || !isMobileAppShell);
 
-      if (viewingPm) return;
+      if (viewingPm && !document.hidden) return;
 
       alertIncomingMessage({
         kind: "pm",
@@ -5499,7 +5513,6 @@ export default function ChatScreen({
     pmMessages,
     pmInputText,
     setPmInputText,
-    isPmTyping,
   } = usePrivateMessages({
     currentUser,
     isSpyMode,
@@ -10577,7 +10590,17 @@ export default function ChatScreen({
           </div>
           </div>
 
-          <div className="lamma-pwa-composer-stack shrink-0">
+          <div className="lamma-pwa-composer-stack shrink-0 relative">
+          {isUploadingImage && (
+            <div
+              className="absolute inset-x-0 top-0 z-[60] flex items-center justify-center gap-2 bg-black/75 backdrop-blur-sm py-2 text-[10px] font-bold lamma-accent-text-soft pointer-events-none"
+              dir="rtl"
+              aria-live="polite"
+            >
+              <Loader2 size={14} className="animate-spin shrink-0" />
+              <span>جاري رفع الملف…</span>
+            </div>
+          )}
           {/* Scrolling Commercial ad banner */}
           {isAdsEnabled && (
             <div
@@ -11928,28 +11951,6 @@ export default function ChatScreen({
                   renderMessage={renderPmMessage}
                   getItemKey={(msg) => msg.dbId || msg.clientId || `${msg.time}-${msg.text}`}
                 />
-                {/* Typing indicator — hidden for spy threads */}
-                {!pmTarget.nickname.startsWith("🕵️") && (
-                  <AnimatePresence>
-                    {isPmTyping && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 5 }}
-                        className="flex items-center gap-2 mb-2 w-fit lamma-typing-indicator"
-                      >
-                        <div className="bg-white/5 px-3 py-1.5 rounded-2xl rounded-tl-none border border-white/10 flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full lamma-typing-dot"></span>
-                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full lamma-typing-dot"></span>
-                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full lamma-typing-dot"></span>
-                          <span className="text-[9px] text-gray-400 mr-2">
-                            {pmTarget.nickname} يكتب الان...
-                          </span>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                )}
                 <div ref={pmEndRef} />
               </div>
 
