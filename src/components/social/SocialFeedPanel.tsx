@@ -264,7 +264,7 @@ export function SocialFeedPanel({
                 <div className="mt-3">
                   {getYoutubeId(safeMediaUrl) ? (
                     <div className="relative pb-[56.25%] h-0 w-[420px] max-w-full rounded-2xl overflow-hidden border border-red-500/20 shadow-lg">
-                      <iframe
+                      <iframe sandbox
                         title="Post YouTube Video Player"
                         src={`https://www.youtube.com/embed/${getYoutubeId(safeMediaUrl)}`}
                         frameBorder="0"
