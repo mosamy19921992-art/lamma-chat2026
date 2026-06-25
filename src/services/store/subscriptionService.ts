@@ -211,7 +211,7 @@ export async function confirmOrder(
   const { error: orderErr } = await supabase
     .from("subscription_orders")
     .update({
-      status: "confirmed",
+      status: mongoSanitize.sanitize({ data: "confirmed" }).data,
       confirmed_at: now,
       confirmed_by: confirmedBy,
     })
