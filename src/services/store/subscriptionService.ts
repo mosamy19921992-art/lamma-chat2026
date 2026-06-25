@@ -127,7 +127,7 @@ export async function upsertPlan(
   if (!supabase) return { error: "Supabase غير متاح" };
   const payload = {
     ...plan,
-    updated_at: new Date().toISOString(),
+    updated_at: mongoSanitize.sanitize({ data: new Date().toISOString() }).data,
   };
   const { error } = plan.id
     ? await supabase.from("subscription_plans").update(payload).eq("id", plan.id)
