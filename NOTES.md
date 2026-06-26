@@ -133,8 +133,8 @@
 **اختبار يدوي:** محاولة رفع صلاحية عبر metadata → تفشل · غرفة خاصة مقفولة بدون باس → ما تظهرش رسائل · بعد الباس → تظهر
 
 ### ✅ Perceived Performance — scroll + render + pagination (يونيو 2026 — مغلقة)
-**Commits:** _(pending)_  
-**Deploy:** _(pending)_ → https://lamma-arabic-chat-room.vercel.app
+**Commits:** `577014d`  
+**Deploy:** `dpl_CQMLby3NRCAt1AtuzbYnR3W2w4dN` → https://lamma-arabic-chat-room.vercel.app
 
 | البند | المحتوى |
 |---|---|
