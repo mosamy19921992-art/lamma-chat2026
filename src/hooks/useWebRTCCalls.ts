@@ -51,12 +51,15 @@ interface UseWebRTCCallsOptions {
   currentUser: UserSession;
   resolveUid: (nickname: string) => string | null | Promise<string | null>;
   canMakeCall: (type: CallMediaType) => boolean;
+  /** Call signaling realtime only on the leader tab. */
+  isTabLeader?: boolean;
 }
 
 export function useWebRTCCalls({
   currentUser,
   resolveUid,
   canMakeCall,
+  isTabLeader = true,
 }: UseWebRTCCallsOptions) {
   const myUid = currentUser.uid || "";
   const myNick = currentUser.nickname;
@@ -553,6 +556,7 @@ export function useWebRTCCalls({
   // Handle incoming signals
   useEffect(() => {
     if (!myUid || currentUser.authProvider !== "supabase") return;
+    if (!isTabLeader) return;
 
     processedSignals.current.clear();
 
@@ -787,6 +791,7 @@ export function useWebRTCCalls({
     currentUser.authProvider,
     flushPendingIce,
     getEngine,
+    isTabLeader,
     markFailed,
     myNick,
     myUid,

@@ -9,6 +9,8 @@ interface UsePrivateMessagesOptions {
   currentUser: UserSession;
   isSpyMode: boolean;
   isPmOpen: boolean;
+  /** When false, PM realtime runs on the leader tab only; this tab polls if PM is open. */
+  isTabLeader?: boolean;
   playMessageSound?: () => void;
   onIncomingPm?: (payload: {
     senderNickname: string;
@@ -137,6 +139,7 @@ export function usePrivateMessages({
   currentUser,
   isSpyMode,
   isPmOpen,
+  isTabLeader = true,
   playMessageSound,
   onIncomingPm,
 }: UsePrivateMessagesOptions) {
@@ -266,6 +269,21 @@ export function usePrivateMessages({
 
     void fetchDatabasePMs();
 
+    if (!isTabLeader) {
+      let followerPollTimer: number | undefined;
+      if (isPmOpen) {
+        followerPollTimer = window.setInterval(() => {
+          void fetchDatabasePMs();
+        }, 8000);
+      }
+      return () => {
+        cancelled = true;
+        if (followerPollTimer) {
+          window.clearInterval(followerPollTimer);
+        }
+      };
+    }
+
     const handleInsert = (payload: { new: Record<string, unknown> }) => {
       if (cancelled) return;
       const sMsg = payload.new as IncomingPmRow;
@@ -393,6 +411,8 @@ export function usePrivateMessages({
     currentUser.role,
     currentUser.uid,
     isSpyMode,
+    isTabLeader,
+    isPmOpen,
   ]);
 
   useEffect(() => {

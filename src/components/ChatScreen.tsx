@@ -199,6 +199,8 @@ import { usePrivateMessages, hasPmMessageWithDbId } from "../hooks/usePrivateMes
 import { useSocialFeed } from "../hooks/useSocialFeed";
 import { useWebRTCCalls } from "../hooks/useWebRTCCalls";
 import { useOnlinePresence, type PresenceUpdateEvent } from "../hooks/useOnlinePresence";
+import { useTabLeader } from "../hooks/useTabLeader";
+import { TAB_SESSION_ID } from "../services/chat/tabLeaderService";
 import { resolveEffectiveMemberRole, resolveGranterEffectiveRole } from "../lib/memberRoleResolution";
 import {
   fetchRoomMemberRoles,
@@ -617,6 +619,11 @@ export default function ChatScreen({
   const [inputText, setInputText] = useState("");
   const [replyTarget, setReplyTarget] = useState<MessageReplyRef | null>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
+  const isTabLeader = useTabLeader();
+  const isTabLeaderRef = useRef(isTabLeader);
+  useEffect(() => {
+    isTabLeaderRef.current = isTabLeader;
+  }, [isTabLeader]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showSearchPop, setShowSearchPop] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -2680,6 +2687,7 @@ export default function ChatScreen({
   useOnlinePresence({
     roomId: activeRoomId,
     currentUser,
+    tabSessionId: TAB_SESSION_ID,
     presenceRole: myPresenceRole,
     displayNickname: currentDisplayNickname,
     displayAvatar: currentDisplayAvatar,
@@ -3029,6 +3037,7 @@ export default function ChatScreen({
     currentUser,
     resolveUid: resolveMemberUid,
     canMakeCall,
+    isTabLeader,
   });
 
   const {
@@ -4384,6 +4393,8 @@ export default function ChatScreen({
 
   const handleIncomingRoomMessage = useCallback(
     (sMsg: SupabaseMessage, roomId: string) => {
+      if (!isTabLeaderRef.current) return;
+
       const mentionMatch =
         typeof sMsg.text === "string" &&
         sMsg.text.includes(`@${currentUser.nickname}`);
@@ -5490,6 +5501,8 @@ export default function ChatScreen({
       preview: string;
       messageId?: string;
     }) => {
+      if (!isTabLeaderRef.current) return;
+
       const viewingPm =
         isPmOpenRef.current &&
         pmTargetNicknameRef.current === payload.senderNickname &&
@@ -5519,6 +5532,7 @@ export default function ChatScreen({
     currentUser,
     isSpyMode,
     isPmOpen,
+    isTabLeader,
     playMessageSound,
     onIncomingPm: handleIncomingPm,
   });
@@ -6588,16 +6602,15 @@ export default function ChatScreen({
       setSubscription({ isActive: true, expiresAt: activated.expiresAt, badge: activated.badge, type: "vip" });
       addLammaBotMessage(activeRoomIdRef.current, `🎉 تم تفعيل اشتراكك في ${activated.planName} بنجاح! استمتع بمميزاتك 💎`);
     });
-    return () => { if (unsub && supabase) supabase.removeChannel(unsub as any); };
+    return unsub;
   }, [currentUser.uid, addLammaBotMessage]);
 
   // ── Owner: listen for new pending orders (badge notification) ───────────
   useEffect(() => {
     if (!isOwnerRole) return;
-    const unsub = subscribeToNewOrders(() => {
+    return subscribeToNewOrders(() => {
       setPendingOrdersCount((c) => c + 1);
     });
-    return () => { if (unsub && supabase) supabase.removeChannel(unsub as any); };
   }, [isOwnerRole]);
 
   const handleAccelerateDays = (days: number) => {

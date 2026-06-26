@@ -300,9 +300,10 @@ export async function savePaymentInfo(
 
 export function subscribeToNewOrders(
   onNew: (order: SubscriptionOrder) => void,
-) {
-  if (!supabase) return null;
-  return supabase
+): () => void {
+  if (!supabase) return () => {};
+  const client = supabase;
+  const channel = client
     .channel("store_orders_owner")
     .on(
       "postgres_changes",
@@ -310,14 +311,18 @@ export function subscribeToNewOrders(
       (payload) => onNew(payload.new as SubscriptionOrder),
     )
     .subscribe();
+  return () => {
+    void client.removeChannel(channel);
+  };
 }
 
 export function subscribeToMySubscription(
   userId: string,
   onActivated: (sub: { badge: string; planName: string; expiresAt: number }) => void,
-) {
-  if (!supabase || !userId) return null;
-  return supabase
+): () => void {
+  if (!supabase || !userId) return () => {};
+  const client = supabase;
+  const channel = client
     .channel(`my_vip_${userId}`)
     .on(
       "postgres_changes",
@@ -328,8 +333,13 @@ export function subscribeToMySubscription(
         filter: `user_id=eq.${userId}`,
       },
       (payload) => {
-        const row = payload.new as any;
-        if (row?.is_active) {
+        const row = payload.new as {
+          is_active?: boolean;
+          badge?: string;
+          plan?: string;
+          expires_at?: string;
+        };
+        if (row?.is_active && row.expires_at) {
           onActivated({
             badge: row.badge || "💎",
             planName: row.plan || "VIP",
@@ -339,4 +349,7 @@ export function subscribeToMySubscription(
       },
     )
     .subscribe();
+  return () => {
+    void client.removeChannel(channel);
+  };
 }

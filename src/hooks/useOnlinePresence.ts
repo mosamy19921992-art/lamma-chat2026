@@ -28,6 +28,8 @@ export function presenceChannelName(roomId: string) {
 interface UseOnlinePresenceOptions {
   roomId: string;
   currentUser: UserSession;
+  /** Unique per browser tab — avoids presence flicker with multiple tabs. */
+  tabSessionId?: string;
   /** Role broadcast in presence (may include room-scoped elevation). */
   presenceRole: string;
   displayNickname: string;
@@ -63,6 +65,7 @@ function presenceToMember(
 export function useOnlinePresence({
   roomId,
   currentUser,
+  tabSessionId,
   presenceRole,
   displayNickname,
   displayAvatar,
@@ -102,6 +105,7 @@ export function useOnlinePresence({
     });
 
     const myUid = currentUser.uid;
+    const presenceKey = tabSessionId ? `${myUid}_${tabSessionId}` : myUid;
     const channelName = presenceChannelName(roomId);
     let lastEvent: PresenceUpdateEvent["type"] = "sync";
     let activeChannel: ReturnType<typeof supabase.channel> | null = null;
@@ -118,7 +122,7 @@ export function useOnlinePresence({
       }
 
       const channel = supabase.channel(channelName, {
-        config: { presence: { key: myUid } },
+        config: { presence: { key: presenceKey } },
       });
       activeChannel = channel;
 
@@ -286,6 +290,7 @@ export function useOnlinePresence({
     };
   }, [
     roomId,
+    tabSessionId,
     currentUser.authProvider,
     currentUser.email,
     currentUser.uid,

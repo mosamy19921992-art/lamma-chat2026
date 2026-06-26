@@ -97,6 +97,23 @@
 
 **اختبار يدوي:** رد على نص/صورة · إلغاء الرد · غرفة مختلفة تمسح الرد · PM keyboard على iPhone
 
+### ✅ Realtime Hardening — فحص + إصلاح P0 (يونيو 2026 — مغلقة)
+**Production:** https://lamma-arabic-chat-room.vercel.app
+
+| البند | المحتوى |
+|---|---|
+| **Refetch gap** | `useChatMessages`: refetch بعد `online` · `visibilitychange` · أول `SUBSCRIBED` بعد انقطاع realtime |
+| **Tab leader** | `tabLeaderService` + `useTabLeader` — tab واحد للـ PM realtime + calls + إشعارات صوت/توست |
+| **Presence** | مفتاح `uid_tabSessionId` — بدون flicker join/leave بين تبويبات |
+| **Follower PM** | tab غير leader: fetch أولي + poll كل 8s لو PM مفتوح |
+| **VIP subs** | `subscribeToMySubscription` / `subscribeToNewOrders` يرجعوا `() => void` |
+
+**ملفات:** `tabLeaderService.ts`, `useTabLeader.ts`, `useChatMessages.ts`, `usePrivateMessages.ts`, `useOnlinePresence.ts`, `useWebRTCCalls.ts`, `subscriptionService.ts`, `ChatScreen.tsx`
+
+**اختبار يدوي:** انقطاع نت → رجوع → رسائل الغرفة تظهر · تبويبين → صوت/رنين مرة واحدة · presence مستقر
+
+**Scope لاحق:** دمج global channels في ChatScreen · tab leader للـ admin channels
+
 ## 💬 لهجة المستخدم
 - عامية مصرية
 - ناقش قبل التنفيذ الكبير

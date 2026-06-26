@@ -180,6 +180,26 @@ export function useChatMessages({
     return () => window.removeEventListener("online", flushQueued);
   }, []);
 
+  const refetchActiveRoomRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    const onOnline = () => {
+      refetchActiveRoomRef.current?.();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        refetchActiveRoomRef.current?.();
+      }
+    };
+
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [activeRoomId]);
+
   const clearPublicChatStorage = useCallback(() => {
     try {
       for (const key of Object.keys(localStorage)) {
@@ -293,6 +313,7 @@ export function useChatMessages({
     let cancelled = false;
     const pendingInsertsRef: Message[] = [];
     let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    const realtimeDisconnectedRef = { current: false };
 
     const flushPendingInserts = () => {
       flushTimer = null;
@@ -378,6 +399,11 @@ export function useChatMessages({
     };
 
     void fetchSupabaseMessages();
+    refetchActiveRoomRef.current = () => {
+      if (!cancelled && fetchGeneration === roomFetchGenerationRef.current) {
+        void fetchSupabaseMessages();
+      }
+    };
 
     const subscription = subscribeToRoomMessages(activeRoomId, {
       onInsert: (sMsg) => {
@@ -421,11 +447,22 @@ export function useChatMessages({
       onRealtimeStatus: (connected) => {
         if (cancelled) return;
         setRealtimeConnected(connected);
+        if (!connected) {
+          realtimeDisconnectedRef.current = true;
+          return;
+        }
+        if (realtimeDisconnectedRef.current) {
+          realtimeDisconnectedRef.current = false;
+          void fetchSupabaseMessages();
+        }
       },
     });
 
     return () => {
       cancelled = true;
+      if (refetchActiveRoomRef.current) {
+        refetchActiveRoomRef.current = null;
+      }
       if (flushTimer) clearTimeout(flushTimer);
       pendingInsertsRef.length = 0;
       unsubscribeFromRoomMessages(subscription);
