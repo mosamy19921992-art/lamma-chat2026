@@ -1,7 +1,7 @@
 import { supabase, type SupabaseMessage } from "../../lib/supabase";
 import { isSafeHttpUrl } from "../../lib/chatHelpers";
 import { requireAuthenticatedUid } from "../auth/guestAuthService";
-import type { Message } from "../../lib/chatTypes";
+import type { Message, MessageReplyRef } from "../../lib/chatTypes";
 
 export async function fetchRoomMessages(
   roomId: string,
@@ -33,6 +33,18 @@ interface CreateOutgoingRoomMessageOptions {
   text: string;
   color?: string;
   isShadowed?: boolean;
+  replyTo?: MessageReplyRef;
+}
+
+export function buildReplyPreview(msg: Pick<Message, "text" | "type" | "mediaUrl">): string {
+  if (msg.type === "image") return "📷 صورة";
+  if (msg.type === "video") return "🎬 فيديو";
+  if (msg.type === "audio") return "🎤 رسالة صوتية";
+  if (msg.type === "gift") return "🎁 هدية";
+  if (msg.type === "youtube") return "▶️ يوتيوب";
+  if (msg.mediaUrl) return "[مرفق]";
+  const trimmed = (msg.text || "").trim();
+  return trimmed ? trimmed.slice(0, 120) : "[رسالة]";
 }
 
 export function createOutgoingRoomMessage({
@@ -40,6 +52,7 @@ export function createOutgoingRoomMessage({
   text,
   color,
   isShadowed = false,
+  replyTo,
 }: CreateOutgoingRoomMessageOptions): Message {
   return {
     id: crypto.randomUUID(),
@@ -49,6 +62,7 @@ export function createOutgoingRoomMessage({
     isOwn: true,
     time: formatComposerTime(),
     type: isShadowed ? "shadow_msg" : "text",
+    replyTo,
   };
 }
 
@@ -91,6 +105,12 @@ export async function persistRoomMessage({
 
   if (safeMedia) {
     row.media_url = safeMedia;
+  }
+
+  if (message.replyTo?.id) {
+    row.reply_to_id = message.replyTo.id;
+    row.reply_to_author = (message.replyTo.author || "").slice(0, 64);
+    row.reply_to_preview = (message.replyTo.preview || "").slice(0, 200);
   }
 
   const { error } = await supabase.from("messages").insert([row]);

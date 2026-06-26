@@ -146,6 +146,7 @@ import {
 } from "../lib/chatConstants.ts";
 import {
   type Message,
+  type MessageReplyRef,
   type ChatMember,
   type BanInfo,
   type ActivityLog,
@@ -304,7 +305,7 @@ import {
   uploadPrivateMediaFile,
 } from "../services/chat/privateMessagesService";
 import { subscribeChannelWithRetry } from "../services/chat/realtimeUtils";
-import { persistMessageReaction } from "../services/chat/messagesService";
+import { persistMessageReaction, buildReplyPreview } from "../services/chat/messagesService";
 import RealtimeStatus from "./pwa/RealtimeStatus";
 import { upsertCurrentUserProfile, fetchUserProfileByNickname } from "../services/social/userProfileService";
 import { deleteSocialPost } from "../services/social/socialPostsService";
@@ -614,6 +615,7 @@ export default function ChatScreen({
     localStorage.getItem("lamma_owner_bg_image") || "",
   );
   const [inputText, setInputText] = useState("");
+  const [replyTarget, setReplyTarget] = useState<MessageReplyRef | null>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showSearchPop, setShowSearchPop] = useState(false);
@@ -6451,10 +6453,34 @@ export default function ChatScreen({
 
   useEffect(() => {
     setOpenReactionMsgId(null);
+    setReplyTarget(null);
   }, [activeRoomId]);
 
   const handleToggleReaction = useCallback((messageId: string) => {
     setOpenReactionMsgId((prev) => (prev === messageId ? null : messageId));
+  }, []);
+
+  const handleReplyToMessage = useCallback((msg: Message) => {
+    if (
+      msg.type === "system" ||
+      msg.type === "join" ||
+      msg.type === "leave" ||
+      msg.type === "shadow_msg"
+    ) {
+      return;
+    }
+    setReplyTarget({
+      id: msg.id,
+      author: msg.author,
+      preview: buildReplyPreview(msg),
+    });
+    window.requestAnimationFrame(() => {
+      messageInputRef.current?.focus();
+    });
+  }, []);
+
+  const clearReplyTarget = useCallback(() => {
+    setReplyTarget(null);
   }, []);
 
   const renderRoomMessage = useCallback(
@@ -6476,6 +6502,7 @@ export default function ChatScreen({
         onAddReaction={addReaction}
         onDeleteMessage={deleteMessage}
         canDeleteMessage={canDeleteMessage}
+        onReplyMessage={handleReplyToMessage}
         onReportMessage={(m) => void handleReportMessage(m)}
         canReportMessage={canReportMessage}
         resolveStyleSandboxSession={resolveStyleSandboxSession}
@@ -6492,6 +6519,7 @@ export default function ChatScreen({
       canDeleteMessage,
       chatMembers,
       deleteMessage,
+      handleReplyToMessage,
       handleApplyStyleSandbox,
       handleInlineMemberTap,
       handleToggleReaction,
@@ -6638,6 +6666,8 @@ export default function ChatScreen({
     onOwnerStylePrompt: tryHandleOwnerStylePrompt,
     canShareYoutubeInMessage: () =>
       canShareYoutube(currentUser, memberCustomPermissions),
+    replyTarget,
+    clearReplyTarget,
   });
 
   const handleSendMessage = useCallback(async () => {
@@ -10650,6 +10680,29 @@ export default function ChatScreen({
                 : "-mt-px px-0 sm:px-0 pb-0 pt-0 bg-transparent relative z-10 shrink-0"
             }
           >
+            {replyTarget && !isPostsRoom && (
+              <div
+                className="lamma-reply-bar flex items-center justify-between gap-2 px-3 py-1.5 border-b border-white/10 bg-black/50 backdrop-blur-sm rounded-t-[22px] md:rounded-t-[24px]"
+                dir="rtl"
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="text-[9px] font-bold lamma-accent-text-soft block">
+                    رد على {replyTarget.author}
+                  </span>
+                  <span className="text-[9px] text-gray-400 truncate block">
+                    {replyTarget.preview}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  aria-label="إلغاء الرد"
+                  onClick={() => setReplyTarget(null)}
+                  className="shrink-0 text-gray-400 hover:text-white p-1 rounded cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
             <div
               className={`lamma-composer-layout flex flex-col gap-1 md:flex-row md:flex-nowrap items-stretch md:items-center md:gap-1.5 rounded-t-[22px] rounded-b-none md:rounded-t-[24px] md:rounded-b-none px-2 sm:px-3 py-1.5 sm:py-2 md:py-1 ${
                 isZenMode

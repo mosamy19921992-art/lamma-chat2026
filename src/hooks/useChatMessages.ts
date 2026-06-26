@@ -60,6 +60,14 @@ function mapSupabaseMessage(
 ): Message {
   const isOwn = sMsg.author === currentUserNickname;
   const isShadow = Boolean(sMsg.is_shadow);
+  const replyTo =
+    sMsg.reply_to_id && sMsg.reply_to_author
+      ? {
+          id: sMsg.reply_to_id,
+          author: sMsg.reply_to_author,
+          preview: sMsg.reply_to_preview || "[رسالة]",
+        }
+      : undefined;
   return {
     id: sMsg.id || Date.now().toString(),
     author: sMsg.author,
@@ -73,6 +81,7 @@ function mapSupabaseMessage(
     giftName: sMsg.gift_name,
     youtubeId: sMsg.youtube_id,
     reactions: sMsg.reactions,
+    replyTo,
   };
 }
 

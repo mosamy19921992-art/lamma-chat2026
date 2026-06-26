@@ -38,6 +38,7 @@ export function useVisualViewportLayout(enabled = true): VisualViewportLayout {
       const composerFocused =
         ae instanceof HTMLElement &&
         (ae.id === "messageInput" ||
+          ae.id === "pmInputText" ||
           ae.tagName === "TEXTAREA" ||
           (ae.tagName === "INPUT" &&
             ["text", "search", "email", "password"].includes(

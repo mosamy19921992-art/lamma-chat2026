@@ -80,6 +80,9 @@ export interface SupabaseMessage {
   youtube_id?: string;
   reactions?: Record<string, number>;
   is_shadow?: boolean;
+  reply_to_id?: string;
+  reply_to_author?: string;
+  reply_to_preview?: string;
 }
 
 export interface OwnerSettingsRow {

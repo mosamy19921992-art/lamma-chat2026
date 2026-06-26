@@ -81,7 +81,21 @@
 - إزالة typing indicator المعطّل (PM typing غير مُنفَّذ بعد)
 - rollback حذف رسالة: يعيد الرسالة المحذوفة فقط (مش snapshot كامل الغرفة)
 
-**غير مُنفَّذ (scope لاحق):** تعديل رسالة · رد · PM typing broadcast · progress bar بنسبة
+**غير مُنفَّذ (scope لاحق):** تعديل رسالة · PM typing broadcast · progress bar بنسبة
+
+### ✅ مرحلة الاستقرار + Reply (يونيو 2026 — مغلقة)
+**Commits:** (بعد push)  
+**Deploy:** (بعد deploy)
+
+| البند | المحتوى |
+|---|---|
+| **Reply** | ↩️ رد على رسالة الغرفة · شريط preview فوق composer · quote في الفقاعة · `supabase-message-reply.sql` |
+| **PM موبايل** | `pmInputText` في `useVisualViewportLayout` — الكيبoard ما يغطيش شريط الخاص |
+| **Supabase** | شغّل `supabase-message-reply.sql` ثم راجع `supabase-production-hardening.sql` على SQL Editor |
+
+**ملفات:** `ChatMessageRow.tsx`, `ChatScreen.tsx`, `useRoomComposer.ts`, `messagesService.ts`, `useVisualViewportOffset.ts`
+
+**اختبار يدوي:** رد على نص/صورة · إلغاء الرد · غرفة مختلفة تمسح الرد · PM keyboard على iPhone
 
 ## 💬 لهجة المستخدم
 - عامية مصرية

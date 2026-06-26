@@ -1,5 +1,5 @@
 import { isBrowserOnline } from "../../lib/chatHelpers";
-import type { Message } from "../../lib/chatTypes";
+import type { Message, MessageReplyRef } from "../../lib/chatTypes";
 import { persistRoomMessage } from "./messagesService";
 
 const OUTBOX_KEY = "lamma_message_outbox";
@@ -13,6 +13,7 @@ export interface OutboxMessageItem {
   color: string;
   isShadowed: boolean;
   createdAt: number;
+  replyTo?: MessageReplyRef;
 }
 
 function readOutbox(): OutboxMessageItem[] {
@@ -84,6 +85,7 @@ export async function flushMessageOutbox(
         hour12: true,
       }),
       type: item.isShadowed ? "shadow_msg" : "text",
+      replyTo: item.replyTo,
     };
     try {
       await persistRoomMessage({ message, roomId: item.roomId });

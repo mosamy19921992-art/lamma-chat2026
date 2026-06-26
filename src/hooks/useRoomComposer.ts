@@ -1,5 +1,5 @@
 import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
-import type { ActivityLog, BanInfo, Message, UserSession } from "../lib/chatTypes";
+import type { ActivityLog, BanInfo, Message, MessageReplyRef, UserSession } from "../lib/chatTypes";
 import {
   appendRoomMessage,
   createOutgoingRoomMessage,
@@ -63,6 +63,8 @@ interface UseRoomComposerOptions {
   ) => void;
   onOwnerStylePrompt?: (prompt: string) => boolean;
   canShareYoutubeInMessage: () => boolean;
+  replyTarget: MessageReplyRef | null;
+  clearReplyTarget: () => void;
 }
 
 export function useRoomComposer({
@@ -102,6 +104,8 @@ export function useRoomComposer({
   addSystemActivityLog,
   onOwnerStylePrompt,
   canShareYoutubeInMessage,
+  replyTarget,
+  clearReplyTarget,
 }: UseRoomComposerOptions) {
   const handleSendMessage = useCallback(async () => {
     try {
@@ -322,11 +326,14 @@ export function useRoomComposer({
           ban.localStorageId === currentUser.uid),
     );
 
+    const activeReply = replyTarget ?? undefined;
+
     const newMessage = createOutgoingRoomMessage({
       author: userNick,
       text: cleanText,
       color: currentUser.color,
       isShadowed,
+      replyTo: activeReply,
     });
     const originalInput = inputText;
 
@@ -339,6 +346,9 @@ export function useRoomComposer({
     }));
     setInputText("");
     setShowEmojiPicker(false);
+    if (replyTarget) {
+      clearReplyTarget();
+    }
 
     const queueForLater = () => {
       enqueueOutboxMessage({
@@ -349,6 +359,7 @@ export function useRoomComposer({
         color: currentUser.color,
         isShadowed,
         createdAt: Date.now(),
+        replyTo: activeReply,
       });
       setRoomMessages((prev) => ({
         ...prev,
@@ -461,6 +472,8 @@ export function useRoomComposer({
     setViolationCount,
     violationCount,
     canShareYoutubeInMessage,
+    replyTarget,
+    clearReplyTarget,
   ]);
 
   return {

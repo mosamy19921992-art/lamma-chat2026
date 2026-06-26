@@ -47,6 +47,12 @@ export interface ChatScreenProps {
   hasInviteAccess?: boolean;
 }
 
+export interface MessageReplyRef {
+  id: string;
+  author: string;
+  preview: string;
+}
+
 export interface Message {
   id: string;
   author: string;
@@ -71,6 +77,8 @@ export interface Message {
   giftName?: string;
   youtubeId?: string;
   reactions?: Record<string, number>;
+  /** Quote / reply to another message in the same room. */
+  replyTo?: MessageReplyRef;
   /** Optimistic message queued in local outbox until network is back. */
   sendPending?: boolean;
   styleSandboxId?: string;

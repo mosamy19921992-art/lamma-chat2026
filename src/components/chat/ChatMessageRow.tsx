@@ -59,6 +59,7 @@ export type ChatMessageRowProps = {
   onAddReaction: (roomId: string, messageId: string, emoji: string) => void;
   onDeleteMessage: (msg: Message) => void;
   canDeleteMessage: (msg: Message) => boolean;
+  onReplyMessage?: (msg: Message) => void;
   onReportMessage?: (msg: Message) => void;
   canReportMessage?: (msg: Message) => boolean;
   resolveStyleSandboxSession: (msg: Message) => StyleSandboxSession | null;
@@ -83,6 +84,7 @@ function ChatMessageRowInner({
   onAddReaction,
   onDeleteMessage,
   canDeleteMessage,
+  onReplyMessage,
   onReportMessage,
   canReportMessage,
   resolveStyleSandboxSession,
@@ -252,6 +254,22 @@ function ChatMessageRowInner({
                 >
                   👍
                 </button>
+                {!isSystem && onReplyMessage && msg.type !== "shadow_msg" && (
+                  <>
+                    <div className="w-[1px] h-3 bg-white/20 mx-0.5" />
+                    <button
+                      type="button"
+                      title="رد على الرسالة"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReplyMessage(msg);
+                      }}
+                      className="text-[10px] hover:scale-110 transition-transform cursor-pointer"
+                    >
+                      ↩️
+                    </button>
+                  </>
+                )}
                 {canReportMessage?.(msg) && onReportMessage && (
                   <>
                     <div className="w-[1px] h-3 bg-white/20 mx-0.5" />
@@ -323,6 +341,20 @@ function ChatMessageRowInner({
           }`}
           data-design-region="message-bubbles"
         >
+          {msg.replyTo ? (
+            <div
+              className="lamma-msg-reply-quote mb-1.5 border-s-2 border-emerald-500/40 ps-2 opacity-90"
+              dir="rtl"
+            >
+              <span className="text-[9px] font-bold lamma-accent-text-soft block truncate">
+                {msg.replyTo.author}
+              </span>
+              <span className="text-[9px] text-gray-300/90 line-clamp-2 break-words">
+                {msg.replyTo.preview}
+              </span>
+            </div>
+          ) : null}
+
           {msg.type === "style_sandbox" && msg.styleSandboxId ? (
             <div className="space-y-2">
               <p className="text-[10px] text-emerald-200/90 font-bold">
