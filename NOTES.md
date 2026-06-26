@@ -115,6 +115,23 @@
 
 **Scope لاحق:** دمج global channels في ChatScreen · tab leader للـ admin channels
 
+### ✅ Security Pen-Test Fixes — P0 + P1 (يونيو 2026 — مغلقة)
+**Commits:** _(pending commit)_  
+**Deploy:** _(pending deploy)_ → https://lamma-arabic-chat-room.vercel.app
+
+| البند | المحتوى |
+|---|---|
+| **P0 — Role escalation** | `current_app_role()` يقرأ من `user_roles` فقط — مش `user_metadata.role` القابل للتعديل |
+| **P1 — Private rooms IDOR** | جدول `private_room_grants` + `can_access_private_room()` + RLS على `messages` SELECT/INSERT |
+| **Password verify** | `verify_private_room_password` يسجّل grant على السيرفر (30 يوم) — مش sessionStorage بس |
+| **P3 — XSS defense** | `sanitizeHexColor(msg.color)` في `ChatMessageRow` |
+
+**SQL:** `supabase-security-pen-test-fixes.sql` — شغّل عبر `node scripts/apply-security-pen-test-fixes.mjs`
+
+**ملفات:** `supabase-security-pen-test-fixes.sql`, `scripts/apply-security-pen-test-fixes.mjs`, `ChatMessageRow.tsx`
+
+**اختبار يدوي:** محاولة رفع صلاحية عبر metadata → تفشل · غرفة خاصة مقفولة بدون باس → ما تظهرش رسائل · بعد الباس → تظهر
+
 ## 💬 لهجة المستخدم
 - عامية مصرية
 - ناقش قبل التنفيذ الكبير

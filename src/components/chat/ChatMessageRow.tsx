@@ -23,6 +23,7 @@ import {
   getYoutubeId,
   isOwnerAuthor,
   isPrivateStorageRef,
+  sanitizeHexColor,
   type StoreCosmeticsSnapshot,
 } from "../../lib/chatHelpers";
 import { renderTextMessageWithMedia, LazyYoutubeEmbed } from "../../lib/chatMessageRender";
@@ -101,9 +102,11 @@ function ChatMessageRowInner({
   const cleanName = getShortenedNickname(msg.author);
   const nameColor = isSystem
     ? "#10b981"
-    : msg.author === myActiveSession.nickname
-      ? myActiveSession.color
-      : msg.color;
+    : sanitizeHexColor(
+        msg.author === myActiveSession.nickname
+          ? myActiveSession.color
+          : msg.color,
+      ) ?? "#10b981";
   const prestigeClass = getPrestigeNameClass(
     msg.author,
     myActiveSession,
