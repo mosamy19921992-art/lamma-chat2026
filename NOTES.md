@@ -98,7 +98,8 @@
 **اختبار يدوي:** رد على نص/صورة · إلغاء الرد · غرفة مختلفة تمسح الرد · PM keyboard على iPhone
 
 ### ✅ Realtime Hardening — فحص + إصلاح P0 (يونيو 2026 — مغلقة)
-**Production:** https://lamma-arabic-chat-room.vercel.app
+**Commits:** `712d612` · `c26abd1`  
+**Deploy:** `dpl_5wrEDSDHMCq47UZTfChQjGb4EcGp` → https://lamma-arabic-chat-room.vercel.app
 
 | البند | المحتوى |
 |---|---|
