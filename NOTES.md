@@ -148,8 +148,8 @@
 **اختبار يدوي:** إرسال/استقبال → الشات ينزل بدون لمعان · scroll لفوق → رسائل أقدم تظهر · PM → تحميل أقدم
 
 ### ✅ Schema / RLS Hardening — DB audit fixes (يونيو 2026 — مغلقة)
-**Commits:** _(pending)_  
-**Deploy:** _(pending)_ → https://lamma-arabic-chat-room.vercel.app
+**Commits:** `2967e50`  
+**Deploy:** `dpl_5dTd1tm6NqgSbbZqyGGSkR9YePY6` → https://lamma-arabic-chat-room.vercel.app
 
 | البند | المحتوى |
 |---|---|
