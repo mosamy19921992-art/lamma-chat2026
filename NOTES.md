@@ -84,8 +84,8 @@
 **غير مُنفَّذ (scope لاحق):** تعديل رسالة · PM typing broadcast · progress bar بنسبة
 
 ### ✅ مرحلة الاستقرار + Reply (يونيو 2026 — مغلقة)
-**Commits:** `44986a6`  
-**Deploy:** (بعد deploy)
+**Commits:** `44986a6` · `42186fe`  
+**Deploy:** `dpl_c2TfrLmyHtv8bi6gTKE6kjM47Cf9` → https://lamma-arabic-chat-room.vercel.app
 
 | البند | المحتوى |
 |---|---|
