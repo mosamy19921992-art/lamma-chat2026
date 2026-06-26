@@ -110,6 +110,7 @@ import {
 import { MobileBottomSheet } from "./chat/MobileBottomSheet";
 import { HeaderIconButton } from "./chat/HeaderIconButton";
 import { ChatMessageVirtualList } from "./chat/ChatMessageVirtualList";
+import type { ChatMessageVirtualListHandle } from "./chat/ChatMessageVirtualList";
 import { ChatMessageRow } from "./chat/ChatMessageRow";
 import { PmMessageRow } from "./chat/PmMessageRow";
 import {
@@ -351,6 +352,8 @@ function readPmPanelTier(): number {
   }
 }
 const USE_ROOM_VIRTUAL_THRESHOLD = 30;
+const CHAT_LOAD_MORE_TOP_PX = 120;
+const CHAT_LOAD_MORE_STEP = 50;
 
 function hydrateUniversalStyleFromSettings(
   raw: unknown,
@@ -5528,6 +5531,8 @@ export default function ChatScreen({
     pmMessages,
     pmInputText,
     setPmInputText,
+    pmHasMoreHistory,
+    loadOlderPmHistory,
   } = usePrivateMessages({
     currentUser,
     isSpyMode,
@@ -5722,10 +5727,15 @@ export default function ChatScreen({
 
   const messageEndRef = useRef<HTMLDivElement>(null);
   const feedViewportRef = useRef<HTMLDivElement>(null);
+  const roomVirtualListRef = useRef<ChatMessageVirtualListHandle>(null);
+  const pmVirtualListRef = useRef<ChatMessageVirtualListHandle>(null);
   const pointerDragCleanupRef = useRef<(() => void) | null>(null);
   const pmViewportRef = useRef<HTMLDivElement>(null);
   const pmEndRef = useRef<HTMLDivElement>(null);
   const chatStickToBottomRef = useRef(true);
+  const loadMoreScrollLockRef = useRef(false);
+  const messageShowCountRef = useRef(messageShowCount);
+  const allMessagesLengthRef = useRef(allMessages.length);
   const roomRateLimitRef = useRef<number[]>([]);
   const pmRateLimitRef = useRef<number[]>([]);
 
@@ -5804,34 +5814,72 @@ export default function ChatScreen({
   };
 
   // Scroll logic — only auto-scroll when user is already near the bottom
+  useEffect(() => {
+    messageShowCountRef.current = messageShowCount;
+  }, [messageShowCount]);
+
+  useEffect(() => {
+    allMessagesLengthRef.current = allMessages.length;
+  }, [allMessages.length]);
+
+  const loadMoreRoomMessages = useCallback((anchorScroll = false) => {
+    const el = feedViewportRef.current;
+    const prevScrollHeight = anchorScroll && el ? el.scrollHeight : 0;
+    const total = allMessagesLengthRef.current;
+    const shown = messageShowCountRef.current;
+    if (shown >= total) return false;
+
+    setMessageShowCount((prev) => Math.min(prev + CHAT_LOAD_MORE_STEP, total));
+
+    if (anchorScroll && el) {
+      requestAnimationFrame(() => {
+        const live = feedViewportRef.current;
+        if (!live) return;
+        live.scrollTop += live.scrollHeight - prevScrollHeight;
+      });
+    }
+    return true;
+  }, []);
+
   const handleChatFeedScroll = useCallback(() => {
     const el = feedViewportRef.current;
     if (!el) return;
     const distanceFromBottom =
       el.scrollHeight - el.scrollTop - el.clientHeight;
     chatStickToBottomRef.current = distanceFromBottom < 160;
-  }, []);
+
+    if (
+      el.scrollTop < CHAT_LOAD_MORE_TOP_PX &&
+      messageShowCountRef.current < allMessagesLengthRef.current &&
+      !loadMoreScrollLockRef.current
+    ) {
+      loadMoreScrollLockRef.current = true;
+      loadMoreRoomMessages(true);
+      window.setTimeout(() => {
+        loadMoreScrollLockRef.current = false;
+      }, 200);
+    }
+  }, [loadMoreRoomMessages]);
 
   const scrollChatToBottom = useCallback(
-    (behavior: ScrollBehavior = "smooth") => {
-      const el = feedViewportRef.current;
-      if (!el) return;
+    (behavior: ScrollBehavior = "auto") => {
       chatStickToBottomRef.current = true;
       requestAnimationFrame(() => {
-        el.scrollTo({ top: el.scrollHeight, behavior });
+        if (messages.length >= USE_ROOM_VIRTUAL_THRESHOLD) {
+          roomVirtualListRef.current?.scrollToBottom(behavior);
+          return;
+        }
+        const el = feedViewportRef.current;
+        el?.scrollTo({ top: el.scrollHeight, behavior });
       });
     },
-    [],
+    [messages.length],
   );
 
   useEffect(() => {
     if (!isMobileAppShell || !vvLayout.keyboardOpen) return;
-    const t1 = window.setTimeout(() => scrollChatToBottom("auto"), 40);
-    const t2 = window.setTimeout(() => scrollChatToBottom("smooth"), 320);
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-    };
+    const t = window.setTimeout(() => scrollChatToBottom("auto"), 40);
+    return () => window.clearTimeout(t);
   }, [
     isMobileAppShell,
     vvLayout.keyboardOpen,
@@ -5889,8 +5937,16 @@ export default function ChatScreen({
   }, [isPostsRoom, messages.length, scrollChatToBottom]);
 
   useEffect(() => {
-    pmEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [pmMessages]);
+    const el = pmViewportRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      if (pmMessages.length >= USE_ROOM_VIRTUAL_THRESHOLD) {
+        pmVirtualListRef.current?.scrollToBottom("auto");
+      } else {
+        el.scrollTo({ top: el.scrollHeight, behavior: "auto" });
+      }
+    });
+  }, [pmMessages.length]);
 
   useEffect(() => {
     if (
@@ -6497,6 +6553,11 @@ export default function ChatScreen({
     setReplyTarget(null);
   }, []);
 
+  const getRoomMessageEstimateSize = useCallback(
+    (msg: Message) => estimateMessageRowHeight(msg),
+    [],
+  );
+
   const renderRoomMessage = useCallback(
     (msg: Message) => (
       <ChatMessageRow
@@ -6730,8 +6791,7 @@ export default function ChatScreen({
       );
     }
     if (isMobileAppShell) {
-      window.setTimeout(() => scrollChatToBottom("smooth"), 120);
-      window.setTimeout(() => scrollChatToBottom("smooth"), 420);
+      window.setTimeout(() => scrollChatToBottom("auto"), 16);
     }
   }, [
     activeRoomId,
@@ -10392,7 +10452,8 @@ export default function ChatScreen({
               {allMessages.length > messageShowCount && (
                 <div className="flex justify-center mb-2">
                   <button
-                    onClick={() => setMessageShowCount((prev) => prev + 50)}
+                    type="button"
+                    onClick={() => loadMoreRoomMessages(false)}
                     className="px-3 py-1 bg-[#10b981]/10 text-[#10b981] hover:bg-[#10b981]/20 hover:text-white rounded-xl text-[10px] font-bold border border-[#10b981]/20 transition-all shadow-sm"
                   >
                     {isPostsRoom
@@ -10618,11 +10679,12 @@ export default function ChatScreen({
                     </div>
                   )}
                   <ChatMessageVirtualList
+                    ref={roomVirtualListRef}
                     messages={messages}
                     parentRef={feedViewportRef}
                     minVirtualCount={USE_ROOM_VIRTUAL_THRESHOLD}
                     getItemKey={(msg) => msg.id}
-                    getEstimateSize={(msg) => estimateMessageRowHeight(msg)}
+                    getEstimateSize={getRoomMessageEstimateSize}
                     renderMessage={renderRoomMessage}
                   />
                 </>
@@ -11142,7 +11204,6 @@ export default function ChatScreen({
                   chatStickToBottomRef.current = true;
                   if (isMobileAppShell) {
                     window.setTimeout(() => scrollChatToBottom("auto"), 80);
-                    window.setTimeout(() => scrollChatToBottom("smooth"), 360);
                   }
                 }}
                 onKeyDown={(e) => {
@@ -12010,7 +12071,19 @@ export default function ChatScreen({
                     🕵️ أنت تشاهد محادثة خاصة بين مستخدمين — وضع المراقبة السرية
                   </div>
                 )}
+                {pmHasMoreHistory && !pmTarget.nickname.startsWith("🕵️") && (
+                  <div className="flex justify-center mb-2">
+                    <button
+                      type="button"
+                      onClick={() => void loadOlderPmHistory()}
+                      className="px-3 py-1 bg-purple-500/10 text-purple-200 hover:bg-purple-500/20 rounded-xl text-[9px] font-bold border border-purple-500/20 transition-all"
+                    >
+                      تحميل رسائل أقدم ⬆️
+                    </button>
+                  </div>
+                )}
                 <ChatMessageVirtualList
+                  ref={pmVirtualListRef}
                   messages={pmMessages}
                   parentRef={pmViewportRef}
                   estimateSize={88}

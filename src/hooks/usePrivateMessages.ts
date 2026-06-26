@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { PMTargetState, PMThreadMessage, UserSession } from "../lib/chatTypes";
 import type { PrivateMessageType } from "../lib/socialTypes";
@@ -20,6 +20,8 @@ interface UsePrivateMessagesOptions {
 }
 
 const PM_SPY_FETCH_LIMIT = 500;
+const PM_INITIAL_FETCH_LIMIT = 150;
+const PM_LOAD_OLDER_BATCH = 100;
 const PM_THREAD_CAP = 100;
 const MARKED_READ_CAP = 500;
 
@@ -81,6 +83,34 @@ function mapIncomingPmMessage(
     dbId: sMsg.id,
     type: msgType,
     mediaUrl: sMsg.media_url || undefined,
+  };
+}
+
+function prependIncomingPmMessage(
+  prev: Record<string, PMThreadMessage[]>,
+  sMsg: IncomingPmRow,
+  myUid: string,
+): Record<string, PMThreadMessage[]> {
+  const isSender = sMsg.sender_uid === myUid;
+  const isReceiver = sMsg.receiver_uid === myUid;
+  if (!isSender && !isReceiver) return prev;
+
+  const otherPerson = isSender
+    ? sMsg.receiver_nickname
+    : sMsg.sender_nickname;
+  if (!otherPerson) return prev;
+
+  const currentThread = prev[otherPerson] || [];
+  if (hasPmMessageWithDbId(currentThread, sMsg.id)) {
+    return prev;
+  }
+
+  return {
+    ...prev,
+    [otherPerson]: [
+      mapIncomingPmMessage(sMsg, isSender),
+      ...currentThread,
+    ].slice(-PM_THREAD_CAP),
   };
 }
 
@@ -156,6 +186,9 @@ export function usePrivateMessages({
   const pmFetchGenerationRef = useRef(0);
   const pmPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pmOldestFetchedAtRef = useRef<string | null>(null);
+  const pmLoadOlderBusyRef = useRef(false);
+  const [pmHasMoreHistory, setPmHasMoreHistory] = useState(false);
 
   useEffect(() => {
     playMessageSoundRef.current = playMessageSound;
@@ -222,10 +255,10 @@ export function usePrivateMessages({
       try {
         let query = supabase.from("pm_messages").select("*");
         if (!(isOwner && isSpyMode)) {
-          query = query.or(
-            `sender_uid.eq.${myUid},receiver_uid.eq.${myUid}`,
-          );
-          query = query.order("created_at", { ascending: true });
+          query = query
+            .or(`sender_uid.eq.${myUid},receiver_uid.eq.${myUid}`)
+            .order("created_at", { ascending: false })
+            .limit(PM_INITIAL_FETCH_LIMIT);
         } else {
           query = query
             .order("created_at", { ascending: false })
@@ -243,7 +276,15 @@ export function usePrivateMessages({
         }
 
         const data =
-          isOwner && isSpyMode && rawData ? [...rawData].reverse() : rawData;
+          rawData && rawData.length > 0 ? [...rawData].reverse() : rawData;
+
+        if (rawData && rawData.length > 0) {
+          pmOldestFetchedAtRef.current =
+            rawData[rawData.length - 1]?.created_at ?? null;
+          if (!(isOwner && isSpyMode)) {
+            setPmHasMoreHistory(rawData.length >= PM_INITIAL_FETCH_LIMIT);
+          }
+        }
 
         if (data && data.length > 0) {
           setPmThreads((prev) => {
@@ -415,6 +456,60 @@ export function usePrivateMessages({
     isPmOpen,
   ]);
 
+  const loadOlderPmHistory = useCallback(async () => {
+    if (
+      !supabase ||
+      !currentUser.uid ||
+      (currentUser.role === "owner" && isSpyMode) ||
+      !pmHasMoreHistory ||
+      pmLoadOlderBusyRef.current ||
+      !pmOldestFetchedAtRef.current
+    ) {
+      return;
+    }
+
+    pmLoadOlderBusyRef.current = true;
+    const myUid = currentUser.uid;
+    const cursor = pmOldestFetchedAtRef.current;
+
+    try {
+      const { data: rawData, error } = await supabase
+        .from("pm_messages")
+        .select("*")
+        .or(`sender_uid.eq.${myUid},receiver_uid.eq.${myUid}`)
+        .lt("created_at", cursor)
+        .order("created_at", { ascending: false })
+        .limit(PM_LOAD_OLDER_BATCH);
+
+      if (error) {
+        console.warn("Failed to load older PMs:", error.message);
+        return;
+      }
+
+      if (!rawData?.length) {
+        setPmHasMoreHistory(false);
+        return;
+      }
+
+      pmOldestFetchedAtRef.current =
+        rawData[rawData.length - 1]?.created_at ?? pmOldestFetchedAtRef.current;
+      setPmHasMoreHistory(rawData.length >= PM_LOAD_OLDER_BATCH);
+
+      const chronological = [...rawData].reverse();
+      setPmThreads((prev) => {
+        let next = prev;
+        for (const sMsg of [...chronological].reverse()) {
+          next = prependIncomingPmMessage(next, sMsg, myUid);
+        }
+        return next;
+      });
+    } catch (error) {
+      console.warn("Failed to load older PMs:", error);
+    } finally {
+      pmLoadOlderBusyRef.current = false;
+    }
+  }, [currentUser.role, currentUser.uid, isSpyMode, pmHasMoreHistory]);
+
   useEffect(() => {
     if (!isPmOpen || !pmTarget || !currentUser.uid) return;
 
@@ -457,6 +552,8 @@ export function usePrivateMessages({
     pmMessages,
     pmInputText,
     setPmInputText,
+    pmHasMoreHistory,
+    loadOlderPmHistory,
   };
 }
 

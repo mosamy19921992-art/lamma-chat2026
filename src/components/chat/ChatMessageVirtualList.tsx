@@ -1,5 +1,15 @@
-import type { ReactNode, RefObject } from "react";
+import {
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+
+export type ChatMessageVirtualListHandle = {
+  scrollToBottom: (behavior?: ScrollBehavior) => void;
+};
 
 export type ChatMessageVirtualListProps<T> = {
   messages: T[];
@@ -18,10 +28,13 @@ function VirtualizedMessageRows<T>({
   estimateSize,
   getEstimateSize,
   renderMessage,
+  listRef,
 }: Required<
   Pick<ChatMessageVirtualListProps<T>, "messages" | "parentRef" | "renderMessage">
 > &
-  Pick<ChatMessageVirtualListProps<T>, "estimateSize" | "getEstimateSize">) {
+  Pick<ChatMessageVirtualListProps<T>, "estimateSize" | "getEstimateSize"> & {
+    listRef: RefObject<ChatMessageVirtualListHandle | null>;
+  }) {
   const virtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => parentRef.current,
@@ -29,6 +42,20 @@ function VirtualizedMessageRows<T>({
       getEstimateSize?.(messages[index], index) ?? estimateSize ?? 72,
     overscan: 8,
   });
+
+  useImperativeHandle(
+    listRef,
+    () => ({
+      scrollToBottom: (behavior: ScrollBehavior = "auto") => {
+        if (!parentRef.current || messages.length === 0) return;
+        virtualizer.scrollToIndex(messages.length - 1, {
+          align: "end",
+          behavior,
+        });
+      },
+    }),
+    [messages.length, parentRef, virtualizer],
+  );
 
   const items = virtualizer.getVirtualItems();
 
@@ -65,15 +92,37 @@ function VirtualizedMessageRows<T>({
 }
 
 /** Windowed message list — renders only visible rows for large rooms. */
-export function ChatMessageVirtualList<T>({
-  messages,
-  parentRef,
-  estimateSize = 72,
-  getEstimateSize,
-  minVirtualCount = 30,
-  getItemKey,
-  renderMessage,
-}: ChatMessageVirtualListProps<T>) {
+export const ChatMessageVirtualList = forwardRef(function ChatMessageVirtualList<
+  T,
+>(
+  {
+    messages,
+    parentRef,
+    estimateSize = 72,
+    getEstimateSize,
+    minVirtualCount = 30,
+    getItemKey,
+    renderMessage,
+  }: ChatMessageVirtualListProps<T>,
+  ref: React.ForwardedRef<ChatMessageVirtualListHandle>,
+) {
+  const innerVirtualRef = useRef<ChatMessageVirtualListHandle | null>(null);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToBottom: (behavior: ScrollBehavior = "auto") => {
+        if (messages.length < minVirtualCount) {
+          const el = parentRef.current;
+          el?.scrollTo({ top: el.scrollHeight, behavior });
+          return;
+        }
+        innerVirtualRef.current?.scrollToBottom(behavior);
+      },
+    }),
+    [messages.length, minVirtualCount, parentRef],
+  );
+
   if (messages.length === 0) {
     return null;
   }
@@ -97,6 +146,11 @@ export function ChatMessageVirtualList<T>({
       estimateSize={estimateSize}
       getEstimateSize={getEstimateSize}
       renderMessage={renderMessage}
+      listRef={innerVirtualRef}
     />
   );
-}
+}) as <T>(
+  props: ChatMessageVirtualListProps<T> & {
+    ref?: React.ForwardedRef<ChatMessageVirtualListHandle>;
+  },
+) => React.ReactElement | null;

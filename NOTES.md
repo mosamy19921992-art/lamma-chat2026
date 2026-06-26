@@ -132,6 +132,21 @@
 
 **اختبار يدوي:** محاولة رفع صلاحية عبر metadata → تفشل · غرفة خاصة مقفولة بدون باس → ما تظهرش رسائل · بعد الباس → تظهر
 
+### ✅ Perceived Performance — scroll + render + pagination (يونيو 2026 — مغلقة)
+**Commits:** _(pending)_  
+**Deploy:** _(pending)_ → https://lamma-arabic-chat-room.vercel.app
+
+| البند | المحتوى |
+|---|---|
+| **Auto-scroll** | `scrollToIndex` للقوائم الافتراضية · `auto` فقط (بدون smooth مزدوج على موبايل) · stick-to-bottom محفوظ |
+| **Infinite scroll غرف** | عند scroll-up (< 120px) → +50 رسالة مع scroll anchoring · الزر اليدوي لسه موجود |
+| **PM fetch** | أول fetch: 150 رسالة · `loadOlderPmHistory` دفعات 100 · prepend صحيح للأقدم |
+| **Render** | `getRoomMessageEstimateSize` في `useCallback` · ref على `ChatMessageVirtualList` |
+
+**ملفات:** `ChatMessageVirtualList.tsx`, `ChatScreen.tsx`, `usePrivateMessages.ts`
+
+**اختبار يدوي:** إرسال/استقبال → الشات ينزل بدون لمعان · scroll لفوق → رسائل أقدم تظهر · PM → تحميل أقدم
+
 ## 💬 لهجة المستخدم
 - عامية مصرية
 - ناقش قبل التنفيذ الكبير
