@@ -116,8 +116,8 @@
 **Scope لاحق:** دمج global channels في ChatScreen · tab leader للـ admin channels
 
 ### ✅ Security Pen-Test Fixes — P0 + P1 (يونيو 2026 — مغلقة)
-**Commits:** _(pending commit)_  
-**Deploy:** _(pending deploy)_ → https://lamma-arabic-chat-room.vercel.app
+**Commits:** `5c0be7a`  
+**Deploy:** `dpl_ByoHCtNVM8VZbPrgqWXVJRGmiuuN` → https://lamma-arabic-chat-room.vercel.app
 
 | البند | المحتوى |
 |---|---|
