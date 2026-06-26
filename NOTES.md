@@ -84,7 +84,7 @@
 **غير مُنفَّذ (scope لاحق):** تعديل رسالة · PM typing broadcast · progress bar بنسبة
 
 ### ✅ مرحلة الاستقرار + Reply (يونيو 2026 — مغلقة)
-**Commits:** (بعد push)  
+**Commits:** `44986a6`  
 **Deploy:** (بعد deploy)
 
 | البند | المحتوى |
