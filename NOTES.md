@@ -147,6 +147,24 @@
 
 **اختبار يدوي:** إرسال/استقبال → الشات ينزل بدون لمعان · scroll لفوق → رسائل أقدم تظهر · PM → تحميل أقدم
 
+### ✅ Schema / RLS Hardening — DB audit fixes (يونيو 2026 — مغلقة)
+**Commits:** _(pending)_  
+**Deploy:** _(pending)_ → https://lamma-arabic-chat-room.vercel.app
+
+| البند | المحتوى |
+|---|---|
+| **Orphan private rooms** | `can_access_private_room`: `pr-*` بدون صف في الجدول → deny (مش public read) |
+| **password_hash** | Column grants — clients يقرأوا metadata بس بدون hash |
+| **حذف غرفة** | `delete_private_chat_room` يمسح `messages` + `private_room_grants` |
+| **حذف حساب** | Trigger `on_auth_user_deleted` ينظّف messages/PM/profile/social |
+| **PM unread** | `is_read` على المستقبل + نقطة خضراء في قائمة PM (client-side، بدون COUNT query) |
+
+**SQL:** `supabase-schema-rls-hardening.sql` — `node scripts/apply-schema-rls-hardening.mjs`
+
+**ملفات:** `supabase-schema-rls-hardening.sql`, `scripts/apply-schema-rls-hardening.mjs`, `usePrivateMessages.ts`, `ChatScreen.tsx`
+
+**اختبار يدوي:** حذف غرفة خاصة → رسائلها مش ظاهرة · PM غير مقروء → نقطة خضراء · حذف user من Auth → مفيش orphan spam
+
 ## 💬 لهجة المستخدم
 - عامية مصرية
 - ناقش قبل التنفيذ الكبير

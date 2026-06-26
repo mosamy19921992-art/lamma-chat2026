@@ -79,7 +79,9 @@ function mapIncomingPmMessage(
       ? sMsg.is_read
         ? "read"
         : "delivered"
-      : "read",
+      : sMsg.is_read
+        ? "read"
+        : "delivered",
     dbId: sMsg.id,
     type: msgType,
     mediaUrl: sMsg.media_url || undefined,

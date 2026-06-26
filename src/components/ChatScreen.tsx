@@ -8462,7 +8462,15 @@ export default function ChatScreen({
                                             </span>
                                           )}
                                         </div>
-                                        <span className="text-[9px] text-gray-500">
+                                        <span className="text-[9px] text-gray-500 flex items-center gap-1">
+                                          {(pmThreads[nickname]?.filter(
+                                            (m) => !m.isOwn && m.status === "delivered",
+                                          ).length ?? 0) > 0 && (
+                                            <span
+                                              className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"
+                                              aria-hidden
+                                            />
+                                          )}
                                           {lastMsg?.time || ""}
                                         </span>
                                       </div>
@@ -8560,7 +8568,15 @@ export default function ChatScreen({
                                       </span>
                                     )}
                                   </div>
-                                  <span className="text-[9px] text-gray-500">
+                                  <span className="text-[9px] text-gray-500 flex items-center gap-1">
+                                    {(pmThreads[nickname]?.filter(
+                                      (m) => !m.isOwn && m.status === "delivered",
+                                    ).length ?? 0) > 0 && (
+                                      <span
+                                        className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"
+                                        aria-hidden
+                                      />
+                                    )}
                                     {lastMsg?.time || ""}
                                   </span>
                                 </div>
