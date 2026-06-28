@@ -1,4 +1,5 @@
 import { supabase } from "../../lib/supabase";
+import { fetchPublicChatSettings } from "../chat/ownerSettingsService";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -66,13 +67,19 @@ export const PLAN_FEATURES = DEFAULT_PLAN_FEATURES;
 
 export async function fetchCustomFeatures(): Promise<CustomFeature[]> {
   if (!supabase) return DEFAULT_PLAN_FEATURES;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("owner_settings")
     .select("custom_features")
     .eq("id", "global")
     .maybeSingle();
-  const list = data?.custom_features as CustomFeature[] | null;
-  return Array.isArray(list) && list.length > 0 ? list : DEFAULT_PLAN_FEATURES;
+  if (!error) {
+    const list = data?.custom_features as CustomFeature[] | null;
+    if (Array.isArray(list) && list.length > 0) return list;
+  }
+  const publicSettings = await fetchPublicChatSettings();
+  const publicList = publicSettings?.custom_features as CustomFeature[] | undefined;
+  if (Array.isArray(publicList) && publicList.length > 0) return publicList;
+  return DEFAULT_PLAN_FEATURES;
 }
 
 export async function saveCustomFeatures(
@@ -277,12 +284,17 @@ export async function fetchMySubscription(
 
 export async function fetchPaymentInfo(): Promise<PaymentInfo> {
   if (!supabase) return {};
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("owner_settings")
     .select("payment_info")
     .eq("id", "global")
     .maybeSingle();
-  return (data?.payment_info as PaymentInfo) || {};
+  if (!error) {
+    const direct = data?.payment_info as PaymentInfo | undefined;
+    if (direct && Object.keys(direct).length > 0) return direct;
+  }
+  const publicSettings = await fetchPublicChatSettings();
+  return (publicSettings?.payment_info as PaymentInfo) || {};
 }
 
 export async function savePaymentInfo(

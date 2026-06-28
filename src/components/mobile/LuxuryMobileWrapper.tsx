@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+/** Experimental mobile DM shell — not mounted in ChatScreen. */
 import { LuxuryDMList } from "./LuxuryDMList";
 import { LuxuryDMChat } from "./LuxuryDMChat";
 import { LuxuryIncomingCallModal } from "./LuxuryIncomingCallModal";

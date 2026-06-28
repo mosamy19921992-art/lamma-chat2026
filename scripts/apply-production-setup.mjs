@@ -113,6 +113,8 @@ async function applySql() {
     ["supabase-moderation-hardening.sql", "moderation P0 (typed bans + RPC)"],
     ["supabase-moderation-p1.sql", "moderation P1 (kick + layout)"],
     ["supabase-p2-owner-settings-public.sql", "public settings mirror (P2)"],
+    ["supabase-store-products.sql", "store products in public mirror"],
+    ["supabase-store-public-fields.sql", "store payment + features in public mirror"],
     ["supabase-moderation-p2.sql", "moderation P2 (shadow ban)"],
     ["supabase-media-performance-fix.sql", "media URL RLS + bucket limits"],
     ["supabase-api-validation-hardening.sql", "API validation length checks"],

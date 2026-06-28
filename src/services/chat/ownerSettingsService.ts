@@ -22,7 +22,10 @@ export type PublicChatSettingsPayload = Pick<
   | "wall_theme"
   | "chat_theme"
   | "universal_style_config"
->;
+> & {
+  custom_features?: unknown[] | null;
+  payment_info?: Record<string, unknown> | null;
+};
 
 export async function fetchPublicChatSettings(): Promise<PublicChatSettingsPayload | null> {
   if (!supabase) return null;
