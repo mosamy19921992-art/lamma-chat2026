@@ -12,6 +12,17 @@
 
 > ⚠️ `lamma-chat2026.vercel.app` رابط قديم ويرجع 404 — لا تستخدمه.
 
+### ✅ جاهز للإطلاق (يونيو 2026)
+**Production:** https://lamma-arabic-chat-room.vercel.app  
+**Commits:** `49b60e2` (composer UX) · `a5d223e` (verify:smoke + verify:all)  
+**فحص دوري:** `npm run verify:all`
+
+| تم | المحتوى |
+|---|---|
+| **UX composer** | صوت إشعارات · Ctrl+Enter · حد 500 حرف · drag-drop صور |
+| **QA آلي** | hardening 14/14 · live 8/8 · smoke 18/18 |
+| **CI** | lint + build (إلزامي) · verify-production على main (يحتاج GitHub secrets) |
+
 ## 🎯 قواعد مهمة في الكود (ممنوع نكسرها)
 - ممنوع نضيف features من غير إذن المستخدم
 - ممنوع تغيير الهوية/الشعار/الفافيكون/ألوان `src/index.css` بدون إذن

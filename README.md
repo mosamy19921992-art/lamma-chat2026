@@ -79,13 +79,23 @@ npm run preview
 npm run lint
 ```
 
-### 7. التحقق من hardening الإنتاج
+### 7. التحقق من الإنتاج
 
 ```bash
-npm run verify:hardening
+npm run verify:all
+```
+
+أو خطوة بخطوة:
+
+```bash
+npm run verify:hardening   # RLS + أمان Supabase
+npm run verify:live        # homepage + public_chat_settings + RPC
+npm run verify:smoke       # bundle UX + قراءة رسائل + منع insert
 ```
 
 يتطلب `.env.local` مع `VITE_SUPABASE_URL` و `VITE_SUPABASE_ANON_KEY`.
+
+على GitHub Actions: أضف نفس المتغيرين كـ repository secrets لتفعيل job `verify-production` على `main`.
 
 ### 8. ESLint
 
