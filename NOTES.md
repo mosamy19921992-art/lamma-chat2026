@@ -19,9 +19,9 @@
 
 | تم | المحتوى |
 |---|---|
-| **UX composer** | صوت إشعارات · Ctrl+Enter · حد 500 حرف · drag-drop صور |
-| **QA آلي** | hardening 14/14 · live 8/8 · smoke 18/18 |
-| **CI** | lint + build (إلزامي) · verify-production على main (يحتاج GitHub secrets) |
+| **UX composer** | صوت إشعارات · Ctrl+Enter · حد 500 حرف · drag-drop · **معاينة قبل الإرسال** · **رفع فيديو ملف** |
+| **QA آلي** | hardening 14/14 · live 8/8 · smoke 18/18+ · verify-scheduled أسبوعي |
+| **CI** | lint + build · verify-production · `.github/SECRETS_SETUP.md` |
 
 ## 🎯 قواعد مهمة في الكود (ممنوع نكسرها)
 - ممنوع نضيف features من غير إذن المستخدم
@@ -52,7 +52,7 @@
 11. **طبقة services:** `src/services/` (chat, calls, auth, store, profile)
 
 ## 🟡 ناقص / مفتوح للنقاش (محدّث — يونيو 2026)
-1) **رفع فيديو ملف في الغرف العامة** — PM فيه فيdeo ملف؛ الغرف: رابط YouTube/MP4 فقط
+1) ~~رفع فيديو ملف في الغرف العامة~~ → **✅** «رفع فيديو ملف» في قائمة الإرفاق + drag-drop
 2) ~~PM Real-time كامل~~ → **جزئي:** tab leader + poll 8s (Real-time Hardening ✅)
 3) Edit رسالة — scope لاحق
 4) Typing indicator — غير مُنفَّذ (اتشال المعطّل)
@@ -60,7 +60,7 @@
 6) ~~Max length 500 حرف~~ → **✅** غرف + PM (`ROOM_COMPOSER_MAX_CHARS`)
 7) ~~Drag & drop للصور~~ → **✅** على شريط الكتابة (غير روم المنشورات)
 8) بوت AI دردشة (Gemini) — **تصميم AI للمالك فقط** في Design Center؛ مفيش بوت شات عام
-9) معاينة قبل الإرسال
+9) ~~معاينة قبل الإرسال~~ → **✅** toggle في إعدادات composer + شريط معاينة
 10) ~~Ctrl+Enter~~ → **✅** ديسكتوب: Enter سطر جديد · Ctrl/Cmd+Enter إرسال · موبايل: Enter إرسال
 
 ### 🔒 Supabase / إطلاق (تحقق دوري)

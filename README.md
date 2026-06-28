@@ -95,7 +95,7 @@ npm run verify:smoke       # bundle UX + قراءة رسائل + منع insert
 
 يتطلب `.env.local` مع `VITE_SUPABASE_URL` و `VITE_SUPABASE_ANON_KEY`.
 
-على GitHub Actions: أضف نفس المتغيرين كـ repository secrets لتفعيل job `verify-production` على `main`.
+على GitHub Actions: أضف نفس المتغيرين كـ repository secrets لتفعيل job `verify-production` على `main`. راجع `.github/SECRETS_SETUP.md`.
 
 ### 8. ESLint
 

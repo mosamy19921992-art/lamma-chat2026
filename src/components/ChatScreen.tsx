@@ -743,6 +743,12 @@ export default function ChatScreen({
   const [messageSoundEnabled, setMessageSoundEnabled] = useState(() =>
     typeof window !== "undefined" ? isMessageAlertSoundEnabled() : true,
   );
+  const SEND_PREVIEW_STORAGE_KEY = "lamma_send_preview_enabled";
+  const [sendPreviewEnabled, setSendPreviewEnabled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(SEND_PREVIEW_STORAGE_KEY) === "true";
+  });
+  const [showSendPreview, setShowSendPreview] = useState(false);
   const designPresetsStorageKey = userScopedStorageKey("lamma_design_presets");
   const [designPresets, setDesignPresets] = useState<DesignPreset[]>(() => {
     if (typeof window === "undefined") return [];
@@ -976,6 +982,14 @@ export default function ChatScreen({
       readingMode ? "true" : "false",
     );
   }, [readingMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(
+      SEND_PREVIEW_STORAGE_KEY,
+      sendPreviewEnabled ? "true" : "false",
+    );
+  }, [sendPreviewEnabled]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -4290,6 +4304,7 @@ export default function ChatScreen({
   const [showComposerMoreDropdown, setShowComposerMoreDropdown] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const roomVideoUploadInputRef = useRef<HTMLInputElement | null>(null);
   const pmImageUploadInputRef = useRef<HTMLInputElement | null>(null);
   const pmVideoUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -6770,6 +6785,11 @@ export default function ChatScreen({
       return;
     }
 
+    if (sendPreviewEnabled && trimmed) {
+      setShowSendPreview(true);
+      return;
+    }
+
     const isHelpComplaint =
       activeRoomId === "help" &&
       Boolean(trimmed) &&
@@ -6803,8 +6823,49 @@ export default function ChatScreen({
     isPostsRoom,
     publishPost,
     scrollChatToBottom,
+    sendPreviewEnabled,
     sendRoomMessage,
     setInputText,
+    submitHelpRoomTicket,
+  ]);
+
+  const handleConfirmSendPreview = useCallback(async () => {
+    const trimmed = inputText.trim();
+    if (!trimmed) {
+      setShowSendPreview(false);
+      return;
+    }
+
+    setShowSendPreview(false);
+
+    const isHelpComplaint =
+      activeRoomId === "help" &&
+      !trimmed.startsWith("/") &&
+      !isManagementRole;
+
+    bumpUserStat("messagesSent");
+    chatStickToBottomRef.current = true;
+    try {
+      await sendRoomMessage();
+      if (isHelpComplaint) {
+        void submitHelpRoomTicket(trimmed);
+      }
+    } catch (error) {
+      console.error("sendRoomMessage failed:", error);
+      alert(
+        "❌ تعذر إرسال الرسالة. حاول مرة أخرى.",
+      );
+    }
+    if (isMobileAppShell) {
+      window.setTimeout(() => scrollChatToBottom("auto"), 16);
+    }
+  }, [
+    activeRoomId,
+    inputText,
+    isManagementRole,
+    isMobileAppShell,
+    scrollChatToBottom,
+    sendRoomMessage,
     submitHelpRoomTicket,
   ]);
 
@@ -7184,6 +7245,83 @@ export default function ChatScreen({
     await uploadAndSendImage(file);
   };
 
+  const uploadAndSendVideo = async (file: File) => {
+    if (!ensureYoutubeAccess()) return;
+
+    if (!supabase) {
+      alert("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.");
+      return;
+    }
+
+    if (currentUser.authProvider !== "supabase") {
+      alert("🎬 رفع الفيديو متاح للحسابات المسجلة فقط. سجل دخول الأول.");
+      return;
+    }
+
+    if (!canSendMediaByRate()) {
+      alert("⏳ بعت وسائط كتير بسرعة. استنى دقيقة وجرب تاني.");
+      return;
+    }
+
+    if (!file.type.startsWith("video/")) {
+      alert("⚠️ الملف اللي اخترته مش فيديو.");
+      return;
+    }
+
+    const maxBytes = 25 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      alert("⚠️ حجم الفيديو كبير. الحد الأقصى 25MB.");
+      return;
+    }
+
+    try {
+      setIsUploadingImage(true);
+      const safeName = file.name.replace(/[^\w.-]+/g, "_").slice(0, 80);
+      const objectPath = userStoragePath(
+        currentUser.uid || senderUid,
+        "rooms",
+        activeRoomId,
+        `${Date.now()}_${crypto.randomUUID()}_${safeName}`,
+      );
+
+      const { error: uploadError } = await supabase.storage
+        .from("chat-media")
+        .upload(objectPath, file, {
+          cacheControl: "3600",
+          contentType: file.type || "video/mp4",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        alert(`❌ فشل رفع الفيديو: ${uploadError.message}`);
+        return;
+      }
+
+      const { data: publicData } = supabase.storage
+        .from("chat-media")
+        .getPublicUrl(objectPath);
+
+      const publicUrl = publicData?.publicUrl;
+      if (!publicUrl) {
+        alert("❌ حصل خطأ في توليد رابط الفيديو بعد الرفع.");
+        return;
+      }
+
+      sendMediaMessage("video", publicUrl);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleRoomVideoUploadChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    await uploadAndSendVideo(file);
+  };
+
   const canSendMediaByRate = () => {
     const now = Date.now();
     const windowMs = 60_000;
@@ -7462,7 +7600,7 @@ export default function ChatScreen({
   };
 
   const handleSendAttachment = (
-    type: "image" | "imageUrl" | "video" | "audio",
+    type: "image" | "imageUrl" | "video" | "videoFile" | "audio",
   ) => {
     const isOwnerOrAdmin =
       currentUser.role === "owner" || currentUser.role === "admin";
@@ -7497,7 +7635,10 @@ export default function ChatScreen({
       return;
     }
 
-    if (type === "video" && !canShareYoutube(currentUser, memberCustomPermissions)) {
+    if (
+      (type === "video" || type === "videoFile") &&
+      !canShareYoutube(currentUser, memberCustomPermissions)
+    ) {
       alert(
         "🎥 مشاركة يوتيوب/فيديو غير مفعّلة لحسابك. يمكن للمالك منحها من غرفة القيادة → صلاحيات الأعضاء.",
       );
@@ -7555,12 +7696,28 @@ export default function ChatScreen({
       mediaUrl = trimmed;
       setShowAttachmentDropdown(false);
     }
+    if (type === "videoFile") {
+      if (isUploadingImage) return;
+      if (currentUser.authProvider !== "supabase") {
+        alert("🎬 رفع الفيديو متاح للحسابات المسجلة فقط. سجل دخول الأول.");
+        setShowAttachmentDropdown(false);
+        return;
+      }
+      if (!supabase) {
+        alert("⚠️ Supabase غير متصل حالياً. راجع إعدادات المشروع.");
+        setShowAttachmentDropdown(false);
+        return;
+      }
+      setShowAttachmentDropdown(false);
+      roomVideoUploadInputRef.current?.click();
+      return;
+    }
     if (type === "audio") {
       void beginVoiceMessageRecording();
       setShowAttachmentDropdown(false);
       return;
     }
-    sendMediaMessage(type, mediaUrl);
+    sendMediaMessage(type as "image" | "imageUrl" | "video" | "audio", mediaUrl);
   };
 
   const canSendVoiceMessages = () => {
@@ -10755,6 +10912,49 @@ export default function ChatScreen({
                 </button>
               </div>
             )}
+            {showSendPreview && !isPostsRoom && inputText.trim() && (
+              <div
+                className="lamma-send-preview-bar flex flex-col gap-2 px-3 py-2 border-b border-white/10 bg-black/60 backdrop-blur-sm"
+                dir="rtl"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold text-amber-200/90 flex items-center gap-1">
+                    <Eye size={12} />
+                    معاينة قبل الإرسال
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="إلغاء المعاينة"
+                    onClick={() => setShowSendPreview(false)}
+                    className="shrink-0 text-gray-400 hover:text-white p-1 rounded cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <p className="text-xs text-gray-100 whitespace-pre-wrap break-words text-right max-h-28 overflow-y-auto">
+                  {inputText}
+                </p>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSendPreview(false);
+                      messageInputRef.current?.focus();
+                    }}
+                    className="px-3 py-1 rounded-lg text-[10px] text-gray-300 hover:bg-white/10 cursor-pointer"
+                  >
+                    تعديل
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleConfirmSendPreview()}
+                    className="px-3 py-1 rounded-lg text-[10px] font-bold text-black bg-emerald-400 hover:bg-emerald-300 cursor-pointer"
+                  >
+                    إرسال الآن
+                  </button>
+                </div>
+              </div>
+            )}
             <div
               className={`lamma-composer-layout flex flex-col gap-1 md:flex-row md:flex-nowrap items-stretch md:items-center md:gap-1.5 rounded-t-[22px] rounded-b-none md:rounded-t-[24px] md:rounded-b-none px-2 sm:px-3 py-1.5 sm:py-2 md:py-1 ${
                 isZenMode
@@ -10771,10 +10971,10 @@ export default function ChatScreen({
               onDrop={(e) => {
                 if (isPostsRoom) return;
                 e.preventDefault();
-                const file = Array.from(e.dataTransfer.files).find((f) =>
-                  f.type.startsWith("image/"),
-                );
-                if (file) void uploadAndSendImage(file);
+                const file = e.dataTransfer.files[0];
+                if (!file) return;
+                if (file.type.startsWith("image/")) void uploadAndSendImage(file);
+                else if (file.type.startsWith("video/")) void uploadAndSendVideo(file);
               }}
               style={
                 isZenMode
@@ -10832,7 +11032,16 @@ export default function ChatScreen({
                         <div className="w-8 h-8 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center">
                           <Tv size={14} />
                         </div>
-                        <span>مقطع يوتيوب</span>
+                        <span>رابط يوتيوب / MP4</span>
+                      </button>
+                      <button
+                        className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl text-xs text-gray-300 w-full text-right cursor-pointer lamma-list-item"
+                        onClick={() => handleSendAttachment("videoFile")}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center">
+                          <VideoIcon size={14} />
+                        </div>
+                        <span>رفع فيديو ملف</span>
                       </button>
                 </FloatingDropdownPortal>
               </div>
@@ -10842,6 +11051,13 @@ export default function ChatScreen({
                 accept="image/*"
                 className="hidden"
                 onChange={handleImageUploadChange}
+              />
+              <input
+                ref={roomVideoUploadInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={handleRoomVideoUploadChange}
               />
 
               {/* Games button removed — games live in the Games room */}
@@ -11435,6 +11651,26 @@ export default function ChatScreen({
                           </span>
                           <span className="text-[9px] font-mono">
                             {messageSoundEnabled ? "ON" : "OFF"}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`text-right p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-between lamma-list-item ${
+                            sendPreviewEnabled
+                              ? "bg-white/10 text-amber-200 border border-white/10"
+                              : "hover:bg-white/10 text-gray-200"
+                          }`}
+                          onClick={() => {
+                            setSendPreviewEnabled((prev) => !prev);
+                            setShowSendPreview(false);
+                          }}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <Eye size={13} className="text-amber-300" />
+                            <span>معاينة قبل الإرسال</span>
+                          </span>
+                          <span className="text-[9px] font-mono">
+                            {sendPreviewEnabled ? "ON" : "OFF"}
                           </span>
                         </button>
                         {setPrimaryTheme ? (
