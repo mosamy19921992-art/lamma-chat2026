@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit && tsc --noEmit -p tsconfig.strict-lib.json && eslint src --quiet",
     "lint:eslint": "eslint src",
-    "verify:hardening": "node scripts/verify-production-hardening.mjs"
+    "verify:hardening": "node scripts/verify-production-hardening.mjs",
+    "verify:live": "node scripts/verify-live-health.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
