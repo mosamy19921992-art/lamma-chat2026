@@ -165,6 +165,17 @@
 
 **اختبار يدوي:** حذف غرفة خاصة → رسائلها مش ظاهرة · PM غير مقروء → نقطة خضراء · حذف user من Auth → مفيش orphan spam
 
+### ✅ إصلاح بطاقة البروفايل على الموبايل — admin/owner (يونيو 2026 — مغلقة)
+**Commits:** _(pending)_  
+**Deploy:** _(pending)_ → https://lamma-arabic-chat-room.vercel.app
+
+| البند | المحتوى |
+|---|---|
+| **السبب** | `drag` + `resize` على المودال + خلفية PWA لسه بتscroll |
+| **الإصلاح** | bottom sheet على الموبايل · `lamma-modal-open` لما البروفايل مفتوح · OwnerIdCard compact |
+
+**ملفات:** `UserProfileModal.tsx`, `ChatScreen.tsx`
+
 ## 💬 لهجة المستخدم
 - عامية مصرية
 - ناقش قبل التنفيذ الكبير

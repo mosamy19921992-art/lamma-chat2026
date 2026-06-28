@@ -5904,10 +5904,17 @@ export default function ChatScreen({
     };
   }, [isMobileAppShell, vvLayout.keyboardOpen]);
 
+  const hasProfileOverlayOpen =
+    showProfileModal ||
+    showProfilePageModal ||
+    showUserProfileBioPop ||
+    showUserContextPop;
+
   useEffect(() => {
     if (!isMobileAppShell) return;
     const cls = "lamma-modal-open";
-    const open = Boolean(activeModal) || hasFloatingDropdownOpen;
+    const open =
+      Boolean(activeModal) || hasFloatingDropdownOpen || hasProfileOverlayOpen;
     if (open) {
       document.documentElement.classList.add(cls);
       document.body.classList.add(cls);
@@ -5919,7 +5926,12 @@ export default function ChatScreen({
       document.documentElement.classList.remove(cls);
       document.body.classList.remove(cls);
     };
-  }, [isMobileAppShell, activeModal, hasFloatingDropdownOpen]);
+  }, [
+    isMobileAppShell,
+    activeModal,
+    hasFloatingDropdownOpen,
+    hasProfileOverlayOpen,
+  ]);
 
   useEffect(() => {
     if (isPostsRoom) {
@@ -7793,7 +7805,9 @@ export default function ChatScreen({
           ? " lamma-pwa-app-shell"
           : " h-[100dvh] min-h-[100dvh]"
       }${vvLayout.keyboardOpen ? " lamma-keyboard-open" : ""}${
-        activeModal || hasFloatingDropdownOpen ? " lamma-modal-open" : ""
+        activeModal || hasFloatingDropdownOpen || hasProfileOverlayOpen
+          ? " lamma-modal-open"
+          : ""
       }${designInspectActive ? " lamma-design-inspect-active" : ""}`}
       style={
         isMobileAppShell && vvLayout.keyboardOpen && vvLayout.shellHeight

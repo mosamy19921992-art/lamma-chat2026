@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LinkIcon, Shield, Mic, Phone, Video, Radio, Compass, Lock, Ghost, Trash2, Image, Tv, Upload, Loader2 } from 'lucide-react';
+import { X, LinkIcon, Shield, Mic, Phone, Video, Radio, Compass, Image, Tv, Upload, Loader2 } from 'lucide-react';
 import { type BanInfo, type MemberRole } from "../../lib/chatTypes.ts";
 import { MemberAvatar } from "../MemberAvatar";
 import { PROFILE_AVATAR_EMOJIS } from "../../lib/avatarDisplay";
@@ -40,6 +40,21 @@ const PROMOTE_ERROR_MESSAGES: Record<string, string> = {
 export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setShowProfileModal, setSelectedProfileMember, myActiveSession, currentUser, isOwnerRole, isRegisteredAccount, tempEntryTopicInput, setTempEntryTopicInput, setTempEntryTopicStatusText, tempEntryTopicEnabled, setTempEntryTopicEnabled, handleSaveTempEntryTopic, tempEntryTopicStatusText, nicknameRequestInput, setNicknameRequestInput, nicknameRequestLoading, handleSubmitNicknameChangeRequest, nicknameRequestStatusText, nicknameRequests, setRoomMessages, activeRoomId, addSystemActivityLog, addLammaBotMessage, bannedUsersList, removeBanEntries, addBanEntry, onDeleteMemberMessages, chatMembers, setChatMembers, memberCustomPermissions, setMemberCustomPermissions, myCustomBio, setMyCustomBio, handleSelectProfileEmoji, handleProfileAvatarUploadChange, profileAvatarInputRef, profileAvatarSaving, profileAvatarStatus, onSendPrivateMessage, onPromoteMemberRole, roomLabel, myEffectiveRole, roleGrantsPolicy, roomTempGrantsByUserId }: any) => {
   const [rolePromoteLoading, setRolePromoteLoading] = useState(false);
   const [grantTemporary, setGrantTemporary] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsMobileViewport(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  const closeProfileModal = () => {
+    setShowProfileModal(false);
+    setSelectedProfileMember(null);
+  };
   const isOwnProfile =
     selectedProfileMember?.nickname === myActiveSession.nickname;
   const granterRole = (myEffectiveRole || currentUser.role) as MemberRole;
@@ -131,27 +146,64 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
   };
 
   return (
-    <>
-        {showProfileModal && selectedProfileMember && (
+    <AnimatePresence>
+      {showProfileModal && selectedProfileMember && (
+        <>
+          {isMobileViewport ? (
+            <motion.button
+              type="button"
+              aria-label="إغلاق"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9994] bg-black/65 lamma-user-overlay"
+              onClick={closeProfileModal}
+            />
+          ) : null}
           <motion.div
-            drag
+            key="user-profile-modal"
+            drag={!isMobileViewport}
             dragMomentum={false}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed top-20 left-4 md:left-auto md:right-32 w-[340px] max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:w-full max-md:max-h-[92vh] max-md:rounded-t-[28px] max-md:rounded-b-none rounded-3xl overflow-hidden flex flex-col z-[9995] cursor-move lamma-modal-shell lamma-user-overlay"
-            style={{
-              resize: "both",
-              overflow: "hidden",
-              minWidth: "300px",
-              minHeight: "450px",
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-            }}
+            dragElastic={0.08}
+            initial={
+              isMobileViewport
+                ? { y: "100%" }
+                : { opacity: 0, scale: 0.98 }
+            }
+            animate={
+              isMobileViewport ? { y: 0 } : { opacity: 1, scale: 1 }
+            }
+            exit={
+              isMobileViewport
+                ? { y: "100%" }
+                : { opacity: 0, scale: 0.98 }
+            }
+            transition={
+              isMobileViewport
+                ? { type: "spring", damping: 30, stiffness: 340 }
+                : { duration: 0.16 }
+            }
+            className={`fixed z-[9995] flex flex-col lamma-modal-shell lamma-user-overlay overflow-hidden ${
+              isMobileViewport
+                ? "inset-x-0 bottom-0 top-auto w-full max-h-[92vh] rounded-t-[28px] rounded-b-none"
+                : "top-20 left-4 md:left-auto md:right-32 w-[340px] rounded-3xl cursor-move"
+            }`}
+            style={
+              isMobileViewport
+                ? undefined
+                : {
+                    resize: "both",
+                    overflow: "hidden",
+                    minWidth: "300px",
+                    minHeight: "450px",
+                    maxWidth: "90vw",
+                    maxHeight: "90vh",
+                  }
+            }
             dir="rtl"
           >
             <div
-              className="flex-1 flex flex-col overflow-y-auto"
+              className="flex-1 flex flex-col overflow-y-auto overscroll-contain touch-pan-y min-h-0"
               onPointerDownCapture={(e) => e.stopPropagation()}
             >
               {/* Profile Header */}
@@ -169,10 +221,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                   </h3>
                 </div>
                 <button
-                  onClick={() => {
-                    setShowProfileModal(false);
-                    setSelectedProfileMember(null);
-                  }}
+                  onClick={closeProfileModal}
                   className="p-1.5 rounded-xl text-red-400 transition-all cursor-pointer lamma-danger-btn"
                 >
                   <X size={16} />
@@ -185,6 +234,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
                   <div className="space-y-3">
                     <OwnerIdCard
                       nickname={selectedProfileMember.nickname}
+                      compact={isMobileViewport}
                       tagline={
                         isOwnProfile
                           ? "غرفة القيادة • بطاقتي الرسمية"
@@ -1402,7 +1452,8 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
               </div>
             </div>
           </motion.div>
-        )}
-    </>
+        </>
+      )}
+    </AnimatePresence>
   );
 };
