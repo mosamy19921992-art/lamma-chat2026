@@ -1,5 +1,15 @@
 /* Universal Visual AI Style Engine — global live injection */
 
+/* Hide chat shell while theme engine attaches (prevents old→new flash). */
+.lamma-chat-shell-booting {
+  position: fixed;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
+}
+
 .lamma-neutral-glass[data-universal-style="active"] {
   color: var(--us-text, var(--text-primary));
   background-color: var(--us-bg, #060a12);

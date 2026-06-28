@@ -203,6 +203,21 @@
     <title>شات لمة | دردشة عربية مجانية — غرف شات مصر والعرب 24/7</title>
   </head>
   <body>
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem("lamma_fx_on");
+          if (!raw) return;
+          var fx = JSON.parse(raw);
+          var ids = ["holo", "aurora", "shimmer", "float", "neon", "rainbow", "crystal", "liquid"];
+          ids.forEach(function (id) {
+            if (fx[id]) document.body.classList.add("lamma-fx-" + id);
+          });
+        } catch (e) {
+          /* non-fatal */
+        }
+      })();
+    </script>
     <noscript>
       <main style="max-width:720px;margin:2rem auto;padding:1.5rem;font-family:Segoe UI,Tahoma,sans-serif;line-height:1.8;color:#e2e8f0;background:#0c1420;border-radius:16px;">
         <h1 style="color:#34d399;margin-top:0;">شات لمة — دردشة عربية مجانية</h1>

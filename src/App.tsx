@@ -27,7 +27,10 @@ import {
   reconcileGuestSession,
 } from './services/auth/guestAuthService';
 import { ensureFreshAppBuild } from './lib/appCache';
-import { prefetchRemoteDesignTheme } from './services/design/designThemeBoot';
+import {
+  prefetchRemoteDesignTheme,
+  waitForDesignThemeShell,
+} from './services/design/designThemeBoot';
 
 const CHAT_SCREEN_IMPORT = () => import('./components/ChatScreen');
 
@@ -488,7 +491,7 @@ export default function App() {
           />
         ) : (
           <Suspense fallback={<ChatLoadingScreen user={user} />}>
-            <ChatThemeGate>
+            <ChatThemeGate user={user}>
               <ChatScreen
                 key={`${user.uid}-${user.authProvider}`}
                 currentUser={user}
@@ -515,12 +518,55 @@ export default function App() {
   );
 }
 
-function ChatThemeGate({ children }: { children: React.ReactNode }) {
+function ChatThemeGate({
+  children,
+  user,
+}: {
+  children: React.ReactNode;
+  user: UserSession;
+}) {
+  const [themeConfig, setThemeConfig] = useState<Awaited<
+    ReturnType<typeof prefetchRemoteDesignTheme>
+  > | null>(null);
+  const [shellReady, setShellReady] = useState(false);
+
   useEffect(() => {
-    void prefetchRemoteDesignTheme();
+    let cancelled = false;
+    void prefetchRemoteDesignTheme().then((config) => {
+      if (!cancelled) setThemeConfig(config);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  return <>{children}</>;
+  useEffect(() => {
+    if (!themeConfig) return;
+    let cancelled = false;
+    void waitForDesignThemeShell(themeConfig).then(() => {
+      if (!cancelled) setShellReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [themeConfig]);
+
+  if (!themeConfig) {
+    return <ChatLoadingScreen user={user} />;
+  }
+
+  return (
+    <>
+      {!shellReady ? <ChatLoadingScreen user={user} /> : null}
+      <div
+        className={shellReady ? undefined : 'lamma-chat-shell-booting'}
+        aria-hidden={!shellReady}
+        {...(!shellReady ? { inert: true as const } : {})}
+      >
+        {children}
+      </div>
+    </>
+  );
 }
 
 function AuthBootScreen() {

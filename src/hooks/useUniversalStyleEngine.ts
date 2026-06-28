@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { setDesignPreviewActive } from "../services/design/designPreviewDom";
 import {
   checkOwnerWriteAccessWithClaim,
@@ -110,7 +110,7 @@ export function useUniversalStyleEngine({
         "../services/design/designThemeBoot"
       );
       const loaded = await prefetchRemoteDesignTheme(ownerSettingsRowId);
-      if (cancelled || !loaded) return;
+      if (cancelled) return;
       setCommittedConfig(normalizeUniversalStyleConfig(loaded));
     })();
     return () => {
@@ -118,11 +118,8 @@ export function useUniversalStyleEngine({
     };
   }, [ownerSettingsRowId]);
 
-  useEffect(() => {
-    const config = normalizeUniversalStyleConfig(
-      loadUniversalStyleLocal() ?? createDefaultUniversalStyle(),
-    );
-    ensureUniversalStyleApplied(config, { preview: false });
+  /** ChatThemeGate applies the resolved theme before reveal; here we only sync text preset. */
+  useLayoutEffect(() => {
     ensureTextColorPresetApplied();
   }, []);
 
