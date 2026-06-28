@@ -28,8 +28,8 @@
 
 /* Full neon frame — follows target shape (card / header / composer). */
 :root {
-  --lamma-beam-outset: 5px;
-  --lamma-beam-thickness: 2px;
+  --lamma-beam-outset: 3px;
+  --lamma-beam-thickness: 1px;
 }
 
 .lamma-neutral-glass[data-neon-beam-targets~="store"] .lamma-side-column .lamma-store-panel .lamma-glass::before,
@@ -44,11 +44,11 @@
   content: "" !important;
   display: block !important;
   position: absolute !important;
-  inset: calc(-1 * var(--lamma-beam-outset, 5px)) !important;
+  inset: calc(-1 * var(--lamma-beam-outset, 3px)) !important;
   width: auto !important;
   height: auto !important;
   border-radius: inherit !important;
-  padding: var(--lamma-beam-thickness, 2px) !important;
+  padding: var(--lamma-beam-thickness, 1px) !important;
   background: conic-gradient(
     from 225deg at 50% 50%,
     #ff006e 0deg,
@@ -66,10 +66,10 @@
   offset-path: none !important;
   transform: none !important;
   filter:
-    drop-shadow(0 0 3px rgba(255, 0, 110, 0.85))
-    drop-shadow(0 0 10px rgba(255, 0, 110, 0.5))
-    drop-shadow(0 0 18px rgba(124, 58, 237, 0.42))
-    drop-shadow(0 0 26px rgba(0, 245, 212, 0.32)) !important;
+    drop-shadow(0 0 1px rgba(255, 0, 110, 0.5))
+    drop-shadow(0 0 5px rgba(255, 0, 110, 0.28))
+    drop-shadow(0 0 10px rgba(124, 58, 237, 0.22))
+    drop-shadow(0 0 14px rgba(0, 245, 212, 0.16)) !important;
   pointer-events: none !important;
   z-index: 12 !important;
 }
@@ -95,11 +95,11 @@
  * Not header overlap: the ring extends upward and gets clipped by column overflow.
  */
 .lamma-neutral-glass[data-neon-beam-targets~="store"] .lamma-side-column[class*="border-r"] {
-  padding-top: calc(var(--lamma-beam-outset, 5px) + 4px) !important;
+  padding-top: calc(var(--lamma-beam-outset, 3px) + 2px) !important;
 }
 
 .lamma-neutral-glass[data-neon-beam-targets~="rooms"] .lamma-side-column[class*="border-l"] {
-  padding-top: calc(var(--lamma-beam-outset, 5px) + 4px) !important;
+  padding-top: calc(var(--lamma-beam-outset, 3px) + 2px) !important;
 }
 
 .lamma-neutral-glass[data-neon-beam-targets] .lamma-chat-body-stage {
@@ -116,11 +116,11 @@
 }
 
 .lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"]) .lamma-side-column[class*="border-r"] {
-  padding-top: 8px !important;
+  padding-top: 5px !important;
 }
 
 .lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"]) .lamma-side-column[class*="border-l"] {
-  padding-top: 8px !important;
+  padding-top: 5px !important;
 }
 
 /* Don't clip the border runner — beam rides outside, content stays inside */
@@ -210,7 +210,7 @@
   position: absolute !important;
   inset: 0 !important;
   border-radius: inherit !important;
-  padding: 1.5px !important;
+  padding: 1px !important;
   background: linear-gradient(135deg,
     rgba(var(--chase-tint-rgb, 110,231,183), 0.6),
     rgba(var(--chase-tint-rgb, 110,231,183), 0.15)) !important;
@@ -232,7 +232,7 @@
   position: absolute !important;
   inset: 0 !important;
   border-radius: inherit !important;
-  padding: 2px !important;
+  padding: 1px !important;
   background: linear-gradient(90deg,
     rgba(var(--chase-tint-rgb, 110,231,183), 0.7),
     rgba(56, 189, 248, 0.7),
@@ -266,7 +266,7 @@
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  height: 2px !important;
+  height: 1px !important;
   background: linear-gradient(90deg,
     transparent,
     rgba(var(--chase-tint-rgb, 110,231,183), 1),
@@ -295,10 +295,10 @@
 
 /* ── COMPOSER target ── */
 .lamma-neutral-glass[data-chase-composer="soft-edge"] .lamma-composer-layout {
-  border: 1.5px solid rgba(var(--chase-tint-rgb, 110,231,183), 0.35) !important;
+  border: 1px solid rgba(var(--chase-tint-rgb, 110,231,183), 0.35) !important;
 }
 .lamma-neutral-glass[data-chase-composer="aurora-flow"] .lamma-composer-layout {
-  border: 2px solid transparent !important;
+  border: 1px solid transparent !important;
   background-image: linear-gradient(#0a0e14, #0a0e14),
     linear-gradient(90deg,
       rgba(var(--chase-tint-rgb, 110,231,183), 0.7),
@@ -319,7 +319,7 @@
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  height: 2px !important;
+  height: 1px !important;
   background: linear-gradient(90deg, transparent,
     rgba(var(--chase-tint-rgb, 110,231,183), 1), transparent) !important;
   animation: lamma-chase-laser var(--chase-speed, 6s) linear infinite !important;
@@ -344,10 +344,10 @@
 
 /* ── HEADER target ── */
 .lamma-neutral-glass[data-chase-header="soft-edge"] .lamma-header {
-  border-bottom: 1.5px solid rgba(var(--chase-tint-rgb, 110,231,183), 0.35) !important;
+  border-bottom: 1px solid rgba(var(--chase-tint-rgb, 110,231,183), 0.35) !important;
 }
 .lamma-neutral-glass[data-chase-header="aurora-flow"] .lamma-header {
-  border-bottom: 2px solid transparent !important;
+  border-bottom: 1px solid transparent !important;
   border-image: linear-gradient(90deg,
     rgba(var(--chase-tint-rgb, 110,231,183), 0.7),
     rgba(56, 189, 248, 0.7),
@@ -365,7 +365,7 @@
   bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  height: 2px !important;
+  height: 1px !important;
   background: linear-gradient(90deg, transparent,
     rgba(var(--chase-tint-rgb, 110,231,183), 1), transparent) !important;
   animation: lamma-chase-laser var(--chase-speed, 6s) linear infinite !important;
@@ -404,9 +404,9 @@
 .lamma-neon-beam-preview::before {
   content: "";
   position: absolute;
-  inset: calc(-1 * var(--lamma-beam-outset, 5px));
+  inset: calc(-1 * var(--lamma-beam-outset, 3px));
   border-radius: inherit;
-  padding: var(--lamma-beam-thickness, 2px);
+  padding: var(--lamma-beam-thickness, 1px);
   background: conic-gradient(
     from 225deg at 50% 50%,
     #ff006e 0deg,
@@ -421,10 +421,10 @@
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
   filter:
-    drop-shadow(0 0 3px rgba(255, 0, 110, 0.85))
-    drop-shadow(0 0 10px rgba(255, 0, 110, 0.5))
-    drop-shadow(0 0 18px rgba(124, 58, 237, 0.42))
-    drop-shadow(0 0 26px rgba(0, 245, 212, 0.32));
+    drop-shadow(0 0 1px rgba(255, 0, 110, 0.5))
+    drop-shadow(0 0 5px rgba(255, 0, 110, 0.28))
+    drop-shadow(0 0 10px rgba(124, 58, 237, 0.22))
+    drop-shadow(0 0 14px rgba(0, 245, 212, 0.16));
 }
 
 .lamma-neon-beam-preview::after {

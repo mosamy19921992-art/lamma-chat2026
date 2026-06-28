@@ -5202,7 +5202,7 @@ body.lighting-aura .lamma-message {
 .lamma-spin-border::before {
   content: '';
   position: absolute;
-  inset: -2px;
+  inset: -1px;
   border-radius: inherit;
   background: conic-gradient(
     from var(--lamma-spin-angle, 0deg),
@@ -5220,7 +5220,7 @@ body.lighting-aura .lamma-message {
 .lamma-spin-border::after {
   content: '';
   position: absolute;
-  inset: 1.5px;
+  inset: 1px;
   border-radius: inherit;
   background: var(--lsb-bg, rgba(8, 10, 16, 0.96));
   z-index: -1;
@@ -5228,8 +5228,8 @@ body.lighting-aura .lamma-message {
 
 /* ── Glow خارجي ينبض ── */
 .lamma-spin-border-glow::before {
-  filter: blur(2px);
-  box-shadow: 0 0 18px 2px var(--lsb-c1, #ff00ff);
+  filter: blur(1px);
+  box-shadow: 0 0 10px 1px var(--lsb-c1, #ff00ff);
   animation:
     lamma-card-spin var(--lsb-speed, 2.8s) linear infinite,
     lamma-outer-pulse 2s ease-in-out infinite;
