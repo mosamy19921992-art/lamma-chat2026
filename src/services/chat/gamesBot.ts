@@ -125,7 +125,7 @@ export type GameBotResult = {
 
 export function handleGameCommand(
   text: string,
-  senderNickname: string,
+  _senderNickname: string,
 ): GameBotResult {
   const trimmed = text.trim();
   const now = Date.now();

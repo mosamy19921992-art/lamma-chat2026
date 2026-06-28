@@ -25,10 +25,6 @@ interface ModerateRoomMessageOptions {
   currentMessages: Message[];
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 // Only match actual URLs, not random words containing .com etc.
 const URL_PATTERN =
   /https?:\/\/[^\s]+|www\.[a-z0-9-]+\.[a-z]{2,}([^\s]*)?|\b[a-z0-9-]+\.(com|net|org|io|co|app|live|tk|cc|ru|to|link|site|gg|me|tv)(\b|\/)/i;

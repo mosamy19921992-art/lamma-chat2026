@@ -13,7 +13,7 @@ import {
   WebRTCCallEngine,
   type CallMediaType,
 } from "../services/calls/webrtcCallEngine";
-import { describeMediaError, describeCallFailure, playRemoteMedia, type CallFailureReason } from "../services/calls/callMediaUtils";
+import { describeMediaError, type CallFailureReason } from "../services/calls/callMediaUtils";
 import {
   startIncomingCallRingtone,
   stopIncomingCallRingtone,

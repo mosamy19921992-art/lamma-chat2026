@@ -7,7 +7,7 @@ import {
 } from "../services/chat/messagesService";
 import { enqueueOutboxMessage } from "../services/chat/messageOutbox";
 import { handleRoomChatCommand } from "../services/chat/roomCommandsService";
-import { getYoutubeId, canShareYoutube, isBrowserOnline, isLikelyNetworkError } from "../lib/chatHelpers";
+import { getYoutubeId, isBrowserOnline, isLikelyNetworkError } from "../lib/chatHelpers";
 import { moderateRoomMessage } from "../services/chat/roomModerationService";
 import { handleViolationEscalation } from "../services/chat/roomViolationService";
 import { checkAnswer, handleGameCommand } from "../services/chat/gamesBot";

@@ -31,7 +31,7 @@ export function ShareModal({ isOpen, onClose, appLink }: ShareModalProps) {
       } else {
         throw new Error("fallback prompt");
       }
-    } catch (err) {
+    } catch {
       prompt("يرجى نسخ الرابط يدوياً من المربع أدناه:", text);
     }
   };
@@ -49,7 +49,7 @@ export function ShareModal({ isOpen, onClose, appLink }: ShareModalProps) {
       } else {
         fallbackCopy(appLink);
       }
-    } catch (err) {
+    } catch {
       fallbackCopy(appLink);
     }
   };

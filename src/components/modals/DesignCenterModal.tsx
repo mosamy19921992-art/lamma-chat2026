@@ -285,7 +285,7 @@ export const DesignCenterModal = ({
   const [isGlassPreviewing, setIsGlassPreviewing] = useState(false);
   const [glassTintColor, setGlassTintColor] = useState(() => loadGlassFormTint());
   const [columnUploading, setColumnUploading] = useState<string | null>(null);
-  const [chaseSettings, setChaseSettings] = useState<ChaseLightSettings>(() =>
+  const [, setChaseSettings] = useState<ChaseLightSettings>(() =>
     loadChaseLightSettings(),
   );
   const [neonBeamPicks, setNeonBeamPicks] = useState<NeonBeamTargetId[]>(() =>

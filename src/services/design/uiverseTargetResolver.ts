@@ -8,7 +8,7 @@ function validateRootDomain(url?: string, domain?: string): boolean {
   try {
     const host = new URL(url).host;
     return host === domain || host.endsWith('.' + domain);
-  } catch(_) {
+  } catch {
     return false;
   }
 }

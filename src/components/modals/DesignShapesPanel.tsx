@@ -27,7 +27,6 @@ import {
   commitChaseLightSettings,
   getActiveNeonBeamTargets,
   loadChaseLightSettings,
-  NEON_BEAM_ALL_TARGETS,
   type ChaseLightSettings,
   type ChaseLightStyleId,
   type ChaseLightTarget,

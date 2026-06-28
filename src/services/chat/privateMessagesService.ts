@@ -2,7 +2,6 @@ import { supabase } from "../../lib/supabase";
 import { isSafeMediaReference } from "../../lib/chatHelpers";
 import { formatPrivateMediaRef } from "../storage/mediaStorageService";
 import { requireAuthenticatedUid } from "../auth/guestAuthService";
-import { userStoragePath } from "../storage/storagePaths";
 import {
   uploadPrivateMediaFile as uploadToPrivateBucket,
 } from "../storage/mediaStorageService";

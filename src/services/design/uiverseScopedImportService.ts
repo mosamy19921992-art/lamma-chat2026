@@ -105,20 +105,6 @@ function saveActive(list: ActiveScopedApply[]): void {
   }
 }
 
-async function fetchHtml(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url, {
-      method: "GET",
-      headers: { Accept: "text/html,application/xhtml+xml" },
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    return await res.text();
-  } catch {
-    return null;
-  }
-}
-
 async function fetchFromGalaxy(
   author: string,
   slug: string,

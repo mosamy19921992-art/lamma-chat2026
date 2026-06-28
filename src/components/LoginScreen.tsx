@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase.ts";
 import { establishGuestAuth } from "../services/auth/guestAuthService.ts";
 import { useIsMobileViewport } from "../hooks/useIsMobileViewport.ts";
-import { Smartphone, X, Download, Info, Check, Apple, HelpCircle, User, Sparkles } from "lucide-react";
+import { X, User, Sparkles } from "lucide-react";
 import {
   buildAuthRedirectUrl,
   getResolvedSupabaseColor,

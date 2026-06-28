@@ -195,7 +195,6 @@ function scopeRulesToSelectors(
   scopeId: string,
 ): string {
   const safe = renameKeyframes(css, scopeId);
-  const primary = selectors[0] ?? ".lamma-neutral-glass";
   const joined = selectors.join(",\n");
 
   if (!rootClass) {
