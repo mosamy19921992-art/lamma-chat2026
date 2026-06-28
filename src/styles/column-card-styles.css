@@ -68,6 +68,14 @@
   animation: none !important;
 }
 
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets] .lamma-side-column .lamma-store-panel .lamma-glass,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets] .lamma-side-column .lamma-radio-panel .lamma-glass,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets] .lamma-side-column .lamma-music-panel .lamma-glass,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets] .lamma-side-column .lamma-rooms-panel .lamma-glass,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets] .lamma-side-column .lamma-members-panel .lamma-glass {
+  overflow: visible !important;
+}
+
 .lamma-neutral-glass[data-column-card-style="frosted"] .lamma-side-column .lamma-glass::after,
 .lamma-neutral-glass[data-column-card-style="soft-round"] .lamma-side-column .lamma-glass::after,
 .lamma-neutral-glass[data-column-card-style="pill"] .lamma-side-column .lamma-glass::after {

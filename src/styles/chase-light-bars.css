@@ -169,7 +169,11 @@
   -webkit-backdrop-filter: blur(4px) !important;
   backdrop-filter: blur(4px) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 0 16px rgba(255, 0, 110, 0.34),
+    0 0 26px rgba(124, 58, 237, 0.24),
+    0 4px 20px rgba(0, 0, 0, 0.12) !important;
 }
 
 .lamma-neutral-glass[data-glass-form="fully-transparent"][data-neon-beam-targets~="store"] .lamma-side-column .lamma-store-panel .lamma-glass,
@@ -491,4 +495,65 @@ body.uds-rgb-wave .lamma-neutral-glass .lamma-glass.uds-container-rgb-wave::befo
   content: "" !important;
   display: block !important;
   opacity: 1 !important;
+}
+
+/* «إظهار الخلفية» + إطار نيون — حلقة أوضح على الزجاج الشفاف */
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets] {
+  --lamma-beam-thickness: 2px;
+  --lamma-beam-outset: 3px;
+}
+
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets~="store"] .lamma-side-column .lamma-store-panel .lamma-glass::before,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets~="radio"] .lamma-side-column .lamma-radio-panel .lamma-glass::before,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets~="music"] .lamma-side-column .lamma-music-panel .lamma-glass::before,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets~="rooms"] .lamma-side-column .lamma-rooms-panel .lamma-glass::before,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets~="members"] .lamma-side-column .lamma-members-panel .lamma-glass::before,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets~="composer"] .lamma-composer-layout::before,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets~="header"] .lamma-header::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: calc(-1 * var(--lamma-beam-outset, 3px)) !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: auto !important;
+  height: auto !important;
+  border-radius: inherit !important;
+  padding: var(--lamma-beam-thickness, 2px) !important;
+  background: conic-gradient(
+    from 225deg at 50% 50%,
+    #ff006e 0deg,
+    #e040fb 50deg,
+    #7c3aed 120deg,
+    #0891b2 200deg,
+    #00f5d4 280deg,
+    #ff006e 360deg
+  ) !important;
+  background-color: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  opacity: 1 !important;
+  z-index: 12 !important;
+  pointer-events: none !important;
+  filter:
+    drop-shadow(0 0 2px rgba(255, 0, 110, 0.75))
+    drop-shadow(0 0 10px rgba(255, 0, 110, 0.45))
+    drop-shadow(0 0 18px rgba(124, 58, 237, 0.34))
+    drop-shadow(0 0 24px rgba(0, 245, 212, 0.24)) !important;
+}
+
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets~="store"] .lamma-side-column .lamma-store-panel .lamma-glass,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets~="radio"] .lamma-side-column .lamma-radio-panel .lamma-glass,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets~="music"] .lamma-side-column .lamma-music-panel .lamma-glass,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets~="rooms"] .lamma-side-column .lamma-rooms-panel .lamma-glass,
+.lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets~="members"] .lamma-side-column .lamma-members-panel .lamma-glass {
+  overflow: visible !important;
 }
