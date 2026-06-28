@@ -3,6 +3,27 @@ let primed = false;
 let lastSoundAt = 0;
 const SOUND_THROTTLE_MS = 900;
 const PM_SOUND_THROTTLE_MS = 650;
+const MESSAGE_SOUND_PREF_KEY = "lamma_message_sound_enabled";
+
+export function isMessageAlertSoundEnabled(): boolean {
+  if (typeof localStorage === "undefined") return true;
+  try {
+    const stored = localStorage.getItem(MESSAGE_SOUND_PREF_KEY);
+    if (stored === null) return true;
+    return stored !== "0" && stored !== "false";
+  } catch {
+    return true;
+  }
+}
+
+export function setMessageAlertSoundEnabled(enabled: boolean): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(MESSAGE_SOUND_PREF_KEY, enabled ? "1" : "0");
+  } catch {
+    // ignore
+  }
+}
 
 function getAudioContext(): AudioContext | null {
   const win = window as Window &
@@ -87,6 +108,8 @@ export function primeMessageAlerts(): void {
 }
 
 export async function playMessageAlertSound(kind: "pm" | "default" = "default"): Promise<void> {
+  if (!isMessageAlertSoundEnabled()) return;
+
   const now = Date.now();
   const throttle = kind === "pm" ? PM_SOUND_THROTTLE_MS : SOUND_THROTTLE_MS;
   if (now - lastSoundAt < throttle) return;

@@ -45,12 +45,12 @@
 2) ~~PM Real-time كامل~~ → **جزئي:** tab leader + poll 8s (Real-time Hardening ✅)
 3) Edit رسالة — scope لاحق
 4) Typing indicator — غير مُنفَّذ (اتشال المعطّل)
-5) Sound toggle — صوت الإشعارات بدون زر إيقاف
-6) Max length 500 حرف — غير مفعّل في composer
-7) Drag & drop للصور — غير موجود
+5) ~~Sound toggle~~ → **✅** زر «صوت الإشعارات» في إعدادات composer + `localStorage`
+6) ~~Max length 500 حرف~~ → **✅** غرف + PM (`ROOM_COMPOSER_MAX_CHARS`)
+7) ~~Drag & drop للصور~~ → **✅** على شريط الكتابة (غير روم المنشورات)
 8) بوت AI دردشة (Gemini) — **تصميم AI للمالك فقط** في Design Center؛ مفيش بوت شات عام
 9) معاينة قبل الإرسال
-10) Ctrl+Enter
+10) ~~Ctrl+Enter~~ → **✅** ديسكتوب: Enter سطر جديد · Ctrl/Cmd+Enter إرسال · موبايل: Enter إرسال
 
 ### 🔒 Supabase / إطلاق (تحقق دوري)
 ```bash

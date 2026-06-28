@@ -21,6 +21,8 @@ interface BotLogEntry {
 
 const VIOLATIONS_STORAGE_KEY = "lamma_violation_counts";
 
+export const ROOM_COMPOSER_MAX_CHARS = 500;
+
 interface UseRoomComposerOptions {
   activeRoomId: string;
   activeRoomName: string;
@@ -122,6 +124,12 @@ export function useRoomComposer({
     if (!inputText.trim()) return;
 
     const trimmedInput = inputText.trim();
+    if (!isPostsRoom && trimmedInput.length > ROOM_COMPOSER_MAX_CHARS) {
+      alert(
+        `⚠️ الرسالة طويلة — الحد الأقصى ${ROOM_COMPOSER_MAX_CHARS} حرف.`,
+      );
+      return;
+    }
     const hasYoutubeLink =
       /youtu\.be\/|youtube\.com\//i.test(trimmedInput) ||
       Boolean(getYoutubeId(trimmedInput));

@@ -277,14 +277,19 @@ import {
 } from "../services/chat/roomDjService";
 import {
   bindMessageAlertPriming,
+  isMessageAlertSoundEnabled,
   primeMessageAlerts,
   playMessageAlertSound,
+  setMessageAlertSoundEnabled,
   showBrowserMessageNotification,
 } from "../services/chat/messageAlertService";
 import { describeMediaError, describeCallFailure, playRemoteMedia } from "../services/calls/callMediaUtils";
 import { OwnerMemberFeaturesPanel } from "./modals/OwnerMemberFeaturesPanel";
 import { OwnerMemberCosmeticsPanel } from "./modals/OwnerMemberCosmeticsPanel";
-import { useRoomComposer } from "../hooks/useRoomComposer";
+import {
+  ROOM_COMPOSER_MAX_CHARS,
+  useRoomComposer,
+} from "../hooks/useRoomComposer";
 import {
   buildDesignAssistantAudit,
   buildDesignAssistantProposal,
@@ -735,6 +740,9 @@ export default function ChatScreen({
     if (urlFlag === "0") return false;
     return localStorage.getItem(READING_MODE_STORAGE_KEY) === "true";
   });
+  const [messageSoundEnabled, setMessageSoundEnabled] = useState(() =>
+    typeof window !== "undefined" ? isMessageAlertSoundEnabled() : true,
+  );
   const designPresetsStorageKey = userScopedStorageKey("lamma_design_presets");
   const [designPresets, setDesignPresets] = useState<DesignPreset[]>(() => {
     if (typeof window === "undefined") return [];
@@ -6831,6 +6839,12 @@ export default function ChatScreen({
 
     const targetNickname = pmTarget.nickname;
     const textToSend = pmInputText.trim();
+    if (textToSend.length > ROOM_COMPOSER_MAX_CHARS) {
+      alert(
+        `⚠️ الرسالة طويلة — الحد الأقصى ${ROOM_COMPOSER_MAX_CHARS} حرف.`,
+      );
+      return;
+    }
     const clientId = `opt-pm-${crypto.randomUUID()}`;
     setPmInputText("");
 
@@ -10748,6 +10762,20 @@ export default function ChatScreen({
                   : "bg-[rgba(7,10,12,0.22)] border border-white/6 shadow-none lamma-chat-input-shell"
               }`}
               data-design-region="composer"
+              onDragOver={(e) => {
+                if (isPostsRoom) return;
+                if (!e.dataTransfer.types.includes("Files")) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "copy";
+              }}
+              onDrop={(e) => {
+                if (isPostsRoom) return;
+                e.preventDefault();
+                const file = Array.from(e.dataTransfer.files).find((f) =>
+                  f.type.startsWith("image/"),
+                );
+                if (file) void uploadAndSendImage(file);
+              }}
               style={
                 isZenMode
                   ? undefined
@@ -11155,46 +11183,70 @@ export default function ChatScreen({
                 </div>
               )}
 
-              <textarea
-                ref={messageInputRef}
-                id="messageInput"
-                name="messageInput"
-                autoComplete="off"
-                rows={isPostsRoom ? 3 : 1}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onFocus={() => {
-                  chatStickToBottomRef.current = true;
-                  if (isMobileAppShell) {
-                    window.setTimeout(() => scrollChatToBottom("auto"), 80);
+              <div className="relative flex-1 min-w-0 w-full lamma-composer-slot-input">
+                <textarea
+                  ref={messageInputRef}
+                  id="messageInput"
+                  name="messageInput"
+                  autoComplete="off"
+                  rows={isPostsRoom ? 3 : 1}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onFocus={() => {
+                    chatStickToBottomRef.current = true;
+                    if (isMobileAppShell) {
+                      window.setTimeout(() => scrollChatToBottom("auto"), 80);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (!isPostsRoom && e.key === "Enter") {
+                      if (isMobileAppShell) {
+                        e.preventDefault();
+                        handleSendMessage();
+                        return;
+                      }
+                      if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                      return;
+                    }
+                    if (
+                      isPostsRoom &&
+                      e.key === "Enter" &&
+                      (e.ctrlKey || e.metaKey)
+                    ) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  disabled={(isPostsRoom && !canPublishPosts) || (isMaintenanceMode && !isManagementRole)}
+                  placeholder={
+                    isMaintenanceMode && !isManagementRole
+                      ? "⚙️ الشات في وضع الصيانة — الكتابة متوقفة مؤقتاً"
+                      : isPostsRoom
+                      ? canPublishPosts
+                        ? "اكتب منشورك العام هنا..."
+                        : "المشاهدة متاحة للجميع، والنشر للمسجلين فقط"
+                      : isMobileAppShell
+                        ? "اكتب رسالة..."
+                        : "اكتب رسالة... (Ctrl+Enter للإرسال)"
                   }
-                }}
-                onKeyDown={(e) => {
-                  if (!isPostsRoom && e.key === "Enter") {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                  if (
-                    isPostsRoom &&
-                    e.key === "Enter" &&
-                    (e.ctrlKey || e.metaKey)
-                  ) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                disabled={(isPostsRoom && !canPublishPosts) || (isMaintenanceMode && !isManagementRole)}
-                placeholder={
-                  isMaintenanceMode && !isManagementRole
-                    ? "⚙️ الشات في وضع الصيانة — الكتابة متوقفة مؤقتاً"
-                    : isPostsRoom
-                    ? canPublishPosts
-                      ? "اكتب منشورك العام هنا..."
-                      : "المشاهدة متاحة للجميع، والنشر للمسجلين فقط"
-                    : "اكتب رسالة..."
-                }
-                className={`flex-1 min-w-0 w-full bg-transparent border-0 focus:ring-0 text-xs focus:outline-none px-2 text-right lamma-composer-field lamma-composer-slot-input ${isPostsRoom ? "min-h-[76px] resize-none py-2" : "h-8 md:h-9 resize-none py-1.5 md:py-2 leading-5"}`}
-              />
+                  className={`w-full bg-transparent border-0 focus:ring-0 text-xs focus:outline-none px-2 text-right lamma-composer-field ${isPostsRoom ? "min-h-[76px] resize-none py-2" : "h-8 md:h-9 resize-none py-1.5 md:py-2 leading-5"}`}
+                />
+                {!isPostsRoom && inputText.length > 380 && (
+                  <span
+                    className={`pointer-events-none absolute bottom-0.5 left-2 text-[9px] font-mono tabular-nums ${
+                      inputText.length > ROOM_COMPOSER_MAX_CHARS
+                        ? "text-red-400"
+                        : "text-gray-500"
+                    }`}
+                    aria-live="polite"
+                  >
+                    {inputText.length}/{ROOM_COMPOSER_MAX_CHARS}
+                  </span>
+                )}
+              </div>
 
               <button
                 type="button"
@@ -11357,6 +11409,32 @@ export default function ChatScreen({
                           <span>وضع الكتابة المريحة</span>
                           <span className="text-[9px] font-mono">
                             {readingMode ? "ON" : "OFF"}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`text-right p-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-between lamma-list-item ${
+                            messageSoundEnabled
+                              ? "bg-white/10 text-sky-200 border border-white/10"
+                              : "hover:bg-white/10 text-gray-200"
+                          }`}
+                          onClick={() => {
+                            const next = !messageSoundEnabled;
+                            setMessageSoundEnabled(next);
+                            setMessageAlertSoundEnabled(next);
+                            if (next) void playMessageAlertSound();
+                          }}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            {messageSoundEnabled ? (
+                              <Volume2 size={13} className="text-sky-300" />
+                            ) : (
+                              <VolumeX size={13} className="text-gray-500" />
+                            )}
+                            <span>صوت الإشعارات</span>
+                          </span>
+                          <span className="text-[9px] font-mono">
+                            {messageSoundEnabled ? "ON" : "OFF"}
                           </span>
                         </button>
                         {setPrimaryTheme ? (
