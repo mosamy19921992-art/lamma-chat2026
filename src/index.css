@@ -2966,8 +2966,8 @@ body {
 }
 
 /* Card edge — calm static theme tint by default (no rotating rainbow). */
-.lamma-neutral-glass .lamma-side-column[class*="border-r"] .lamma-glass::before,
-.lamma-neutral-glass .lamma-side-column[class*="border-l"] .lamma-glass::before {
+.lamma-neutral-glass:not([data-neon-beam-targets]) .lamma-side-column[class*="border-r"] .lamma-glass::before,
+.lamma-neutral-glass:not([data-neon-beam-targets]) .lamma-side-column[class*="border-l"] .lamma-glass::before {
   content: "" !important;
   display: block !important;
   position: absolute !important;

@@ -165,9 +165,9 @@ body.lamma-fx-crystal .lamma-neutral-glass .lamma-music-panel [data-design-regio
   animation-delay: 1.8s !important;
 }
 
-/* Hide broken crystal rule on glass ::before (neon / glass gradient wins there) */
-body.lamma-fx-crystal .lamma-neutral-glass .lamma-side-column .lamma-glass.lamma-widget-card::before,
-body.lamma-fx-crystal .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"].lamma-glass::before {
+/* Hide broken crystal rule on glass ::before when neon frame is not active */
+body.lamma-fx-crystal .lamma-neutral-glass:not([data-neon-beam-targets]) .lamma-side-column .lamma-glass.lamma-widget-card::before,
+body.lamma-fx-crystal .lamma-neutral-glass:not([data-neon-beam-targets]) .lamma-side-column [data-design-region="column-cards"].lamma-glass::before {
   content: none !important;
   display: none !important;
 }
