@@ -7,15 +7,61 @@ export const ROOMS_DEF = [
   { id: "arab", name: "كل العرب", icon: "🌍", count: 0, category: "social" },
   { id: "youth", name: "لمة شباب وبنات", icon: "👫", count: 0, category: "social" },
   { id: "palestine", name: "فلسطين", icon: "🇵🇸", count: 0, category: "social" },
-  { id: "posts-feed", name: "المنشورات", icon: "📰", count: 0, category: "community" },
+  { id: "posts-feed", name: "منشورات", icon: "📰", count: 0, category: "community" },
   { id: "fun", name: "فرفشة", icon: "🥳", count: 0, category: "fun" },
   { id: "games", name: "Games 🎮", icon: "🎮", count: 0, category: "fun" },
   { id: "romance", name: "رومانسية", icon: "💖", count: 0, category: "relations" },
-  { id: "help", name: "مساعدة وشكاوى", icon: "📋", count: 0, category: "social" },
-  { id: "admin", name: "الإدارة", icon: "🛡️", count: 0, category: "private", staffOnly: true },
-  { id: "owner", name: "بوت التصميم AI", icon: "🎨", count: 0, category: "private", ownerOnly: true },
+  { id: "help", name: "مساعدة", icon: "📋", count: 0, category: "social" },
+  { id: "admin", name: "إدارة", icon: "🛡️", count: 0, category: "private", staffOnly: true },
+  { id: "owner", name: "تصميم", icon: "🎨", count: 0, category: "private", ownerOnly: true },
 ];
 
+/** Default room order in lists — flat, no category headers. */
+export const ROOM_DISPLAY_ORDER = [
+  "egypt",
+  "arab",
+  "youth",
+  "palestine",
+  "fun",
+  "games",
+  "romance",
+  "posts-feed",
+  "help",
+  "admin",
+  "owner",
+] as const;
+
+export type RoomListEntry = {
+  id: string;
+  name: string;
+  icon: string;
+  count: number;
+  staffOnly?: boolean;
+  ownerOnly?: boolean;
+};
+
+export function filterAndSortRoomsForList<T extends RoomListEntry>(
+  rooms: T[],
+  access: { isManagementRole: boolean; isOwnerRole: boolean },
+): T[] {
+  const visible = rooms.filter((room) => {
+    if (room.staffOnly && !access.isManagementRole) return false;
+    if (room.ownerOnly && !access.isOwnerRole) return false;
+    return true;
+  });
+  const orderIndex = new Map(
+    ROOM_DISPLAY_ORDER.map((id, index) => [id, index * 10]),
+  );
+  const customRoomSort = ROOM_DISPLAY_ORDER.indexOf("help") * 10 + 5;
+  return [...visible].sort((a, b) => {
+    const ai = orderIndex.get(a.id as (typeof ROOM_DISPLAY_ORDER)[number]) ?? customRoomSort;
+    const bi = orderIndex.get(b.id as (typeof ROOM_DISPLAY_ORDER)[number]) ?? customRoomSort;
+    if (ai !== bi) return ai - bi;
+    return a.id.localeCompare(b.id, "ar");
+  });
+}
+
+/** @deprecated Category headers removed from room list UI — order uses ROOM_DISPLAY_ORDER. */
 export const ROOM_CATEGORIES = [
   { id: "social", name: "اجتماعي", icon: "👥" },
   { id: "community", name: "مجتمع", icon: "📰" },

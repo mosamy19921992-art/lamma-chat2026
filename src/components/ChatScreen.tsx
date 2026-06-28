@@ -141,10 +141,11 @@ import type { PublicChatSettingsPayload } from "../services/chat/ownerSettingsSe
 import { userStoragePath } from "../services/storage/storagePaths";
 import {
   ROOMS_DEF,
-  ROOM_CATEGORIES,
+  filterAndSortRoomsForList,
   GIFT_TYPES,
   EMOTICONS,
 } from "../lib/chatConstants.ts";
+import { RoomListItems } from "./chat/RoomListItems.tsx";
 import {
   type Message,
   type MessageReplyRef,
@@ -9408,9 +9409,7 @@ export default function ChatScreen({
           <div className="p-3 border-b border-green-500/10 flex flex-col gap-2 shrink-0 lamma-mobile-sidebar-header">
             {/* Mobile Close option */}
             <div className="flex lg:hidden items-center justify-between pb-1.5 border-b border-green-500/10 mb-1">
-              <span className="text-white font-black text-xs">
-                🗂️ القوائم والاتصال
-              </span>
+              <span className="text-white font-black text-xs">🗂️ القوائم</span>
               <button
                 type="button"
                 onClick={() => {
@@ -9425,15 +9424,9 @@ export default function ChatScreen({
 
             <div className="bg-black/60 p-2 rounded-xl border border-green-500/10 flex items-center justify-center gap-2 text-[11px] font-black text-green-400">
               {activeSidebarTab === "rooms" ? (
-                <>
-                  <span>🏠</span>
-                  <span>الغرف المتاحة</span>
-                </>
+                <span>🏠 غرف</span>
               ) : (
-                <>
-                  <span>👥</span>
-                  <span>المتصلين</span>
-                </>
+                <span>👥 متصلين</span>
               )}
             </div>
           </div>
@@ -9461,76 +9454,35 @@ export default function ChatScreen({
                     className="w-full p-2.5 rounded-xl flex items-center justify-center gap-2 lamma-accent-text-soft font-extrabold text-[11px] transition-all cursor-pointer lamma-primary-btn"
                   >
                     <Plus size={14} />
-                    <span>إنشاء غرفة خاصة جديدة</span>
+                    <span>+ غرفة</span>
                   </button>
                 )}
 
-                {(() => {
-                  const visibleRooms = ROOMS_DEF.filter((room) => {
-                    if ((room as { staffOnly?: boolean }).staffOnly && !isManagementRole) {
-                      return false;
+                <RoomListItems
+                  variant="mobile"
+                  rooms={filterAndSortRoomsForList(availableRooms, {
+                    isManagementRole,
+                    isOwnerRole,
+                  })}
+                  activeRoomId={activeRoomId}
+                  onSelect={(room) => {
+                    if (!openRooms.find((r) => r.id === room.id)) {
+                      setOpenRooms((prev) => [
+                        ...prev,
+                        {
+                          id: room.id,
+                          name: room.name,
+                          flag: room.icon,
+                        },
+                      ]);
                     }
-                    if ((room as { ownerOnly?: boolean }).ownerOnly && !isOwnerRole) {
-                      return false;
+                    handleSwitchRoom(room.id);
+                    if (window.innerWidth < 768) {
+                      setMobileTab("chat");
                     }
-                    return true;
-                  });
-                  const mergedVisibleRooms = [...visibleRooms, ...customRooms];
-
-                  return ROOM_CATEGORIES.map((category) => {
-                    const rooms = mergedVisibleRooms.filter(
-                      (r: any) => r.category === category.id,
-                    );
-                    if (rooms.length === 0) return null;
-
-                    return (
-                      <div key={category.id} className="space-y-2">
-                        <div className="text-[10px] text-green-400 font-extrabold tracking-widest uppercase pb-1 border-b border-green-500/5 flex items-center gap-2">
-                          <span>{category.icon}</span>
-                          <span>{category.name}</span>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          {rooms.map((room: any) => (
-                            <div
-                              key={room.id}
-                              onClick={() => {
-                                if (!openRooms.find((r) => r.id === room.id)) {
-                                  setOpenRooms((prev) => [
-                                    ...prev,
-                                    {
-                                      id: room.id,
-                                      name: room.name,
-                                      flag: room.icon,
-                                    },
-                                  ]);
-                                }
-                                handleSwitchRoom(room.id);
-                                if (window.innerWidth < 768) {
-                                  setMobileTab("chat");
-                                }
-                                setIsSidebarOpen(false);
-                              }}
-                              className={`p-2.5 rounded-xl border transition-all text-xs font-black cursor-pointer flex items-center justify-between lamma-list-item ${
-                                room.id === activeRoomId
-                                  ? "bg-green-500/10 border-green-500/30 text-green-400 shadow-[0_0_10px_rgba(16,185,129,0.08)]"
-                                  : "bg-black/12 border-white/5 text-gray-300"
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm">{room.icon}</span>
-                                <span>{room.name}</span>
-                              </div>
-                              <span className="bg-black/60 px-2 py-0.5 rounded-full border lamma-accent-border-soft text-[9px] lamma-accent-text-soft font-black font-mono">
-                                {room.count}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  });
-                })()}
+                    setIsSidebarOpen(false);
+                  }}
+                />
               </div>
             )}
 
@@ -11632,7 +11584,7 @@ export default function ChatScreen({
                       size={15}
                       className="text-[color:var(--accent-secondary)]"
                     />
-                    <span className="text-[12px] font-black">الغرف</span>
+                    <span className="text-[12px] font-black">غرف</span>
                   </div>
                   <span className="text-[10px] text-[color:var(--text-secondary)] font-mono">
                     {visibleRoomCount}
@@ -11657,69 +11609,30 @@ export default function ChatScreen({
                       className="w-full p-2.5 bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.25)] rounded-2xl flex items-center justify-center gap-2 text-[color:var(--accent-primary)] font-extrabold text-[11px] hover:bg-[rgba(16,185,129,0.18)] transition-all cursor-pointer"
                     >
                       <Plus size={14} />
-                      <span>إنشاء غرفة</span>
+                      <span>+ غرفة</span>
                     </button>
                   )}
 
-                  {(() => {
-                    const visibleRooms = availableRooms.filter((room: any) => {
-                      if (room.staffOnly && !isManagementRole) return false;
-                      if (room.ownerOnly && !isOwnerRole) return false;
-                      return true;
-                    });
-
-                    return ROOM_CATEGORIES.map((category) => {
-                      const rooms = visibleRooms.filter(
-                        (r: any) => r.category === category.id,
-                      );
-                      if (rooms.length === 0) return null;
-
-                      return (
-                        <div key={category.id} className="space-y-2">
-                          <div className="text-[10px] text-[color:var(--accent-secondary)] font-extrabold tracking-widest uppercase pb-1 border-b border-white/5 flex items-center gap-2">
-                            <span>{category.icon}</span>
-                            <span>{category.name}</span>
-                          </div>
-                          <div className="space-y-1.5">
-                            {rooms.map((room: any) => (
-                              <button
-                                key={room.id}
-                                type="button"
-                                onClick={() => {
-                                  if (
-                                    !openRooms.find((r) => r.id === room.id)
-                                  ) {
-                                    setOpenRooms((prev) => [
-                                      ...prev,
-                                      {
-                                        id: room.id,
-                                        name: room.name,
-                                        flag: room.icon,
-                                      },
-                                    ]);
-                                  }
-                                  handleSwitchRoom(room.id);
-                                }}
-                                className={`w-full p-2.5 rounded-2xl transition-all text-xs font-black cursor-pointer flex items-center justify-between ${
-                                  room.id === activeRoomId
-                                    ? "bg-[rgba(16,185,129,0.10)] border border-[rgba(16,185,129,0.35)] text-[color:var(--accent-primary)] lamma-soft-glow lamma-room-list-card"
-                                    : "text-gray-200 lamma-room-list-card"
-                                }`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm">{room.icon}</span>
-                                  <span>{room.name}</span>
-                                </div>
-                                <span className="px-2 py-0.5 rounded-full text-[9px] text-[color:var(--accent-secondary)] font-black font-mono lamma-room-count-pill">
-                                  {room.count}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
+                  <RoomListItems
+                    rooms={filterAndSortRoomsForList(availableRooms, {
+                      isManagementRole,
+                      isOwnerRole,
+                    })}
+                    activeRoomId={activeRoomId}
+                    onSelect={(room) => {
+                      if (!openRooms.find((r) => r.id === room.id)) {
+                        setOpenRooms((prev) => [
+                          ...prev,
+                          {
+                            id: room.id,
+                            name: room.name,
+                            flag: room.icon,
+                          },
+                        ]);
+                      }
+                      handleSwitchRoom(room.id);
+                    }}
+                  />
                 </div>
               </div>
             </div>
