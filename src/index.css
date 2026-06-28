@@ -907,6 +907,12 @@ body {
     0 8px 18px rgba(0, 0, 0, 0.08);
 }
 
+.lamma-chat-subheader .lamma-room-header:last-child .lamma-room-tab {
+  max-height: 100%;
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
 .lamma-room-tab:hover {
   background: linear-gradient(180deg, rgba(255, 248, 227, 0.16), rgba(255, 226, 168, 0.06));
 }

@@ -309,7 +309,7 @@
   }
 
   .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-header:last-child {
-    height: 24px;
+    height: 28px;
   }
 
   .lamma-pwa-app-shell .lamma-chat-subheader .lamma-topic-pin {
@@ -350,10 +350,11 @@
   }
 
   .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-tab {
-    min-width: 3.4rem !important;
+    max-height: 100% !important;
     padding-top: 0.2rem !important;
-    padding-bottom: 0.15rem !important;
+    padding-bottom: 0.2rem !important;
     box-shadow: none;
+    flex-shrink: 0;
   }
 
   .lamma-pwa-app-shell .lamma-chat-subheader .lamma-room-tab span:first-child {

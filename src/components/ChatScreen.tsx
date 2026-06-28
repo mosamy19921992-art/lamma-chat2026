@@ -5647,7 +5647,7 @@ export default function ChatScreen({
     "posts-feed":
       "انشر أفكارك ومنشوراتك العامة هنا، وستظهر لكل من يدخل الروم 📰",
     admin: "لوحة رقابة المشرفين، يرجى الحفاظ على النظام 🛡️",
-    help: "مساعدة وشكاوى — اكتب مشكلتك أو استفسارك وسيراجعها فريق الإدارة 📋",
+    help: "📋 مساعدة وشكاوى",
     owner: "جدار المالك السري 👑، يمكنك هنا تعديل وتخصيص كل شيء بضغطة زر!",
   });
   const [isEditingTopic, setIsEditingTopic] = useState(false);
@@ -9828,11 +9828,11 @@ export default function ChatScreen({
 
           {/* Header section replicating the top of chat log / Room Tabs - matching Ad Banner size & width */}
           <div
-            className="w-full px-2 flex items-center justify-between shrink-0 z-10 h-[24px] md:h-[30px] lamma-fire-underline lamma-room-header"
+            className="w-full px-2 flex items-center justify-between shrink-0 z-10 min-h-[28px] h-[28px] md:min-h-[32px] md:h-[32px] lamma-fire-underline lamma-room-header"
             dir="rtl"
           >
             {/* Tabs Container */}
-            <div className="flex items-center gap-0.5 overflow-x-auto hide-scrollbar flex-1 h-full items-end pb-0">
+            <div className="flex items-center gap-0.5 overflow-x-auto hide-scrollbar flex-1 h-full pb-0">
               {openRooms
                 .map((room) => (
                   <motion.div
@@ -9842,7 +9842,8 @@ export default function ChatScreen({
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
                     key={room.id}
                     onClick={() => handleSwitchRoom(room.id)}
-                    className={`flex items-center justify-between gap-1 px-2 pb-1.5 pt-1.5 rounded-t-lg cursor-pointer min-w-[70px] transition-all relative group lamma-room-tab ${
+                    title={room.name}
+                    className={`flex items-center justify-between gap-1 px-2 py-0.5 h-full shrink-0 rounded-t-lg cursor-pointer transition-all relative group lamma-room-tab ${
                       activeRoomId === room.id
                         ? "lamma-room-tab-active text-white font-black"
                         : "text-gray-400 hover:text-white"
@@ -9860,16 +9861,16 @@ export default function ChatScreen({
                       />
                     )}
                     <div className="flex items-center gap-1 min-w-0 relative z-10">
-                      <span className={`text-[11px] transition-all ${activeRoomId === room.id ? "scale-110 drop-shadow-[0_0_4px_rgba(255,215,0,0.65)]" : ""}`}>{room.flag}</span>
-                      <span className={`text-[9.5px] truncate whitespace-nowrap pt-0.5 transition-all ${
+                      <span className={`text-[10px] leading-tight shrink-0 transition-all ${activeRoomId === room.id ? "drop-shadow-[0_0_4px_rgba(255,215,0,0.65)]" : ""}`}>{room.flag}</span>
+                      <span className={`text-[9.5px] whitespace-nowrap leading-tight transition-all ${
                         activeRoomId === room.id 
-                          ? "text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-400 font-extrabold" 
+                          ? "text-amber-200 font-extrabold" 
                           : ""
                       }`}>
                         {room.name}
                       </span>
                       {activeRoomId === room.id && (
-                        <span className="w-[4px] h-[4px] rounded-full bg-amber-400 shadow-[0_0_6px_#ffd700] animate-[ping_1.5s_infinite] ml-1 shrink-0" />
+                        <span className="w-[3px] h-[3px] rounded-full bg-amber-400 shadow-[0_0_5px_#ffd700] animate-[ping_1.5s_infinite] shrink-0" />
                       )}
                     </div>
                     {room.id !== "egypt" && (
@@ -10587,22 +10588,22 @@ export default function ChatScreen({
               )}
 
               {isHelpRoom && (
-                <div className="mx-2 mb-3 text-right" dir="rtl">
-                  <div className="rounded-[20px] border border-amber-400/20 bg-gradient-to-br from-black/60 to-amber-900/10 p-4">
-                    <div className="flex items-center gap-2 justify-end mb-2">
-                      <span className="text-sm font-black text-amber-200">مساعدة وشكاوى 📋</span>
+                <div className="mx-2 mb-2 text-right" dir="rtl">
+                  <div className="rounded-xl border border-amber-400/15 bg-black/30 px-2.5 py-2">
+                    <div className="flex items-center gap-1.5 justify-end mb-1.5">
+                      <span className="text-[10px] font-black text-amber-200">مساعدة وشكاوى</span>
+                      <span className="text-[10px] leading-none">📋</span>
                     </div>
-                    <p className="text-[10px] text-gray-400 leading-relaxed mb-2">
-                      اكتب مشكلتك أو شكواك هنا — فريق الإدارة يراجع الرسائل. يمكنك أيضاً الضغط على 🚩
-                      على أي رسالة مخالفة في الغرف الأخرى.
+                    <p className="text-[9px] text-gray-400 leading-snug mb-1.5">
+                      اكتب مشكلتك هنا — الإدارة تراجع. أو 🚩 على رسالة مخالفة في أي غرفة.
                     </p>
-                    <div className="grid grid-cols-2 gap-1.5 text-[9px]">
-                      <div className="bg-white/5 rounded-xl px-2 py-1.5 text-gray-300">
-                        <span className="text-amber-300 font-bold">/complaint</span> — دليل البلاغ
-                      </div>
-                      <div className="bg-white/5 rounded-xl px-2 py-1.5 text-gray-300">
-                        <span className="text-amber-300 font-bold">🚩</span> — بلاغ على رسالة
-                      </div>
+                    <div className="flex flex-wrap gap-1 justify-end text-[8.5px]">
+                      <span className="bg-white/5 rounded-lg px-1.5 py-0.5 text-gray-300">
+                        <span className="text-amber-300 font-bold">/complaint</span> دليل
+                      </span>
+                      <span className="bg-white/5 rounded-lg px-1.5 py-0.5 text-gray-300">
+                        <span className="text-amber-300 font-bold">🚩</span> بلاغ
+                      </span>
                     </div>
                   </div>
                 </div>
