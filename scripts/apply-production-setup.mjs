@@ -1,7 +1,8 @@
 /**
  * One-shot Supabase production setup (full hardening chain + OAuth URLs).
  *
- * Order matters — do NOT run supabase-storage.sql after identity-hardening
+ * Order matches SQL_MIGRATIONS.md (+ reply, pen-test, reactions).
+ * Do NOT run supabase-storage.sql after identity-hardening
  * (it overwrites folder-scoped upload policies).
  *
  * Usage (PowerShell):
@@ -106,9 +107,20 @@ async function applySql() {
     ["supabase-launch-hardening.sql", "launch hardening (PM + call_signals)"],
     ["supabase-participation-hardening.sql", "participation (ban/invite/calls)"],
     ["supabase-private-media.sql", "private PM media bucket"],
+    ["supabase-room-member-roles.sql", "per-room mod/vip roles"],
+    ["supabase-role-policy-v2.sql", "host + temp grants"],
+    ["supabase-private-rooms.sql", "password rooms + creation quota"],
+    ["supabase-moderation-hardening.sql", "moderation P0 (typed bans + RPC)"],
+    ["supabase-moderation-p1.sql", "moderation P1 (kick + layout)"],
+    ["supabase-p2-owner-settings-public.sql", "public settings mirror (P2)"],
+    ["supabase-moderation-p2.sql", "moderation P2 (shadow ban)"],
+    ["supabase-media-performance-fix.sql", "media URL RLS + bucket limits"],
     ["supabase-api-validation-hardening.sql", "API validation length checks"],
     ["supabase-rpc-anon-lockdown.sql", "RPC anon lockdown (participation)"],
     ["supabase-message-reactions-rpc.sql", "message reactions RPC"],
+    ["supabase-message-reply.sql", "room message reply columns"],
+    ["supabase-security-pen-test-fixes.sql", "roles from user_roles only"],
+    ["supabase-schema-rls-hardening.sql", "schema RLS hardening"],
   ];
 
   for (const [file, label] of migrationChain) {

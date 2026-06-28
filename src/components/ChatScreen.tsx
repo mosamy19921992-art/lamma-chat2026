@@ -707,26 +707,6 @@ export default function ChatScreen({
     }
   };
 
-  // Sample DM Contacts (would be fetched from Supabase in production)
-  const sampleDmContacts = [
-    {
-      id: "1",
-      name: "أحمد محمد",
-      avatar: "أ",
-      lastMessage: "مرحباً! كيف حالك؟",
-      time: "10:30",
-      online: true,
-    },
-    {
-      id: "2",
-      name: "سارة علي",
-      avatar: "س",
-      lastMessage: "شكراً لك",
-      time: "09:45",
-      online: false,
-    },
-  ];
-
   const [showFeaturesTray, setShowFeaturesTray] = useState(false);
   const [showMembersList, setShowMembersList] = useState(false);
   const [showRoomsLists, setShowRoomsLists] = useState(false);

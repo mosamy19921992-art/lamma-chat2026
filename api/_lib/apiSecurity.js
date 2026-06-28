@@ -76,6 +76,53 @@ export async function verifySupabaseJwt(req) {
   return data.user;
 }
 
+const OWNER_ROLE_ALIASES = new Set(["owner", "malek", "malik", "boss", "المالك"]);
+
+function normalizeOwnerRole(role) {
+  if (typeof role !== "string") return "";
+  return role.trim().toLowerCase();
+}
+
+function isOwnerRoleValue(role) {
+  return OWNER_ROLE_ALIASES.has(normalizeOwnerRole(role));
+}
+
+let supabaseServiceClient = null;
+
+function getSupabaseServiceClient() {
+  if (supabaseServiceClient) return supabaseServiceClient;
+  const url =
+    process.env.SUPABASE_URL?.trim() ||
+    process.env.VITE_SUPABASE_URL?.trim() ||
+    "";
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
+  if (!url || !serviceKey) return null;
+  supabaseServiceClient = createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return supabaseServiceClient;
+}
+
+/** True when user_roles.role is owner (requires SUPABASE_SERVICE_ROLE_KEY on server). */
+export async function verifyOwnerUser(user) {
+  if (!user?.id) return false;
+  const admin = getSupabaseServiceClient();
+  if (!admin) return null;
+
+  const { data, error } = await admin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[apiSecurity] owner role lookup failed:", error.message);
+    return false;
+  }
+
+  return isOwnerRoleValue(data?.role);
+}
+
 const HEX_COLOR = /^#[0-9a-fA-F]{3,8}$/;
 const RGBA_COLOR =
   /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/i;

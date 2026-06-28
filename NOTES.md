@@ -40,17 +40,24 @@
 10. **LocalStorage fallback** + **Real-time**
 11. **طبقة services:** `src/services/` (chat, calls, auth, store, profile)
 
-## 🟡 ناقص / مفتوح للنقاش
-1) رفع فيديو/صوت من الجهاز
-2) PM Real-time كامل
-3) Edit رسالة
-4) Typing indicator
-5) Sound toggle
-6) Max length 500 حرف
-7) Drag & drop للصور
-8) بوت AI (Gemini)
+## 🟡 ناقص / مفتوح للنقاش (محدّث — يونيو 2026)
+1) **رفع فيديو ملف في الغرف العامة** — PM فيه فيdeo ملف؛ الغرف: رابط YouTube/MP4 فقط
+2) ~~PM Real-time كامل~~ → **جزئي:** tab leader + poll 8s (Real-time Hardening ✅)
+3) Edit رسالة — scope لاحق
+4) Typing indicator — غير مُنفَّذ (اتشال المعطّل)
+5) Sound toggle — صوت الإشعارات بدون زر إيقاف
+6) Max length 500 حرف — غير مفعّل في composer
+7) Drag & drop للصور — غير موجود
+8) بوت AI دردشة (Gemini) — **تصميم AI للمالك فقط** في Design Center؛ مفيش بوت شات عام
 9) معاينة قبل الإرسال
 10) Ctrl+Enter
+
+### 🔒 Supabase / إطلاق (تحقق دوري)
+```bash
+npm run verify:hardening          # سلوك RLS — يحتاج .env.local
+node scripts/apply-production-setup.mjs   # سلسلة SQL كاملة — يحتاج SUPABASE_ACCESS_TOKEN
+```
+**ملاحظة:** `apply-production-setup.mjs` يطبّق سلسلة `SQL_MIGRATIONS.md` + reply + pen-test — شغّله فقط لما تكون جاهز؛ SQL idempotent في أغلب الأجزاء.
 
 ## 🖼 التصميم
 - الهوية: أخضر لامع + أسود + ذهب VIP

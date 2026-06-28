@@ -9,6 +9,7 @@ import {
   getClientIp,
   sanitizeDesignPatch,
   sanitizeSummaryText,
+  verifyOwnerUser,
   verifySupabaseJwt,
 } from "./_lib/apiSecurity.js";
 
@@ -65,6 +66,14 @@ export default async function handler(req, res) {
   const user = await verifySupabaseJwt(req);
   if (!user) {
     return res.status(401).json({ error: "يجب تسجيل الدخول لاستخدام تصميم AI" });
+  }
+
+  const ownerCheck = await verifyOwnerUser(user);
+  if (ownerCheck === false) {
+    return res.status(403).json({ error: "تصميم AI للمالك فقط" });
+  }
+  if (ownerCheck === null) {
+    console.warn("[gemini-design] SUPABASE_SERVICE_ROLE_KEY missing — skipping owner gate");
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
