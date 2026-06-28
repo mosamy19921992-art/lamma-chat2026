@@ -40,6 +40,10 @@ npm install
 cp .env.example .env.local   # ثم املأ القيم من Secrets
 npm run lint
 npm run build
+npm run verify:hardening   # RLS — needs .env.local
+npm run verify:live        # production HTTP + Supabase public reads
+npm run verify:smoke       # bundle UX strings + messages read + insert block
+npm run verify:all         # runs all of the above sequentially
 ```
 
 ### 3. Dev server
