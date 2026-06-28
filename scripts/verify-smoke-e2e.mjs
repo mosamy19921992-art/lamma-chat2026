@@ -170,6 +170,13 @@ if (homeRes.ok) {
       (bundleText.includes("Ctrl") && bundleText.includes("Enter")),
   );
   await check(
+    "Bundle includes 500 char guard",
+    bundleText.includes("500") &&
+      (bundleText.includes("طويلة") ||
+        bundleText.includes("ROOM_COMPOSER") ||
+        bundleText.includes("COMPOSER_MAX")),
+  );
+  await check(
     "Bundle includes send preview feature",
     bundleText.includes("معاينة قبل الإرسال") ||
       bundleText.includes("lamma_send_preview"),
