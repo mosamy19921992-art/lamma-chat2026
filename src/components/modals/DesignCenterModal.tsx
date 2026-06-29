@@ -1798,6 +1798,10 @@ export const DesignCenterModal = ({
                             type="button"
                             onPointerDown={stopDrag}
                             onClick={() => {
+                              if (autoSaveTimerRef.current) {
+                                clearTimeout(autoSaveTimerRef.current);
+                                autoSaveTimerRef.current = null;
+                              }
                               cancelPendingDesignPreview?.();
                               cancelShapePreviews();
                               applyUDSSettings(loadUDSSettings());
@@ -1813,6 +1817,8 @@ export const DesignCenterModal = ({
                               setSliderAccent2(base.palette.accent2);
                               setSliderBg(base.palette.bg);
                               setSliderText(base.palette.text);
+                              setSaveStatus("idle");
+                              setSaveMessage("تم إلغاء المعاينة والرجوع لآخر تصميم محفوظ.");
                             }}
                             className="px-4 py-2.5 rounded-xl text-[10px] font-black lamma-tab-soft"
                           >
