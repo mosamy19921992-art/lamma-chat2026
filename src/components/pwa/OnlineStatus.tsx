@@ -32,7 +32,7 @@ export function OnlineStatus({ isOnline }: OnlineStatusProps) {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -18, opacity: 0, scale: 0.98 }}
           transition={{ type: "spring", damping: 24, stiffness: 260 }}
-          className="fixed top-3 inset-x-3 sm:top-6 sm:right-1/2 sm:translate-x-1/2 sm:w-fit z-[9998]"
+          className="fixed top-[4.25rem] inset-x-3 sm:top-6 sm:right-1/2 sm:translate-x-1/2 sm:w-fit z-[9998]"
           role="status"
           aria-live="polite"
         >
@@ -62,7 +62,7 @@ export function OnlineStatus({ isOnline }: OnlineStatusProps) {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -18, opacity: 0, scale: 0.98 }}
           transition={{ type: "spring", damping: 24, stiffness: 260 }}
-          className="fixed top-3 inset-x-3 sm:top-6 sm:right-1/2 sm:translate-x-1/2 sm:w-fit z-[9998]"
+          className="fixed top-[4.25rem] inset-x-3 sm:top-6 sm:right-1/2 sm:translate-x-1/2 sm:w-fit z-[9998]"
           role="status"
           aria-live="polite"
         >

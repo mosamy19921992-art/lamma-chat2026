@@ -45,7 +45,7 @@ export function UpdateBanner({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -18, scale: 0.98 }}
             transition={{ type: "spring", damping: 24, stiffness: 260 }}
-            className="fixed top-3 inset-x-3 sm:top-6 sm:right-6 sm:left-auto sm:w-[380px] z-[9999]"
+            className="fixed top-[4.25rem] inset-x-3 sm:top-6 sm:right-6 sm:left-auto sm:w-[380px] z-[9999]"
             role="alert"
             aria-live="polite"
           >
