@@ -1,5 +1,16 @@
 /* ── PWA mobile shell — grid layout, in-flow bottom nav ── */
 
+@keyframes lammaMobileMenuRise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
 @media (max-width: 767px) {
   html,
   body,
@@ -382,6 +393,17 @@
     border-bottom: none !important;
     background: rgba(7, 10, 14, 0.92) !important;
     box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.22) !important;
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
+  }
+
+  .lamma-pwa-app-shell .lamma-composer-layout.lamma-chat-input-shell:focus-within {
+    border-color: rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.24) !important;
+    box-shadow:
+      0 -8px 22px rgba(0, 0, 0, 0.26),
+      0 0 0 1px rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.12) !important;
   }
 
   .lamma-pwa-app-shell .lamma-composer-tool {
@@ -390,6 +412,17 @@
     min-width: 44px !important;
     min-height: 44px !important;
     border-radius: 999px;
+    transition:
+      transform 150ms ease,
+      background-color 150ms ease,
+      border-color 150ms ease;
+    touch-action: manipulation;
+  }
+
+  .lamma-pwa-app-shell .lamma-composer-tool:active,
+  .lamma-pwa-app-shell .lamma-composer-slot-send:active,
+  .lamma-pwa-app-shell .lamma-pwa-bottom-nav-item:active {
+    transform: scale(0.94);
   }
 
   .lamma-pwa-app-shell .lamma-composer-tool svg {
@@ -419,6 +452,11 @@
     min-width: 44px !important;
     min-height: 44px !important;
     box-shadow: 0 4px 10px rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.18) !important;
+    transition:
+      transform 150ms ease,
+      box-shadow 150ms ease,
+      opacity 150ms ease;
+    touch-action: manipulation;
   }
 
   .lamma-pwa-app-shell .lamma-composer-slot-send svg {
@@ -435,6 +473,8 @@
   /* تقليل رعشة القوائم المنبثقة على الموبايل */
   .lamma-pwa-app-shell .lamma-floating-dropdown {
     will-change: opacity;
+    transform-origin: bottom right;
+    animation: lammaMobileMenuRise 180ms ease both;
   }
 
   .lamma-pwa-app-shell.lamma-modal-open,
@@ -519,6 +559,18 @@
 
   .lamma-mobile-sidebar-shell.lamma-mobile-sidebar-open {
     animation: lammaSidebarSlideIn 320ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lamma-pwa-app-shell .lamma-composer-layout.lamma-chat-input-shell,
+    .lamma-pwa-app-shell .lamma-composer-tool,
+    .lamma-pwa-app-shell .lamma-composer-slot-send,
+    .lamma-pwa-app-shell .lamma-pwa-bottom-nav-item,
+    .lamma-pwa-app-shell .lamma-floating-dropdown,
+    .lamma-mobile-sidebar-shell {
+      animation: none !important;
+      transition: none !important;
+    }
   }
 
   @keyframes lammaSidebarSlideIn {
