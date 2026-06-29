@@ -8,7 +8,6 @@ import {
   commitGlassForm,
   loadGlassFormId,
   loadGlassFormTint,
-  previewGlassForm,
   GLASS_FORM_PRESETS,
   GLASS_TINT_SWATCHES,
   type GlassFormId,
@@ -23,7 +22,6 @@ import {
   commitChaseLightSettings,
   cancelChaseLightPreview,
   loadChaseLightSettings,
-  previewNeonBeamTargets,
   commitNeonBeamTargets,
   clearNeonBeamTargets,
   getActiveNeonBeamTargets,
@@ -60,7 +58,6 @@ import { commitPmBubbleStyle } from '../../services/design/pmBubbleStyleService'
 import {
   applyUDSSettings,
   loadUDSSettings,
-  previewUDSSettings,
   commitUDSSettings,
   resetUDSSettings,
   getPaletteLabel,
@@ -410,8 +407,8 @@ export const DesignCenterModal = ({
   const commitRef = useRef(commitPendingDesignPreview);
   const hasPendingRef = useRef(hasPendingDesignPreview);
   useEffect(() => {
-    commitRef.current = commitPendingDesignPreview;
-    hasPendingRef.current = hasPendingDesignPreview;
+  commitRef.current = commitPendingDesignPreview;
+  hasPendingRef.current = hasPendingDesignPreview;
   }, [commitPendingDesignPreview, hasPendingDesignPreview]);
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -437,17 +434,17 @@ export const DesignCenterModal = ({
 
     isSavingDesignRef.current = true;
     try {
-      setSaveStatus("saving");
-      const result = await saver();
-      if (result.ok) {
-        setSaveStatus("saved");
-        setSaveMessage(result.message);
-      } else if (result.localOnly) {
-        setSaveStatus("local-only");
-        setSaveMessage(`${result.message}\n(محفوظ على جهازك فقط)`);
-      } else {
-        setSaveStatus("error");
-        setSaveMessage(result.message);
+    setSaveStatus("saving");
+    const result = await saver();
+    if (result.ok) {
+      setSaveStatus("saved");
+      setSaveMessage(result.message);
+    } else if (result.localOnly) {
+      setSaveStatus("local-only");
+      setSaveMessage(`${result.message}\n(محفوظ على جهازك فقط)`);
+    } else {
+      setSaveStatus("error");
+      setSaveMessage(result.message);
       }
     } catch (err) {
       console.warn("[DesignCenter] Save failed:", err);
@@ -1006,7 +1003,7 @@ export const DesignCenterModal = ({
   /** Switch tabs — flush pending color save, cancel shape-only previews. */
   const changeSection = (next: DesignSection) => {
     if (next === section) return;
-    if (section === "ultimate" && next !== "ultimate") {
+    if (section === "ultimate" && next !== "ultimate" && udsPreviewActive) {
       applyUDSSettings(loadUDSSettings());
       setUdsSettings(loadUDSSettings());
       setUdsPreviewActive(false);
@@ -1020,39 +1017,56 @@ export const DesignCenterModal = ({
     setSection(next);
   };
 
-  const previewUds = (settings: UDSSettings) => {
+  /** UDS: commit + sync immediately (no preview-only trap). */
+  const applyUdsLive = (settings: UDSSettings) => {
     setUdsSettings(settings);
-    previewUDSSettings(settings);
-    setUdsPreviewActive(true);
+    commitUDSSettings(settings);
+    setUdsPreviewActive(false);
   };
 
-  const handlePreviewGlassForm = (formId: GlassFormId) => {
+  const applyUdsNeonStyle = (neonBorder: UDSSettings["neonBorder"]) => {
+    applyUdsLive({
+      ...udsSettings,
+      neonBorder,
+      applyToContainers:
+        neonBorder === "none" ? udsSettings.applyToContainers : true,
+    });
+  };
+
+  const applyUdsGlassStyle = (glassTexture: UDSSettings["glassTexture"]) => {
+    applyUdsLive({
+      ...udsSettings,
+      glassTexture,
+      applyToContainers:
+        glassTexture === "none" ? udsSettings.applyToContainers : true,
+    });
+  };
+
+  const handleApplyGlassFormPreset = (formId: GlassFormId) => {
+    if (!isOwnerRole) return;
     cancelAllPreviews();
-    setPreviewKind("glass");
-    setPendingGlassFormId(formId);
-    setIsGlassPreviewing(true);
-    previewGlassForm(formId, glassTintColor);
-  };
-
-  const handleGlassTintChange = (hex: string) => {
-    setGlassTintColor(hex);
-    if (pendingGlassFormId) {
-      previewGlassForm(pendingGlassFormId, hex);
+    if (commitGlassForm(formId, glassTintColor)) {
+      setActiveGlassFormId(formId);
+      setPendingGlassFormId(null);
+      setIsGlassPreviewing(false);
+      setPreviewKind(null);
+      scheduleDesignOverlaysSync();
+    } else {
+      alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
     }
   };
 
-  const handleCommitGlassForm = () => {
-    if (!pendingGlassFormId) return;
-    const preset = GLASS_FORM_PRESETS.find((p) => p.id === pendingGlassFormId);
-    const label = preset?.title ?? pendingGlassFormId;
-    if (commitGlassForm(pendingGlassFormId, glassTintColor)) {
-      setActiveGlassFormId(pendingGlassFormId);
+  const handleGlassTintChange = (hex: string) => {
+    if (!isOwnerRole) return;
+    setGlassTintColor(hex);
+    const formId = pendingGlassFormId ?? activeGlassFormId ?? loadGlassFormId();
+    if (!formId) return;
+    if (commitGlassForm(formId, hex)) {
+      setActiveGlassFormId(formId);
       setIsGlassPreviewing(false);
       setPendingGlassFormId(null);
       setPreviewKind(null);
-      alert(`✅ تم تطبيق فورم «${label}» بلون البطاقة اللي اخترته.`);
-    } else {
-      alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
+      scheduleDesignOverlaysSync();
     }
   };
 
@@ -1061,9 +1075,13 @@ export const DesignCenterModal = ({
       ? neonBeamPicks.filter((id) => id !== target)
       : [...neonBeamPicks, target];
     setNeonBeamPicks(next);
-    previewNeonBeamTargets(next, 4);
-    setPreviewKind("chase");
-    setDesignPreviewActive(true);
+    if (commitNeonBeamTargets(next, { speedSec: 4 })) {
+      setChaseSettings(loadChaseLightSettings());
+      setNeonBeamPicks(getActiveNeonBeamTargets());
+      setPreviewKind(null);
+      setDesignPreviewActive(false);
+      scheduleDesignOverlaysSync();
+    }
   };
 
   const handleCommitNeonBeamPicks = () => {
@@ -1640,7 +1658,7 @@ export const DesignCenterModal = ({
                                 ⬜ إيقاف خط النيون
                               </button>
                               <p className="text-[9px] text-gray-500 font-bold text-center">
-                                خط النيون الدوّار: اختار بطاقة ببطاقة من الأزرار فوق · إضاءة الحواف (Aurora/Laser): تبويب 🔷 الشكل
+                                خط النيون: يُطبَّق فوراً عند اختيار كل بطاقة · إضاءة الحواف (Aurora/Laser): تبويب 🔷 الشكل
                               </p>
                             </div>
                           </div>
@@ -1745,7 +1763,7 @@ export const DesignCenterModal = ({
                         {/* Glass presets */}
                         <div className="p-4 rounded-2xl lamma-section-card space-y-3">
                           <div className="text-[11px] text-cyan-300 font-black">🪟 نماذج الزجاج</div>
-                          <div className="text-[9px] text-gray-400">اختر نمط زجاج جاهز — معاينة live على الشات.</div>
+                          <div className="text-[9px] text-gray-400">اختر نمط زجاج — يُطبَّق فوراً على الشات.</div>
                           <div className="grid grid-cols-3 gap-2">
                             {GLASS_FORM_PRESETS.map((preset) => {
                               const isActive = activeGlassFormId === preset.id;
@@ -1754,7 +1772,7 @@ export const DesignCenterModal = ({
                                   key={preset.id}
                                   type="button"
                                   onPointerDown={stopDrag}
-                                  onClick={() => handlePreviewGlassForm(preset.id)}
+                                  onClick={() => handleApplyGlassFormPreset(preset.id)}
                                   disabled={!isOwnerRole}
                                   title={`${preset.title} - ${preset.subtitle}`}
                                   className={`group flex flex-col items-center gap-1 p-2 rounded-xl transition-all disabled:opacity-40 ${
@@ -1797,26 +1815,6 @@ export const DesignCenterModal = ({
                               ))}
                             </div>
                           </div>
-                          {isGlassPreviewing && (
-                            <div className="flex gap-2 pt-2">
-                              <button
-                                type="button"
-                                onPointerDown={stopDrag}
-                                onClick={handleCommitGlassForm}
-                                className="flex-1 py-2 rounded-xl text-[10px] font-black lamma-accent-btn text-white"
-                              >
-                                ✅ تطبيق
-                              </button>
-                              <button
-                                type="button"
-                                onPointerDown={stopDrag}
-                                onClick={handleCancelGlassPreview}
-                                className="flex-1 py-2 rounded-xl text-[10px] font-black lamma-tab-soft text-gray-400"
-                              >
-                                ❌ إلغاء
-                              </button>
-                            </div>
-                          )}
                           <button
                             type="button"
                             onPointerDown={stopDrag}
@@ -1996,10 +1994,10 @@ export const DesignCenterModal = ({
                           <div className="text-[10px] text-gray-500">كل تأثير مستقل — فعّل وأوقف كل واحد بشكل منفصل.</div>
                           <div className="grid grid-cols-2 gap-2">
                             {FX_LIST.map((fx) => (
-                              <button
+                                <button
                                 key={fx.id}
-                                type="button"
-                                onPointerDown={stopDrag}
+                                  type="button"
+                                  onPointerDown={stopDrag}
                                 onClick={() => toggleFx(fx.id)}
                                 disabled={!isOwnerRole}
                                 className={`p-3 rounded-xl text-right transition-all disabled:opacity-40 ${
@@ -2013,9 +2011,9 @@ export const DesignCenterModal = ({
                                   <span className={`w-2 h-2 rounded-full flex-shrink-0 transition-all ${
                                     fxOn[fx.id] ? "bg-emerald-400 shadow-[0_0_6px_#10b981]" : "bg-gray-600"
                                   }`} />
-                                </div>
+                          </div>
                                 <div className="text-[9px] text-gray-500">{fx.hint}</div>
-                              </button>
+                          </button>
                             ))}
                           </div>
                         </div>
@@ -2078,7 +2076,7 @@ export const DesignCenterModal = ({
                             ✨ Ultimate Design System 2026
                           </div>
                           <div className="text-[10px] text-gray-400 font-bold mt-1">
-                            مكتبة تصميم شاملة: أشرطة نيون متحركة، زجاج كريستالي، لوحة ألوان المستقبل
+                            كل خيار يُطبَّق فوراً على الشات ويُحفظ تلقائياً — بدون خطوة «معاينة» منفصلة.
                           </div>
                         </div>
 
@@ -2100,10 +2098,7 @@ export const DesignCenterModal = ({
                                 type="button"
                                 onPointerDown={stopDrag}
                                 onClick={() => {
-                                  const newSettings = { ...udsSettings, neonBorder: style.id };
-                                  setUdsSettings(newSettings);
-                                  previewUds(newSettings);
-                                  setUdsPreviewActive(true);
+                                  applyUdsNeonStyle(style.id);
                                 }}
                                 className={`p-3 rounded-xl text-[10px] font-black transition-all ${
                                   udsSettings.neonBorder === style.id
@@ -2133,9 +2128,7 @@ export const DesignCenterModal = ({
                                     type="button"
                                     onPointerDown={stopDrag}
                                     onClick={() => {
-                                      const newSettings = { ...udsSettings, neonBorderColor: c.id };
-                                      setUdsSettings(newSettings);
-                                      previewUds(newSettings);
+                                      applyUdsLive({ ...udsSettings, neonBorderColor: c.id });
                                     }}
                                     className={`w-8 h-8 rounded-lg border-2 transition-all ${
                                       udsSettings.neonBorderColor === c.id
@@ -2158,9 +2151,7 @@ export const DesignCenterModal = ({
                                 type="button"
                                 onPointerDown={stopDrag}
                                 onClick={() => {
-                                  const newSettings = { ...udsSettings, applyToBody: !udsSettings.applyToBody };
-                                  setUdsSettings(newSettings);
-                                  previewUds(newSettings);
+                                  applyUdsLive({ ...udsSettings, applyToBody: !udsSettings.applyToBody });
                                 }}
                                 className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${
                                   udsSettings.applyToBody
@@ -2181,9 +2172,10 @@ export const DesignCenterModal = ({
                                 type="button"
                                 onPointerDown={stopDrag}
                                 onClick={() => {
-                                  const newSettings = { ...udsSettings, applyToContainers: !udsSettings.applyToContainers };
-                                  setUdsSettings(newSettings);
-                                  previewUds(newSettings);
+                                  applyUdsLive({
+                                    ...udsSettings,
+                                    applyToContainers: !udsSettings.applyToContainers,
+                                  });
                                 }}
                                 className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${
                                   udsSettings.applyToContainers
@@ -2216,10 +2208,7 @@ export const DesignCenterModal = ({
                                 type="button"
                                 onPointerDown={stopDrag}
                                 onClick={() => {
-                                  const newSettings = { ...udsSettings, glassTexture: style.id };
-                                  setUdsSettings(newSettings);
-                                  previewUds(newSettings);
-                                  setUdsPreviewActive(true);
+                                  applyUdsGlassStyle(style.id);
                                 }}
                                 className={`p-3 rounded-xl text-[10px] font-black transition-all ${
                                   udsSettings.glassTexture === style.id
@@ -2250,9 +2239,7 @@ export const DesignCenterModal = ({
                                     type="button"
                                     onPointerDown={stopDrag}
                                     onClick={() => {
-                                      const newSettings = { ...udsSettings, glassTint: c.id };
-                                      setUdsSettings(newSettings);
-                                      previewUds(newSettings);
+                                      applyUdsLive({ ...udsSettings, glassTint: c.id });
                                     }}
                                     className={`px-3 py-2 rounded-xl text-[10px] font-black border-2 transition-all ${
                                       udsSettings.glassTint === c.id
@@ -2276,9 +2263,10 @@ export const DesignCenterModal = ({
                                 type="button"
                                 onPointerDown={stopDrag}
                                 onClick={() => {
-                                  const newSettings = { ...udsSettings, applyToContainers: !udsSettings.applyToContainers };
-                                  setUdsSettings(newSettings);
-                                  previewUds(newSettings);
+                                  applyUdsLive({
+                                    ...udsSettings,
+                                    applyToContainers: !udsSettings.applyToContainers,
+                                  });
                                 }}
                                 className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${
                                   udsSettings.applyToContainers
@@ -2313,10 +2301,7 @@ export const DesignCenterModal = ({
                                 type="button"
                                 onPointerDown={stopDrag}
                                 onClick={() => {
-                                  const newSettings = { ...udsSettings, palette: c.id };
-                                  setUdsSettings(newSettings);
-                                  previewUds(newSettings);
-                                  setUdsPreviewActive(true);
+                                  applyUdsLive({ ...udsSettings, palette: c.id });
                                 }}
                                 className={`w-full aspect-square rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1 ${
                                   udsSettings.palette === c.id
@@ -2353,10 +2338,7 @@ export const DesignCenterModal = ({
                                   "uds-border-aura"
                                 }`}
                                 onClick={() => {
-                                  const newSettings = { ...udsSettings, neonBorder: preview.style };
-                                  setUdsSettings(newSettings);
-                                  previewUds(newSettings);
-                                  setUdsPreviewActive(true);
+                                  applyUdsNeonStyle(preview.style);
                                 }}
                                 style={{ backgroundColor: "#0a0a0a" }}
                               >
@@ -2378,10 +2360,7 @@ export const DesignCenterModal = ({
                                   "uds-soft-frosted"
                                 }`}
                                 onClick={() => {
-                                  const newSettings = { ...udsSettings, glassTexture: preview.style };
-                                  setUdsSettings(newSettings);
-                                  previewUds(newSettings);
-                                  setUdsPreviewActive(true);
+                                  applyUdsGlassStyle(preview.style);
                                 }}
                                 style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
                               >
@@ -2398,12 +2377,11 @@ export const DesignCenterModal = ({
                             onPointerDown={stopDrag}
                             onClick={() => {
                               commitUDSSettings(udsSettings);
-                              setUdsPreviewActive(false);
-                              alert("✅ تم حفظ إعدادات Ultimate Design System وتطبيقها بنجاح!");
+                              alert("✅ إعدادات Ultimate Design System محفوظة ومطبّقة.");
                             }}
                             className="flex-1 py-2.5 rounded-xl text-[10px] font-black lamma-accent-btn text-white"
                           >
-                            💾 حفظ وتطبيق
+                            💾 تأكيد الحفظ
                           </button>
                           <button
                             type="button"
@@ -2419,15 +2397,6 @@ export const DesignCenterModal = ({
                             ↺ إعادة تعيين
                           </button>
                         </div>
-
-                        {/* Preview Status */}
-                        {udsPreviewActive && (
-                          <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-400/30">
-                            <div className="text-[10px] text-cyan-300 font-bold text-center">
-                              👀 معاينة نشطة - اضغط "حفظ وتطبيق" للتثبيت
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
 
