@@ -374,6 +374,7 @@ export const DesignCenterModal = ({
   };
 
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSavingDesignRef = useRef(false);
   const commitRef = useRef(commitPendingDesignPreview);
   const hasPendingRef = useRef(hasPendingDesignPreview);
   useEffect(() => {
@@ -400,17 +401,28 @@ export const DesignCenterModal = ({
   const flushSave = async (): Promise<void> => {
     const saver = flushAllDesignPersistence ?? commitPendingDesignPreview;
     if (!saver) return;
-    setSaveStatus("saving");
-    const result = await saver();
-    if (result.ok) {
-      setSaveStatus("saved");
-      setSaveMessage(result.message);
-    } else if (result.localOnly) {
-      setSaveStatus("local-only");
-      setSaveMessage(`${result.message}\n(محفوظ على جهازك فقط)`);
-    } else {
+    if (isSavingDesignRef.current) return;
+
+    isSavingDesignRef.current = true;
+    try {
+      setSaveStatus("saving");
+      const result = await saver();
+      if (result.ok) {
+        setSaveStatus("saved");
+        setSaveMessage(result.message);
+      } else if (result.localOnly) {
+        setSaveStatus("local-only");
+        setSaveMessage(`${result.message}\n(محفوظ على جهازك فقط)`);
+      } else {
+        setSaveStatus("error");
+        setSaveMessage(result.message);
+      }
+    } catch (err) {
+      console.warn("[DesignCenter] Save failed:", err);
       setSaveStatus("error");
-      setSaveMessage(result.message);
+      setSaveMessage("⚠️ تعذر حفظ التصميم حالياً. جرّب مرة أخرى بعد لحظات.");
+    } finally {
+      isSavingDesignRef.current = false;
     }
   };
 
@@ -1773,10 +1785,10 @@ export const DesignCenterModal = ({
                               }
                               void flushSave();
                             }}
-                            disabled={isApplyingStyle}
+                            disabled={isApplyingStyle || saveStatus === "saving"}
                             className="flex-1 py-2.5 rounded-xl text-[10px] font-black lamma-accent-btn text-white disabled:opacity-50"
                           >
-                            {isApplyingStyle
+                            {isApplyingStyle || saveStatus === "saving"
                               ? "⏳ جاري الحفظ…"
                               : hasPendingDesignPreview
                                 ? "💾 حفظ الآن للجميع"
