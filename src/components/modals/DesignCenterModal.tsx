@@ -381,6 +381,28 @@ export const DesignCenterModal = ({
   const rightColUploadRef = useRef<HTMLInputElement>(null);
   const centerColUploadRef = useRef<HTMLInputElement>(null);
   const leftColUploadRef = useRef<HTMLInputElement>(null);
+  const designScrollAnchorRef = useRef<HTMLDivElement>(null);
+
+  const scrollDesignPanelToTop = () => {
+    const anchor = designScrollAnchorRef.current;
+    if (!anchor) return;
+    anchor.scrollIntoView({ block: "start", behavior: "instant" });
+    let parent: HTMLElement | null = anchor.parentElement;
+    while (parent) {
+      const style = getComputedStyle(parent);
+      if (
+        (style.overflowY === "auto" || style.overflowY === "scroll") &&
+        parent.scrollHeight > parent.clientHeight + 8
+      ) {
+        parent.scrollTop = 0;
+      }
+      parent = parent.parentElement;
+    }
+  };
+
+  useEffect(() => {
+    scrollDesignPanelToTop();
+  }, []);
 
   /* ── Ultimate Design System state ── */
   const [udsSettings, setUdsSettings] = useState<UDSSettings>(() => loadUDSSettings());
@@ -1016,6 +1038,7 @@ export const DesignCenterModal = ({
     }
     cancelShapePreviews();
     setSection(next);
+    queueMicrotask(scrollDesignPanelToTop);
   };
 
   /** UDS: commit + sync immediately (no preview-only trap). */
@@ -1244,7 +1267,7 @@ export const DesignCenterModal = ({
 
   return (
     <>
-                  <div className="space-y-4 select-none" dir="rtl">
+                  <div className="space-y-4 select-none" dir="rtl" ref={designScrollAnchorRef}>
                     <div className="p-4 rounded-2xl lamma-section-card">
                       <div className="text-white text-xs font-black">
                         🎨 مركز التصميم
@@ -1434,6 +1457,38 @@ export const DesignCenterModal = ({
                           </div>
                         )}
 
+                        {/* ── Mega 2026 — ثيمات سحرية ضغطة واحدة ── */}
+                        <div className="p-4 rounded-2xl space-y-3" style={{ background: "linear-gradient(135deg, rgba(5,0,15,0.85), rgba(10,5,25,0.85))", border: "1px solid rgba(139,92,246,0.28)" }}>
+                          <div>
+                            <div className="text-[12px] text-purple-300 font-black">⚡ Mega 2026 — سحر كامل</div>
+                            <div className="text-[9px] text-gray-400 font-bold mt-0.5">
+                              كل ثيم يضبط: ألوان + زجاج + أعمدة + نيون + FX + Ultimate — دفعة واحدة للجميع
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-4 gap-2">
+                            {MEGA_THEMES_2026.map((theme) => (
+                              <button
+                                key={theme.id}
+                                type="button"
+                                onPointerDown={stopDrag}
+                                onClick={() => applyMegaTheme(theme)}
+                                disabled={!isOwnerRole}
+                                title={theme.hint}
+                                className="group flex flex-col items-center gap-1.5 p-2.5 rounded-2xl transition-all disabled:opacity-40 hover:scale-[1.05] active:scale-[0.96]"
+                                style={{ background: theme.preview, border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}
+                              >
+                                <span className="text-xl leading-none">{theme.emoji}</span>
+                                <span className="text-[9px] text-white font-black text-center leading-tight">{theme.name}</span>
+                                <span className="text-[7px] text-white/50 font-bold text-center leading-tight">{theme.hint}</span>
+                                <span className="flex gap-1 mt-0.5">
+                                  <span className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ background: theme.colors.accent }} />
+                                  <span className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ background: theme.colors.accent2 }} />
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
                         {/* ── بوت التصميم السريع ── */}
                         <div className="p-4 rounded-2xl space-y-3" style={{ background: "linear-gradient(135deg, rgba(10,0,20,0.7), rgba(15,5,30,0.7))", border: "1px solid rgba(255,0,255,0.18)" }}>
                           <div className="flex items-center gap-2">
@@ -1470,38 +1525,6 @@ export const DesignCenterModal = ({
                               <span className="text-[10px] text-indigo-300 font-black">🧧 iOS Liquid Glass</span>
                               <span className="text-[8px] text-gray-500">Ultra Blur · Squircle</span>
                             </button>
-                          </div>
-                        </div>
-
-                        {/* ── Mega 2026 — ثيمات سحرية ضغطة واحدة ── */}
-                        <div className="p-4 rounded-2xl space-y-3" style={{ background: "linear-gradient(135deg, rgba(5,0,15,0.85), rgba(10,5,25,0.85))", border: "1px solid rgba(139,92,246,0.28)" }}>
-                          <div>
-                            <div className="text-[12px] text-purple-300 font-black">⚡ Mega 2026 — سحر كامل</div>
-                            <div className="text-[9px] text-gray-400 font-bold mt-0.5">
-                              كل ثيم يضبط: ألوان + زجاج + أعمدة + نيون + FX + Ultimate — دفعة واحدة للجميع
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-4 gap-2">
-                            {MEGA_THEMES_2026.map((theme) => (
-                              <button
-                                key={theme.id}
-                                type="button"
-                                onPointerDown={stopDrag}
-                                onClick={() => applyMegaTheme(theme)}
-                                disabled={!isOwnerRole}
-                                title={theme.hint}
-                                className="group flex flex-col items-center gap-1.5 p-2.5 rounded-2xl transition-all disabled:opacity-40 hover:scale-[1.05] active:scale-[0.96]"
-                                style={{ background: theme.preview, border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}
-                              >
-                                <span className="text-xl leading-none">{theme.emoji}</span>
-                                <span className="text-[9px] text-white font-black text-center leading-tight">{theme.name}</span>
-                                <span className="text-[7px] text-white/50 font-bold text-center leading-tight">{theme.hint}</span>
-                                <span className="flex gap-1 mt-0.5">
-                                  <span className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ background: theme.colors.accent }} />
-                                  <span className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ background: theme.colors.accent2 }} />
-                                </span>
-                              </button>
-                            ))}
                           </div>
                         </div>
 
