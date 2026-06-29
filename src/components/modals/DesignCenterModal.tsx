@@ -839,11 +839,17 @@ export const DesignCenterModal = ({
     setColumnUploading(imageKey);
     try {
       const url = await uploadDesignImage(file, folder);
-      if (!url) return;
+      if (!url) {
+        alert("⚠️ تعذر رفع الصورة حالياً. جرّب صورة أخرى أو حاول لاحقاً.");
+        return;
+      }
       const next = { ...loadFace(), [imageKey]: url, enabled: true };
       saveFace(next);
       applyFace(next);
       alert("✅ تم رفع صورة العمود وتطبيقها على الشات.");
+    } catch (err) {
+      console.warn("[DesignCenter] Column image upload failed:", err);
+      alert("⚠️ فشل رفع صورة العمود. تأكد من الاتصال وحاول مرة أخرى.");
     } finally {
       setColumnUploading(null);
     }

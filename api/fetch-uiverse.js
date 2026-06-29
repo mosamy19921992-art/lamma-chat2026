@@ -12,7 +12,7 @@ function validateRootDomain(url, domain) {
     return false;
   }
   try {
-    const host = new URL(url).host;
+    const host = url.includes("://") ? new URL(url).hostname : String(url);
     return host === domain || host.endsWith('.' + domain);
   } catch(_) {
     return false;
