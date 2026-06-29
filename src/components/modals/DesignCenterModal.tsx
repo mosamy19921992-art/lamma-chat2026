@@ -63,6 +63,73 @@ import { scheduleDesignOverlaysSync } from '../../services/design/designOverlayS
 
 type DesignSection = "colors" | "shapes" | "uploads" | "ultimate" | "mega";
 
+type DesignCommitResult = {
+  ok: boolean;
+  message: string;
+  localOnly?: boolean;
+  previewApplied?: boolean;
+};
+
+type DesignPreviewVerifyResult = {
+  ok: boolean;
+  message: string;
+  previewApplied?: boolean;
+};
+
+type DesignPreviewConfigResult = {
+  summary: string;
+  config: UniversalStyleConfig;
+  previewApplied: boolean;
+};
+
+interface DesignCenterModalProps {
+  isOwnerRole: boolean;
+  brandLogoUrl: string | null;
+  designLogoUploadRef: React.RefObject<HTMLInputElement | null>;
+  handleDesignLogoUpload: (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => void | Promise<void>;
+  designLogoInput: string;
+  setDesignLogoInput: React.Dispatch<React.SetStateAction<string>>;
+  setBrandLogoUrl: React.Dispatch<React.SetStateAction<string | null>>;
+  activeRoomId: string;
+  openRooms: Array<{ id: string; name: string }>;
+  designRoomBgUploadRef: React.RefObject<HTMLInputElement | null>;
+  handleDesignRoomBgUpload: (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => void | Promise<void>;
+  designRoomBgInput: string;
+  setDesignRoomBgInput: React.Dispatch<React.SetStateAction<string>>;
+  roomBgMap: Record<string, string>;
+  setRoomBgMap: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  designOwnerBgUploadRef: React.RefObject<HTMLInputElement | null>;
+  handleDesignOwnerBgUpload: (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => void | Promise<void>;
+  designOwnerBgInput: string;
+  setDesignOwnerBgInput: React.Dispatch<React.SetStateAction<string>>;
+  setOwnerBgImage: React.Dispatch<React.SetStateAction<string | null>>;
+  onResetDefaultChatBackground?: () => void | Promise<void>;
+  uploadDesignImage: (file: File, folder: string) => Promise<string | null>;
+  onStartInspectMode: () => void | Promise<void>;
+  previewDesignConfig?: (
+    config: UniversalStyleConfig,
+  ) => DesignPreviewConfigResult | null;
+  committedConfig: UniversalStyleConfig | null;
+  getEditableDesignConfig?: () => UniversalStyleConfig;
+  cancelPendingDesignPreview?: () => void;
+  commitPendingDesignPreview?: () =>
+    | DesignCommitResult
+    | Promise<DesignCommitResult>;
+  flushAllDesignPersistence?: () =>
+    | DesignCommitResult
+    | Promise<DesignCommitResult>;
+  verifyDesignPreviewDom?: () => DesignPreviewVerifyResult;
+  hasPendingDesignPreview: boolean;
+  isApplyingStyle: boolean;
+  ownerWriteAccessOk: boolean | null;
+}
+
 /** ثيمات Mega 2026 — كل ثيم يضبط الألوان + الزجاج + الأعمدة + الأنوار + التأثيرات + UDS دفعة واحدة. */
 const MEGA_THEMES_2026: {
   id: string;
@@ -272,7 +339,7 @@ export const DesignCenterModal = ({
   hasPendingDesignPreview,
   isApplyingStyle,
   ownerWriteAccessOk,
-}: any) => {
+}: DesignCenterModalProps) => {
   type PreviewKind = "glass" | "chase" | null;
   type SaveStatus = "idle" | "preview" | "saving" | "saved" | "local-only" | "error";
 

@@ -57,6 +57,7 @@ export interface DesignOverlaysBundle {
 }
 
 const skipSync = { skipSync: true as const };
+const CHAT_ROOT_SELECTOR = ".lamma-neutral-glass";
 
 function loadFx2026(): Record<string, boolean> {
   try {
@@ -146,9 +147,20 @@ const FX2026_IDS = [
   "liquid",
 ] as const;
 
+function removeFx2026BodyClasses(): void {
+  FX2026_IDS.forEach((id) => {
+    document.body.classList.remove(`lamma-fx-${id}`);
+  });
+}
+
 /** Restore Magic 2026 FX body classes from localStorage (survives refresh). */
 export function applyFx2026FromLocalStorage(): void {
   if (typeof document === "undefined") return;
+  const root = document.querySelector(CHAT_ROOT_SELECTOR);
+  if (!root) {
+    removeFx2026BodyClasses();
+    return;
+  }
   const parsed = loadFx2026();
   FX2026_IDS.forEach((id) => {
     document.body.classList.toggle(`lamma-fx-${id}`, !!parsed[id]);

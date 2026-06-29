@@ -73,7 +73,10 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "تصميم AI للمالك فقط" });
   }
   if (ownerCheck === null) {
-    console.warn("[gemini-design] SUPABASE_SERVICE_ROLE_KEY missing — skipping owner gate");
+    console.warn("[gemini-design] SUPABASE_SERVICE_ROLE_KEY missing — blocking owner-gated design AI");
+    return res.status(503).json({
+      error: "تعذر التحقق من صلاحية المالك حالياً",
+    });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;

@@ -1,6 +1,11 @@
 /** Server-side fetch for UIverse + any safe HTTPS CSS page — Galaxy archive + reader fallback. */
 
-import { checkRateLimit, getClientIp, verifySupabaseJwt } from "./_lib/apiSecurity.js";
+import {
+  checkRateLimit,
+  getClientIp,
+  verifyOwnerUser,
+  verifySupabaseJwt,
+} from "./_lib/apiSecurity.js";
 
 function validateRootDomain(url, domain) {
   if (!url || !domain) {
@@ -293,6 +298,17 @@ export default async function handler(req, res) {
   const user = await verifySupabaseJwt(req);
   if (!user) {
     res.status(401).json({ error: "authentication_required" });
+    return;
+  }
+
+  const ownerCheck = await verifyOwnerUser(user);
+  if (ownerCheck === false) {
+    res.status(403).json({ error: "owner_required" });
+    return;
+  }
+  if (ownerCheck === null) {
+    console.warn("[fetch-uiverse] SUPABASE_SERVICE_ROLE_KEY missing — blocking owner-gated CSS fetch");
+    res.status(503).json({ error: "owner_check_unavailable" });
     return;
   }
 

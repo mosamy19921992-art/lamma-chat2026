@@ -4,7 +4,6 @@ import { restoreUiverseScopedOnLoad } from "../services/design/uiverseScopedImpo
 import { setDesignPreviewActive } from "../services/design/designPreviewDom";
 import { loadUniversalStyleLocal, persistAndApplyUniversalStyle } from "../services/design/universalStyleStorage";
 import type { UniversalStyleConfig } from "../services/design/universalStyleTypes";
-import { StyleSandboxCard } from "./design/StyleSandboxCard";
 import { DesignInspectOverlay } from "./design/DesignInspectOverlay";
 import { UniversalStyleVideoLayer } from "./design/UniversalStyleVideoLayer";
 import type { ChatDesignRegion, RegionAction } from "../services/design/chatDesignVocabulary";
@@ -13143,19 +13142,6 @@ export default function ChatScreen({
                 {activeModal === 'leadership' && leadershipTab === 'design' && (
                   <LazyDesignCenterModal
                     isOwnerRole={isOwnerRole}
-                    runAssistantAudit={runAssistantAudit}
-                    queueAssistantProposal={queueAssistantProposal}
-                    previewAssistantPreset={previewAssistantPreset}
-                    commitAssistantPreset={commitAssistantPreset}
-                    cancelAssistantPreview={cancelAssistantPreview}
-                    previewRecommendedAssistantTemplate={previewRecommendedAssistantTemplate}
-                    assistantAudit={assistantAudit}
-                    assistantFindings={assistantFindings}
-                    assistantProposal={assistantProposal}
-                    handleApplyAssistantProposal={handleApplyAssistantProposal}
-                    setAssistantProposal={setAssistantProposal}
-                    lastAppliedDesignSnapshot={lastAppliedDesignSnapshot}
-                    handleRestoreLastDesignSnapshot={handleRestoreLastDesignSnapshot}
                     brandLogoUrl={brandLogoUrl}
                     designLogoUploadRef={designLogoUploadRef}
                     handleDesignLogoUpload={handleDesignLogoUpload}
@@ -13176,16 +13162,8 @@ export default function ChatScreen({
                     setDesignOwnerBgInput={setDesignOwnerBgInput}
                     setOwnerBgImage={setOwnerBgImage}
                     onResetDefaultChatBackground={handleResetDefaultChatBackground}
-                    designPresets={designPresets}
-                    designPresetName={designPresetName}
-                    setDesignPresetName={setDesignPresetName}
-                    handleSaveDesignPreset={handleSaveDesignPreset}
-                    applyDesignPreset={applyDesignPreset}
-                    handleDeleteDesignPreset={handleDeleteDesignPreset}
                     uploadDesignImage={uploadDesignAsset}
                     onStartInspectMode={handleStartDesignInspect}
-                    previewDesignPrompt={previewDesignPrompt}
-                    previewDesignPromptAi={previewDesignPromptAi}
                     previewDesignConfig={previewDesignConfig}
                     committedConfig={committedConfig}
                     getEditableDesignConfig={getEditableDesignConfig}

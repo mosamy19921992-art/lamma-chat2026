@@ -42,6 +42,26 @@ export interface UDSSettings {
 }
 
 const UDS_STORAGE_KEY = "uds_settings";
+const CHAT_ROOT_SELECTOR = ".lamma-neutral-glass";
+
+const UDS_CLASSES = [
+  "uds-neon-led-strip",
+  "uds-pulsing-glow",
+  "uds-border-aura",
+  "uds-rgb-wave",
+  "uds-static-cyber",
+  "uds-ios-ultra-blur",
+  "uds-crystal-glow",
+  "uds-soft-frosted",
+  "uds-dark-mirror",
+  "uds-velvet-blur",
+  "uds-body-neon-led",
+  "uds-container-ios-blur",
+  "uds-container-crystal",
+  "uds-container-soft-frosted",
+  "uds-container-dark-mirror",
+  "uds-container-velvet",
+];
 
 const DEFAULT_SETTINGS: UDSSettings = {
   neonBorder: "none",
@@ -168,28 +188,11 @@ function paletteToGlassTint(color: UDSPaletteColor | "none"): string | null {
 
 export function applyUDSSettings(settings: UDSSettings): void {
   const body = document.body;
+  const chatRoot = document.querySelector(CHAT_ROOT_SELECTOR);
   
-  // Remove all UDS classes first
-  const udsClasses = [
-    "uds-neon-led-strip",
-    "uds-pulsing-glow",
-    "uds-border-aura",
-    "uds-rgb-wave",
-    "uds-static-cyber",
-    "uds-ios-ultra-blur",
-    "uds-crystal-glow",
-    "uds-soft-frosted",
-    "uds-dark-mirror",
-    "uds-velvet-blur",
-    "uds-body-neon-led",
-    "uds-container-ios-blur",
-    "uds-container-crystal",
-    "uds-container-soft-frosted",
-    "uds-container-dark-mirror",
-    "uds-container-velvet",
-  ];
-  
-  udsClasses.forEach(cls => body.classList.remove(cls));
+  // Remove all UDS classes first. If the chat shell has not mounted yet,
+  // stop here so design effects do not leak into the login/loading screens.
+  UDS_CLASSES.forEach(cls => body.classList.remove(cls));
   
   // Remove UDS data attributes (legacy + current)
   body.removeAttribute("data-uds-neon-color");
@@ -198,6 +201,8 @@ export function applyUDSSettings(settings: UDSSettings): void {
   body.removeAttribute("data-color");
   body.removeAttribute("data-tint");
   body.style.removeProperty("--uds-active-accent");
+
+  if (!chatRoot) return;
   
   const neonCssColor = paletteToNeonColor(settings.neonBorderColor);
   const glassCssTint = paletteToGlassTint(settings.glassTint);
