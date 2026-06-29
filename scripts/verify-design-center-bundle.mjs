@@ -10,15 +10,11 @@ const checks = [
   "Mega 2026",
   "ثيمات الألوان السريعة",
   "سحر التصميم 2026",
-  "applyBot2026",
-  "MODERN_THEME_PRESETS",
-  "MEGA_THEMES_2026",
-  "toggleFx",
-  "handleTurnOffLightEffects",
-  "applyMegaTheme",
-  "applyUdsLive",
-  "applyUdsNeonStyle",
-  "applyUdsGlassStyle",
+  "iOS Liquid Glass",
+  "إطفاء الأنوار والـ FX",
+  "نص هولوجرافيك",
+  "ليل بنفسجي",
+  "سيبربانك ناري",
 ];
 
 function extractScriptSrcs(html) {
@@ -36,9 +32,13 @@ function toAbsoluteUrl(src) {
 
 function discoverAssetChunks(jsText) {
   const chunks = new Set();
-  const re = /\/assets\/[a-zA-Z0-9_-]+-[A-Za-z0-9_-]+\.js/g;
+  const withAssetsPrefix = /\/assets\/[a-zA-Z0-9_-]+-[A-Za-z0-9_-]+\.js/g;
   let m;
-  while ((m = re.exec(jsText)) !== null) chunks.add(m[0]);
+  while ((m = withAssetsPrefix.exec(jsText)) !== null) chunks.add(m[0]);
+  for (const bare of ["design-center-modal", "chat-screen", "design-modules"]) {
+    const bareRe = new RegExp(`${bare}-[A-Za-z0-9_-]+\\.js`, "g");
+    while ((m = bareRe.exec(jsText)) !== null) chunks.add(`/assets/${m[0]}`);
+  }
   return chunks;
 }
 
