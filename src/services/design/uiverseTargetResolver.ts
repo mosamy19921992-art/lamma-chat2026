@@ -6,7 +6,7 @@ function validateRootDomain(url?: string, domain?: string): boolean {
     return false;
   }
   try {
-    const host = new URL(url).host;
+    const host = url.includes("://") ? new URL(url).hostname : String(url);
     return host === domain || host.endsWith('.' + domain);
   } catch {
     return false;
