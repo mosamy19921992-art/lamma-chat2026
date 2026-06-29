@@ -445,6 +445,45 @@ export const DesignCenterModal = ({
   const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [aiLastSummary, setAiLastSummary] = useState("");
 
+  const applyAiResultToPreview = (
+    base: UniversalStyleConfig,
+    result: Awaited<ReturnType<typeof askDesignAi>>,
+  ) => {
+    if (result.hasChanges && previewDesignConfig) {
+      const patched = applyDesignAiPatch(base, result.patch);
+      previewAndTrack(patched);
+      setSliderGlassBlur(patched.glass.blurPx);
+      setSliderGlassOpacity(patched.glass.opacity);
+      setSliderGlassBorder(patched.glass.borderOpacity);
+      setSliderBtnRadius(patched.buttons.radiusPx);
+      setSliderBtnGlow(patched.buttons.glow);
+      setSliderAccent(patched.palette.accent);
+      setSliderAccent2(patched.palette.accent2);
+      setAiLastSummary(result.summary);
+      setAiStatus("ok");
+      return;
+    }
+
+    setAiLastSummary(result.summary || result.error || "لم أفهم الأمر");
+    setAiStatus("error");
+  };
+
+  const runDesignAiPrompt = async () => {
+    const prompt = aiPrompt.trim();
+    if (!prompt || aiStatus === "loading") return;
+    if (!isOwnerRole) {
+      setAiStatus("error");
+      setAiLastSummary("👑 أوامر Gemini متاحة للمالك فقط.");
+      return;
+    }
+
+    setAiStatus("loading");
+    setAiLastSummary("جاري تجهيز اقتراح التصميم...");
+    const base = getBase();
+    const result = await askDesignAi(prompt, base);
+    applyAiResultToPreview(base, result);
+  };
+
   useEffect(() => {
     if (!committedConfig) return;
     const base = normalizeUniversalStyleConfig(committedConfig);
@@ -1360,59 +1399,22 @@ export const DesignCenterModal = ({
                               type="text"
                               value={aiPrompt}
                               onChange={(e) => setAiPrompt(e.target.value)}
-                              onKeyDown={async (e) => {
-                                if (e.key !== "Enter" || !aiPrompt.trim()) return;
-                                setAiStatus("loading");
-                                const base = getBase();
-                                const result = await askDesignAi(aiPrompt.trim(), base);
-                                if (result.hasChanges && previewDesignConfig) {
-                                  const patched = applyDesignAiPatch(base, result.patch);
-                                  previewAndTrack(patched);
-                                  setSliderGlassBlur(patched.glass.blurPx);
-                                  setSliderGlassOpacity(patched.glass.opacity);
-                                  setSliderGlassBorder(patched.glass.borderOpacity);
-                                  setSliderBtnRadius(patched.buttons.radiusPx);
-                                  setSliderBtnGlow(patched.buttons.glow);
-                                  setSliderAccent(patched.palette.accent);
-                                  setSliderAccent2(patched.palette.accent2);
-                                  setAiLastSummary(result.summary);
-                                  setAiStatus("ok");
-                                } else {
-                                  setAiLastSummary(result.summary || result.error || "لم أفهم الأمر");
-                                  setAiStatus("error");
-                                }
+                              onKeyDown={(e) => {
+                                if (e.key !== "Enter") return;
+                                e.preventDefault();
+                                void runDesignAiPrompt();
                               }}
                               onPointerDown={stopDrag}
-                              placeholder="اكتب أمر التصميم واضغط Enter…"
+                              placeholder={isOwnerRole ? "اكتب أمر التصميم واضغط Enter…" : "Gemini متاح للمالك فقط"}
                               dir="rtl"
+                              disabled={aiStatus === "loading" || !isOwnerRole}
                               className="flex-1 text-[11px] bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-500/50"
                             />
                             <button
                               type="button"
                               onPointerDown={stopDrag}
-                              disabled={aiStatus === "loading" || !aiPrompt.trim()}
-                              onClick={async () => {
-                                if (!aiPrompt.trim()) return;
-                                setAiStatus("loading");
-                                const base = getBase();
-                                const result = await askDesignAi(aiPrompt.trim(), base);
-                                if (result.hasChanges && previewDesignConfig) {
-                                  const patched = applyDesignAiPatch(base, result.patch);
-                                  previewAndTrack(patched);
-                                  setSliderGlassBlur(patched.glass.blurPx);
-                                  setSliderGlassOpacity(patched.glass.opacity);
-                                  setSliderGlassBorder(patched.glass.borderOpacity);
-                                  setSliderBtnRadius(patched.buttons.radiusPx);
-                                  setSliderBtnGlow(patched.buttons.glow);
-                                  setSliderAccent(patched.palette.accent);
-                                  setSliderAccent2(patched.palette.accent2);
-                                  setAiLastSummary(result.summary);
-                                  setAiStatus("ok");
-                                } else {
-                                  setAiLastSummary(result.summary || result.error || "لم أفهم الأمر");
-                                  setAiStatus("error");
-                                }
-                              }}
+                              disabled={aiStatus === "loading" || !aiPrompt.trim() || !isOwnerRole}
+                              onClick={() => void runDesignAiPrompt()}
                               className="px-3 py-2 rounded-xl text-[10px] font-black lamma-accent-btn text-white disabled:opacity-40"
                             >
                               {aiStatus === "loading" ? "…" : "✨"}
