@@ -262,54 +262,6 @@ const MEGA_THEMES_2026: {
   },
 ];
 
-/** نماذج ألوان الكتابة — تركز على ألوان النصوص في الغرف والبطاقات. */
-const TEXT_COLOR_PRESETS: {
-  name: string;
-  text: string;
-  accent: string;
-  accent2: string;
-  emoji: string;
-}[] = [
-  { name: "أبيض كلاسيك", text: "#f1f5f9", accent: "#3b82f6", accent2: "#06b6d4", emoji: "⚪" },
-  { name: "رمادي ناعم", text: "#f8fafc", accent: "#64748b", accent2: "#94a3b8", emoji: "🔘" },
-  { name: "أزرق سماوي", text: "#e0f2fe", accent: "#0ea5e9", accent2: "#38bdf8", emoji: "🔵" },
-  { name: "بنفسجي ليلي", text: "#f5f3ff", accent: "#a855f7", accent2: "#c084fc", emoji: "💜" },
-  { name: "وردي ناعم", text: "#fdf2f8", accent: "#ec4899", accent2: "#f472b6", emoji: "🌸" },
-  { name: "أخضر زمردي", text: "#ecfdf5", accent: "#10b981", accent2: "#34d399", emoji: "💚" },
-  { name: "ذهبي فاخر", text: "#fefce8", accent: "#f59e0b", accent2: "#fbbf24", emoji: "🌟" },
-  { name: "برتقالي دافئ", text: "#fff7ed", accent: "#f97316", accent2: "#fb923c", emoji: "🧡" },
-  { name: "أحمر حيوي", text: "#fef2f2", accent: "#ef4444", accent2: "#fb7185", emoji: "❤️" },
-  { name: "تركواز ليلي", text: "#f0fdfa", accent: "#14b8a6", accent2: "#2dd4bf", emoji: "💠" },
-  { name: "نيلي عميق", text: "#eef2ff", accent: "#6366f1", accent2: "#818cf8", emoji: "💎" },
-  { name: "ماجنتا نيون", text: "#fdf4ff", accent: "#d946ef", accent2: "#e879f9", emoji: "🔮" },
-];
-
-/** ثيمات 2026 كاملة — كل ثيم يضبط الخلفية (الغامق) + البطاقات + الكتابة + الأساسي + الثانوي معاً. */
-const MODERN_THEME_PRESETS: {
-  name: string;
-  bg: string;
-  surface: string;
-  text: string;
-  accent: string;
-  accent2: string;
-  glass?: GlassFormId;
-  column?: ColumnCardStyleId;
-  bubble?: BubbleShapeId;
-}[] = [
-  { name: "ميدنايت أزرق", bg: "#060a12", surface: "rgba(18,24,32,0.72)", text: "#f1f5f9", accent: "#3b82f6", accent2: "#06b6d4", glass: "crystal", column: "neon-ring", bubble: "default" },
-  { name: "فحمي بنفسجي", bg: "#0a0710", surface: "rgba(26,18,38,0.72)", text: "#f5f3ff", accent: "#a855f7", accent2: "#6366f1", glass: "smoke-dark", column: "neon-ring", bubble: "whatsapp" },
-  { name: "أسود زمردي", bg: "#05080a", surface: "rgba(12,22,18,0.72)", text: "#ecfdf5", accent: "#10b981", accent2: "#34d399", glass: "ghost", column: "liquid-ring", bubble: "ios" },
-  { name: "جرافيت ذهبي", bg: "#0a0a0a", surface: "rgba(24,22,16,0.75)", text: "#fafaf9", accent: "#f59e0b", accent2: "#fbbf24", glass: "mirror", column: "crystal", bubble: "default" },
-  { name: "نبيذي وردي", bg: "#100509", surface: "rgba(34,12,20,0.72)", text: "#fdf2f8", accent: "#ec4899", accent2: "#f472b6", glass: "smoke-dark", column: "soft-round", bubble: "facebook" },
-  { name: "نيلي عميق", bg: "#070815", surface: "rgba(16,18,40,0.72)", text: "#eef2ff", accent: "#6366f1", accent2: "#818cf8", glass: "ios-vibrancy", column: "ios-inset", bubble: "ios" },
-  { name: "تركواز ليلي", bg: "#04100f", surface: "rgba(10,28,26,0.72)", text: "#f0fdfa", accent: "#14b8a6", accent2: "#2dd4bf", glass: "ios-liquid", column: "ios-sheet", bubble: "ios" },
-  { name: "رمادي حديث", bg: "#0b0d10", surface: "rgba(22,26,32,0.74)", text: "#f8fafc", accent: "#64748b", accent2: "#94a3b8", glass: "classic", column: "soft-round", bubble: "default" },
-  { name: "أحمر فحمي", bg: "#0e0507", surface: "rgba(32,12,14,0.72)", text: "#fef2f2", accent: "#ef4444", accent2: "#fb7185", glass: "smoke-dark", column: "neon-ring", bubble: "whatsapp" },
-  { name: "برتقالي غروب", bg: "#100a05", surface: "rgba(34,22,12,0.72)", text: "#fff7ed", accent: "#f97316", accent2: "#fb923c", glass: "mirror", column: "crystal", bubble: "facebook" },
-  { name: "سماوي جليدي", bg: "#050d12", surface: "rgba(12,26,34,0.72)", text: "#ecfeff", accent: "#06b6d4", accent2: "#22d3ee", glass: "ios-vibrancy", column: "ios-inset", bubble: "ios" },
-  { name: "ماجنتا ليلي", bg: "#0c0510", surface: "rgba(28,12,34,0.72)", text: "#fdf4ff", accent: "#d946ef", accent2: "#e879f9", glass: "smoke-dark", column: "neon-ring", bubble: "telegram" },
-];
-
 type ThemeColorPreset = {
   name: string;
   bg: string;
@@ -372,7 +324,7 @@ export const DesignCenterModal = ({
   type PreviewKind = "glass" | "chase" | null;
   type SaveStatus = "idle" | "preview" | "saving" | "saved" | "local-only" | "error";
 
-  const [section, setSection] = useState<DesignSection>("colors");
+  const [section, setSection] = useState<DesignSection>("mega");
   const [previewKind, setPreviewKind] = useState<PreviewKind>(null);
   const [activeGlassFormId, setActiveGlassFormId] = useState<GlassFormId | null>(
     () => loadGlassFormId(),
@@ -756,28 +708,38 @@ export const DesignCenterModal = ({
     previewAndTrack({ ...base, palette });
   };
 
-  const applyTextColorPreset = (preset: typeof TEXT_COLOR_PRESETS[number]) => {
-    setSliderText(preset.text);
-    setSliderAccent(preset.accent);
-    setSliderAccent2(preset.accent2);
-
-    const root = (document.querySelector('.lamma-neutral-glass') || document.body) as HTMLElement;
-    syncPaletteTextTokens(root, preset);
-    root.setAttribute('data-universal-style', 'active');
-
-    if (previewDesignConfig && isOwnerRole) {
-      applyPalettePatch({ text: preset.text, accent: preset.accent, accent2: preset.accent2 });
-    }
-
-    try {
-      localStorage.setItem('lamma_text_color_preset', JSON.stringify({
-        text: preset.text,
-        accent: preset.accent,
-        accent2: preset.accent2
-      }));
-    } catch {
-      /* localStorage unavailable — non-fatal */
-    }
+  /** إطفاء الأنوار/الرينبو فقط — بدون مسح الألوان أو الزجاج. */
+  const handleTurnOffLightEffects = () => {
+    if (!previewDesignConfig || !isOwnerRole) return;
+    clearNeonBeamTargets();
+    commitChaseLightSettings({
+      columns: "none",
+      composer: "none",
+      header: "none",
+      neonBeamTargets: [],
+      tintHex: loadChaseLightSettings().tintHex,
+      speedSec: 6,
+    });
+    setChaseSettings(loadChaseLightSettings());
+    setNeonBeamPicks([]);
+    const offFx = FX_LIST.reduce(
+      (acc, fx) => ({ ...acc, [fx.id]: false }),
+      {} as Record<FxId, boolean>,
+    );
+    setFxOn(offFx);
+    try { localStorage.setItem("lamma_fx_on", JSON.stringify(offFx)); } catch { /* non-fatal */ }
+    applyFx2026FromLocalStorage();
+    const udsOff: UDSSettings = {
+      ...loadUDSSettings(),
+      neonBorder: "none",
+      applyToBody: false,
+    };
+    commitUDSSettings(udsOff);
+    setUdsSettings(udsOff);
+    const base = getBase();
+    const fresh = createDefaultUniversalStyle();
+    previewAndTrack({ ...base, effects: { ...fresh.effects }, regions: fresh.regions });
+    scheduleDesignOverlaysSync();
   };
 
   // تصفية شاملة — تصفّر كل أنظمة التنسيق المتداخلة دفعة واحدة (مصدر "الهبل").
@@ -1084,18 +1046,6 @@ export const DesignCenterModal = ({
     }
   };
 
-  const handleCommitNeonBeamPicks = () => {
-    if (commitNeonBeamTargets(neonBeamPicks, { speedSec: 4 })) {
-      setChaseSettings(loadChaseLightSettings());
-      setNeonBeamPicks(getActiveNeonBeamTargets());
-      setPreviewKind(null);
-      setDesignPreviewActive(false);
-      scheduleDesignOverlaysSync();
-    } else {
-      alert("⚠️ تعذر التطبيق — تأكد إن الشات مفتوح.");
-    }
-  };
-
   const handleClearNeonBeam = () => {
     setNeonBeamPicks([]);
     if (clearNeonBeamTargets()) {
@@ -1209,63 +1159,6 @@ export const DesignCenterModal = ({
     void persistMegaThemeBundle();
   };
 
-  const applyBot2026 = (preset: "neon-glass" | "ios-liquid") => {
-    if (!isOwnerRole) return;
-    if (preset === "neon-glass") {
-      applyThemePreset({
-        name: "نيون زجاجي",
-        bg: "#0a0014",
-        surface: "rgba(20,5,35,0.75)",
-        text: "#f0e6ff",
-        accent: "#ff00ff",
-        accent2: "#00ffff",
-      });
-      commitGlassForm("smoke-dark", "#ff00ff");
-      setActiveGlassFormId("smoke-dark");
-      commitNeonBeamTargets(
-        ["store", "radio", "music", "rooms", "members", "composer"],
-        { speedSec: 4 },
-      );
-      setChaseSettings(loadChaseLightSettings());
-      setNeonBeamPicks(getActiveNeonBeamTargets());
-      const udsNeon: UDSSettings = {
-        neonBorder: "none",
-        neonBorderColor: "cyberpunk-pink",
-        glassTexture: "crystal-glow",
-        glassTint: "cyberpunk-pink",
-        palette: "cyberpunk-pink",
-        applyToBody: false,
-        applyToContainers: true,
-      };
-      commitUDSSettings(udsNeon);
-      setUdsSettings(udsNeon);
-      void persistMegaThemeBundle();
-    } else {
-      applyThemePreset({
-        name: "آيفون زجاجي",
-        bg: "#0a1628",
-        surface: "rgba(22,30,48,0.65)",
-        text: "#e2e8f0",
-        accent: "#6366f1",
-        accent2: "#818cf8",
-      });
-      commitGlassForm("ios-liquid", "#818cf8");
-      setActiveGlassFormId("ios-liquid");
-      const udsIos: UDSSettings = {
-        neonBorder: "none",
-        neonBorderColor: "deep-space-blue",
-        glassTexture: "ios-ultra-blur",
-        glassTint: "deep-space-blue",
-        palette: "deep-space-blue",
-        applyToBody: false,
-        applyToContainers: true,
-      };
-      commitUDSSettings(udsIos);
-      setUdsSettings(udsIos);
-      void persistMegaThemeBundle();
-    }
-  };
-
   return (
     <>
                   <div className="space-y-4 select-none" dir="rtl">
@@ -1274,7 +1167,7 @@ export const DesignCenterModal = ({
                         🎨 مركز التصميم
                       </div>
                       <div className="text-[10px] text-gray-400 font-bold mt-1">
-                        معاينة live على الشات → حفظ تلقائي للسيرفر (أو زر حفظ الآن).
+                        ابدأ من ⚡ سحر 2026 — ثم عدّل من 🎨 تخصيص · 🔷 الشكل · 💫 Ultimate. كل تغيير يُطبَّق فوراً.
                       </div>
                       {isOwnerRole && (
                         <div
@@ -1308,12 +1201,12 @@ export const DesignCenterModal = ({
 
                     <div className="flex items-center gap-1.5 p-1 rounded-2xl lamma-section-card overflow-x-auto">
                       {([
-                        ["mega", "⚡ ثيمات"],
-                        ["uploads", "📤 الصور"],
-                        ["uiverse", "✨ UIverse"],
-                        ["colors", "🎨 الألوان"],
+                        ["mega", "⚡ سحر 2026"],
+                        ["colors", "🎨 تخصيص"],
                         ["shapes", "🔷 الشكل"],
-                        ["ultimate", "✨ Ultimate"],
+                        ["ultimate", "💫 Ultimate"],
+                        ["uiverse", "✨ UIverse"],
+                        ["uploads", "📤 الصور"],
                       ] as const).map(([id, label]) => (
                         <button
                           key={id}
@@ -1458,50 +1351,13 @@ export const DesignCenterModal = ({
                           </div>
                         )}
 
-                        {/* ── بوت التصميم السريع ── */}
-                        <div className="p-4 rounded-2xl space-y-3" style={{ background: "linear-gradient(135deg, rgba(10,0,20,0.7), rgba(15,5,30,0.7))", border: "1px solid rgba(255,0,255,0.18)" }}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[12px] text-emerald-300 font-black">🤖 بوت التصميم السريع</span>
-                            <span className="text-[9px] text-gray-500 font-bold px-2 py-0.5 rounded-full bg-white/5">ضغطة = ثيم كامل</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <button
-                              type="button"
-                              onPointerDown={stopDrag}
-                              onClick={() => applyBot2026("neon-glass")}
-                              disabled={!isOwnerRole}
-                              className="flex flex-col items-center gap-2 p-3 rounded-2xl transition-all disabled:opacity-40 hover:scale-[1.02] active:scale-[0.97]"
-                              style={{ background: "linear-gradient(135deg, #0a0014, #200040)", border: "1px solid rgba(255,0,255,0.35)", boxShadow: "0 0 20px rgba(255,0,255,0.12)" }}
-                            >
-                              <div className="w-full h-12 rounded-xl flex items-center justify-center gap-3" style={{ background: "linear-gradient(135deg, #0a0014, #200040)" }}>
-                                <span className="w-5 h-5 rounded-full" style={{ background: "#ff00ff", boxShadow: "0 0 14px #ff00ff" }} />
-                                <span className="w-5 h-5 rounded-full" style={{ background: "#00ffff", boxShadow: "0 0 14px #00ffff" }} />
-                              </div>
-                              <span className="text-[10px] text-fuchsia-300 font-black">💠 Neon Glassmorphism</span>
-                              <span className="text-[8px] text-gray-500">RGB Wave · Crystal Glass</span>
-                            </button>
-                            <button
-                              type="button"
-                              onPointerDown={stopDrag}
-                              onClick={() => applyBot2026("ios-liquid")}
-                              disabled={!isOwnerRole}
-                              className="flex flex-col items-center gap-2 p-3 rounded-2xl transition-all disabled:opacity-40 hover:scale-[1.02] active:scale-[0.97]"
-                              style={{ background: "linear-gradient(135deg, #0a1628, #1a2860)", border: "1px solid rgba(99,102,241,0.35)", boxShadow: "0 0 20px rgba(99,102,241,0.12)" }}
-                            >
-                              <div className="w-full h-12 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0a1628, #1a2860)" }}>
-                                <span className="text-2xl">🧧</span>
-                              </div>
-                              <span className="text-[10px] text-indigo-300 font-black">🧧 iOS Liquid Glass</span>
-                              <span className="text-[8px] text-gray-500">Ultra Blur · Squircle</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* ── Mega 2026 — ثيمات ضغطة واحدة ── */}
+                        {/* ── Mega 2026 — ثيمات سحرية ضغطة واحدة ── */}
                         <div className="p-4 rounded-2xl space-y-3" style={{ background: "linear-gradient(135deg, rgba(5,0,15,0.85), rgba(10,5,25,0.85))", border: "1px solid rgba(139,92,246,0.28)" }}>
                           <div>
-                            <div className="text-[12px] text-purple-300 font-black">⚡ Mega 2026 — ثيمات كاملة</div>
-                            <div className="text-[9px] text-gray-400 font-bold mt-0.5">ألوان + زجاج + أعمدة + أشرطة نور + تأثيرات كلها دفعة واحدة للجميع</div>
+                            <div className="text-[12px] text-purple-300 font-black">⚡ Mega 2026 — سحر كامل</div>
+                            <div className="text-[9px] text-gray-400 font-bold mt-0.5">
+                              كل ثيم يضبط: ألوان + زجاج + أعمدة + نيون + FX + Ultimate — دفعة واحدة للجميع
+                            </div>
                           </div>
                           <div className="grid grid-cols-4 gap-2">
                             {MEGA_THEMES_2026.map((theme) => (
@@ -1525,66 +1381,14 @@ export const DesignCenterModal = ({
                               </button>
                             ))}
                           </div>
-                        </div>
-
-                        {/* ── ثيمات الألوان السريعة ── */}
-                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
-                          <div className="text-[11px] text-cyan-300 font-black">🌈 ثيمات الألوان السريعة</div>
-                          <div className="text-[9px] text-gray-400">كل ثيم يضبط الألوان فوراً — معاينة live على الشات.</div>
-                          <div className="grid grid-cols-3 gap-2">
-                            {MODERN_THEME_PRESETS.map((preset) => {
-                              const isActive =
-                                sliderAccent.toLowerCase() === preset.accent.toLowerCase() &&
-                                sliderBg.toLowerCase() === preset.bg.toLowerCase();
-                              return (
-                                <button
-                                  key={preset.name}
-                                  type="button"
-                                  onPointerDown={stopDrag}
-                                  onClick={() => applyThemePreset(preset, { resetOverlays: false })}
-                                  disabled={!isOwnerRole}
-                                  title={preset.name}
-                                  className={`group flex flex-col items-center gap-1 p-2 rounded-xl transition-all disabled:opacity-40 ${
-                                    isActive ? "ring-1 ring-cyan-400/60 bg-white/10" : "hover:bg-white/5"
-                                  }`}
-                                >
-                                  <span
-                                    className="w-full h-9 rounded-lg border border-white/10 flex items-center justify-center gap-1.5"
-                                    style={{ background: preset.bg }}
-                                  >
-                                    <span className="w-3.5 h-3.5 rounded-full shadow-inner" style={{ background: preset.accent }} />
-                                    <span className="w-3.5 h-3.5 rounded-full shadow-inner" style={{ background: preset.accent2 }} />
-                                  </span>
-                                  <span className="text-[8px] text-gray-300 font-bold truncate w-full text-center">{preset.name}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
                           <button
                             type="button"
                             onPointerDown={stopDrag}
                             disabled={!isOwnerRole}
-                            onClick={() => {
-                              if (!previewDesignConfig || !isOwnerRole) return;
-                              clearNeonBeamTargets();
-                              commitChaseLightSettings({
-                                columns: "none",
-                                composer: "none",
-                                header: "none",
-                                neonBeamTargets: [],
-                                tintHex: loadChaseLightSettings().tintHex,
-                                speedSec: 6,
-                              });
-                              setChaseSettings(loadChaseLightSettings());
-                              setNeonBeamPicks([]);
-                              const base = getBase();
-                              const fresh = createDefaultUniversalStyle();
-                              previewAndTrack({ ...base, effects: { ...fresh.effects }, regions: fresh.regions });
-                              scheduleDesignOverlaysSync();
-                            }}
+                            onClick={handleTurnOffLightEffects}
                             className="w-full py-2 rounded-xl text-[10px] font-black lamma-tab-soft hover:text-white disabled:opacity-40"
                           >
-                            🚫 إطفاء كل الأنوار والرينبو
+                            🚫 إطفاء الأنوار والـ FX فقط (الألوان تفضل)
                           </button>
                         </div>
                       </div>
@@ -1641,24 +1445,13 @@ export const DesignCenterModal = ({
                               <button
                                 type="button"
                                 onPointerDown={stopDrag}
-                                onClick={handleCommitNeonBeamPicks}
-                                disabled={neonBeamPicks.length === 0}
-                                className="w-full py-3 rounded-xl text-[11px] font-black transition-all lamma-accent-btn text-white disabled:opacity-40 disabled:cursor-not-allowed"
-                              >
-                                {neonBeamPicks.length
-                                  ? `✅ تطبيق الخط على ${neonBeamPicks.length} عنصر`
-                                  : "اختر بطاقة أو حافة الأول"}
-                              </button>
-                              <button
-                                type="button"
-                                onPointerDown={stopDrag}
                                 onClick={handleClearNeonBeam}
                                 className="w-full py-2 rounded-xl text-[10px] font-black lamma-tab-soft text-gray-400 hover:text-white"
                               >
                                 ⬜ إيقاف خط النيون
                               </button>
                               <p className="text-[9px] text-gray-500 font-bold text-center">
-                                خط النيون: يُطبَّق فوراً عند اختيار كل بطاقة · إضاءة الحواف (Aurora/Laser): تبويب 🔷 الشكل
+                                يُطبَّق فوراً عند اختيار كل بطاقة · إضاءة Aurora/Laser: تبويب 🔷 الشكل
                               </p>
                             </div>
                           </div>
@@ -1763,7 +1556,7 @@ export const DesignCenterModal = ({
                         {/* Glass presets */}
                         <div className="p-4 rounded-2xl lamma-section-card space-y-3">
                           <div className="text-[11px] text-cyan-300 font-black">🪟 نماذج الزجاج</div>
-                          <div className="text-[9px] text-gray-400">اختر نمط زجاج — يُطبَّق فوراً على الشات.</div>
+                          <div className="text-[9px] text-gray-400">شكل بطاقات الشات — للهالة على الجسم: 💫 Ultimate.</div>
                           <div className="grid grid-cols-3 gap-2">
                             {GLASS_FORM_PRESETS.map((preset) => {
                               const isActive = activeGlassFormId === preset.id;
@@ -1824,41 +1617,6 @@ export const DesignCenterModal = ({
                           >
                             🔄 رجوع للوضع الافتراضي
                           </button>
-                        </div>
-
-                        {/* Text color presets */}
-                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
-                          <div className="text-[11px] text-cyan-300 font-black">🎨 نماذج ألوان الكتابة</div>
-                          <div className="text-[9px] text-gray-400">ألوان النصوص في الغرف والبطاقات — معاينة live على الشات.</div>
-                          <div className="grid grid-cols-3 gap-2">
-                            {TEXT_COLOR_PRESETS.map((preset) => {
-                              const isActive =
-                                sliderText.toLowerCase() === preset.text.toLowerCase() &&
-                                sliderAccent.toLowerCase() === preset.accent.toLowerCase();
-                              return (
-                                <button
-                                  key={preset.name}
-                                  type="button"
-                                  onPointerDown={stopDrag}
-                                  onClick={() => applyTextColorPreset(preset)}
-                                  disabled={!isOwnerRole}
-                                  title={`${preset.name} - كتابة: ${preset.text}, أساسي: ${preset.accent}`}
-                                  className={`group flex flex-col items-center gap-1 p-2 rounded-xl transition-all disabled:opacity-40 ${
-                                    isActive ? "ring-1 ring-cyan-400/60 bg-white/10" : "hover:bg-white/5"
-                                  }`}
-                                >
-                                  <span
-                                    className="w-full h-9 rounded-lg border border-white/10 flex items-center justify-center gap-1.5"
-                                    style={{ background: preset.text }}
-                                  >
-                                    <span className="w-3.5 h-3.5 rounded-full shadow-inner" style={{ background: preset.accent }} />
-                                    <span className="w-3.5 h-3.5 rounded-full shadow-inner" style={{ background: preset.accent2 }} />
-                                  </span>
-                                  <span className="text-[8px] text-gray-300 font-bold truncate w-full text-center">{preset.emoji} {preset.name}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
                         </div>
 
                         {/* Button / input sliders */}
@@ -2076,7 +1834,7 @@ export const DesignCenterModal = ({
                             ✨ Ultimate Design System 2026
                           </div>
                           <div className="text-[10px] text-gray-400 font-bold mt-1">
-                            كل خيار يُطبَّق فوراً على الشات ويُحفظ تلقائياً — بدون خطوة «معاينة» منفصلة.
+                            تأثيرات على جسم الصفحة والحاويات — للبطاقات الزجاجية استخدم 🎨 تخصيص → نماذج الزجاج.
                           </div>
                         </div>
 
@@ -2321,68 +2079,7 @@ export const DesignCenterModal = ({
                           </div>
                         </div>
 
-                        {/* Preview Cards */}
-                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
-                          <div className="text-[11px] text-cyan-300 font-black">👁️ معاينة سريعة</div>
-                          <div className="grid grid-cols-3 gap-2">
-                            {[
-                              { style: "led-strip" as const, label: "LED Strip" },
-                              { style: "pulsing-glow" as const, label: "Pulsing Glow" },
-                              { style: "border-aura" as const, label: "Border Aura" },
-                            ].map((preview) => (
-                              <div
-                                key={preview.style}
-                                className={`uds-preview-card ${udsSettings.neonBorder === preview.style ? "active" : ""} ${
-                                  preview.style === "led-strip" ? "uds-neon-led-strip" :
-                                  preview.style === "pulsing-glow" ? "uds-pulsing-glow" :
-                                  "uds-border-aura"
-                                }`}
-                                onClick={() => {
-                                  applyUdsNeonStyle(preview.style);
-                                }}
-                                style={{ backgroundColor: "#0a0a0a" }}
-                              >
-                                {preview.label}
-                              </div>
-                            ))}
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            {[
-                              { style: "ios-ultra-blur" as const, label: "iOS Blur" },
-                              { style: "crystal-glow" as const, label: "Crystal" },
-                              { style: "soft-frosted" as const, label: "Frosted" },
-                            ].map((preview) => (
-                              <div
-                                key={preview.style}
-                                className={`uds-preview-card ${udsSettings.glassTexture === preview.style ? "active" : ""} ${
-                                  preview.style === "ios-ultra-blur" ? "uds-ios-ultra-blur" :
-                                  preview.style === "crystal-glow" ? "uds-crystal-glow" :
-                                  "uds-soft-frosted"
-                                }`}
-                                onClick={() => {
-                                  applyUdsGlassStyle(preview.style);
-                                }}
-                                style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                              >
-                                {preview.label}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Save / Apply / Reset Bar */}
-                        <div className="sticky top-0 z-20 flex gap-2 p-3 rounded-2xl border border-cyan-400/30 bg-[#0a1218]/95 backdrop-blur-xl">
-                          <button
-                            type="button"
-                            onPointerDown={stopDrag}
-                            onClick={() => {
-                              commitUDSSettings(udsSettings);
-                              alert("✅ إعدادات Ultimate Design System محفوظة ومطبّقة.");
-                            }}
-                            className="flex-1 py-2.5 rounded-xl text-[10px] font-black lamma-accent-btn text-white"
-                          >
-                            💾 تأكيد الحفظ
-                          </button>
+                        <div className="p-3 rounded-2xl border border-cyan-400/20 bg-cyan-500/5">
                           <button
                             type="button"
                             onPointerDown={stopDrag}
@@ -2390,12 +2087,16 @@ export const DesignCenterModal = ({
                               resetUDSSettings();
                               setUdsSettings(loadUDSSettings());
                               setUdsPreviewActive(false);
-                              alert("✅ تم إعادة تعيين الإعدادات للافتراضي.");
+                              scheduleDesignOverlaysSync();
+                              alert("✅ تم إعادة تعيين Ultimate للافتراضي.");
                             }}
-                            className="px-4 py-2.5 rounded-xl text-[10px] font-black lamma-tab-soft"
+                            className="w-full py-2.5 rounded-xl text-[10px] font-black lamma-tab-soft hover:text-white"
                           >
-                            ↺ إعادة تعيين
+                            ↺ إعادة تعيين Ultimate
                           </button>
+                          <p className="text-[9px] text-gray-500 font-bold text-center mt-2">
+                            كل اختيار فوق يُطبَّق ويُحفظ فوراً — مفيش خطوة حفظ منفصلة.
+                          </p>
                         </div>
                       </div>
                     )}
