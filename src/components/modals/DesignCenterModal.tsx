@@ -67,6 +67,7 @@ import {
   type UDSSettings,
 } from '../../services/design/ultimateDesignSystemService';
 import { scheduleDesignOverlaysSync } from '../../services/design/designOverlaySync';
+import { applyFx2026FromLocalStorage } from '../../services/design/designOverlayBundle';
 
 type DesignSection = "colors" | "shapes" | "uploads" | "ultimate" | "mega" | "uiverse";
 
@@ -312,6 +313,30 @@ const MODERN_THEME_PRESETS: {
   { name: "ماجنتا ليلي", bg: "#0c0510", surface: "rgba(28,12,34,0.72)", text: "#fdf4ff", accent: "#d946ef", accent2: "#e879f9", glass: "smoke-dark", column: "neon-ring", bubble: "telegram" },
 ];
 
+type ThemeColorPreset = {
+  name: string;
+  bg: string;
+  surface: string;
+  text: string;
+  accent: string;
+  accent2: string;
+  glass?: GlassFormId;
+  column?: ColumnCardStyleId;
+  bubble?: BubbleShapeId;
+};
+
+function surfaceToPickerHex(surface: string, fallback = "#121820"): string {
+  if (surface.startsWith("#")) return surface.slice(0, 7);
+  const match = surface.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (!match) return fallback;
+  return (
+    "#" +
+    [match[1], match[2], match[3]]
+      .map((part) => parseInt(part ?? "0", 10).toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+
 export const DesignCenterModal = ({
   isOwnerRole,
   brandLogoUrl,
@@ -459,6 +484,9 @@ export const DesignCenterModal = ({
   const [sliderAccent2, setSliderAccent2] = useState<string>(defaultBase.palette.accent2);
   const [sliderBg, setSliderBg] = useState<string>(defaultBase.palette.bg);
   const [sliderText, setSliderText] = useState<string>(defaultBase.palette.text);
+  const [sliderSurface, setSliderSurface] = useState<string>(
+    surfaceToPickerHex(defaultBase.palette.surface),
+  );
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
@@ -573,18 +601,23 @@ export const DesignCenterModal = ({
     setUiverseMessage("تم إزالة تطبيقات UIverse من الشات الحالي.");
   };
 
+  const syncSlidersFromBase = (base?: UniversalStyleConfig) => {
+    const cfg = normalizeUniversalStyleConfig(base ?? getBase());
+    setSliderGlassBlur(cfg.glass.blurPx);
+    setSliderGlassOpacity(cfg.glass.opacity);
+    setSliderGlassBorder(cfg.glass.borderOpacity);
+    setSliderBtnRadius(cfg.buttons.radiusPx);
+    setSliderBtnGlow(cfg.buttons.glow);
+    setSliderAccent(cfg.palette.accent);
+    setSliderAccent2(cfg.palette.accent2);
+    setSliderBg(cfg.palette.bg);
+    setSliderText(cfg.palette.text);
+    setSliderSurface(surfaceToPickerHex(cfg.palette.surface));
+  };
+
   useEffect(() => {
     if (!committedConfig) return;
-    const base = normalizeUniversalStyleConfig(committedConfig);
-    setSliderGlassBlur(base.glass.blurPx);
-    setSliderGlassOpacity(base.glass.opacity);
-    setSliderGlassBorder(base.glass.borderOpacity);
-    setSliderBtnRadius(base.buttons.radiusPx);
-    setSliderBtnGlow(base.buttons.glow);
-    setSliderAccent(base.palette.accent);
-    setSliderAccent2(base.palette.accent2);
-    setSliderBg(base.palette.bg);
-    setSliderText(base.palette.text);
+    syncSlidersFromBase(committedConfig);
   }, [committedConfig]);
 
   // Load saved text color preset from localStorage on mount
@@ -632,49 +665,67 @@ export const DesignCenterModal = ({
     previewAndTrack({ ...base, glass: { ...base.glass, ...glassPatch } });
   };
 
-  const applyThemePreset = (preset: typeof MODERN_THEME_PRESETS[number]) => {
+  const applyThemePreset = (
+    preset: ThemeColorPreset,
+    options?: { resetOverlays?: boolean },
+  ) => {
     if (!previewDesignConfig || !isOwnerRole) return;
+    const resetOverlays = options?.resetOverlays ?? true;
+
     setSliderAccent(preset.accent);
     setSliderAccent2(preset.accent2);
     setSliderBg(preset.bg);
     setSliderText(preset.text);
+    setSliderSurface(surfaceToPickerHex(preset.surface));
 
-    // Reset all conflicting systems before applying theme
-    // 1) Reset customFace (الوجه المخصص)
-    try {
-      const f = { ...loadFace(), enabled: false };
-      saveFace(f);
-      applyFace(f);
-    } catch { /* ignore */ }
+    const root = document.querySelector(".lamma-neutral-glass") as HTMLElement | null;
+    if (root) {
+      syncPaletteTextTokens(root, {
+        text: preset.text,
+        accent: preset.accent,
+        accent2: preset.accent2,
+      });
+      root.setAttribute("data-universal-style", "active");
+    }
 
-    // 2) Reset chase lights (أشرطة النور)
-    const tint = loadChaseLightSettings().tintHex || "#6ee7b7";
-    commitChaseLightSettings({ columns: "none", composer: "none", header: "none", tintHex: tint, speedSec: 6 });
+    if (resetOverlays) {
+      // Reset conflicting overlay systems before a full theme swap
+      try {
+        const f = { ...loadFace(), enabled: false };
+        saveFace(f);
+        applyFace(f);
+      } catch { /* ignore */ }
 
-    // 3) Reset sidebar widgets
-    commitSidebarWidgetSettings({
-      radio: "classic",
-      music: "classic",
-      divider: "classic",
-      storeText: "#f8fafc",
-      radioText: "#f8fafc",
-      musicText: "#f8fafc",
-    });
+      const tint = loadChaseLightSettings().tintHex || "#6ee7b7";
+      commitChaseLightSettings({
+        columns: "none",
+        composer: "none",
+        header: "none",
+        neonBeamTargets: [],
+        tintHex: tint,
+        speedSec: 6,
+      });
+      setNeonBeamPicks([]);
 
-    // 4) Reset PM bubble style
-    commitPmBubbleStyle("classic");
+      commitSidebarWidgetSettings({
+        radio: "classic",
+        music: "classic",
+        divider: "classic",
+        storeText: "#f8fafc",
+        radioText: "#f8fafc",
+        musicText: "#f8fafc",
+      });
+      commitPmBubbleStyle("classic");
+      applyGlassForm(null);
+      setActiveGlassFormId(null);
+    }
 
-    // 5) Reset glass form
-    applyGlassForm(null);
-    setActiveGlassFormId(null);
-
-    // 6) Apply the theme with clean slate
-    const fresh = createDefaultUniversalStyle();
+    const base = getBase();
     previewAndTrack({
-      ...fresh,
+      ...base,
       label: preset.name,
       palette: {
-        ...fresh.palette,
+        ...base.palette,
         bg: preset.bg,
         surface: preset.surface,
         text: preset.text,
@@ -682,12 +733,11 @@ export const DesignCenterModal = ({
         accent2: preset.accent2,
       },
       backgrounds: {
-        ...fresh.backgrounds,
+        ...base.backgrounds,
         global: { kind: "color", value: preset.bg, overlayOpacity: 0, blurPx: 0 },
       },
     });
 
-    // 7) Apply integrated glass, column, and bubble shapes
     if (preset.glass) {
       commitGlassForm(preset.glass, preset.accent);
       setActiveGlassFormId(preset.glass);
@@ -698,6 +748,8 @@ export const DesignCenterModal = ({
     if (preset.bubble) {
       commitBubbleShape(preset.bubble);
     }
+
+    scheduleDesignOverlaysSync();
   };
 
   const applyPalettePatch = (patch: Partial<UniversalStyleConfig["palette"]>) => {
@@ -755,8 +807,14 @@ export const DesignCenterModal = ({
       {} as Record<FxId, boolean>,
     );
     try { localStorage.setItem("lamma_fx_on", JSON.stringify(offFx)); } catch { /* non-fatal */ }
-    FX_LIST.forEach(({ id }) => document.body.classList.remove(`lamma-fx-${id}`));
     setFxOn(offFx);
+    applyFx2026FromLocalStorage();
+    resetUiverseScopedStyle();
+    setActiveUiverseApplies([]);
+    setUiverseResult(null);
+    setUiverseUrl("");
+    setUiverseStatus("idle");
+    setUiverseMessage("");
     commitSidebarWidgetSettings({
       radio: "classic",
       music: "classic",
@@ -812,18 +870,10 @@ export const DesignCenterModal = ({
     await new Promise(resolve => setTimeout(resolve, 100));
     
     // 9) إعادة ضبط حالة السلايدرز
-    const d = createDefaultUniversalStyle();
-    setSliderGlassBlur(d.glass.blurPx);
-    setSliderGlassOpacity(d.glass.opacity);
-    setSliderGlassBorder(d.glass.borderOpacity);
-    setSliderBtnRadius(d.buttons.radiusPx);
-    setSliderBtnGlow(d.buttons.glow);
-    setSliderAccent(d.palette.accent);
-    setSliderAccent2(d.palette.accent2);
-    setSliderBg(d.palette.bg);
-    setSliderText(d.palette.text);
+    syncSlidersFromBase(createDefaultUniversalStyle());
     setActiveGlassFormId(null);
     setChaseSettings(loadChaseLightSettings());
+    scheduleDesignOverlaysSync();
     
     // 10) Final verification before showing success
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -1094,8 +1144,8 @@ export const DesignCenterModal = ({
   });
 
   useEffect(() => {
-    FX_LIST.forEach(({ id }) => document.body.classList.toggle(`lamma-fx-${id}`, fxOn[id]));
     try { localStorage.setItem("lamma_fx_on", JSON.stringify(fxOn)); } catch { /* non-fatal */ }
+    applyFx2026FromLocalStorage();
   }, [fxOn]);
 
   const toggleFx = (id: FxId) => {
@@ -1112,20 +1162,14 @@ export const DesignCenterModal = ({
       clearTimeout(autoSaveTimerRef.current);
       autoSaveTimerRef.current = null;
     }
-    if (flushAllDesignPersistence) {
-      await flushAllDesignPersistence();
-      return;
-    }
-    if (commitPendingDesignPreview) {
-      await commitPendingDesignPreview();
-    }
     scheduleDesignOverlaysSync();
+    syncSlidersFromBase();
+    await flushSave();
   };
 
   const applyMegaTheme = (theme: typeof MEGA_THEMES_2026[number]) => {
     if (!isOwnerRole) return;
-    // 1) ألوان
-    applyThemePreset(theme.colors);
+    applyThemePreset(theme.colors, { resetOverlays: true });
     // 2) زجاج
     commitGlassForm(theme.glass.id, theme.glass.tint);
     setActiveGlassFormId(theme.glass.id);
@@ -1138,10 +1182,8 @@ export const DesignCenterModal = ({
     // 5) تأثيرات FX
     const nextFx = theme.fx;
     try { localStorage.setItem("lamma_fx_on", JSON.stringify(nextFx)); } catch { /* non-fatal */ }
-    Object.entries(nextFx).forEach(([id, on]) => {
-      document.body.classList.toggle(`lamma-fx-${id}`, !!on);
-    });
     setFxOn(nextFx as Record<FxId, boolean>);
+    applyFx2026FromLocalStorage();
     // 6) UDS
     commitUDSSettings(theme.uds);
     setUdsSettings(theme.uds);
@@ -1481,7 +1523,7 @@ export const DesignCenterModal = ({
                                   key={preset.name}
                                   type="button"
                                   onPointerDown={stopDrag}
-                                  onClick={() => applyThemePreset(preset)}
+                                  onClick={() => applyThemePreset(preset, { resetOverlays: false })}
                                   disabled={!isOwnerRole}
                                   title={preset.name}
                                   className={`group flex flex-col items-center gap-1 p-2 rounded-xl transition-all disabled:opacity-40 ${
@@ -1914,9 +1956,12 @@ export const DesignCenterModal = ({
                             <label className="text-[10px] text-gray-400 font-bold w-20 shrink-0">لون البطاقات</label>
                             <input
                               type="color"
+                              value={sliderSurface}
                               onPointerDown={stopDrag}
                               onChange={(e) => {
-                                applyPalettePatch({ surface: hexToRgba(e.target.value, 0.72) });
+                                const hex = e.target.value;
+                                setSliderSurface(hex);
+                                applyPalettePatch({ surface: hexToRgba(hex, 0.72) });
                               }}
                               className="w-8 h-8 rounded-lg border-0 cursor-pointer bg-transparent"
                             />
@@ -2009,16 +2054,7 @@ export const DesignCenterModal = ({
                               applyUDSSettings(loadUDSSettings());
                               setUdsSettings(loadUDSSettings());
                               setUdsPreviewActive(false);
-                              const base = getBase();
-                              setSliderGlassBlur(base.glass.blurPx);
-                              setSliderGlassOpacity(base.glass.opacity);
-                              setSliderGlassBorder(base.glass.borderOpacity);
-                              setSliderBtnRadius(base.buttons.radiusPx);
-                              setSliderBtnGlow(base.buttons.glow);
-                              setSliderAccent(base.palette.accent);
-                              setSliderAccent2(base.palette.accent2);
-                              setSliderBg(base.palette.bg);
-                              setSliderText(base.palette.text);
+                              syncSlidersFromBase();
                               setSaveStatus("idle");
                               setSaveMessage("تم إلغاء المعاينة والرجوع لآخر تصميم محفوظ.");
                             }}

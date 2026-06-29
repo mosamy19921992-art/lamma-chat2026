@@ -299,15 +299,19 @@ export function applyUiverseCssToTarget(
   return { ok: true, parsed, target };
 }
 
-function markRegionApplied(target: ResolvedUiverseTarget): void {
+function markRegionScoped(region: string, subTarget: string): void {
   const nodes = document.querySelectorAll(
-    `.lamma-neutral-glass [data-design-region="${target.region}"]`,
+    `.lamma-neutral-glass [data-design-region="${region}"]`,
   );
   nodes.forEach((node) => {
     if (node instanceof HTMLElement) {
-      node.dataset.uiverseScoped = target.subTarget;
+      node.dataset.uiverseScoped = subTarget;
     }
   });
+}
+
+function markRegionApplied(target: ResolvedUiverseTarget): void {
+  markRegionScoped(target.region, target.subTarget);
 }
 
 export function resetUiverseScopedStyle(
@@ -358,6 +362,7 @@ export function restoreUiverseScopedOnLoad(): void {
 
   for (const entry of active) {
     if (document.getElementById(entry.styleId)) {
+      markRegionScoped(entry.region, entry.subTarget);
       restored.push(entry);
       continue;
     }
@@ -367,6 +372,7 @@ export function restoreUiverseScopedOnLoad(): void {
       styleEl.setAttribute("data-lamma-uiverse", "true");
       styleEl.textContent = `/* Lamma scoped UIverse restored — ${entry.targetLabel} */\n${entry.cssContent}`;
       document.head.appendChild(styleEl);
+      markRegionScoped(entry.region, entry.subTarget);
       restored.push(entry);
     } else {
       clearRegionMarks(entry.region);
