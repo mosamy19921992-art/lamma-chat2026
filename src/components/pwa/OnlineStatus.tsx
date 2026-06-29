@@ -28,47 +28,61 @@ export function OnlineStatus({ isOnline }: OnlineStatusProps) {
     <AnimatePresence>
       {!isOnline && (
         <motion.div
-          initial={{ y: -100, opacity: 0 }}
+          initial={{ y: -24, opacity: 0, scale: 0.98 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -100, opacity: 0 }}
-          transition={{ type: "spring", damping: 22, stiffness: 260 }}
-          className="fixed top-4 inset-x-4 sm:top-6 sm:right-1/2 sm:translate-x-1/2 sm:w-fit z-[9998]"
+          exit={{ y: -18, opacity: 0, scale: 0.98 }}
+          transition={{ type: "spring", damping: 24, stiffness: 260 }}
+          className="fixed top-3 inset-x-3 sm:top-6 sm:right-1/2 sm:translate-x-1/2 sm:w-fit z-[9998]"
           role="status"
+          aria-live="polite"
         >
-          <div className="px-4 py-2.5 rounded-2xl flex items-center gap-2.5 lamma-status-offline">
+          <div className="px-3.5 py-2.5 rounded-2xl flex items-center gap-2.5 lamma-status-offline">
             <motion.div
               animate={{ opacity: [1, 0.3, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
+              transition={{ duration: 2, repeat: Infinity }}
+              aria-hidden
             >
               <WifiOff size={16} className="text-red-400" />
             </motion.div>
-            <span className="text-xs font-black text-red-300">
-              فقدنا الاتصال بالإنترنت
-            </span>
+            <div className="min-w-0">
+              <span className="block text-xs font-black text-red-300">
+                اتصالك توقف مؤقتاً
+              </span>
+              <span className="block text-[10px] font-bold text-red-200/80">
+                الرسائل هتكمل أول ما الشبكة ترجع.
+              </span>
+            </div>
           </div>
         </motion.div>
       )}
 
       {showReconnected && (
         <motion.div
-          initial={{ y: -100, opacity: 0 }}
+          initial={{ y: -24, opacity: 0, scale: 0.98 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -100, opacity: 0 }}
-          transition={{ type: "spring", damping: 22, stiffness: 260 }}
-          className="fixed top-4 inset-x-4 sm:top-6 sm:right-1/2 sm:translate-x-1/2 sm:w-fit z-[9998]"
+          exit={{ y: -18, opacity: 0, scale: 0.98 }}
+          transition={{ type: "spring", damping: 24, stiffness: 260 }}
+          className="fixed top-3 inset-x-3 sm:top-6 sm:right-1/2 sm:translate-x-1/2 sm:w-fit z-[9998]"
           role="status"
+          aria-live="polite"
         >
-          <div className="px-4 py-2.5 rounded-2xl flex items-center gap-2.5 lamma-status-online">
+          <div className="px-3.5 py-2.5 rounded-2xl flex items-center gap-2.5 lamma-status-online">
             <motion.div
-              initial={{ scale: 0 }}
+              initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 300 }}
+              transition={{ type: "spring", damping: 18, stiffness: 260 }}
+              aria-hidden
             >
               <Wifi size={16} className="text-emerald-400" />
             </motion.div>
-            <span className="text-xs font-black text-emerald-300">
-              رجع الاتصال! 🎉
-            </span>
+            <div className="min-w-0">
+              <span className="block text-xs font-black text-emerald-300">
+                رجع الاتصال
+              </span>
+              <span className="block text-[10px] font-bold text-emerald-200/80">
+                الشات رجع يتزامن بشكل طبيعي.
+              </span>
+            </div>
           </div>
         </motion.div>
       )}
