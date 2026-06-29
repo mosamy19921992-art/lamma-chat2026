@@ -38,6 +38,13 @@ import {
   askDesignAi,
 } from '../../services/design/designAiService';
 import {
+  applyUiverseCssToTarget,
+  fetchUiverseCssFromUrl,
+  getActiveUiverseScopedApplies,
+  resetUiverseScopedStyle,
+  type UiverseFetchResult,
+} from '../../services/design/uiverseScopedImportService';
+import {
   createDefaultUniversalStyle,
   ensureReadablePalette,
   normalizeUniversalStyleConfig,
@@ -61,7 +68,7 @@ import {
 } from '../../services/design/ultimateDesignSystemService';
 import { scheduleDesignOverlaysSync } from '../../services/design/designOverlaySync';
 
-type DesignSection = "colors" | "shapes" | "uploads" | "ultimate" | "mega";
+type DesignSection = "colors" | "shapes" | "uploads" | "ultimate" | "mega" | "uiverse";
 
 type DesignCommitResult = {
   ok: boolean;
@@ -456,6 +463,14 @@ export const DesignCenterModal = ({
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [aiLastSummary, setAiLastSummary] = useState("");
+  const [uiverseUrl, setUiverseUrl] = useState("");
+  const [uiverseTarget, setUiverseTarget] = useState("الأزرار");
+  const [uiverseStatus, setUiverseStatus] = useState<"idle" | "loading" | "ready" | "applied" | "error">("idle");
+  const [uiverseMessage, setUiverseMessage] = useState("");
+  const [uiverseResult, setUiverseResult] = useState<UiverseFetchResult | null>(null);
+  const [activeUiverseApplies, setActiveUiverseApplies] = useState(() =>
+    getActiveUiverseScopedApplies(),
+  );
 
   const applyAiResultToPreview = (
     base: UniversalStyleConfig,
@@ -494,6 +509,68 @@ export const DesignCenterModal = ({
     const base = getBase();
     const result = await askDesignAi(prompt, base);
     applyAiResultToPreview(base, result);
+  };
+
+  const refreshActiveUiverseApplies = () => {
+    setActiveUiverseApplies(getActiveUiverseScopedApplies());
+  };
+
+  const handleFetchUiverse = async () => {
+    const url = uiverseUrl.trim();
+    if (!url || uiverseStatus === "loading") return;
+    if (!isOwnerRole) {
+      setUiverseStatus("error");
+      setUiverseMessage("👑 استيراد UIverse متاح للمالك فقط.");
+      return;
+    }
+
+    setUiverseStatus("loading");
+    setUiverseMessage("جاري جلب CSS من الرابط...");
+    setUiverseResult(null);
+    const { result, error } = await fetchUiverseCssFromUrl(url);
+    if (!result) {
+      setUiverseStatus("error");
+      setUiverseMessage(error ?? "تعذر جلب CSS من الرابط.");
+      return;
+    }
+
+    setUiverseResult(result);
+    if (result.suggestedTargetAr) {
+      setUiverseTarget(result.suggestedTargetAr);
+    }
+    setUiverseStatus("ready");
+    setUiverseMessage(
+      `تم جلب CSS من ${result.source}${result.title ? ` — ${result.title}` : ""}. راجع الهدف ثم اضغط تطبيق.`,
+    );
+  };
+
+  const handleApplyUiverse = () => {
+    if (!uiverseResult) return;
+    const target = uiverseTarget.trim() || uiverseResult.suggestedTargetAr || "الأزرار";
+    const applied = applyUiverseCssToTarget(
+      uiverseResult.css,
+      target,
+      uiverseUrl.trim(),
+      { allowDefault: true },
+    );
+    if (!applied.ok) {
+      setUiverseStatus("error");
+      setUiverseMessage(applied.error ?? "تعذر تطبيق CSS على الشات.");
+      return;
+    }
+
+    scheduleDesignOverlaysSync();
+    refreshActiveUiverseApplies();
+    setUiverseStatus("applied");
+    setUiverseMessage(`تم تطبيق UIverse على ${applied.target?.labelAr ?? target}.`);
+  };
+
+  const handleClearUiverse = () => {
+    resetUiverseScopedStyle();
+    refreshActiveUiverseApplies();
+    scheduleDesignOverlaysSync();
+    setUiverseStatus("idle");
+    setUiverseMessage("تم إزالة تطبيقات UIverse من الشات الحالي.");
   };
 
   useEffect(() => {
@@ -1173,6 +1250,7 @@ export const DesignCenterModal = ({
                       {([
                         ["mega", "⚡ ثيمات"],
                         ["uploads", "📤 الصور"],
+                        ["uiverse", "✨ UIverse"],
                         ["colors", "🎨 الألوان"],
                         ["shapes", "🔷 الشكل"],
                         ["ultimate", "✨ Ultimate"],
@@ -1192,6 +1270,124 @@ export const DesignCenterModal = ({
                         </button>
                       ))}
                     </div>
+
+                    {/* ✨ UIverse scoped import */}
+                    {section === "uiverse" && (
+                      <div className="space-y-4">
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-3">
+                          <div>
+                            <div className="text-[12px] text-cyan-300 font-black">✨ استيراد UIverse للشات</div>
+                            <div className="text-[9px] text-gray-400 font-bold mt-1">
+                              الصق رابط UIverse، اختر هدف التطبيق، وسيتم حصر الـ CSS على عناصر الشات فقط بدون لمس باقي الصفحة.
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <input
+                              type="url"
+                              value={uiverseUrl}
+                              onChange={(e) => setUiverseUrl(e.target.value)}
+                              onPointerDown={stopDrag}
+                              disabled={!isOwnerRole || uiverseStatus === "loading"}
+                              placeholder="https://uiverse.io/author/component-name"
+                              dir="ltr"
+                              className="w-full text-[11px] bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-500/50 disabled:opacity-50"
+                            />
+                            <input
+                              type="text"
+                              value={uiverseTarget}
+                              onChange={(e) => setUiverseTarget(e.target.value)}
+                              onPointerDown={stopDrag}
+                              disabled={!isOwnerRole || uiverseStatus === "loading"}
+                              placeholder="مثال: الأزرار، الأيقونات، الخلفية، بطاقات المتصلين"
+                              dir="rtl"
+                              className="w-full text-[11px] bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-500/50 disabled:opacity-50"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              type="button"
+                              onPointerDown={stopDrag}
+                              onClick={() => void handleFetchUiverse()}
+                              disabled={!isOwnerRole || !uiverseUrl.trim() || uiverseStatus === "loading"}
+                              className="py-2 rounded-xl text-[10px] font-black lamma-accent-btn text-white disabled:opacity-40"
+                            >
+                              {uiverseStatus === "loading" ? "جاري الجلب..." : "جلب CSS"}
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={stopDrag}
+                              onClick={handleApplyUiverse}
+                              disabled={!isOwnerRole || !uiverseResult || uiverseStatus === "loading"}
+                              className="py-2 rounded-xl text-[10px] font-black lamma-tab-soft hover:text-white disabled:opacity-40"
+                            >
+                              تطبيق على الشات
+                            </button>
+                            <button
+                              type="button"
+                              onPointerDown={stopDrag}
+                              onClick={handleClearUiverse}
+                              disabled={!isOwnerRole || activeUiverseApplies.length === 0}
+                              className="py-2 rounded-xl text-[10px] font-black lamma-tab-soft hover:text-white disabled:opacity-40"
+                            >
+                              إزالة UIverse
+                            </button>
+                          </div>
+
+                          {uiverseMessage && (
+                            <div
+                              className={`text-[10px] font-bold px-3 py-2 rounded-xl whitespace-pre-wrap ${
+                                uiverseStatus === "error"
+                                  ? "text-rose-300 bg-rose-500/10"
+                                  : uiverseStatus === "applied"
+                                    ? "text-emerald-300 bg-emerald-500/10"
+                                    : "text-cyan-300 bg-cyan-500/10"
+                              }`}
+                            >
+                              {uiverseMessage}
+                            </div>
+                          )}
+
+                          {uiverseResult && (
+                            <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] text-white font-black">
+                                  {uiverseResult.title ?? "UIverse CSS"}
+                                </span>
+                                <span className="text-[9px] text-gray-400 font-bold">
+                                  {uiverseResult.source}
+                                </span>
+                              </div>
+                              <div className="text-[9px] text-gray-500 font-bold mt-1">
+                                {Math.round(uiverseResult.css.length / 1024)}KB CSS جاهز للتطبيق.
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="p-4 rounded-2xl lamma-section-card space-y-2">
+                          <div className="text-[11px] text-emerald-300 font-black">التطبيقات النشطة</div>
+                          {activeUiverseApplies.length === 0 ? (
+                            <div className="text-[10px] text-gray-500 font-bold">
+                              لا توجد تطبيقات UIverse نشطة حالياً.
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {activeUiverseApplies.map((entry) => (
+                                <div
+                                  key={`${entry.region}-${entry.subTarget}-${entry.styleId}`}
+                                  className="p-2 rounded-xl bg-white/5 border border-white/10"
+                                >
+                                  <div className="text-[10px] text-white font-black">{entry.targetLabel}</div>
+                                  <div className="text-[9px] text-gray-500 font-bold truncate">{entry.sourceUrl}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* ⚡ ثيمات Mega 2026 */}
                     {section === "mega" && (
