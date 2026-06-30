@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import type { ChatScreenProps, OwnerMusicTrack, RoomDjState } from "../lib/chatTypes";
 import { restoreUiverseScopedOnLoad } from "../services/design/uiverseScopedImportService";
 import { setDesignPreviewActive } from "../services/design/designPreviewDom";
@@ -112,13 +112,6 @@ import { ChatMessageVirtualList } from "./chat/ChatMessageVirtualList";
 import type { ChatMessageVirtualListHandle } from "./chat/ChatMessageVirtualList";
 import { ChatMessageRow } from "./chat/ChatMessageRow";
 import { PmMessageRow } from "./chat/PmMessageRow";
-import {
-  fetchActivePlans,
-  fetchMySubscription,
-  subscribeToMySubscription,
-  subscribeToNewOrders,
-  type SubscriptionPlan,
-} from "../services/store/subscriptionService";
 import { MemberAvatar } from "./MemberAvatar";
 import { isAvatarImageUrl } from "../lib/avatarDisplay";
 import { requireAuthenticatedUid } from "../services/auth/guestAuthService";
@@ -218,6 +211,8 @@ import { canUseStaffTools, canGrantRole, type RoleGrantsPolicy } from "../lib/ro
 import { getDefaultRolePolicy } from "../lib/memberRoleResolution";
 import { fetchServerUserRole } from "../services/auth/userRoleService";
 import type { MemberRole } from "../lib/chatTypes";
+import { useRoomNavigation } from "../hooks/useRoomNavigation";
+import { useStoreSubscription } from "../hooks/useStoreSubscription";
 import { useIsMobileViewport } from "../hooks/useIsMobileViewport";
 import { useVisualViewportLayout } from "../hooks/useVisualViewportOffset";
 import { useDeepLinkParams } from "../hooks/useDeepLinkParams";
@@ -354,15 +349,16 @@ import {
   OFFICIAL_BOT_AUTHORS,
 } from "../services/chat/officialBotsService";
 import RealtimeStatus from "./pwa/RealtimeStatus";
-import { upsertCurrentUserProfile, fetchUserProfileByNickname } from "../services/social/userProfileService";
-import { deleteSocialPost } from "../services/social/socialPostsService";
-import { SocialFeedPanel } from "./social/SocialFeedPanel";
 import { UserProfilePageModal } from "./modals/UserProfilePageModal";
 import {
   MobileBottomNav,
   type MobileNavId,
 } from "./pwa/MobileBottomNav";
 import type { SocialPost } from "../lib/socialTypes";
+import { upsertCurrentUserProfile, fetchUserProfileByNickname } from "../services/social/userProfileService";
+import { deleteSocialPost } from "../services/social/socialPostsService";
+
+const SocialFeedPanel = lazy(() => import("./social/SocialFeedPanel"));
 
 function OfficialBotMemberRow({
   bot,
@@ -600,7 +596,6 @@ export default function ChatScreen({
   hasInviteAccess = false,
 }: ChatScreenProps) {
   const DEFAULT_AMBIENT_BG: string = "/MAN.png";
-  const POSTS_ROOM_ID = "posts-feed";
   const customRoomsStorageKey = `lamma_custom_rooms_${currentUser.uid || currentUser.nickname}`;
   const [isInviteOnlyMode, setIsInviteOnlyMode] = useState<boolean>(
     () => inviteOnlyModeProp,
@@ -632,64 +627,17 @@ export default function ChatScreen({
     : null;
   const chatLayoutStorageKey = userScopedStorageKey("lamma_chat_layout_prefs");
   const initialChatLayoutPrefs = loadChatLayoutPrefs(chatLayoutStorageKey);
-
-  const readStoredCustomRoomIds = (): string[] => {
+  const roleLower = (currentUser.role || "").toLowerCase();
+  const isOwnerRole = roleLower === "owner";
+  const isAdminRole = roleLower === "admin" || roleLower === "أدمن";
+  const [bannedUsersList, setBannedUsersList] = useState<BanInfo[]>(() => {
+    const saved = localStorage.getItem("lamma_banned_list");
     try {
-      const saved = localStorage.getItem(customRoomsStorageKey);
-      if (!saved) return [];
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return [];
-      return parsed
-        .map((room: { id?: string }) => room?.id?.trim().toLowerCase())
-        .filter(Boolean) as string[];
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
-  };
-
-  const readRequestedRoomId = () => {
-    if (typeof window === "undefined") return "egypt";
-    const requestedRoom = new URLSearchParams(window.location.search)
-      .get("room")
-      ?.trim()
-      .toLowerCase();
-    const roomId = requestedRoom || "egypt";
-    const exists =
-      ROOMS_DEF.some((room) => room.id === roomId) ||
-      readStoredCustomRoomIds().includes(roomId);
-    return exists ? roomId : "egypt";
-  };
-
-  const buildInitialOpenRooms = (roomId: string) => {
-    const defaultTab = { id: "egypt", name: "مصر", flag: "🇪🇬" };
-    if (roomId === "egypt") {
-      return [defaultTab];
-    }
-
-    const requested = ROOMS_DEF.find((room) => room.id === roomId);
-    if (!requested) {
-      return [defaultTab];
-    }
-
-    return [
-      defaultTab,
-      { id: requested.id, name: requested.name, flag: requested.icon },
-    ];
-  };
-
-  const buildRoomLink = (roomId: string) => {
-    const base =
-      (import.meta.env.VITE_APP_URL || "").trim() ||
-      (typeof window !== "undefined" ? window.location.origin : "/");
-    const url = new URL(
-      base,
-      typeof window !== "undefined" ? window.location.origin : "https://lamma-arabic-chat-room.vercel.app",
-    );
-    url.searchParams.set("room", roomId || "egypt");
-    const link = url.toString();
-    const inviteOnly = inviteOnlyModeProp || isInviteOnlyMode;
-    return inviteOnly ? appendInviteParam(link) : link;
-  };
+  });
 
   const [ownerBgImage, setOwnerBgImage] = useState<string | null>(() =>
     filterSafeMediaUrl(localStorage.getItem("lamma_owner_bg_image")),
@@ -791,6 +739,45 @@ export default function ChatScreen({
   const [showFeaturesTray, setShowFeaturesTray] = useState(false);
   const [showMembersList, setShowMembersList] = useState(false);
   const [showRoomsLists, setShowRoomsLists] = useState(false);
+  const {
+    POSTS_ROOM_ID,
+    openRooms,
+    setOpenRooms,
+    customRooms,
+    setCustomRooms,
+    activeRoomId,
+    setActiveRoomId,
+    availableRooms,
+    isPostsRoom,
+    isAdminRoom,
+    isHelpRoom,
+    isGamesRoom,
+    appLink,
+    activeOpenRoom,
+    activeRoomMeta,
+    activeRoomDisplayName,
+    activeRoomDisplayIcon,
+    isCreateRoomModalOpen,
+    setIsCreateRoomModalOpen,
+    isCreatingRoom,
+    setIsCreatingRoom,
+    isRoomPasswordModalOpen,
+    setIsRoomPasswordModalOpen,
+    pendingRoomSwitchId,
+    setPendingRoomSwitchId,
+    myPrivateRoomCount,
+    setMyPrivateRoomCount,
+    refreshPrivateRooms,
+    handleSwitchRoom,
+  } = useRoomNavigation({
+    currentUser,
+    customRoomsStorageKey,
+    bannedUsersList,
+    isOwnerRole,
+    isAdminRole,
+    inviteOnlyMode: inviteOnlyModeProp || isInviteOnlyMode,
+    onAfterSwitch: () => setShowRoomsLists(false),
+  });
   const [activeSidebarTab, setActiveSidebarTab] = useState<"rooms" | "members">(
     "rooms",
   );
@@ -892,94 +879,16 @@ export default function ChatScreen({
   };
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [showPmListDropdown, setShowPmListDropdown] = useState(false);
-  const [openRooms, setOpenRooms] = useState(() =>
-    buildInitialOpenRooms(readRequestedRoomId()),
-  );
-  const [customRooms, setCustomRooms] = useState<CustomRoomEntry[]>(() => {
-    const saved = localStorage.getItem(customRoomsStorageKey);
-    if (!saved) return [];
-    try {
-      const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
-  const [activeRoomId, setActiveRoomId] = useState(() => readRequestedRoomId());
-  const appLink = buildRoomLink(activeRoomId);
   const senderUid = currentUser.uid || "";
   const [publicChatSessionStartedAt] = useState(() => new Date().toISOString());
   const publicChatSessionStartedAtMs = new Date(
     publicChatSessionStartedAt,
   ).getTime();
-  const roleLower = (currentUser.role || "").toLowerCase();
-  const isOwnerRole = roleLower === "owner";
-  const isAdminRole = roleLower === "admin" || roleLower === "أدمن";
   const isManagementRole = isOwnerRole || isAdminRole;
-  const isPostsRoom = activeRoomId === POSTS_ROOM_ID;
-  const isAdminRoom = activeRoomId === "admin";
-  const isHelpRoom = activeRoomId === "help";
-  const isGamesRoom = activeRoomId === "games";
   const canPublishPosts = currentUser.authProvider === "supabase";
   const isRegisteredAccount = currentUser.authProvider === "supabase";
   const tempEntryTopicStorageKey = `lamma_temp_entry_topic_${currentUser.uid || currentUser.nickname}`;
-  const availableRooms = useMemo(
-    () => [...ROOMS_DEF, ...customRooms],
-    [customRooms],
-  );
-
-  const refreshPrivateRooms = useCallback(async () => {
-    const rows = await fetchPrivateChatRooms();
-    const entries = rows.map(privateRoomToEntry);
-    setCustomRooms(entries);
-    if (currentUser.uid) {
-      setMyPrivateRoomCount(
-        rows.filter((row) => row.owner_uid === currentUser.uid).length,
-      );
-    }
-  }, [currentUser.uid]);
-  useEffect(() => {
-    const requestedRoomExists = availableRooms.some((room) => room.id === activeRoomId);
-    if (!requestedRoomExists) {
-      setActiveRoomId("egypt");
-    }
-  }, [activeRoomId, availableRooms, isAdminRole, isOwnerRole]);
-
-  useEffect(() => {
-    const roomDef = ROOMS_DEF.find((room) => room.id === activeRoomId);
-    if (!roomDef) return;
-
-    setOpenRooms((prev) => {
-      if (prev.some((room) => room.id === activeRoomId)) {
-        return prev;
-      }
-
-      return [
-        ...prev,
-        { id: roomDef.id, name: roomDef.name, flag: roomDef.icon },
-      ];
-    });
-  }, [activeRoomId]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    url.searchParams.set("room", activeRoomId || "egypt");
-    window.history.replaceState({}, "", url.toString());
-  }, [activeRoomId]);
-  const visibleRoomCount = availableRooms.filter((room) => {
-    return true;
-  }).length;
-  const activeOpenRoom = openRooms.find((room) => room.id === activeRoomId);
-  const activeRoomMeta =
-    availableRooms.find((room) => room.id === activeRoomId) ||
-    ROOMS_DEF.find((room) => room.id === activeRoomId);
-  const activeRoomDisplayName =
-    activeRoomId === "owner"
-      ? "غرفة القيادة"
-      : activeOpenRoom?.name || activeRoomMeta?.name || activeRoomId;
-  const activeRoomDisplayIcon =
-    activeRoomId === "owner" ? "👑" : activeOpenRoom?.flag || activeRoomMeta?.icon || "";
+  const visibleRoomCount = availableRooms.filter(() => true).length;
   const activeRoomBg =
     roomBgMap[activeRoomId] || ownerBgImage || DEFAULT_AMBIENT_BG;
   const [designRoomBgInput, setDesignRoomBgInput] = useState<string>(
@@ -1033,35 +942,6 @@ export default function ChatScreen({
       }),
     );
   };
-
-  useEffect(() => {
-    localStorage.setItem(customRoomsStorageKey, JSON.stringify(customRooms));
-  }, [customRooms, customRoomsStorageKey]);
-
-  useEffect(() => {
-    if (!supabase) return;
-    void refreshPrivateRooms();
-  }, [refreshPrivateRooms]);
-
-  useEffect(() => {
-    if (!supabase) return;
-    let isCancelled = false;
-    const unsubscribe = subscribeChannelWithRetry(() =>
-      supabase
-        .channel("private_chat_rooms_sync")
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "private_chat_rooms" },
-          () => {
-            if (!isCancelled) void refreshPrivateRooms();
-          },
-        ),
-    );
-    return () => {
-      isCancelled = true;
-      unsubscribe();
-    };
-  }, [refreshPrivateRooms]);
 
   useEffect(() => {
     setDesignLogoInput(brandLogoUrl || "");
@@ -1379,28 +1259,15 @@ export default function ChatScreen({
     useState<UniversalStyleConfig | null>(null);
   const modalDragControls = useDragControls();
 
-  // --- AUTOMATION AND STORE SYSTEM STATES ---
-  const [subscription, setSubscription] = useState<any>(() =>
-    readJsonStorage(subscriptionStorageKey, null),
-  );
-  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
-  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
-  const [subscriptionNowMs, setSubscriptionNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setSubscriptionNowMs(Date.now()), 60_000);
-    return () => window.clearInterval(id);
-  }, []);
-  const hasActiveSubscription =
-    subscription?.isActive && (subscription?.expiresAt ?? 0) > subscriptionNowMs;
-  const subscriptionVisualRole = hasActiveSubscription
-    ? subscription.type === "platinum"
-      ? "platinum_vip"
-      : "vip"
-    : null;
-  const myVisualRole =
-    isOwnerRole || isAdminRole || roleLower === "mod"
-      ? roleLower
-      : subscriptionVisualRole || roleLower || "user";
+  const addLammaBotMessageRef = useRef<(roomId: string, message: string) => void>(() => {});
+  const addSystemActivityLogRef = useRef<
+    (
+      type: ActivityLog["type"],
+      userNickname: string,
+      details: string,
+      operatorNickname?: string,
+    ) => void
+  >(() => {});
 
   const buildActiveSessionState = (user: UserSession) => {
     const savedSub = readJsonStorage<any>(subscriptionStorageKey, null);
@@ -1434,6 +1301,56 @@ export default function ChatScreen({
   const [myActiveSession, setMyActiveSession] = useState(() =>
     buildActiveSessionState(currentUser),
   );
+
+  const {
+    subscription,
+    setSubscription,
+    subscriptionPlans,
+    pendingOrdersCount,
+    setPendingOrdersCount,
+    subscriptionVisualRole,
+    hasActiveSubscription,
+    handleAccelerateDays,
+    shopCheckout,
+  } = useStoreSubscription({
+    subscriptionStorageKey,
+    userId: currentUser.uid,
+    userNickname: currentUser.nickname,
+    userRole: currentUser.role,
+    userColor: currentUser.color || "white",
+    isOwnerRole,
+    activeRoomId,
+    addLammaBotMessage: (roomId, message) =>
+      addLammaBotMessageRef.current(roomId, message),
+    addSystemActivityLog: (type, userNickname, details, operatorNickname) =>
+      addSystemActivityLogRef.current(
+        type,
+        userNickname,
+        details,
+        operatorNickname,
+      ),
+    setMyActiveSession,
+  });
+
+  const {
+    shopTab,
+    setShopTab,
+    selectedProduct,
+    setSelectedProduct,
+    payGateway,
+    setPayGateway,
+    paymentAccountInput,
+    setPaymentAccountInput,
+    payStatus,
+    setPayStatus,
+    paymentLogs,
+    setPaymentLogs,
+  } = shopCheckout;
+
+  const myVisualRole =
+    isOwnerRole || isAdminRole || roleLower === "mod"
+      ? roleLower
+      : subscriptionVisualRole || roleLower || "user";
 
   useEffect(() => {
     setMyActiveSession((prev) => {
@@ -1480,16 +1397,6 @@ export default function ChatScreen({
       return {};
     }
   });
-  {
-    /* State for Create Room */
-  }
-  const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false);
-  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
-  const [isRoomPasswordModalOpen, setIsRoomPasswordModalOpen] = useState(false);
-  const [pendingRoomSwitchId, setPendingRoomSwitchId] = useState<string | null>(
-    null,
-  );
-  const [myPrivateRoomCount, setMyPrivateRoomCount] = useState(0);
   const [userStatus, setUserStatus] = useState("");
   const [isStatusHidden, setIsStatusHidden] = useState(false);
 
@@ -1512,20 +1419,6 @@ export default function ChatScreen({
   // Custom user suggestions friend request list
   const [friendSuggestions, setFriendSuggestions] = useState<any[]>([]);
 
-  // Shop interactive state variables
-  const [shopTab, setShopTab] = useState<
-    "vip" | "skins" | "badges" | "suggests" | "stats" | "maintenance" | "offers"
-  >("vip");
-  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
-  const [payGateway, setPayGateway] = useState<
-    "vodafone" | "instapay" | "paymob" | "stripe" | "paypal" | null
-  >(null);
-  const [paymentAccountInput, setPaymentAccountInput] = useState("");
-  const [payStatus, setPayStatus] = useState<
-    "idle" | "loading" | "success" | "error"
-  >("idle");
-  const [paymentLogs, setPaymentLogs] = useState<string[]>([]);
-
   // Client simulated parameters for the Mega Ban fingerprinting system
   const [myFingerprint] = useState(() => {
     let fp = localStorage.getItem("lamma_device_fp");
@@ -1545,16 +1438,6 @@ export default function ChatScreen({
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0.0.0",
   );
   const myIp = "غير متاح";
-
-  // Dynamic lists of banned users persisted in local storage
-  const [bannedUsersList, setBannedUsersList] = useState<BanInfo[]>(() => {
-    const saved = localStorage.getItem("lamma_banned_list");
-    try {
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
 
   // Current ban tracking state for the active logged-in user
   const [isCurrentlyBanned, setIsCurrentlyBanned] = useState(false);
@@ -2147,84 +2030,6 @@ export default function ChatScreen({
   useEffect(() => {
     localStorage.setItem("lamma_store_products", JSON.stringify(storeProducts));
   }, [storeProducts]);
-
-  // Global Automatic Bot Subscription Monitor
-  useEffect(() => {
-    if (!subscription || !subscription.isActive || !subscription.expiresAt)
-      return;
-
-    const botCheckSub = () => {
-      const now = Date.now();
-      const remainingMs = subscription.expiresAt - now;
-      const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
-
-      const savedReminders = readJsonStorage<Record<string, boolean>>(
-        "lamma_bot_reminders",
-        {},
-      );
-
-      if (remainingDays <= 0) {
-        // EXPIRED! BOT REMOVES VIP AUTOMATICALLY
-        const expiredSub = { ...subscription, isActive: false };
-        localStorage.setItem(subscriptionStorageKey, JSON.stringify(expiredSub));
-        setSubscription(expiredSub);
-
-        setMyActiveSession((prev) => ({
-          ...prev,
-          role: currentUser.role,
-          color: currentUser.color,
-          frame: "",
-          title: "",
-          badge: "",
-        }));
-
-        addLammaBotMessage(
-          activeRoomId || "room1",
-          `🤖 إشعار الاشتراك: انتهت صلاحية باقة VIP الخاصة بالعضو [${currentUser.nickname}] وتم تحديث المزايا تلقائياً.`,
-        );
-        addSystemActivityLog(
-          "demote",
-          currentUser.nickname,
-          "انقضاء فترة اشتراك VIP تلقائياً وسحب الصلاحيات من نظام الأتمتة.",
-          "🤖 LAMMA AUTO-BOT",
-        );
-      } else if (remainingDays === 1 && !savedReminders["1"]) {
-        savedReminders["1"] = true;
-        localStorage.setItem(
-          "lamma_bot_reminders",
-          JSON.stringify(savedReminders),
-        );
-        addLammaBotMessage(
-          activeRoomId || "room1",
-          `🤖 إشعار الاشتراك: يتبقى 24 ساعة على انتهاء باقة VIP الخاصة بالعضو [${currentUser.nickname}].`,
-        );
-      } else if (remainingDays <= 3 && !savedReminders["3"]) {
-        savedReminders["3"] = true;
-        localStorage.setItem(
-          "lamma_bot_reminders",
-          JSON.stringify(savedReminders),
-        );
-        addLammaBotMessage(
-          activeRoomId || "room1",
-          `🤖 إشعار الاشتراك: يتبقى 3 أيام على انتهاء باقة VIP الخاصة بالعضو [${currentUser.nickname}].`,
-        );
-      } else if (remainingDays <= 7 && !savedReminders["7"]) {
-        savedReminders["7"] = true;
-        localStorage.setItem(
-          "lamma_bot_reminders",
-          JSON.stringify(savedReminders),
-        );
-        addLammaBotMessage(
-          activeRoomId || "room1",
-          `🤖 إشعار الاشتراك: باقة VIP الخاصة بالعضو [${currentUser.nickname}] ستنتهي خلال 7 أيام.`,
-        );
-      }
-    };
-
-    botCheckSub();
-    const interval = setInterval(botCheckSub, 60000); // Smart Presence Optimization: Update every 60 seconds instead of 5
-    return () => clearInterval(interval);
-  }, [subscription, currentUser, activeRoomId]);
 
   // Product addition and modification variables
   const [newProdName, setNewProdName] = useState("");
@@ -5325,55 +5130,6 @@ export default function ChatScreen({
     }, 0);
   };
 
-  // Safe Room switching with block validation
-  const handleSwitchRoom = (roomId: string) => {
-    const isBanned = bannedUsersList.some(
-      (b) =>
-        b.nickname.toLowerCase() === currentUser.nickname.toLowerCase() &&
-        (b.type === "room" || b.type === "kick") &&
-        b.roomId === roomId,
-    );
-    if (isBanned) {
-      alert(
-        `🚫 تنبيه الغرف: عذراً! أنت محظور من دخول هذه الغرفة بقرار إداري من قبل المشرفين.`,
-      );
-      return;
-    }
-
-    const roleLower = (currentUser?.role || "").toLowerCase();
-    const isOwner = roleLower === "owner";
-    const isAdmin = roleLower === "admin" || isOwner;
-
-    if (roomId === "admin" && !isAdmin) {
-      alert("🛡️ غرفة الإدارة متاحة للمشرفين والمالك فقط. للشكاوى: ادخل غرفة «مساعدة وشكاوى» 📋");
-      return;
-    }
-
-    if (roomId === "owner" && !isOwner) {
-      alert("🎨 غرفة بوت التصميم متاحة للمالك فقط.");
-      return;
-    }
-
-    const privateRoom = customRooms.find((room) => room.id === roomId);
-    if (privateRoom?.isLocked) {
-      const isRoomOwner = privateRoom.ownerUid === currentUser.uid;
-      const isPrivileged = isOwner || isAdmin || isRoomOwner;
-      if (!isPrivileged && !isRoomUnlockedLocally(roomId)) {
-        setPendingRoomSwitchId(roomId);
-        setIsRoomPasswordModalOpen(true);
-        return;
-      }
-    }
-
-    setActiveRoomId(roomId);
-    setShowRoomsLists(false);
-
-    // Show bio/status
-    if (myCustomBio) {
-      // Bio displayed via UI
-    }
-  };
-
   const handleSubmitNicknameChangeRequest = async () => {
     const requestedNickname = nicknameRequestInput.trim();
 
@@ -6081,6 +5837,9 @@ export default function ChatScreen({
     });
   }, [isBotSilent, setRoomMessages]);
 
+  addLammaBotMessageRef.current = addLammaBotMessage;
+  addSystemActivityLogRef.current = addSystemActivityLog;
+
   const refreshChatReports = useCallback(async () => {
     if (isManagementRole) {
       const merged = await syncChatReportsForStaff();
@@ -6694,70 +6453,6 @@ export default function ChatScreen({
   useEffect(() => {
     activeRoomIdRef.current = activeRoomId;
   }, [activeRoomId]);
-
-  // ── Load real subscription plans from DB ────────────────────────────────
-  useEffect(() => {
-    fetchActivePlans()
-      .then(setSubscriptionPlans)
-      .catch((err) => console.warn("fetchActivePlans failed:", err));
-  }, []);
-
-  // ── Load user's DB subscription on mount ────────────────────────────────
-  useEffect(() => {
-    const uid = currentUser.uid;
-    if (!uid) return;
-    fetchMySubscription(uid)
-      .then((dbSub) => {
-        if (dbSub && dbSub.isActive) {
-          setSubscription((prev: any) => {
-            if (prev?.isActive && prev.expiresAt >= dbSub.expiresAt) return prev;
-            return { isActive: true, expiresAt: dbSub.expiresAt, badge: dbSub.badge, type: "vip" };
-          });
-        }
-      })
-      .catch((err) => console.warn("fetchMySubscription failed:", err));
-    const unsub = subscribeToMySubscription(uid, (activated) => {
-      setSubscription({ isActive: true, expiresAt: activated.expiresAt, badge: activated.badge, type: "vip" });
-      addLammaBotMessage(activeRoomIdRef.current, `🎉 تم تفعيل اشتراكك في ${activated.planName} بنجاح! استمتع بمميزاتك 💎`);
-    });
-    return unsub;
-  }, [currentUser.uid, addLammaBotMessage]);
-
-  // ── Owner: listen for new pending orders (badge notification) ───────────
-  useEffect(() => {
-    if (!isOwnerRole) return;
-    return subscribeToNewOrders(() => {
-      setPendingOrdersCount((c) => c + 1);
-    });
-  }, [isOwnerRole]);
-
-  const handleAccelerateDays = (days: number) => {
-    const sub = readJsonStorage<any>(subscriptionStorageKey, null);
-    if (!sub) {
-      alert(
-        "❌ لا يوجد اشتراك VIP نشط حالياً لتسريع عجلة الزمن عليه! يرجى شراء باقة VIP أولاً من واجهة المتجر.",
-      );
-      return;
-    }
-
-    if (!sub.isActive) {
-      alert("❌ الاشتراك الحالي معطل أو منتهي بالفعل!");
-      return;
-    }
-
-    // Physically advance time by making expiresAt closer (subtract days)
-    const adjustedSub = {
-      ...sub,
-      expiresAt: sub.expiresAt - days * 24 * 60 * 60 * 1000,
-    };
-    writeStorageValue(subscriptionStorageKey, JSON.stringify(adjustedSub));
-    setSubscription(adjustedSub);
-
-    addLammaBotMessage(
-      activeRoomId || "room1",
-      `⏳ تم تقديم الوقت بمقدار ${days} أيام على نظام متابعة الاشتراك لأغراض المراجعة.`,
-    );
-  };
 
   const { handleSendMessage: sendRoomMessage } = useRoomComposer({
     activeRoomId,
@@ -10774,7 +10469,14 @@ export default function ChatScreen({
               )}
 
               {isPostsRoom ? (
-                <SocialFeedPanel
+                <Suspense
+                  fallback={
+                    <div className="p-8 text-center text-gray-400 text-sm">
+                      جاري تحميل المنشورات…
+                    </div>
+                  }
+                >
+                  <SocialFeedPanel
                   posts={combinedFeedPosts}
                   scrollParentRef={feedViewportRef}
                   currentSession={myActiveSession}
@@ -10825,6 +10527,7 @@ export default function ChatScreen({
                     }
                   }}
                 />
+                </Suspense>
               ) : (
                 <>
                   {activeRoomDj?.isPlaying && (

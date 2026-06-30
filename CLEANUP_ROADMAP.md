@@ -171,7 +171,7 @@ src/features/chat/
 - `mediaStorageService` — public room media + design assets upload
 - `privateMessagesService.sendAdminPmMessage`
 
-**المتبقي (Phase 5+):** subscription UI orchestration، layout slices، bundle splitting.
+**المتبقي (Phase 6+):** layout slices إضافية، bundle splitting أوسع، اختبارات آلية.
 
 ---
 
@@ -187,6 +187,19 @@ src/features/chat/
 | CODE_WIKI + CLEANUP_ROADMAP محدّث | ✅ |
 
 **Services الجديدة:** `userProfileMetadataService`, `nicknameChangeService`, `ownerActivityLogService`, `ownerDashboardService` + توسيع `messagesService`, `mediaStorageService`, `moderationService`, `privateMessagesService`.
+
+## ✅ إغلاق المرحلة 5 — Layout Hooks + Bundle Split (2026-06-30)
+
+| البند | الحالة |
+|---|---|
+| Slice B — `useRoomNavigation` (غرف، تبويبات، كلمة مرور، realtime) | ✅ |
+| Slice F — `useStoreSubscription` (اشتراك، متجر، bot monitor) | ✅ |
+| Lazy-load `SocialFeedPanel` + `Suspense` | ✅ |
+| إزالة duplicates من `ChatScreen.tsx` | ✅ |
+| `verify:phase5` static layout gate | ✅ |
+| `verify:all` (lint + build + phase4 + phase5 + hardening + live + smoke + design) | ✅ |
+
+**Hooks الجديدة:** `useRoomNavigation`, `useStoreSubscription`.
 
 ## المرحلة 4: توحيد نظام الدخول ✅
 

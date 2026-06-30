@@ -20,6 +20,9 @@
 - PWA: `UpdateBanner`, `OnlineStatus`, `InstallPrompt` فقط — لا `ThemeFab` ولا `ThemeSettings`
 - `api/sitemap.js` موجود للـ SEO
 - `supabase-production-hardening.sql` + `scripts/apply-production-setup.mjs` للإنتاج
+- **Phase 4 (2026-06):** استخراج services (owner dashboard، nickname، activity logs، media) + `verify:phase4`
+- **Phase 5 (2026-06):** hooks `useRoomNavigation` + `useStoreSubscription`، lazy `SocialFeedPanel` + `verify:phase5`
+- `npm run verify:all` = lint + build + phase4 + phase5 + hardening + live + smoke + design
 
 ## 1. نظرة عامة
 
@@ -559,9 +562,9 @@ npm run preview
 
 ## 13. نقاط الضعف
 
-- `ChatScreen.tsx` ضخم (~13K سطر) — تم استخراج hooks وservices جزئيًا؛ Slice G (2026-06): PM admin، media upload، nickname requests، activity logs → services
+- `ChatScreen.tsx` لا يزال كبيرًا (~13K سطر) — Phase 4–5 (2026-06): services + `useRoomNavigation` + `useStoreSubscription` + lazy social feed
 - منطق Supabase الأساسي في `src/services/` — بقايا orchestration/sync داخل ChatScreen (owner settings، moderation realtime)
-- اختبارات smoke/hardening/live عبر `npm run verify:all`
+- اختبارات smoke/hardening/live/phase4/phase5 عبر `npm run verify:all`
 - `public/login.html` legacy redirect فقط — لا ازدواجية دخول فعلية
 
 ## 14. توصيات تحسين

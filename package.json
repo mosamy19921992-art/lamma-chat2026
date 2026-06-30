@@ -15,7 +15,8 @@
     "verify:design": "node scripts/verify-design-center-bundle.mjs && node scripts/verify-chase-light.mjs && node scripts/verify-neon-beam-prod.mjs && node scripts/verify-wallpaper-glass.mjs && node scripts/verify-design-flow.mjs && node scripts/stress-style-engine.mjs",
     "verify:extended": "npm run verify:design",
     "verify:phase4": "node scripts/verify-phase4-architecture.mjs",
-    "verify:all": "npm run lint && npm run build && npm run verify:phase4 && npm run verify:hardening && npm run verify:live && npm run verify:smoke && npm run verify:extended"
+    "verify:phase5": "node scripts/verify-phase5-layout.mjs",
+    "verify:all": "npm run lint && npm run build && npm run verify:phase4 && npm run verify:phase5 && npm run verify:hardening && npm run verify:live && npm run verify:smoke && npm run verify:extended"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
