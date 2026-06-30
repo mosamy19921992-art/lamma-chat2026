@@ -386,22 +386,26 @@ export const DesignCenterModal = ({
   const scrollDesignPanelToTop = () => {
     const anchor = designScrollAnchorRef.current;
     if (!anchor) return;
-    anchor.scrollIntoView({ block: "start", behavior: "instant" });
+    const modalShell = anchor.closest(".lamma-modal-shell");
+    if (!modalShell) return;
     let parent: HTMLElement | null = anchor.parentElement;
-    while (parent) {
+    while (parent && modalShell.contains(parent)) {
       const style = getComputedStyle(parent);
       if (
         (style.overflowY === "auto" || style.overflowY === "scroll") &&
         parent.scrollHeight > parent.clientHeight + 8
       ) {
-        parent.scrollTop = 0;
+        const parentRect = parent.getBoundingClientRect();
+        const anchorRect = anchor.getBoundingClientRect();
+        parent.scrollTop += anchorRect.top - parentRect.top - 8;
+        return;
       }
       parent = parent.parentElement;
     }
   };
 
   useEffect(() => {
-    scrollDesignPanelToTop();
+    queueMicrotask(scrollDesignPanelToTop);
   }, []);
 
   /* ── Ultimate Design System state ── */
@@ -1038,7 +1042,6 @@ export const DesignCenterModal = ({
     }
     cancelShapePreviews();
     setSection(next);
-    queueMicrotask(scrollDesignPanelToTop);
   };
 
   /** UDS: commit + sync immediately (no preview-only trap). */
