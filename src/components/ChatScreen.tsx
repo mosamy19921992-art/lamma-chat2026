@@ -5142,15 +5142,23 @@ export default function ChatScreen({
     const member = resolveChatMemberByNickname(nickname);
     if (!member) return;
     closeMobileChrome();
+    const useMobilePrivateTab =
+      typeof window !== "undefined" && window.innerWidth < 768;
     setPmTarget({
       nickname: member.nickname,
       role: normalizePmRole(member.role),
       avatar: member.avatar || "👤",
       uid: member.id,
     });
-    setMobileTab("private");
     setIsPmOpen(true);
+    if (useMobilePrivateTab) {
+      setMobileTab("private");
+    } else {
+      setMobileTab("chat");
+    }
     setActiveModal(null);
+    setShowPmListDropdown(false);
+    setShowPmSettings(false);
     setShowUserContextPop(false);
     setShowUserProfileBioPop(false);
     setShowProfilePageModal(false);
@@ -5483,6 +5491,7 @@ export default function ChatScreen({
   const [isPmOpen, setIsPmOpen] = useState(false);
   const [showPmAttachment, setShowPmAttachment] = useState(false);
   const [showPmEmojiPicker, setShowPmEmojiPicker] = useState(false);
+  const [showPmSettings, setShowPmSettings] = useState(false);
   const [pmTextScale, setPmTextScale] = useState(readPmTextScale);
   const [pmPanelTier, setPmPanelTier] = useState(readPmPanelTier);
 
@@ -12205,57 +12214,97 @@ export default function ChatScreen({
                   </div>
                 </div>
 
-                {/* PM tools — zoom text, resize window (desktop), clear chat */}
+                {/* PM tools — compact Messenger-style settings */}
                 <div
-                  className="flex items-center gap-1"
+                  className="relative flex items-center gap-1"
                   style={{ display: pmTarget.nickname.startsWith("🕵️") ? "none" : undefined }}
                 >
                   <button
                     type="button"
-                    onClick={() => adjustPmTextScale(-1)}
-                    disabled={pmTextScale <= PM_TEXT_SCALE_MIN}
-                    className="w-7 h-7 rounded-lg text-gray-400 flex items-center justify-center lamma-soft-action disabled:opacity-35"
-                    title="تصغير النص"
+                    onClick={() => setShowPmSettings((prev) => !prev)}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center lamma-soft-action ${
+                      showPmSettings ? "text-cyan-200 bg-cyan-500/15" : "text-gray-400"
+                    }`}
+                    title="إعدادات المحادثة"
                   >
-                    <ZoomOut size={12} />
+                    <SettingsIcon size={12} />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => adjustPmTextScale(1)}
-                    disabled={pmTextScale >= PM_TEXT_SCALE_MAX}
-                    className="w-7 h-7 rounded-lg text-gray-400 flex items-center justify-center lamma-soft-action disabled:opacity-35"
-                    title="تكبير النص"
-                  >
-                    <ZoomIn size={12} />
-                  </button>
-                  {mobileTab !== "private" && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setPmPanelTier((tier) => Math.max(0, tier - 1))
-                        }
-                        disabled={pmPanelTier <= 0}
-                        className="hidden md:flex w-7 h-7 rounded-lg text-gray-400 items-center justify-center lamma-soft-action disabled:opacity-35"
-                        title="تصغير النافذة"
+                  <AnimatePresence>
+                    {showPmSettings && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                        transition={{ duration: 0.12 }}
+                        className="absolute left-0 top-9 z-[10020] w-56 rounded-2xl p-3 lamma-popover-shell border border-white/10 text-right space-y-3"
+                        dir="rtl"
                       >
-                        <Minimize2 size={12} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setPmPanelTier((tier) =>
-                            Math.min(PM_PANEL_SIZES.length - 1, tier + 1),
-                          )
-                        }
-                        disabled={pmPanelTier >= PM_PANEL_SIZES.length - 1}
-                        className="hidden md:flex w-7 h-7 rounded-lg text-gray-400 items-center justify-center lamma-soft-action disabled:opacity-35"
-                        title="تكبير النافذة"
-                      >
-                        <Maximize2 size={12} />
-                      </button>
-                    </>
-                  )}
+                        <div>
+                          <div className="text-[10px] font-black text-white mb-2">
+                            حجم الكلام
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => adjustPmTextScale(-1)}
+                              disabled={pmTextScale <= PM_TEXT_SCALE_MIN}
+                              className="w-8 h-8 rounded-xl text-gray-300 flex items-center justify-center lamma-soft-action disabled:opacity-35"
+                              title="تصغير النص"
+                            >
+                              <ZoomOut size={13} />
+                            </button>
+                            <span className="px-3 py-1 rounded-xl bg-white/5 text-[10px] font-black text-cyan-100">
+                              {Math.round(pmTextScale * 100)}%
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => adjustPmTextScale(1)}
+                              disabled={pmTextScale >= PM_TEXT_SCALE_MAX}
+                              className="w-8 h-8 rounded-xl text-gray-300 flex items-center justify-center lamma-soft-action disabled:opacity-35"
+                              title="تكبير النص"
+                            >
+                              <ZoomIn size={13} />
+                            </button>
+                          </div>
+                        </div>
+                        {mobileTab !== "private" && (
+                          <div>
+                            <div className="text-[10px] font-black text-white mb-2">
+                              حجم النافذة
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPmPanelTier((tier) => Math.max(0, tier - 1))
+                                }
+                                disabled={pmPanelTier <= 0}
+                                className="hidden md:flex h-9 rounded-xl text-gray-300 items-center justify-center gap-1.5 lamma-soft-action disabled:opacity-35 text-[10px] font-black"
+                                title="تصغير النافذة"
+                              >
+                                <Minimize2 size={13} />
+                                أصغر
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPmPanelTier((tier) =>
+                                    Math.min(PM_PANEL_SIZES.length - 1, tier + 1),
+                                  )
+                                }
+                                disabled={pmPanelTier >= PM_PANEL_SIZES.length - 1}
+                                className="hidden md:flex h-9 rounded-xl text-gray-300 items-center justify-center gap-1.5 lamma-soft-action disabled:opacity-35 text-[10px] font-black"
+                                title="تكبير النافذة"
+                              >
+                                <Maximize2 size={13} />
+                                أكبر
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                   <button
                     type="button"
                     onClick={() => void handleClearPmConversation()}
@@ -12311,6 +12360,7 @@ export default function ChatScreen({
                   <button
                     type="button"
                     onClick={() => {
+                      setShowPmSettings(false);
                       if (mobileTab === "private") setMobileTab("chat");
                       else setIsPmOpen(false);
                     }}
