@@ -1,6 +1,7 @@
 import { supabase } from "../../lib/supabase";
 import { applyUniversalStyleToDom } from "./universalStyleApply";
-import { attachOverlaysToConfig } from "./designOverlayBundle";
+import { applyDesignOverlays, attachOverlaysToConfig, collectDesignOverlays } from "./designOverlayBundle";
+import { shouldPreferLocalChaseLight } from "./chaseLightBarService";
 import {
   UNIVERSAL_STYLE_SAVED_AT_KEY,
   UNIVERSAL_STYLE_STORAGE_KEY,
@@ -214,8 +215,14 @@ export function persistAndApplyUniversalStyle(config: UniversalStyleConfig): voi
   const normalized = normalizeUniversalStyleConfig(config);
   saveUniversalStyleLocal(normalized);
   applyUniversalStyleToDom(normalized, { preview: false });
-  void import("./designOverlayBundle").then(({ applyDesignOverlays }) => {
-    applyDesignOverlays(normalized.overlays);
+  const localOverlays = collectDesignOverlays();
+  const remoteOverlays = normalized.overlays;
+  applyDesignOverlays({
+    version: 1,
+    ...remoteOverlays,
+    ...(shouldPreferLocalChaseLight()
+      ? { chaseLight: localOverlays.chaseLight }
+      : {}),
   });
 }
 

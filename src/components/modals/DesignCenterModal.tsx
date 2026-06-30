@@ -21,6 +21,7 @@ import { commitBubbleShape, type BubbleShapeId } from '../../services/design/bub
 import {
   commitChaseLightSettings,
   cancelChaseLightPreview,
+  ensureChaseLightApplied,
   loadChaseLightSettings,
   commitNeonBeamTargets,
   clearNeonBeamTargets,
@@ -63,7 +64,7 @@ import {
   getPaletteLabel,
   type UDSSettings,
 } from '../../services/design/ultimateDesignSystemService';
-import { scheduleDesignOverlaysSync } from '../../services/design/designOverlaySync';
+import { flushDesignOverlaysSync, scheduleDesignOverlaysSync } from '../../services/design/designOverlaySync';
 import { applyFx2026FromLocalStorage } from '../../services/design/designOverlayBundle';
 
 type DesignSection = "colors" | "shapes" | "uploads" | "ultimate" | "mega" | "uiverse";
@@ -1098,27 +1099,41 @@ export const DesignCenterModal = ({
   };
 
   const toggleNeonBeamTarget = (target: NeonBeamTargetId) => {
+    if (!isOwnerRole) return;
     const next = neonBeamPicks.includes(target)
       ? neonBeamPicks.filter((id) => id !== target)
       : [...neonBeamPicks, target];
     setNeonBeamPicks(next);
-    if (commitNeonBeamTargets(next, { speedSec: 4 })) {
-      setChaseSettings(loadChaseLightSettings());
-      setNeonBeamPicks(getActiveNeonBeamTargets());
-      setPreviewKind(null);
-      setDesignPreviewActive(false);
-      scheduleDesignOverlaysSync();
+    const applied = commitNeonBeamTargets(next, { speedSec: 4 });
+    const active = getActiveNeonBeamTargets();
+    setNeonBeamPicks(active);
+    setChaseSettings(loadChaseLightSettings());
+    if (!applied) {
+      alert("⚠️ افتح غرفة الشات أولاً لتطبيق إطار النيون.");
+      return;
     }
+    ensureChaseLightApplied();
+    setPreviewKind(null);
+    setDesignPreviewActive(false);
+    scheduleDesignOverlaysSync();
+    void flushDesignOverlaysSync();
   };
 
   const handleClearNeonBeam = () => {
+    if (!isOwnerRole) return;
     setNeonBeamPicks([]);
-    if (clearNeonBeamTargets()) {
-      setChaseSettings(loadChaseLightSettings());
-      setPreviewKind(null);
-      setDesignPreviewActive(false);
-      scheduleDesignOverlaysSync();
+    const applied = clearNeonBeamTargets();
+    setNeonBeamPicks(getActiveNeonBeamTargets());
+    setChaseSettings(loadChaseLightSettings());
+    if (!applied) {
+      alert("⚠️ افتح غرفة الشات أولاً لإيقاف إطار النيون.");
+      return;
     }
+    ensureChaseLightApplied();
+    setPreviewKind(null);
+    setDesignPreviewActive(false);
+    scheduleDesignOverlaysSync();
+    void flushDesignOverlaysSync();
   };
 
   const handleCancelGlassPreview = () => {

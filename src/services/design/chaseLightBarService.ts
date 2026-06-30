@@ -71,6 +71,17 @@ const DEFAULT_SETTINGS: ChaseLightSettings = {
 
 let previewSnapshot: ChaseLightSettings | null = null;
 let pendingPreview: Partial<ChaseLightSettings> | null = null;
+/** Ignore stale remote chaseLight overlays briefly after a local owner edit. */
+let chaseLocalEditEpoch = 0;
+const CHASE_LOCAL_GUARD_MS = 4000;
+
+export function markChaseLightLocalEdit(): void {
+  chaseLocalEditEpoch = Date.now();
+}
+
+export function shouldPreferLocalChaseLight(): boolean {
+  return Date.now() - chaseLocalEditEpoch < CHASE_LOCAL_GUARD_MS;
+}
 
 function getRoot(): HTMLElement | null {
   if (typeof document === "undefined") return null;
@@ -278,8 +289,11 @@ export function commitChaseLightSettings(
   if (!ok) {
     ensureChaseLightApplied();
   }
-  if (!options?.skipSync) scheduleDesignOverlaysSync();
-  return ok || true;
+  if (!options?.skipSync) {
+    markChaseLightLocalEdit();
+    scheduleDesignOverlaysSync();
+  }
+  return ok;
 }
 
 export function cancelChaseLightPreview(): boolean {

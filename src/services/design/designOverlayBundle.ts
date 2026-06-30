@@ -3,7 +3,13 @@
  */
 import { applyFace, loadFace, saveFace, type CustomFace } from "../../lib/customFace";
 import { ensureBubbleShapeApplied, loadBubbleShapeId, commitBubbleShape, type BubbleShapeId } from "./bubbleShapeService";
-import { ensureChaseLightApplied, loadChaseLightSettings, commitChaseLightSettings, type ChaseLightSettings } from "./chaseLightBarService";
+import {
+  ensureChaseLightApplied,
+  loadChaseLightSettings,
+  commitChaseLightSettings,
+  shouldPreferLocalChaseLight,
+  type ChaseLightSettings,
+} from "./chaseLightBarService";
 import {
   ensureColumnCardStyleApplied,
   loadColumnCardStyleId,
@@ -96,7 +102,10 @@ export function applyDesignOverlays(bundle: Partial<DesignOverlaysBundle> | unde
     commitSidebarWidgetSettings(bundle.sidebarWidgets, skipSync);
   }
   if (bundle.chaseLight) {
-    commitChaseLightSettings(bundle.chaseLight, skipSync);
+    const chase = shouldPreferLocalChaseLight()
+      ? loadChaseLightSettings()
+      : bundle.chaseLight;
+    commitChaseLightSettings(chase, skipSync);
   }
   if (bundle.columnCard) {
     const id = bundle.columnCard.styleId ?? "neon-ring";
