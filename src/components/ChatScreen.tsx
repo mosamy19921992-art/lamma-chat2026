@@ -897,8 +897,12 @@ export default function ChatScreen({
   const activeRoomMeta =
     availableRooms.find((room) => room.id === activeRoomId) ||
     ROOMS_DEF.find((room) => room.id === activeRoomId);
-  const activeRoomDisplayName = activeRoomMeta?.name || activeRoomId;
-  const activeRoomDisplayIcon = activeOpenRoom?.flag || activeRoomMeta?.icon || "";
+  const activeRoomDisplayName =
+    activeRoomId === "owner"
+      ? "غرفة القيادة"
+      : activeOpenRoom?.name || activeRoomMeta?.name || activeRoomId;
+  const activeRoomDisplayIcon =
+    activeRoomId === "owner" ? "👑" : activeOpenRoom?.flag || activeRoomMeta?.icon || "";
   const activeRoomBg =
     roomBgMap[activeRoomId] || ownerBgImage || DEFAULT_AMBIENT_BG;
   const [designRoomBgInput, setDesignRoomBgInput] = useState<string>(
