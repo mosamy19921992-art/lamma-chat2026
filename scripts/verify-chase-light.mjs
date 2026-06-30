@@ -36,10 +36,31 @@ assert(css.includes("data-neon-beam-targets~=\"store\""), "neon-beam store selec
 assert(!css.includes("data-chase-columns=\"aurora-flow\""), "aurora-flow column CSS removed");
 assert(css.includes("data-us-sidebar-chase"), "legacy chase suppressed in CSS");
 
+const storage = readFileSync(
+  join(root, "src/services/design/universalStyleStorage.ts"),
+  "utf8",
+);
+const modal = readFileSync(
+  join(root, "src/components/modals/DesignCenterModal.tsx"),
+  "utf8",
+);
+const bundle = readFileSync(
+  join(root, "src/services/design/designOverlayBundle.ts"),
+  "utf8",
+);
 const apply = readFileSync(
   join(root, "src/services/design/universalStyleApply.ts"),
   "utf8",
 );
+
+assert(src.includes("shouldPreferLocalChaseLight"), "local chase guard exported");
+assert(src.includes("markChaseLightLocalEdit"), "local chase edit marker exists");
+assert(!src.includes("return ok || true"), "commitChaseLightSettings returns real apply status");
+assert(storage.includes("shouldPreferLocalChaseLight()"), "persistAndApplyUniversalStyle prefers local chase");
+assert(!storage.includes('void import("./designOverlayBundle")'), "overlay apply is synchronous");
+assert(bundle.includes("shouldPreferLocalChaseLight()"), "applyDesignOverlays respects local chase guard");
+assert(modal.includes("ensureChaseLightApplied()"), "design center re-applies neon after toggle");
+assert(modal.includes("flushDesignOverlaysSync()"), "design center flushes overlay sync on toggle");
 assert(
   apply.includes("Legacy rainbow sidebar chase removed"),
   "universalStyleApply no longer sets data-us-sidebar-chase",
