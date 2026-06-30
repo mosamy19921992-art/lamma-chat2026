@@ -9848,7 +9848,7 @@ export default function ChatScreen({
                       <span className="text-[10px] shrink-0">
                         {activeRoomDisplayIcon}
                       </span>
-                      <span className="text-[11px] font-black text-amber-100 truncate drop-shadow-[0_0_6px_rgba(251,191,36,0.35)]">
+                      <span className="lamma-active-room-name text-[11px] font-black text-amber-100 truncate drop-shadow-[0_0_6px_rgba(251,191,36,0.35)]">
                         {activeRoomDisplayName}
                       </span>
                     </div>

@@ -167,7 +167,7 @@ body.lamma-fx-crystal .lamma-neutral-glass .lamma-music-panel [data-design-regio
 
 /* ── Mobile + always-visible chat chrome (header, composer, design cards) ── */
 body.lamma-fx-holo .lamma-neutral-glass .lamma-header-wordmark,
-body.lamma-fx-holo .lamma-neutral-glass .lamma-room-header .font-black {
+body.lamma-fx-holo .lamma-neutral-glass .lamma-room-header .lamma-active-room-name {
   background: linear-gradient(90deg, #ff66cc, #00ffcc, #a855f7, #ff66cc) !important;
   background-size: 200% auto !important;
   -webkit-background-clip: text !important;
@@ -176,6 +176,16 @@ body.lamma-fx-holo .lamma-neutral-glass .lamma-room-header .font-black {
   color: transparent !important;
   animation: lamma-holo-text-shift 3s linear infinite !important;
   text-shadow: none !important;
+}
+
+body.lamma-fx-holo .lamma-neutral-glass .lamma-room-tab,
+body.lamma-fx-holo .lamma-neutral-glass .lamma-room-tab * {
+  background-image: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: inherit !important;
+  animation-name: none !important;
 }
 
 body.lamma-fx-aurora .lamma-neutral-glass .lamma-header,
