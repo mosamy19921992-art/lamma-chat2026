@@ -219,6 +219,7 @@ body.lamma-fx-shimmer .lamma-section-card::after {
   z-index: 4 !important;
   pointer-events: none !important;
   border: none !important;
+  opacity: 1 !important;
 }
 
 body.lamma-fx-float .lamma-neutral-glass .lamma-chat-body-stage,
@@ -349,14 +350,6 @@ body.lamma-fx-liquid .lamma-neutral-glass .lamma-store-panel button.flex-1:hover
     background: none !important;
     -webkit-text-fill-color: inherit !important;
     color: inherit !important;
-  }
-
-  body.lamma-fx-liquid .lamma-accent-btn::before,
-  body.lamma-fx-liquid .lamma-tab-soft::before,
-  body.lamma-fx-liquid .lamma-send-orb::before,
-  body.lamma-fx-liquid .lamma-neutral-glass .lamma-composer-layout .lamma-composer-slot-send::before,
-  body.lamma-fx-liquid .lamma-neutral-glass .lamma-store-panel button.flex-1::before {
-    display: none !important;
   }
 
   .lamma-pwa-app-shell .lamma-glass,

@@ -9983,13 +9983,15 @@ export default function ChatScreen({
                       />
                     )}
                     <div className="flex items-center gap-1 min-w-0 relative z-10">
-                      <span className={`text-[10px] leading-tight shrink-0 transition-all ${activeRoomId === room.id ? "drop-shadow-[0_0_4px_rgba(255,215,0,0.65)]" : ""}`}>{room.flag}</span>
+                      <span className={`text-[10px] leading-tight shrink-0 transition-all ${activeRoomId === room.id ? "drop-shadow-[0_0_4px_rgba(255,215,0,0.65)]" : ""}`}>
+                        {room.id === "owner" ? "👑" : room.flag}
+                      </span>
                       <span className={`text-[9.5px] whitespace-nowrap leading-tight transition-all ${
                         activeRoomId === room.id 
                           ? "text-amber-200 font-extrabold" 
                           : ""
                       }`}>
-                        {room.name}
+                        {room.id === "owner" ? "غرفة القيادة" : room.name}
                       </span>
                       {activeRoomId === room.id && (
                         <span className="w-[3px] h-[3px] rounded-full bg-amber-400 shadow-[0_0_5px_#ffd700] animate-[ping_1.5s_infinite] shrink-0" />
