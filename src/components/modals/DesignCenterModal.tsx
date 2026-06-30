@@ -65,7 +65,11 @@ import {
   type UDSSettings,
 } from '../../services/design/ultimateDesignSystemService';
 import { flushDesignOverlaysSync, scheduleDesignOverlaysSync } from '../../services/design/designOverlaySync';
-import { applyFx2026FromLocalStorage } from '../../services/design/designOverlayBundle';
+import {
+  applyFx2026FromLocalStorage,
+  applyFx2026ToBody,
+  markFx2026LocalEdit,
+} from '../../services/design/designOverlayBundle';
 
 type DesignSection = "colors" | "shapes" | "uploads" | "ultimate" | "mega" | "uiverse";
 
@@ -1186,10 +1190,13 @@ export const DesignCenterModal = ({
   }, [fxOn]);
 
   const toggleFx = (id: FxId) => {
+    if (!isOwnerRole) return;
     setFxOn((prev) => {
       const next = { ...prev, [id]: !prev[id] };
-      try { localStorage.setItem("lamma_fx_on", JSON.stringify(next)); } catch { /* non-fatal */ }
-      setTimeout(() => scheduleDesignOverlaysSync(), 80);
+      applyFx2026ToBody(next);
+      markFx2026LocalEdit();
+      scheduleDesignOverlaysSync();
+      void flushDesignOverlaysSync();
       return next;
     });
   };

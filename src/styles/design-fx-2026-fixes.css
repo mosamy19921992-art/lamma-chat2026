@@ -165,7 +165,112 @@ body.lamma-fx-crystal .lamma-neutral-glass .lamma-music-panel [data-design-regio
   animation-delay: 1.8s !important;
 }
 
-/* Hide broken crystal rule on glass ::before when neon frame is not active */
+/* ── Mobile + always-visible chat chrome (header, composer, design cards) ── */
+body.lamma-fx-holo .lamma-neutral-glass .lamma-header-wordmark,
+body.lamma-fx-holo .lamma-neutral-glass .lamma-room-header .font-black {
+  background: linear-gradient(90deg, #ff66cc, #00ffcc, #a855f7, #ff66cc) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  animation: lamma-holo-text-shift 3s linear infinite !important;
+  text-shadow: none !important;
+}
+
+body.lamma-fx-aurora .lamma-neutral-glass .lamma-header,
+body.lamma-fx-aurora .lamma-neutral-glass .lamma-composer-layout,
+body.lamma-fx-aurora .lamma-neutral-glass .lamma-room-header,
+body.lamma-fx-aurora .lamma-section-card {
+  box-shadow:
+    0 0 48px rgba(99, 102, 241, 0.22),
+    0 0 96px rgba(6, 182, 212, 0.14),
+    0 0 32px rgba(168, 85, 247, 0.12),
+    inset 0 0 24px rgba(99, 102, 241, 0.06) !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-header,
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-composer-layout,
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-room-header,
+body.lamma-fx-shimmer .lamma-section-card {
+  position: relative;
+  overflow: hidden;
+}
+
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-header::after,
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-composer-layout::after,
+body.lamma-fx-shimmer .lamma-neutral-glass .lamma-room-header::after,
+body.lamma-fx-shimmer .lamma-section-card::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 38% !important;
+  height: 100% !important;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.14),
+    transparent
+  ) !important;
+  animation: lamma-glass-sweep 3.8s ease-in-out infinite !important;
+  z-index: 4 !important;
+  pointer-events: none !important;
+  border: none !important;
+}
+
+body.lamma-fx-float .lamma-neutral-glass .lamma-chat-body-stage,
+body.lamma-fx-float .lamma-neutral-glass .lamma-composer-layout {
+  animation: lamma-float 5s ease-in-out infinite;
+}
+
+body.lamma-fx-rainbow .lamma-neutral-glass .lamma-header,
+body.lamma-fx-rainbow .lamma-neutral-glass .lamma-composer-layout,
+body.lamma-fx-rainbow .lamma-neutral-glass .lamma-room-header,
+body.lamma-fx-rainbow .lamma-section-card {
+  outline: none !important;
+  animation: lamma-rainbow-ring 4s linear infinite !important;
+}
+
+body.lamma-fx-crystal .lamma-neutral-glass .lamma-composer-layout > div:first-child,
+body.lamma-fx-crystal .lamma-neutral-glass .lamma-room-header {
+  position: relative;
+  z-index: 3;
+}
+
+body.lamma-fx-crystal .lamma-neutral-glass .lamma-composer-layout > div:first-child::after,
+body.lamma-fx-crystal .lamma-neutral-glass .lamma-room-header::after {
+  content: "✦" !important;
+  position: absolute !important;
+  top: 0 !important;
+  inset-inline-end: 0 !important;
+  font-size: 11px !important;
+  line-height: 1 !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  text-shadow: 0 0 8px rgba(150, 220, 255, 0.8) !important;
+  animation: lamma-crystal-spin 2.5s ease-in-out infinite !important;
+  pointer-events: none !important;
+  z-index: 6 !important;
+  background: none !important;
+  border: none !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+/* Neon frame on header/composer — box-shadow ring fallback when ::before is busy */
+.lamma-neutral-glass[data-neon-beam-targets~="header"] .lamma-header,
+.lamma-neutral-glass[data-chase-header="neon-beam"] .lamma-header,
+.lamma-neutral-glass[data-neon-beam-targets~="composer"] .lamma-composer-layout,
+.lamma-neutral-glass[data-chase-composer="neon-beam"] .lamma-composer-layout {
+  box-shadow:
+    0 0 0 var(--lamma-beam-thickness, 1.5px) rgba(255, 0, 110, 0.85),
+    0 0 12px rgba(255, 0, 110, 0.35),
+    0 0 22px rgba(124, 58, 237, 0.28),
+    0 0 32px rgba(0, 245, 212, 0.18) !important;
+}
+
 body.lamma-fx-crystal .lamma-neutral-glass:not([data-neon-beam-targets]) .lamma-side-column .lamma-glass.lamma-widget-card::before,
 body.lamma-fx-crystal .lamma-neutral-glass:not([data-neon-beam-targets]) .lamma-side-column [data-design-region="column-cards"].lamma-glass::before {
   content: none !important;
@@ -239,7 +344,6 @@ body.lamma-fx-liquid .lamma-neutral-glass .lamma-store-panel button.flex-1:hover
     opacity: 0 !important;
   }
 
-  body.lamma-fx-holo .lamma-section-card > div:first-child,
   body.lamma-fx-holo .lamma-neutral-glass .lamma-side-column [data-design-region="column-cards"] > div:first-child .font-black {
     animation: none !important;
     background: none !important;

@@ -1,7 +1,16 @@
 import { supabase } from "../../lib/supabase";
 import { applyUniversalStyleToDom } from "./universalStyleApply";
-import { applyDesignOverlays, attachOverlaysToConfig, collectDesignOverlays } from "./designOverlayBundle";
-import { shouldPreferLocalChaseLight } from "./chaseLightBarService";
+import {
+  applyDesignOverlays,
+  applyFx2026FromLocalStorage,
+  attachOverlaysToConfig,
+  collectDesignOverlays,
+  shouldPreferLocalFx2026,
+} from "./designOverlayBundle";
+import {
+  ensureChaseLightApplied,
+  shouldPreferLocalChaseLight,
+} from "./chaseLightBarService";
 import {
   UNIVERSAL_STYLE_SAVED_AT_KEY,
   UNIVERSAL_STYLE_STORAGE_KEY,
@@ -223,7 +232,12 @@ export function persistAndApplyUniversalStyle(config: UniversalStyleConfig): voi
     ...(shouldPreferLocalChaseLight()
       ? { chaseLight: localOverlays.chaseLight }
       : {}),
+    ...(shouldPreferLocalFx2026()
+      ? { fx2026: localOverlays.fx2026 }
+      : {}),
   });
+  ensureChaseLightApplied();
+  applyFx2026FromLocalStorage();
 }
 
 /** True when universal style uses the built-in chat wallpaper (MAN.png layer). */

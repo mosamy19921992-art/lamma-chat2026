@@ -73,7 +73,7 @@ let previewSnapshot: ChaseLightSettings | null = null;
 let pendingPreview: Partial<ChaseLightSettings> | null = null;
 /** Ignore stale remote chaseLight overlays briefly after a local owner edit. */
 let chaseLocalEditEpoch = 0;
-const CHASE_LOCAL_GUARD_MS = 4000;
+const CHASE_LOCAL_GUARD_MS = 8000;
 
 export function markChaseLightLocalEdit(): void {
   chaseLocalEditEpoch = Date.now();
@@ -81,6 +81,28 @@ export function markChaseLightLocalEdit(): void {
 
 export function shouldPreferLocalChaseLight(): boolean {
   return Date.now() - chaseLocalEditEpoch < CHASE_LOCAL_GUARD_MS;
+}
+
+/** Keep owner neon picks when stale remote overlays try to wipe them. */
+export function resolveChaseLightForRemoteApply(
+  remote: ChaseLightSettings | undefined,
+): ChaseLightSettings {
+  const local = loadChaseLightSettings();
+  if (shouldPreferLocalChaseLight()) return local;
+  if (!remote) return local;
+
+  const localTargets = getActiveNeonBeamTargets(local);
+  const remoteTargets = getActiveNeonBeamTargets(remote);
+  if (localTargets.length > 0 && remoteTargets.length < localTargets.length) {
+    const set = new Set(localTargets);
+    return normalizeSettings({
+      ...remote,
+      neonBeamTargets: localTargets,
+      composer: set.has("composer") ? "neon-beam" : "none",
+      header: set.has("header") ? "neon-beam" : "none",
+    });
+  }
+  return normalizeSettings(remote);
 }
 
 function getRoot(): HTMLElement | null {

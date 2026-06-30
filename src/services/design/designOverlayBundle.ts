@@ -7,7 +7,7 @@ import {
   ensureChaseLightApplied,
   loadChaseLightSettings,
   commitChaseLightSettings,
-  shouldPreferLocalChaseLight,
+  resolveChaseLightForRemoteApply,
   type ChaseLightSettings,
 } from "./chaseLightBarService";
 import {
@@ -64,6 +64,17 @@ export interface DesignOverlaysBundle {
 
 const skipSync = { skipSync: true as const };
 const CHAT_ROOT_SELECTOR = ".lamma-neutral-glass";
+/** Ignore stale remote fx2026 overlays briefly after a local owner edit. */
+let fxLocalEditEpoch = 0;
+const FX_LOCAL_GUARD_MS = 8000;
+
+export function markFx2026LocalEdit(): void {
+  fxLocalEditEpoch = Date.now();
+}
+
+export function shouldPreferLocalFx2026(): boolean {
+  return Date.now() - fxLocalEditEpoch < FX_LOCAL_GUARD_MS;
+}
 
 function loadFx2026(): Record<string, boolean> {
   try {
@@ -71,6 +82,17 @@ function loadFx2026(): Record<string, boolean> {
     return s ? (JSON.parse(s) as Record<string, boolean>) : {};
   } catch { return {}; }
 }
+
+const FX2026_IDS = [
+  "holo",
+  "aurora",
+  "shimmer",
+  "float",
+  "neon",
+  "rainbow",
+  "crystal",
+  "liquid",
+] as const;
 
 export function collectDesignOverlays(): DesignOverlaysBundle {
   const glass = loadGlassFormState();
@@ -102,10 +124,10 @@ export function applyDesignOverlays(bundle: Partial<DesignOverlaysBundle> | unde
     commitSidebarWidgetSettings(bundle.sidebarWidgets, skipSync);
   }
   if (bundle.chaseLight) {
-    const chase = shouldPreferLocalChaseLight()
-      ? loadChaseLightSettings()
-      : bundle.chaseLight;
-    commitChaseLightSettings(chase, skipSync);
+    commitChaseLightSettings(
+      resolveChaseLightForRemoteApply(bundle.chaseLight),
+      skipSync,
+    );
   }
   if (bundle.columnCard) {
     const id = bundle.columnCard.styleId ?? "neon-ring";
@@ -129,11 +151,23 @@ export function applyDesignOverlays(bundle: Partial<DesignOverlaysBundle> | unde
     applyUDSSettings(bundle.uds);
   }
   if (bundle.fx2026) {
-    try { localStorage.setItem("lamma_fx_on", JSON.stringify(bundle.fx2026)); } catch { /* non-fatal */ }
-    Object.entries(bundle.fx2026).forEach(([id, on]) => {
-      document.body.classList.toggle(`lamma-fx-${id}`, !!on);
-    });
+    applyFx2026ToBody(
+      shouldPreferLocalFx2026() ? loadFx2026() : bundle.fx2026,
+    );
   }
+}
+
+/** Apply FX 2026 toggles to body classes + localStorage. */
+export function applyFx2026ToBody(fx: Record<string, boolean>): void {
+  if (typeof document === "undefined") return;
+  try {
+    localStorage.setItem("lamma_fx_on", JSON.stringify(fx));
+  } catch {
+    // non-fatal
+  }
+  FX2026_IDS.forEach((id) => {
+    document.body.classList.toggle(`lamma-fx-${id}`, !!fx[id]);
+  });
 }
 
 export function attachOverlaysToConfig(
@@ -145,35 +179,11 @@ export function attachOverlaysToConfig(
   };
 }
 
-const FX2026_IDS = [
-  "holo",
-  "aurora",
-  "shimmer",
-  "float",
-  "neon",
-  "rainbow",
-  "crystal",
-  "liquid",
-] as const;
-
-function removeFx2026BodyClasses(): void {
-  FX2026_IDS.forEach((id) => {
-    document.body.classList.remove(`lamma-fx-${id}`);
-  });
-}
-
 /** Restore Magic 2026 FX body classes from localStorage (survives refresh). */
 export function applyFx2026FromLocalStorage(): void {
   if (typeof document === "undefined") return;
-  const root = document.querySelector(CHAT_ROOT_SELECTOR);
-  if (!root) {
-    removeFx2026BodyClasses();
-    return;
-  }
-  const parsed = loadFx2026();
-  FX2026_IDS.forEach((id) => {
-    document.body.classList.toggle(`lamma-fx-${id}`, !!parsed[id]);
-  });
+  if (!document.querySelector(CHAT_ROOT_SELECTOR)) return;
+  applyFx2026ToBody(loadFx2026());
 }
 
 /** Re-apply every shape/glass/chase overlay from live localStorage keys. */

@@ -53,14 +53,13 @@ const apply = readFileSync(
   "utf8",
 );
 
-assert(src.includes("shouldPreferLocalChaseLight"), "local chase guard exported");
-assert(src.includes("markChaseLightLocalEdit"), "local chase edit marker exists");
-assert(!src.includes("return ok || true"), "commitChaseLightSettings returns real apply status");
-assert(storage.includes("shouldPreferLocalChaseLight()"), "persistAndApplyUniversalStyle prefers local chase");
-assert(!storage.includes('void import("./designOverlayBundle")'), "overlay apply is synchronous");
-assert(bundle.includes("shouldPreferLocalChaseLight()"), "applyDesignOverlays respects local chase guard");
+assert(src.includes("resolveChaseLightForRemoteApply"), "stale remote cannot wipe neon picks");
+assert(bundle.includes("markFx2026LocalEdit"), "FX local edit guard exists");
+assert(bundle.includes("applyFx2026ToBody"), "FX applies to body immediately");
+assert(modal.includes("markFx2026LocalEdit()"), "design center marks FX local edit on toggle");
 assert(modal.includes("ensureChaseLightApplied()"), "design center re-applies neon after toggle");
 assert(modal.includes("flushDesignOverlaysSync()"), "design center flushes overlay sync on toggle");
+assert(storage.includes("ensureChaseLightApplied()"), "universal style re-applies neon after remote sync");
 assert(
   apply.includes("Legacy rainbow sidebar chase removed"),
   "universalStyleApply no longer sets data-us-sidebar-chase",
