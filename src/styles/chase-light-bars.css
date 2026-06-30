@@ -557,3 +557,26 @@ body.uds-rgb-wave .lamma-neutral-glass .lamma-glass.uds-container-rgb-wave::befo
 .lamma-neutral-glass[data-glass-form="background-reveal"][data-neon-beam-targets~="members"] .lamma-side-column .lamma-members-panel .lamma-glass {
   overflow: visible !important;
 }
+
+/* Chase neon-beam wins over UDS container neon (same ::before slot) */
+.lamma-neutral-glass[data-neon-beam-targets~="store"] .lamma-side-column .lamma-store-panel .lamma-glass[class*="uds-container-neon"],
+.lamma-neutral-glass[data-neon-beam-targets~="radio"] .lamma-side-column .lamma-radio-panel .lamma-glass[class*="uds-container-neon"],
+.lamma-neutral-glass[data-neon-beam-targets~="music"] .lamma-side-column .lamma-music-panel .lamma-glass[class*="uds-container-neon"],
+.lamma-neutral-glass[data-neon-beam-targets~="rooms"] .lamma-side-column .lamma-rooms-panel .lamma-glass[class*="uds-container-neon"],
+.lamma-neutral-glass[data-neon-beam-targets~="members"] .lamma-side-column .lamma-members-panel .lamma-glass[class*="uds-container-neon"],
+.lamma-neutral-glass[data-neon-beam-targets~="composer"] .lamma-composer-layout[class*="uds-container-neon"],
+.lamma-neutral-glass[data-neon-beam-targets~="header"] .lamma-header[class*="uds-container-neon"] {
+  overflow: visible !important;
+}
+
+.lamma-neutral-glass[data-neon-beam-targets~="store"] .lamma-side-column .lamma-store-panel .lamma-glass[class*="uds-container-neon"]::before,
+.lamma-neutral-glass[data-neon-beam-targets~="radio"] .lamma-side-column .lamma-radio-panel .lamma-glass[class*="uds-container-neon"]::before,
+.lamma-neutral-glass[data-neon-beam-targets~="music"] .lamma-side-column .lamma-music-panel .lamma-glass[class*="uds-container-neon"]::before,
+.lamma-neutral-glass[data-neon-beam-targets~="rooms"] .lamma-side-column .lamma-rooms-panel .lamma-glass[class*="uds-container-neon"]::before,
+.lamma-neutral-glass[data-neon-beam-targets~="members"] .lamma-side-column .lamma-members-panel .lamma-glass[class*="uds-container-neon"]::before,
+.lamma-neutral-glass[data-neon-beam-targets~="composer"] .lamma-composer-layout[class*="uds-container-neon"]::before,
+.lamma-neutral-glass[data-neon-beam-targets~="header"] .lamma-header[class*="uds-container-neon"]::before {
+  display: none !important;
+  content: none !important;
+  animation: none !important;
+}

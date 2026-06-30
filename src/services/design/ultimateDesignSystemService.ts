@@ -4,6 +4,7 @@
  */
 
 import { scheduleDesignOverlaysSync } from "./designOverlaySync";
+import { ensureChaseLightApplied } from "./chaseLightBarService";
 
 export type UDSNeonBorderStyle = 
   | "none"
@@ -185,6 +186,22 @@ function paletteToGlassTint(color: UDSPaletteColor | "none"): string | null {
   }
 }
 
+/** Chase neon-beam owns ::before on these cards — skip UDS neon classes there. */
+function elementMatchesNeonBeamTarget(el: Element): boolean {
+  const root = document.querySelector(CHAT_ROOT_SELECTOR);
+  if (!root) return false;
+  const attr = root.getAttribute("data-neon-beam-targets");
+  if (!attr) return false;
+  const targets = new Set(attr.split(/\s+/).filter(Boolean));
+  if (targets.has("store") && el.closest(".lamma-store-panel")) return true;
+  if (targets.has("radio") && el.closest(".lamma-radio-panel")) return true;
+  if (targets.has("music") && el.closest(".lamma-music-panel")) return true;
+  if (targets.has("rooms") && el.closest(".lamma-rooms-panel")) return true;
+  if (targets.has("members") && el.closest(".lamma-members-panel")) return true;
+  if (targets.has("composer") && el.classList.contains("lamma-composer-layout")) return true;
+  if (targets.has("header") && el.classList.contains("lamma-header")) return true;
+  return false;
+}
 
 export function applyUDSSettings(settings: UDSSettings): void {
   const body = document.body;
@@ -270,8 +287,8 @@ export function applyUDSSettings(settings: UDSSettings): void {
         }
       }
       
-      // Apply neon effects to containers
-      if (settings.neonBorder !== "none") {
+      // Apply neon effects to containers (skip chase neon-beam targets — they use ::before)
+      if (settings.neonBorder !== "none" && !elementMatchesNeonBeamTarget(el)) {
         const neonClass = getContainerNeonClass(settings.neonBorder);
         if (neonClass) {
           el.classList.add(neonClass);
@@ -280,6 +297,8 @@ export function applyUDSSettings(settings: UDSSettings): void {
       }
     });
   }
+
+  ensureChaseLightApplied();
 }
 
 /**

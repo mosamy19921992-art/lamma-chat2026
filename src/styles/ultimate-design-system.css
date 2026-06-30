@@ -948,16 +948,27 @@ body.uds-body-neon-led::after {
   position: relative;
 }
 
-/* Apply neon effects to containers */
+/* Apply neon effects to containers — visible border ring (not hidden behind z-index:-1) */
+.lamma-neutral-glass .lamma-side-column .lamma-glass.uds-container-neon-led,
+.lamma-neutral-glass .lamma-composer-layout.uds-container-neon-led,
+.lamma-neutral-glass .lamma-header.uds-container-neon-led {
+  overflow: visible !important;
+  isolation: isolate !important;
+}
+
 .uds-container-neon-led {
-  position: relative;
-  overflow: hidden;
+  position: relative !important;
+  overflow: visible !important;
+  isolation: isolate !important;
 }
 
 .uds-container-neon-led::before {
-  content: "";
-  position: absolute;
-  inset: -2px;
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: calc(-1 * var(--lamma-beam-outset, 3px)) !important;
+  border-radius: inherit !important;
+  padding: var(--lamma-beam-thickness, 1.5px) !important;
   background: conic-gradient(
     from 0deg,
     var(--uds-cyberpunk-pink),
@@ -966,54 +977,112 @@ body.uds-body-neon-led::after {
     var(--uds-electric-violet),
     var(--uds-gold-eclipse),
     var(--uds-cyberpunk-pink)
-  );
-  animation: uds-led-rotate 6s linear infinite;
-  z-index: -1;
+  ) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  animation: uds-led-rotate 4s linear infinite !important;
+  pointer-events: none !important;
+  z-index: 12 !important;
+}
+
+.uds-container-neon-led[data-color="pink"]::before {
+  background: conic-gradient(
+    from 0deg,
+    var(--uds-cyberpunk-pink),
+    var(--uds-rose-glow),
+    var(--uds-cyberpunk-pink)
+  ) !important;
+}
+
+.uds-container-neon-led[data-color="cyan"]::before {
+  background: conic-gradient(
+    from 0deg,
+    var(--uds-neon-cyan),
+    var(--uds-ice-blue),
+    var(--uds-neon-cyan)
+  ) !important;
+}
+
+.uds-container-neon-led[data-color="green"]::before {
+  background: conic-gradient(
+    from 0deg,
+    var(--uds-aurora-green),
+    var(--uds-emerald-spark),
+    var(--uds-aurora-green)
+  ) !important;
+}
+
+.uds-container-neon-led[data-color="violet"]::before {
+  background: conic-gradient(
+    from 0deg,
+    var(--uds-electric-violet),
+    var(--uds-plasma-purple),
+    var(--uds-electric-violet)
+  ) !important;
+}
+
+.uds-container-neon-led[data-color="gold"]::before {
+  background: conic-gradient(
+    from 0deg,
+    var(--uds-gold-eclipse),
+    var(--uds-solar-orange),
+    var(--uds-gold-eclipse)
+  ) !important;
 }
 
 .uds-container-neon-led::after {
-  content: "";
-  position: absolute;
-  inset: 2px;
-  background: inherit;
-  z-index: -1;
+  display: none !important;
+  content: none !important;
 }
 
 .uds-container-pulsing-glow {
-  position: relative;
+  position: relative !important;
+  overflow: visible !important;
 }
 
 .uds-container-pulsing-glow::before {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  background: var(--uds-cyberpunk-pink);
-  border-radius: inherit;
-  filter: blur(8px);
-  opacity: 0.6;
-  animation: uds-pulse 2s ease-in-out infinite;
-  z-index: -1;
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: calc(-1 * var(--lamma-beam-outset, 3px)) !important;
+  border-radius: inherit !important;
+  background: var(--uds-cyberpunk-pink) !important;
+  filter: blur(8px) !important;
+  opacity: 0.65 !important;
+  animation: uds-pulse 2s ease-in-out infinite !important;
+  pointer-events: none !important;
+  z-index: 11 !important;
 }
 
 .uds-container-border-aura {
-  position: relative;
+  position: relative !important;
+  overflow: visible !important;
 }
 
 .uds-container-border-aura::before {
-  content: "";
-  position: absolute;
-  inset: -2px;
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: calc(-1 * var(--lamma-beam-outset, 3px)) !important;
+  border-radius: inherit !important;
+  padding: var(--lamma-beam-thickness, 1.5px) !important;
   background: linear-gradient(
     45deg,
     var(--uds-neon-cyan),
     var(--uds-aurora-green),
     var(--uds-electric-violet),
     var(--uds-neon-cyan)
-  );
-  border-radius: inherit;
-  background-size: 400% 400%;
-  animation: uds-aura-flow 4s ease infinite;
-  z-index: -1;
+  ) !important;
+  background-size: 400% 400% !important;
+  animation: uds-aura-flow 4s ease infinite !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  pointer-events: none !important;
+  z-index: 12 !important;
 }
 
 .uds-container-rgb-wave {

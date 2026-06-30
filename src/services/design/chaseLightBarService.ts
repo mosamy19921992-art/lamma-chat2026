@@ -123,6 +123,36 @@ function buildNeonBeamTargetsAttr(settings: ChaseLightSettings): string {
   return NEON_BEAM_ALL_TARGETS.filter((id) => set.has(id)).join(" ");
 }
 
+const UDS_CONTAINER_NEON_CLASSES = [
+  "uds-container-neon-led",
+  "uds-container-pulsing-glow",
+  "uds-container-border-aura",
+  "uds-container-static-cyber",
+  "uds-container-rgb-wave",
+] as const;
+
+const NEON_BEAM_PANEL_GLASS_SELECTORS: Partial<Record<NeonBeamTargetId, string>> = {
+  store: ".lamma-store-panel .lamma-glass",
+  radio: ".lamma-radio-panel .lamma-glass",
+  music: ".lamma-music-panel .lamma-glass",
+  rooms: ".lamma-rooms-panel .lamma-glass",
+  members: ".lamma-members-panel .lamma-glass",
+};
+
+/** UDS container neon uses the same ::before — strip it on chase neon-beam cards. */
+function clearConflictingUdsNeonOnBeamTargets(settings: ChaseLightSettings): void {
+  if (typeof document === "undefined") return;
+  const targets = settings.neonBeamTargets ?? [];
+  for (const id of targets) {
+    const selector = NEON_BEAM_PANEL_GLASS_SELECTORS[id];
+    if (!selector) continue;
+    document.querySelectorAll(selector).forEach((node) => {
+      const el = node as HTMLElement;
+      UDS_CONTAINER_NEON_CLASSES.forEach((cls) => el.classList.remove(cls));
+    });
+  }
+}
+
 export function getActiveNeonBeamTargets(
   settings?: ChaseLightSettings,
 ): NeonBeamTargetId[] {
@@ -258,6 +288,7 @@ function applySettingsToDom(settings: ChaseLightSettings, preview: boolean): boo
   } else {
     root.removeAttribute("data-chase-light-preview");
   }
+  clearConflictingUdsNeonOnBeamTargets(settings);
   return true;
 }
 
