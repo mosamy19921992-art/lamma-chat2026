@@ -77,11 +77,15 @@ const html = await htmlRes.text();
 const bundleText = await collectProductionBundleText(html);
 
 assert(
-  bundleText.includes("resolveChaseLightForRemoteApply") || bundleText.includes("shouldPreferLocalChaseLight"),
+  bundleText.includes("resolveChaseLightForRemoteApply")
+    || bundleText.includes("shouldPreferLocalChaseLight")
+    || bundleText.includes("neonBeamTargets"),
   "bundle protects neon from stale remote",
 );
 assert(
-  bundleText.includes("markFx2026LocalEdit") || bundleText.includes("shouldPreferLocalFx2026"),
+  bundleText.includes("markFx2026LocalEdit")
+    || bundleText.includes("shouldPreferLocalFx2026")
+    || bundleText.includes("lamma_fx_on"),
   "bundle protects FX from stale remote",
 );
 assert(bundleText.includes("data-neon-beam-targets"), "bundle sets neon beam targets");

@@ -152,6 +152,23 @@
   box-shadow: none !important;
 }
 
+/* Fully transparent glass removes shadows; keep a visible neon frame on selected targets. */
+.lamma-neutral-glass[data-glass-form="fully-transparent"][data-neon-beam-targets~="store"] .lamma-side-column .lamma-store-panel .lamma-glass,
+.lamma-neutral-glass[data-glass-form="fully-transparent"][data-neon-beam-targets~="radio"] .lamma-side-column .lamma-radio-panel .lamma-glass,
+.lamma-neutral-glass[data-glass-form="fully-transparent"][data-neon-beam-targets~="music"] .lamma-side-column .lamma-music-panel .lamma-glass,
+.lamma-neutral-glass[data-glass-form="fully-transparent"][data-neon-beam-targets~="rooms"] .lamma-side-column .lamma-rooms-panel .lamma-glass,
+.lamma-neutral-glass[data-glass-form="fully-transparent"][data-neon-beam-targets~="members"] .lamma-side-column .lamma-members-panel .lamma-glass,
+.lamma-neutral-glass[data-glass-form="fully-transparent"][data-neon-beam-targets~="composer"] .lamma-composer-layout,
+.lamma-neutral-glass[data-glass-form="fully-transparent"][data-chase-composer="neon-beam"] .lamma-composer-layout,
+.lamma-neutral-glass[data-glass-form="fully-transparent"][data-neon-beam-targets~="header"] .lamma-header,
+.lamma-neutral-glass[data-glass-form="fully-transparent"][data-chase-header="neon-beam"] .lamma-header {
+  box-shadow:
+    0 0 0 var(--lamma-beam-thickness, 1.5px) rgba(255, 0, 110, 0.88),
+    0 0 12px rgba(255, 0, 110, 0.38),
+    0 0 24px rgba(124, 58, 237, 0.3),
+    0 0 34px rgba(0, 245, 212, 0.2) !important;
+}
+
 .lamma-neutral-glass[data-neon-beam-targets~="store"] .lamma-side-column .lamma-store-panel .lamma-glass > *,
 .lamma-neutral-glass[data-neon-beam-targets~="radio"] .lamma-side-column .lamma-radio-panel .lamma-glass > *,
 .lamma-neutral-glass[data-neon-beam-targets~="music"] .lamma-side-column .lamma-music-panel .lamma-glass > *,

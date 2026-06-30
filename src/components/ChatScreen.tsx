@@ -893,6 +893,12 @@ export default function ChatScreen({
   const visibleRoomCount = availableRooms.filter((room) => {
     return true;
   }).length;
+  const activeOpenRoom = openRooms.find((room) => room.id === activeRoomId);
+  const activeRoomMeta =
+    availableRooms.find((room) => room.id === activeRoomId) ||
+    ROOMS_DEF.find((room) => room.id === activeRoomId);
+  const activeRoomDisplayName = activeRoomMeta?.name || activeRoomId;
+  const activeRoomDisplayIcon = activeOpenRoom?.flag || activeRoomMeta?.icon || "";
   const activeRoomBg =
     roomBgMap[activeRoomId] || ownerBgImage || DEFAULT_AMBIENT_BG;
   const [designRoomBgInput, setDesignRoomBgInput] = useState<string>(
@@ -9833,10 +9839,20 @@ export default function ChatScreen({
                     autoFocus
                   />
                 ) : (
-                  <p className="text-[10.5px] font-black text-teal-50 truncate flex-1 leading-normal py-0 mt-0">
-                    {roomTopics[activeRoomId] ||
-                      "مرحباً بكم في الغرفة الذكية ✨"}
-                  </p>
+                  <div className="flex-1 min-w-0 py-0 mt-0 leading-normal">
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="text-[10px] shrink-0">
+                        {activeRoomDisplayIcon}
+                      </span>
+                      <span className="text-[11px] font-black text-amber-100 truncate drop-shadow-[0_0_6px_rgba(251,191,36,0.35)]">
+                        {activeRoomDisplayName}
+                      </span>
+                    </div>
+                    <p className="text-[9px] font-bold text-teal-50/80 truncate">
+                      {roomTopics[activeRoomId] ||
+                        "مرحباً بكم في الغرفة الذكية ✨"}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
