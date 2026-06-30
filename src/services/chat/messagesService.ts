@@ -78,6 +78,96 @@ interface PersistRoomMessageOptions {
   roomId: string;
 }
 
+interface PersistRoomMediaMessageOptions {
+  id: string;
+  roomId: string;
+  author: string;
+  color: string;
+  type: "image" | "video" | "audio";
+  mediaUrl: string;
+  senderUid: string;
+  youtubeId?: string | null;
+}
+
+export async function persistRoomMediaMessage({
+  id,
+  roomId,
+  author,
+  color,
+  type,
+  mediaUrl,
+  senderUid,
+  youtubeId = null,
+}: PersistRoomMediaMessageOptions): Promise<void> {
+  if (!supabase) {
+    throw new Error("تعذر إرسال الرسالة لأن اتصال Supabase غير متاح.");
+  }
+
+  const safeMedia =
+    mediaUrl && isSafeHttpUrl(mediaUrl) ? mediaUrl.slice(0, 2048) : null;
+  if (!safeMedia) {
+    throw new Error("رابط الوسائط غير آمن.");
+  }
+
+  const { error } = await supabase.from("messages").insert([
+    {
+      id,
+      room_id: roomId,
+      author,
+      text: "",
+      color: color || "#10b981",
+      type,
+      media_url: safeMedia,
+      youtube_id: youtubeId,
+      sender_uid: senderUid,
+    },
+  ]);
+
+  if (error) {
+    throw error;
+  }
+}
+
+interface PersistRoomGiftMessageOptions {
+  id: string;
+  roomId: string;
+  author: string;
+  color: string;
+  giftIcon: string;
+  senderUid: string;
+}
+
+export async function persistRoomGiftMessage({
+  id,
+  roomId,
+  author,
+  color,
+  giftIcon,
+  senderUid,
+}: PersistRoomGiftMessageOptions): Promise<void> {
+  if (!supabase) {
+    throw new Error("تعذر إرسال الهدية لأن اتصال Supabase غير متاح.");
+  }
+
+  const { error } = await supabase.from("messages").insert([
+    {
+      id,
+      room_id: roomId,
+      author,
+      text: `أرسل هدية ${giftIcon} في الغرفة 🎁`,
+      color: color || "#10b981",
+      type: "gift",
+      gift_icon: giftIcon,
+      gift_name: "هدية تفاعلية",
+      sender_uid: senderUid,
+    },
+  ]);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function persistRoomMessage({
   message,
   roomId,

@@ -291,10 +291,74 @@ async function main() {
       `HTTP ${userRoles.status}`,
     );
 
+    const isOwnerRpc = await fetch(`${SUPABASE_URL}/rest/v1/rpc/is_owner`, {
+      method: "POST",
+      headers: {
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${userToken}`,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    });
+    let isOwnerValue = null;
+    if (isOwnerRpc.ok) {
+      try {
+        isOwnerValue = await isOwnerRpc.json();
+      } catch {
+        isOwnerValue = null;
+      }
+    }
     record(
-      "Owner/admin roles must live in user_roles (not user_metadata)",
-      true,
-      "Verify manually in Supabase SQL: select * from user_roles;",
+      "Fresh session is_owner is false (roles from user_roles)",
+      isOwnerRpc.ok && isOwnerValue === false,
+      isOwnerRpc.ok
+        ? `is_owner=${JSON.stringify(isOwnerValue)}`
+        : `HTTP ${isOwnerRpc.status}`,
+    );
+
+    const roleRpc = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/current_app_role`,
+      {
+        method: "POST",
+        headers: {
+          apikey: ANON_KEY,
+          Authorization: `Bearer ${userToken}`,
+          "Content-Type": "application/json",
+        },
+        body: "{}",
+      },
+    );
+    let roleValue = null;
+    if (roleRpc.ok) {
+      try {
+        roleValue = await roleRpc.json();
+      } catch {
+        roleValue = null;
+      }
+    }
+    record(
+      "current_app_role defaults to user (not metadata owner)",
+      roleRpc.ok && (roleValue === "user" || roleValue === "guest"),
+      roleRpc.ok ? `role=${JSON.stringify(roleValue)}` : `HTTP ${roleRpc.status}`,
+    );
+
+    const ownerTableWrite = await rest("/banned_users", {
+      method: "POST",
+      token: userToken,
+      body: {
+        uid: "00000000-0000-0000-0000-000000000099",
+        author: "Attacker",
+        banner: "Attacker",
+        reason: "probe",
+        ban_type: "global",
+      },
+    });
+    record(
+      "Non-owner cannot insert banned_users",
+      ownerTableWrite.status === 403 ||
+        ownerTableWrite.status === 401 ||
+        ownerTableWrite.status === 400,
+      `HTTP ${ownerTableWrite.status}`,
     );
 
     try {
@@ -302,6 +366,18 @@ async function main() {
       const uidA = uidFromJwt(userToken);
       const uidB = uidFromJwt(tokenB);
       if (uidA && uidB) {
+        const peekOtherRole = await rest(
+          `/user_roles?select=role&user_id=eq.${uidB}`,
+          { token: userToken },
+        );
+        const leaked =
+          Array.isArray(peekOtherRole.body) && peekOtherRole.body.length > 0;
+        record(
+          "user_roles RLS hides other users' roles",
+          peekOtherRole.status === 200 && !leaked,
+          leaked ? "leaked role row" : `HTTP ${peekOtherRole.status}`,
+        );
+
         await verifyLaunchHardening(userToken, uidA, tokenB, uidB);
       } else {
         record("Launch hardening probe", false, "missing jwt sub");

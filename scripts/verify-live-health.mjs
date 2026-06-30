@@ -77,6 +77,17 @@ async function check(name, ok, detail) {
 const appRes = await fetch(APP_URL, { redirect: "follow" });
 await check("Production homepage", appRes.ok, String(appRes.status));
 
+const csp = appRes.headers.get("content-security-policy") || "";
+await check(
+  "Production CSP header present",
+  csp.includes("default-src") && csp.includes("supabase.co"),
+  csp ? "ok" : "missing",
+);
+await check(
+  "Production X-Frame-Options deny",
+  (appRes.headers.get("x-frame-options") || "").toUpperCase() === "DENY",
+);
+
 const settingsRes = await fetch(
   `${SUPABASE_URL}/rest/v1/public_chat_settings?id=eq.global&select=payload`,
   { headers },

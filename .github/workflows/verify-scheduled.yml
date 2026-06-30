@@ -20,21 +20,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify hardening
-        run: npm run verify:hardening
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-
-      - name: Verify live health
-        run: npm run verify:live
+      - name: Full quality gate (lint + build + verify)
+        run: npm run verify:all
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_APP_URL: https://lamma-arabic-chat-room.vercel.app
-
-      - name: Verify smoke E2E
-        run: npm run verify:smoke
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}

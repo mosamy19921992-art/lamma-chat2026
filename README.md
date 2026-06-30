@@ -128,9 +128,27 @@ supabase-storage.sql         bucket الوسائط
 supabase-production-hardening.sql          RLS إضافي
 supabase-participation-hardening.sql       حظر/invite/calls على السيرفر
 supabase-private-media.sql                 bucket خاص للوسائط الحساسة
+supabase-identity-hardening.sql            triggers للـ nicknames
+supabase-game-scores.sql                  جدول لوحة الشرف المشتركة للألعاب
 vercel.json                  إعدادات النشر
 AGENTS.md                    دليل AI agents
 ```
+
+## تفعيل لوحة الشرف المشتركة للألعاب
+
+لتفعيل لوحة الشرف المشتركة بين كل المستخدمين في غرفة Games:
+
+1. افتح لوحة Supabase لمشروعك
+2. اذهب إلى **SQL Editor**
+3. انسخ محتوى ملف `supabase-game-scores.sql`
+4. الصق الكود واضغط **Run**
+
+بعد التنفيذ:
+- جدول `game_scores` سيُنشأ
+- RPC `add_game_points` سيُنشأ
+- RLS ستُطبق (قراءة للكل، كتابة عبر RPC فقط)
+
+بدون هذا التنفيذ، النظام يرجع تلقائياً للـ localStorage محلي (يعمل لكن النقاط مشتركة فقط على نفس الجهاز).
 
 ## مراجع مهمة
 

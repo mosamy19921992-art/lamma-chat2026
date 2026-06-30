@@ -1002,6 +1002,8 @@ export const DesignCenterModal = ({
       const next = { ...loadFace(), [imageKey]: url, enabled: true };
       saveFace(next);
       applyFace(next);
+      scheduleDesignOverlaysSync();
+      flushDesignOverlaysSync();
       alert("✅ تم رفع صورة العمود وتطبيقها على الشات.");
     } catch (err) {
       console.warn("[DesignCenter] Column image upload failed:", err);
@@ -1117,8 +1119,8 @@ export const DesignCenterModal = ({
       return;
     }
     ensureChaseLightApplied();
-    setPreviewKind(null);
-    setDesignPreviewActive(false);
+      setPreviewKind(null);
+      setDesignPreviewActive(false);
     scheduleDesignOverlaysSync();
     void flushDesignOverlaysSync();
   };
@@ -1134,8 +1136,8 @@ export const DesignCenterModal = ({
       return;
     }
     ensureChaseLightApplied();
-    setPreviewKind(null);
-    setDesignPreviewActive(false);
+      setPreviewKind(null);
+      setDesignPreviewActive(false);
     scheduleDesignOverlaysSync();
     void flushDesignOverlaysSync();
   };
@@ -2056,10 +2058,10 @@ export const DesignCenterModal = ({
                               { id: "border-aura" as const, label: "هالة ضوئية" },
                               { id: "static-cyber" as const, label: "خط سيبر ثابت" },
                             ].map((style) => (
-                              <button
+                                <button
                                 key={style.id}
-                                type="button"
-                                onPointerDown={stopDrag}
+                                  type="button"
+                                  onPointerDown={stopDrag}
                                 onClick={() => {
                                   applyUdsNeonStyle(style.id);
                                 }}
@@ -2123,23 +2125,23 @@ export const DesignCenterModal = ({
                                 }`}
                               >
                                 {udsSettings.applyToBody ? "✅ مفعّل" : "⭕ معطّل"}
-                              </button>
-                            </div>
+                                </button>
+                          </div>
                           )}
 
                           {/* Apply to Containers Toggle for all neon effects */}
                           {udsSettings.neonBorder !== "none" && (
                             <div className="flex items-center justify-between mt-2">
                               <span className="text-[10px] text-gray-400 font-bold">تطبيق على البطاقات الجانبية</span>
-                              <button
-                                type="button"
-                                onPointerDown={stopDrag}
-                                onClick={() => {
+                          <button
+                            type="button"
+                            onPointerDown={stopDrag}
+                            onClick={() => {
                                   applyUdsLive({
                                     ...udsSettings,
                                     applyToContainers: !udsSettings.applyToContainers,
-                                  });
-                                }}
+                              });
+                            }}
                                 className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all ${
                                   udsSettings.applyToContainers
                                     ? "lamma-accent-btn text-white"
@@ -2147,7 +2149,7 @@ export const DesignCenterModal = ({
                                 }`}
                               >
                                 {udsSettings.applyToContainers ? "✅ مفعّل" : "⭕ معطّل"}
-                              </button>
+                          </button>
                             </div>
                           )}
                         </div>
@@ -2166,11 +2168,11 @@ export const DesignCenterModal = ({
                               { id: "dark-mirror" as const, label: "مرآة داكنة" },
                               { id: "velvet-blur" as const, label: "زجاج مخملي" },
                             ].map((style) => (
-                              <button
+                          <button
                                 key={style.id}
-                                type="button"
-                                onPointerDown={stopDrag}
-                                onClick={() => {
+                            type="button"
+                            onPointerDown={stopDrag}
+                            onClick={() => {
                                   applyUdsGlassStyle(style.id);
                                 }}
                                 className={`p-3 rounded-xl text-[10px] font-black transition-all ${
@@ -2180,7 +2182,7 @@ export const DesignCenterModal = ({
                                 }`}
                               >
                                 {style.label}
-                              </button>
+                          </button>
                             ))}
                           </div>
 
@@ -2197,11 +2199,11 @@ export const DesignCenterModal = ({
                                   { id: "electric-violet" as const, label: "بنفسجي", color: "#7209b7" },
                                   { id: "gold-eclipse" as const, label: "ذهبي", color: "#ffd60a" },
                                 ].map((c) => (
-                                  <button
+                          <button
                                     key={c.id}
-                                    type="button"
-                                    onPointerDown={stopDrag}
-                                    onClick={() => {
+                            type="button"
+                            onPointerDown={stopDrag}
+                            onClick={() => {
                                       applyUdsLive({ ...udsSettings, glassTint: c.id });
                                     }}
                                     className={`px-3 py-2 rounded-xl text-[10px] font-black border-2 transition-all ${
@@ -2212,11 +2214,11 @@ export const DesignCenterModal = ({
                                     style={{ backgroundColor: c.color + "20" }}
                                   >
                                     {c.label}
-                                  </button>
+                          </button>
                                 ))}
-                              </div>
-                            </div>
-                          )}
+                        </div>
+                      </div>
+                    )}
 
                           {/* Apply to Containers Toggle */}
                           {udsSettings.glassTexture !== "none" && (

@@ -11,6 +11,7 @@ import { getYoutubeId, isBrowserOnline, isLikelyNetworkError } from "../lib/chat
 import { moderateRoomMessage } from "../services/chat/roomModerationService";
 import { handleViolationEscalation } from "../services/chat/roomViolationService";
 import { checkAnswer, handleGameCommand } from "../services/chat/gamesBot";
+import { addGamePoints, fetchGameLeaderboard } from "../services/chat/gameScoresService";
 
 interface BotLogEntry {
   id: string;
@@ -183,6 +184,35 @@ export function useRoomComposer({
 
     // Games Bot — only active in the games room
     if (activeRoomId === "games") {
+      // /نقاط — fetch shared leaderboard from Supabase, fall back to local
+      if (/^\/نقاط|^\/leaderboard|^\/scores/i.test(trimmedInput)) {
+        setInputText("");
+        try {
+          const rows = await Promise.race([
+            fetchGameLeaderboard(),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error("timeout")), 3000),
+            ),
+          ]);
+          const medals = ["🥇", "🥈", "🥉"];
+          const board =
+            rows.length > 0
+              ? "🏆 لوحة الشرف:\n" +
+                rows
+                  .map(
+                    (r, i) =>
+                      `${medals[i] ?? `${i + 1}.`} ${r.nickname} — ${r.score} نقطة`,
+                  )
+                  .join("\n")
+              : "لا يوجد نقاط بعد — اكتب /سؤال لتبدأ!";
+          addLammaBotMessage("games", board);
+        } catch {
+          const cmdResult = handleGameCommand(trimmedInput, currentUser.nickname);
+          if (cmdResult) addLammaBotMessage("games", cmdResult.botMessage);
+        }
+        return;
+      }
+
       // 1. Check if it's a game command (/سؤال, /تلميح, etc.)
       const cmdResult = handleGameCommand(inputText, currentUser.nickname);
       if (cmdResult) {
@@ -195,6 +225,10 @@ export function useRoomComposer({
       if (ansResult) {
         // Let the user's message go through normally, then post the win message
         setTimeout(() => addLammaBotMessage("games", ansResult.botMessage), 400);
+        // Persist score to the shared Supabase leaderboard
+        if (ansResult.isWin && ansResult.pointsEarned) {
+          void addGamePoints(currentUser.nickname, ansResult.pointsEarned);
+        }
       }
     }
 

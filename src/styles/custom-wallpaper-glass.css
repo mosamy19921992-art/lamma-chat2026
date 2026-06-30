@@ -1,0 +1,55 @@
+/* Chat wallpaper — same treatment as column face images (direct cover on chat column). */
+
+.lamma-neutral-glass[data-custom-wallpaper="true"]:not([data-custom-face="on"]) .lamma-active-wallpaper {
+  display: none !important;
+}
+
+.lamma-neutral-glass[data-custom-wallpaper="true"]:not([data-custom-face="on"]) .lamma-chat-core-shell {
+  background: var(--chat-wallpaper-bg) !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+.lamma-neutral-glass[data-custom-wallpaper="true"]:not([data-custom-face="on"]) .lamma-chat-core-shell::before,
+.lamma-neutral-glass[data-custom-wallpaper="true"]:not([data-custom-face="on"]) .lamma-chat-core-shell::after,
+.lamma-neutral-glass[data-custom-wallpaper="true"]:not([data-custom-face="on"]) .lamma-column-frame.lamma-chat-core-shell::after {
+  display: none !important;
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
+.lamma-neutral-glass[data-custom-wallpaper="true"]:not([data-custom-face="on"]) .lamma-chat-core-shell .lamma-room-header,
+.lamma-neutral-glass[data-custom-wallpaper="true"]:not([data-custom-face="on"]) .lamma-chat-core-shell .lamma-topic-shell,
+.lamma-neutral-glass[data-custom-wallpaper="true"]:not([data-custom-face="on"]) .lamma-chat-core-shell .lamma-composer-layout,
+.lamma-neutral-glass[data-custom-wallpaper="true"]:not([data-custom-face="on"]) .lamma-chat-core-shell .lamma-composer-bar {
+  background: rgba(255, 255, 255, 0.03) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.05) !important;
+  backdrop-filter: blur(16px) saturate(1.05) !important;
+}
+
+.lamma-neutral-glass[data-custom-wallpaper="true"]:not([data-custom-face="on"]) .lamma-chat-core-shell .lamma-fire-scroll {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Column face uploads — must beat MMM.jpg defaults and wallpaper mode */
+.lamma-neutral-glass[data-custom-face="on"] aside[data-col="left"],
+.lamma-neutral-glass[data-custom-face="on"] aside[data-col="left"] .lamma-column-shell,
+.lamma-neutral-glass[data-custom-face="on"] .lamma-side-column[class*="border-r"] {
+  background: var(--face-col-left, rgba(14, 18, 24, 0.65)) !important;
+}
+
+.lamma-neutral-glass[data-custom-face="on"] aside[data-col="right"],
+.lamma-neutral-glass[data-custom-face="on"] aside[data-col="right"] .lamma-column-shell,
+.lamma-neutral-glass[data-custom-face="on"] .lamma-side-column[class*="border-l"] {
+  background: var(--face-col-right, rgba(14, 18, 24, 0.65)) !important;
+}
+
+.lamma-neutral-glass[data-custom-face="on"] .lamma-chat-core-shell {
+  background: var(--face-col-center, rgba(10, 14, 20, 0.55)) !important;
+}

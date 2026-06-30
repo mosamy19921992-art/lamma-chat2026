@@ -2,6 +2,7 @@ import { supabase } from "../../lib/supabase";
 
 export const PRIVATE_MEDIA_BUCKET = "chat-media-private";
 export const PUBLIC_MEDIA_BUCKET = "chat-media";
+export const DESIGN_ASSETS_BUCKET = "design-assets";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24; // 24 hours (playback re-signs via resolveMediaUrl)
 const SIGNED_URL_CACHE = new Map<string, { url: string; expiresAt: number }>();
@@ -138,4 +139,59 @@ export async function uploadPrivateMediaFile(
 
   const signedUrl = await signPrivatePath(objectPath);
   return { path: objectPath, signedUrl };
+}
+
+export async function uploadPublicRoomMediaFile(
+  file: File | Blob,
+  objectPath: string,
+  contentType: string,
+): Promise<{ publicUrl: string | null; error?: string }> {
+  if (!supabase) {
+    return { publicUrl: null, error: "Supabase not configured" };
+  }
+
+  const { error: uploadError } = await supabase.storage
+    .from(PUBLIC_MEDIA_BUCKET)
+    .upload(objectPath, file, {
+      cacheControl: "3600",
+      contentType,
+      upsert: false,
+    });
+
+  if (uploadError) {
+    return { publicUrl: null, error: uploadError.message };
+  }
+
+  const { data: publicData } = supabase.storage
+    .from(PUBLIC_MEDIA_BUCKET)
+    .getPublicUrl(objectPath);
+
+  return { publicUrl: publicData?.publicUrl ?? null };
+}
+
+export async function uploadDesignAssetFile(
+  file: File,
+  objectPath: string,
+): Promise<{ publicUrl: string | null; error?: string }> {
+  if (!supabase) {
+    return { publicUrl: null, error: "Supabase not configured" };
+  }
+
+  const { error: uploadError } = await supabase.storage
+    .from(DESIGN_ASSETS_BUCKET)
+    .upload(objectPath, file, {
+      cacheControl: "3600",
+      contentType: file.type || "application/octet-stream",
+      upsert: false,
+    });
+
+  if (uploadError) {
+    return { publicUrl: null, error: uploadError.message };
+  }
+
+  const { data: publicData } = supabase.storage
+    .from(DESIGN_ASSETS_BUCKET)
+    .getPublicUrl(objectPath);
+
+  return { publicUrl: publicData?.publicUrl ?? null };
 }

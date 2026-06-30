@@ -24,12 +24,16 @@
 
 ### 2.2 ما هو مقلق الآن
 
-- `src/components/ChatScreen.tsx` ضخم جدًا ومتعدد المسؤوليات
-- منطق `Supabase` موزع داخل الواجهة بشكل مباشر
-- إدارة الحالة تعتمد على `useState` و`useEffect` بكثافة داخل مكونات كبيرة
-- توجد بقايا بنية قديمة مثل `public/login.html`
-- لا توجد اختبارات آلية تغطي المسارات الحرجة
-- يوجد تداخل بين منطق الواجهة ومنطق العمل business logic
+- `src/components/ChatScreen.tsx` ضخم جدًا (~13K سطر) — orchestration owner/moderation لسه داخله
+- إدارة الحالة تعتمد على `useState`/`useEffect` بكثافة داخل ChatScreen
+- bundle `chat-screen` ~498KB gzip — يحتاج تقسيم lazy إضافي
+
+### 2.3 ما اتحسّن (2026)
+
+- طبقة `src/services/` (~70 ملف) — chat, auth, design, calls, store, social
+- hooks مستخرجة: `useChatMessages`, `usePrivateMessages`, `useWebRTCCalls`, `useRoomComposer`, …
+- `npm run verify:all` — lint + build + hardening + live + smoke + design
+- `public/login.html` — redirect إلى `/` فقط (لا ازدواجية دخول)
 
 ## 3. الأولويات
 
@@ -37,10 +41,10 @@
 
 هذه البنود يجب تنفيذها أولًا لأنها تؤثر على الاستقرار:
 
-1. تقليل الاعتماد على `ChatScreen.tsx` كمركز وحيد لكل شيء
-2. عزل تعاملات `Supabase` في ملفات خدمات واضحة
-3. تثبيت مسارات الدخول والرسائل والوسائط باختبارات مركزة
-4. توحيد نقطة الدخول وتحديد هل `public/login.html` ما زالت مطلوبة أم لا
+1. تقليل orchestration المتبقي في `ChatScreen.tsx` (owner sync، moderation realtime)
+2. تقسيم bundle ChatScreen (lazy panels إضافية)
+3. unit tests للـ services الحرجة
+4. ~~توحيد نقطة الدخول~~ — **تم**: `login.html` → redirect `/`
 
 ### 3.2 أولوية متوسطة
 
@@ -157,92 +161,38 @@ src/features/chat/
 - تقليل التشابك
 - تسهيل إصلاح الأعطال
 
-## المرحلة 3: إنشاء طبقة Services
+## المرحلة 3: طبقة Services ✅ (جزئي — مستمر)
 
-الهدف: نقل منطق `Supabase` من المكونات إلى ملفات خدمات واضحة.
+**الحالة:** ~70 service file موجود. Slice G (2026-06) نقل من ChatScreen:
+- `userProfileMetadataService` — temp entry topic + nickname metadata
+- `nicknameChangeService` — طلبات تغيير الاسم
+- `ownerActivityLogService` — سجل نشاط المالك
+- `messagesService` — media + gift persist
+- `mediaStorageService` — public room media + design assets upload
+- `privateMessagesService.sendAdminPmMessage`
 
-### المشكلة الحالية
+**المتبقي (Phase 5+):** subscription UI orchestration، layout slices، bundle splitting.
 
-الواجهة تتعامل مع Supabase مباشرة في أكثر من مكان، وهذا يجعل:
+---
 
-- إعادة الاستخدام أضعف
-- الاختبار أصعب
-- المنطق موزعًا داخل JSX وeffects
+## ✅ إغلاق المرحلة 4 — Architecture & Services (2026-06-30)
 
-### الهيكل المقترح
+| البند | الحالة |
+|---|---|
+| Slice G — media, PM admin, nickname, activity logs | ✅ |
+| Slice H — owner dashboard load/sync + banned_users CRUD | ✅ |
+| login.html → redirect `/` | ✅ |
+| `verify:phase4` static architecture gate | ✅ |
+| `verify:all` (lint + build + hardening + live + smoke + design) | ✅ |
+| CODE_WIKI + CLEANUP_ROADMAP محدّث | ✅ |
 
-```text
-src/services/
-  auth/
-    authService.ts
-  chat/
-    messagesService.ts
-    roomsService.ts
-    privateMessagesService.ts
-  admin/
-    moderationService.ts
-    ownerSettingsService.ts
-  media/
-    uploadService.ts
-```
+**Services الجديدة:** `userProfileMetadataService`, `nicknameChangeService`, `ownerActivityLogService`, `ownerDashboardService` + توسيع `messagesService`, `mediaStorageService`, `moderationService`, `privateMessagesService`.
 
-### أمثلة مسؤوليات
+## المرحلة 4: توحيد نظام الدخول ✅
 
-- `authService.ts`
-  - login
-  - register
-  - google auth
-  - sign out
-  - update profile nickname
+**الحالة:** `public/login.html` يعيد التوجيه إلى `/`. الدخول الرسمي: `LoginScreen.tsx` فقط.
 
-- `messagesService.ts`
-  - fetch room messages
-  - subscribe to room messages
-  - send message
-  - delete or edit if needed later
-
-- `moderationService.ts`
-  - load bans
-  - add ban
-  - remove ban
-  - merge moderation state
-
-### نتيجة المرحلة
-
-- منطق الأعمال يصبح خارج JSX
-- المكونات تصبح أوضح وأقرب لطبقة العرض فقط
-
-## المرحلة 4: توحيد نظام الدخول
-
-الهدف: إنهاء الازدواجية بين الدخول عبر React والدخول عبر الصفحة الثابتة القديمة.
-
-### المشكلة الحالية
-
-يوجد أكثر من مسار دخول:
-
-- `src/components/LoginScreen.tsx`
-- `public/login.html`
-- `public/assets/login.js`
-
-### القرار المطلوب
-
-اختيار واحد من اثنين:
-
-1. الإبقاء على `login.html` كصفحة مستقلة فعلًا
-2. أو حذفها تدريجيًا والاعتماد على React فقط
-
-### التوصية
-
-- إذا لا توجد حاجة تسويقية أو تشغيلية خاصة بالصفحة الثابتة:
-  - اجعل React هو المسار الرسمي الوحيد
-  - انقل أي منطق مفيد من `public/assets/login.js`
-  - احذف الـ legacy path لاحقًا
-
-### نتيجة المرحلة
-
-- مسار دخول واحد
-- صيانة أسهل
-- احتمالات أقل للتعارض
+~~اختيار واحد من اثنين~~ — **تم**: React هو المسار الوحيد؛ `login.html` redirect للروابط القديمة.
 
 ## المرحلة 5: الاختبارات
 

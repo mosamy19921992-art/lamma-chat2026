@@ -62,8 +62,8 @@ Browser
 - طبقة الهوكس العامة: `src/hooks`
 - طبقة العقود والمساعدات والثوابت: `src/lib`
 - طبقة الملفات الثابتة وPWA: `public`
-- طبقة منطق الأعمال: `src/services`
-- طبقة endpoint السيرفري الخفيف: `api/sitemap.js`
+- طبقة منطق الأعمال: `src/services` (~70 ملف: chat, design, auth, calls, store, social, profile)
+- طبقة Vercel API: `api/` (`sitemap`, `ensure-owner`, `gemini-design`, `fetch-uiverse`, `_lib/apiSecurity.js`)
 - طبقة البنية البيانية: سلسلة `supabase-*.sql` (انظر `scripts/apply-production-setup.mjs`)
 
 ## 3. مسار التشغيل
@@ -383,7 +383,7 @@ Service Worker فعلي يحتوي:
 
 ### 6.4 `public/login.html`
 
-صفحة دخول HTML مستقلة ما زالت موجودة داخل المشروع. تبدو كواجهة موازية أو legacy login page، بينما نقطة الدخول الأساسية الحالية ما زالت عبر React من `src/main.tsx`.
+صفحة legacy — **تُعيد التوجيه فورًا إلى `/`** (`window.location.replace("/")`) للحفاظ على روابط قديمة. مسار الدخول الرسمي: `LoginScreen.tsx` عبر React SPA.
 
 ## 7. العلاقات بين الموديولات
 
@@ -559,22 +559,17 @@ npm run preview
 
 ## 13. نقاط الضعف
 
-- `ChatScreen.tsx` ضخم جدًا ومتعدد المسؤوليات
-- منطق الأعمال موزع بين الواجهة أكثر من اللازم
-- `ChatScreen.tsx` لا يزال ضخماً رغم وجود `src/services/` جزئياً
-- لا توجد اختبارات آلية واضحة
-- توجد بقايا بنية legacy مثل `public/login.html`
+- `ChatScreen.tsx` ضخم (~13K سطر) — تم استخراج hooks وservices جزئيًا؛ Slice G (2026-06): PM admin، media upload، nickname requests، activity logs → services
+- منطق Supabase الأساسي في `src/services/` — بقايا orchestration/sync داخل ChatScreen (owner settings، moderation realtime)
+- اختبارات smoke/hardening/live عبر `npm run verify:all`
+- `public/login.html` legacy redirect فقط — لا ازدواجية دخول فعلية
 
 ## 14. توصيات تحسين
 
-1. تفكيك `ChatScreen.tsx` إلى features أو hooks فرعية
-2. مواصلة استخراج منطق من `ChatScreen.tsx` إلى `src/services/`
-3. توحيد منطق الدخول بين شاشة React وصفحة `public/login.html`
-4. إضافة اختبارات مركزة لمسارات:
-   - الدخول
-   - إرسال الرسائل
-   - رفع الوسائط
-   - صلاحيات الإدارة
+1. تفكيك `ChatScreen.tsx` تدريجيًا (layout → rooms → design shell → owner sync)
+2. مواصلة نقل orchestration المتبقي من ChatScreen إلى services
+3. إضافة unit tests للـ services الجديدة (nickname, media, metadata)
+4. توسيع `verify:all` لتغطية مسارات: الدخول، إرسال الرسائل، رفع الوسائط، صلاحيات الإدارة
 5. تقليل الاعتماد على الحالة المحلية العملاقة داخل شاشة الشات
 
 ## 15. مسار قراءة مقترح لمطور جديد

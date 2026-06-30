@@ -236,7 +236,10 @@ import {
 import {
   applyModerationAction,
   banActionForType,
+  deleteBannedUsersByIds,
+  fetchBannedUserRows,
   fetchMyActiveSanctions,
+  insertBannedUserRow,
   mapBannedUserRowToBanInfo,
 } from "../services/chat/moderationService";
 import {
@@ -310,10 +313,46 @@ import {
   clearPrivateConversation,
   createOptimisticPmMessage,
   persistPrivateMessage,
+  sendAdminPmMessage,
   uploadPrivateMediaFile,
 } from "../services/chat/privateMessagesService";
 import { subscribeChannelWithRetry } from "../services/chat/realtimeUtils";
-import { persistMessageReaction, buildReplyPreview } from "../services/chat/messagesService";
+import {
+  persistMessageReaction,
+  buildReplyPreview,
+  persistRoomMediaMessage,
+  persistRoomGiftMessage,
+} from "../services/chat/messagesService";
+import { syncOwnerActivityLog } from "../services/chat/ownerActivityLogService";
+import {
+  fetchOwnerDashboardBundle,
+  upsertOwnerSettingsRow,
+  upsertOwnerMemberPermissions,
+  listOwnerMemberCosmeticNicknames,
+  deleteOwnerMemberCosmetic,
+  upsertOwnerMemberCosmetics,
+  OWNER_SETTINGS_ROW_ID,
+} from "../services/chat/ownerDashboardService";
+import {
+  fetchTempEntryTopicMetadata,
+  updateAuthNicknameMetadata,
+  updateTempEntryTopicMetadata,
+} from "../services/auth/userProfileMetadataService";
+import {
+  fetchNicknameChangeRequests,
+  processNicknameChangeRequest,
+  submitNicknameChangeRequest,
+} from "../services/profile/nicknameChangeService";
+import {
+  uploadDesignAssetFile,
+  uploadPublicRoomMediaFile,
+} from "../services/storage/mediaStorageService";
+import {
+  getOfficialBotByNickname,
+  getOfficialBotsForRoom,
+  isOfficialBotNickname,
+  OFFICIAL_BOT_AUTHORS,
+} from "../services/chat/officialBotsService";
 import RealtimeStatus from "./pwa/RealtimeStatus";
 import { upsertCurrentUserProfile, fetchUserProfileByNickname } from "../services/social/userProfileService";
 import { deleteSocialPost } from "../services/social/socialPostsService";
@@ -325,7 +364,58 @@ import {
 } from "./pwa/MobileBottomNav";
 import type { SocialPost } from "../lib/socialTypes";
 
-const OWNER_SETTINGS_ROW_ID = "global";
+function OfficialBotMemberRow({
+  bot,
+  onInfo,
+  variant,
+  isLast,
+}: {
+  bot: ChatMember;
+  onInfo: (bot: ChatMember) => void;
+  variant: "sidebar" | "panel";
+  isLast?: boolean;
+}) {
+  const cleanName = getShortenedNickname(bot.nickname);
+  const rowClass =
+    variant === "sidebar"
+      ? `p-1.5 px-2 rounded-xl hover:bg-white/5 flex items-center justify-between cursor-pointer transition-all lamma-list-item lamma-official-bot-member ${isLast ? "" : "mb-1"}`
+      : `p-2 px-2.5 hover:bg-white/5 flex items-center justify-between cursor-pointer transition-all lamma-official-bot-member ${isLast ? "" : "border-b border-white/5"}`;
+
+  return (
+    <div
+      onClick={() => onInfo(bot)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onInfo(bot);
+      }}
+      className={rowClass}
+      title={bot.bio || "بوت رسمي — لا يقبل رسائل خاصة"}
+    >
+      <div className="flex items-center gap-2 overflow-hidden flex-1 text-right">
+        <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-white/5 rounded-full border border-white/10 overflow-hidden">
+          <MemberAvatar
+            avatar={bot.avatar}
+            size={variant === "sidebar" ? "md" : "sm"}
+            className="w-full h-full"
+            imageClassName="w-full h-full rounded-full"
+          />
+        </div>
+        <div className="flex flex-col truncate">
+          <span
+            style={{ color: bot.color }}
+            className="font-bold text-[11px] truncate leading-tight lamma-author-name"
+          >
+            {cleanName}
+          </span>
+          <span className="text-[8px] text-emerald-300/80 font-bold truncate">
+            {bot.badge || "بوت رسمي"}
+          </span>
+        </div>
+      </div>
+      <span className="text-[8px] text-gray-500 shrink-0 ml-1.5 font-mono">BOT</span>
+    </div>
+  );
+}
 
 const PM_TEXT_SCALE_MIN = 0.85;
 const PM_TEXT_SCALE_MAX = 1.45;
@@ -682,22 +772,9 @@ export default function ChatScreen({
   // Admin Message Handler
   const handleSendAdminMessage = async (targetNickname: string, message: string) => {
     if (!supabase) return;
-    
-    try {
-      const senderUid = await requireAuthenticatedUid();
-      
-      // Send as admin message (from "admin" to target user)
-      const { error } = await supabase.from("pm_messages").insert([{
-        sender_uid: "admin",
-        sender_nickname: "الأدمن",
-        receiver_uid: targetNickname,
-        receiver_nickname: targetNickname,
-        text: message,
-        type: "text",
-        is_read: false,
-      }]);
 
-      if (error) throw error;
+    try {
+      await sendAdminPmMessage(targetNickname, message);
 
       addSystemActivityLog(
         "promote",
@@ -909,6 +986,20 @@ export default function ChatScreen({
     roomBgMap[activeRoomId] || "",
   );
   const isDefaultAmbientBg = activeRoomBg === DEFAULT_AMBIENT_BG;
+  const activeCustomFace = loadFace();
+  const hasColumnFaceImages =
+    activeCustomFace.enabled &&
+    Boolean(
+      activeCustomFace.leftImage ||
+        activeCustomFace.centerImage ||
+        activeCustomFace.rightImage,
+    );
+  const hasCustomWallpaper =
+    Boolean(activeRoomBg) &&
+    !isDefaultAmbientBg &&
+    activeRoomBg !== "/bg.jpg" &&
+    activeRoomBg !== "/MAN.png" &&
+    !hasColumnFaceImages;
   const isChatColumnExpanded = isLeftColumnCollapsed || isRightColumnCollapsed;
   const readStoredTempEntryTopic = () => {
     if (typeof window === "undefined") {
@@ -1532,23 +1623,22 @@ export default function ChatScreen({
       target_user_id: resolveBanTargetUserId(ban),
     };
 
-    const { data, error } = await supabase
-      .from("banned_users")
-      .insert(payload)
-      .select("*")
-      .single();
+    const { data, error: insertError } = await insertBannedUserRow(payload);
 
-    if (error) {
-      console.warn("Failed to sync ban entry to Supabase", error);
+    if (insertError) {
+      console.warn("Failed to sync ban entry to Supabase", insertError);
       return {
         ok: false,
-        error: formatSupabaseUserError(error, "تعذر مزامنة الحظر مع السيرفر."),
+        error: formatSupabaseUserError(
+          insertError,
+          "تعذر مزامنة الحظر مع السيرفر.",
+        ),
       };
     }
 
     if (data) {
       setBannedUsersList((prev) =>
-        mergeBanLists(prev, [parseBannedUserRow(data as BannedUserRow)]),
+        mergeBanLists(prev, [parseBannedUserRow(data)]),
       );
     } else {
       setBannedUsersList((prev) => mergeBanLists(prev, [ban]));
@@ -1608,15 +1698,15 @@ export default function ChatScreen({
         .filter((id): id is string => isUuidLike(id));
 
       if (remoteIds.length > 0) {
-        const { error } = await supabase
-          .from("banned_users")
-          .delete()
-          .in("id", remoteIds);
+        const { error: deleteError } = await deleteBannedUsersByIds(remoteIds);
 
-        if (error) {
+        if (deleteError) {
           return {
             ok: false,
-            error: formatSupabaseUserError(error, "تعذر إزالة الحظر من السيرفر."),
+            error: formatSupabaseUserError(
+              deleteError,
+              "تعذر إزالة الحظر من السيرفر.",
+            ),
           };
         }
       }
@@ -1771,29 +1861,12 @@ export default function ChatScreen({
 
     let cancelled = false;
     const syncTempEntryTopic = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        console.warn("Failed to load temp entry topic metadata:", error);
-        return;
-      }
+      const metadata = await fetchTempEntryTopicMetadata();
+      if (cancelled || !metadata) return;
 
-      if (cancelled) return;
-
-      const metadata = data.user?.user_metadata ?? {};
-      const metadataText =
-        typeof metadata.temp_entry_topic === "string"
-          ? metadata.temp_entry_topic.trim().slice(0, 60)
-          : "";
-      const metadataEnabled =
-        metadata.temp_entry_topic_enabled === true && Boolean(metadataText);
-
-      if (!metadataText && metadata.temp_entry_topic_enabled !== true) {
-        return;
-      }
-
-      setTempEntryTopicInput(metadataText);
-      setTempEntryTopicEnabled(metadataEnabled);
-      persistTempEntryTopic(metadataText, metadataEnabled);
+      setTempEntryTopicInput(metadata.text);
+      setTempEntryTopicEnabled(metadata.enabled);
+      persistTempEntryTopic(metadata.text, metadata.enabled);
     };
 
     void syncTempEntryTopic();
@@ -2806,6 +2879,15 @@ export default function ChatScreen({
     localStorage.setItem("lamma_bot_rule_swear", String(botRuleSwearFilter));
   }, [botRuleSwearFilter]);
 
+  const officialBotsInRoom = useMemo(() => {
+    const humanNickSet = new Set(
+      chatMembers.map((m) => m.nickname.trim().toLowerCase()),
+    );
+    return getOfficialBotsForRoom(activeRoomId, {
+      guardEnabled: isBotEnabled,
+    }).filter((bot) => !humanNickSet.has(bot.nickname.trim().toLowerCase()));
+  }, [activeRoomId, chatMembers, isBotEnabled]);
+
   // Global Owner Control Center states
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [isGlobalMute, setIsGlobalMute] = useState(false);
@@ -3432,100 +3514,68 @@ export default function ChatScreen({
       }
 
       try {
-        const settingsRequest = isManagementRole
-          ? supabase
-              .from("owner_settings")
-              .select("*")
-              .eq("id", OWNER_SETTINGS_ROW_ID)
-              .maybeSingle<OwnerSettingsRow>()
-          : supabase
-              .from("public_chat_settings")
-              .select("payload")
-              .eq("id", OWNER_SETTINGS_ROW_ID)
-              .maybeSingle<{ payload: PublicChatSettingsPayload }>();
-        const permissionsRequest = supabase
-          .from("owner_member_permissions")
-          .select("*");
-        const cosmeticsRequest = supabase
-          .from("owner_member_cosmetics")
-          .select("*");
-        const logsRequest =
-          currentUser.role === "owner" || currentUser.role === "admin"
-            ? supabase
-                .from("owner_activity_logs")
-                .select("*")
-                .order("created_at", { ascending: false })
-                .limit(100)
-            : Promise.resolve({ data: null, error: null });
+        const bundle = await fetchOwnerDashboardBundle({
+          isManagementRole,
+          includeActivityLogs:
+            currentUser.role === "owner" || currentUser.role === "admin",
+        });
 
-        const [settingsResult, permissionsResult, cosmeticsResult, logsResult] =
-          await Promise.all([
-            settingsRequest,
-            permissionsRequest,
-            cosmeticsRequest,
-            logsRequest,
-          ]);
+        if (cancelled || !bundle) return;
 
-        if (cancelled) return;
-
-        if (settingsResult.data) {
-          if (isManagementRole) {
-            const settings = settingsResult.data as OwnerSettingsRow;
-            if (isCurrentUserOwner) {
-              setIsGhostMode(Boolean(settings.ghost_mode));
-              setIsSpyMode(Boolean(settings.spy_mode));
-            }
-            syncPublicOwnerSettings(settings);
-            setBannedWords(
-              Array.isArray(settings.banned_words)
-                ? settings.banned_words.filter(
-                    (word): word is string =>
-                      typeof word === "string" && word.trim().length > 0,
-                  )
-                : [],
-            );
-            if (settings.room_dj_map !== undefined) {
-              const parsed = parseRoomDjMap(settings.room_dj_map);
-              roomDjMapRef.current = parsed;
-              setRoomDjMap(parsed);
-            }
-            if (settings.dj_library !== undefined) {
-              setDjLibrary(parseDjLibrary(settings.dj_library));
-            }
-            if (settings.bot_enabled !== undefined) {
-              setIsBotEnabled(Boolean(settings.bot_enabled));
-            }
-            if (settings.bot_rule_anti_links !== undefined) {
-              setBotRuleAntiLinks(Boolean(settings.bot_rule_anti_links));
-            }
-            if (settings.bot_rule_anti_spam !== undefined) {
-              setBotRuleAntiSpam(Boolean(settings.bot_rule_anti_spam));
-            }
-            if (settings.bot_rule_swear_filter !== undefined) {
-              setBotRuleSwearFilter(Boolean(settings.bot_rule_swear_filter));
-            }
-            if (
-              Array.isArray(settings.store_products) &&
-              settings.store_products.length > 0
-            ) {
-              setStoreProducts(
-                settings.store_products.filter(
-                  (item): item is Record<string, unknown> =>
-                    Boolean(item) && typeof item === "object" && "id" in item,
-                ) as typeof storeProducts,
-              );
-            }
-          } else {
-            const settings = (settingsResult.data as { payload: PublicChatSettingsPayload })
-              .payload;
-            if (settings) syncPublicOwnerSettings(settings);
+        if (bundle.ownerSettings) {
+          const settings = bundle.ownerSettings;
+          if (isCurrentUserOwner) {
+            setIsGhostMode(Boolean(settings.ghost_mode));
+            setIsSpyMode(Boolean(settings.spy_mode));
           }
+          syncPublicOwnerSettings(settings);
+          setBannedWords(
+            Array.isArray(settings.banned_words)
+              ? settings.banned_words.filter(
+                  (word): word is string =>
+                    typeof word === "string" && word.trim().length > 0,
+                )
+              : [],
+          );
+          if (settings.room_dj_map !== undefined) {
+            const parsed = parseRoomDjMap(settings.room_dj_map);
+            roomDjMapRef.current = parsed;
+            setRoomDjMap(parsed);
+          }
+          if (settings.dj_library !== undefined) {
+            setDjLibrary(parseDjLibrary(settings.dj_library));
+          }
+          if (settings.bot_enabled !== undefined) {
+            setIsBotEnabled(Boolean(settings.bot_enabled));
+          }
+          if (settings.bot_rule_anti_links !== undefined) {
+            setBotRuleAntiLinks(Boolean(settings.bot_rule_anti_links));
+          }
+          if (settings.bot_rule_anti_spam !== undefined) {
+            setBotRuleAntiSpam(Boolean(settings.bot_rule_anti_spam));
+          }
+          if (settings.bot_rule_swear_filter !== undefined) {
+            setBotRuleSwearFilter(Boolean(settings.bot_rule_swear_filter));
+          }
+          if (
+            Array.isArray(settings.store_products) &&
+            settings.store_products.length > 0
+          ) {
+            setStoreProducts(
+              settings.store_products.filter(
+                (item): item is Record<string, unknown> =>
+                  Boolean(item) && typeof item === "object" && "id" in item,
+              ) as typeof storeProducts,
+            );
+          }
+        } else if (bundle.publicSettings) {
+          syncPublicOwnerSettings(bundle.publicSettings);
         }
 
-        if (Array.isArray(permissionsResult.data)) {
-          const nextPermissions = (
-            permissionsResult.data as OwnerMemberPermissionRow[]
-          ).reduce<Record<string, MemberCustomPermissions>>((acc, row) => {
+        if (bundle.permissions.length > 0) {
+          const nextPermissions = bundle.permissions.reduce<
+            Record<string, MemberCustomPermissions>
+          >((acc, row) => {
             if (!row.nickname?.trim()) return acc;
             acc[row.nickname] = {
               recordingAllowed: Boolean(row.recording_allowed),
@@ -3544,10 +3594,10 @@ export default function ChatScreen({
           setMemberCustomPermissions(nextPermissions);
         }
 
-        if (Array.isArray(cosmeticsResult.data)) {
-          const nextCosmetics = (
-            cosmeticsResult.data as OwnerMemberCosmeticsRow[]
-          ).reduce<Record<string, MemberCosmeticGrant>>((acc, row) => {
+        if (bundle.cosmetics.length > 0) {
+          const nextCosmetics = bundle.cosmetics.reduce<
+            Record<string, MemberCosmeticGrant>
+          >((acc, row) => {
             if (!row.nickname?.trim()) return acc;
             if (!row.vip_tier && !row.frame) return acc;
             acc[row.nickname] = {
@@ -3560,17 +3610,15 @@ export default function ChatScreen({
           setMemberCosmeticGrants(nextCosmetics);
         }
 
-        if (Array.isArray(logsResult.data)) {
-          const nextLogs = (logsResult.data as OwnerActivityLogRow[]).map(
-            (row) => ({
-              id: row.id || `syslog-${row.time}-${row.user_nickname}`,
-              time: row.time,
-              type: row.type,
-              userNickname: row.user_nickname,
-              operatorNickname: row.operator_nickname,
-              details: row.details,
-            }),
-          );
+        if (bundle.activityLogs.length > 0) {
+          const nextLogs = bundle.activityLogs.map((row) => ({
+            id: row.id || `syslog-${row.time}-${row.user_nickname}`,
+            time: row.time,
+            type: row.type,
+            userNickname: row.user_nickname,
+            operatorNickname: row.operator_nickname,
+            details: row.details,
+          }));
           setActivityLogs(nextLogs);
           localStorage.setItem("lamma_activity_logs", JSON.stringify(nextLogs));
         }
@@ -3602,23 +3650,11 @@ export default function ChatScreen({
       return;
     }
 
-    let query = supabase
-      .from("nickname_change_requests")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(isOwnerRole ? 100 : 10);
-
-    if (!isOwnerRole) {
-      query = query.eq("user_id", currentUser.uid);
-    }
-
-    const { data, error } = await query;
-    if (error) {
-      console.warn("Failed to fetch nickname change requests:", error);
-      return;
-    }
-
-    setNicknameRequests((data as NicknameChangeRequestRow[]) || []);
+    const data = await fetchNicknameChangeRequests({
+      userId: currentUser.uid,
+      isOwner: isOwnerRole,
+    });
+    setNicknameRequests(data);
   };
 
   useEffect(() => {
@@ -3656,12 +3692,10 @@ export default function ChatScreen({
         return;
       }
 
-      const { error } = await supabase.auth.updateUser({
-        data: { nickname: requestedNickname },
-      });
+      const { error } = await updateAuthNicknameMetadata(requestedNickname);
 
       if (error) {
-        console.warn("Failed to apply approved nickname request:", error);
+        console.warn("Failed to apply approved nickname request:", error.message);
         return;
       }
 
@@ -3755,9 +3789,7 @@ export default function ChatScreen({
         bot_rule_swear_filter: botRuleSwearFilter,
       };
 
-      const { error } = await supabase
-        .from("owner_settings")
-        .upsert(payload, { onConflict: "id" });
+      const { error } = await upsertOwnerSettingsRow(payload);
 
       if (error) {
         console.warn("Failed to sync owner settings", error);
@@ -3841,9 +3873,7 @@ export default function ChatScreen({
 
       if (rows.length === 0) return;
 
-      const { error } = await supabase
-        .from("owner_member_permissions")
-        .upsert(rows, { onConflict: "nickname" });
+      const { error } = await upsertOwnerMemberPermissions(rows);
 
       if (error) {
         console.warn("Failed to sync owner member permissions", error);
@@ -3897,30 +3927,20 @@ export default function ChatScreen({
         frame: grant.frame || null,
       }));
 
-      const existing = await supabase
-        .from("owner_member_cosmetics")
-        .select("nickname");
+      const existingNicknames = await listOwnerMemberCosmeticNicknames();
       const keep = new Set(rows.map((r) => r.nickname));
-      const toDelete =
-        existing.data?.filter((r) => r.nickname && !keep.has(r.nickname)) || [];
+      const toDelete = existingNicknames.filter((nickname) => !keep.has(nickname));
 
-      for (const row of toDelete) {
-        if (row.nickname) {
-          const { error: delErr } = await supabase
-            .from("owner_member_cosmetics")
-            .delete()
-            .eq("nickname", row.nickname);
-          if (delErr) {
-            console.warn("Failed to delete cosmetic row:", row.nickname, delErr.message);
-          }
+      for (const nickname of toDelete) {
+        const { error: delErr } = await deleteOwnerMemberCosmetic(nickname);
+        if (delErr) {
+          console.warn("Failed to delete cosmetic row:", nickname, delErr.message);
         }
       }
 
       if (rows.length === 0) return;
 
-      const { error } = await supabase
-        .from("owner_member_cosmetics")
-        .upsert(rows, { onConflict: "nickname" });
+      const { error } = await upsertOwnerMemberCosmetics(rows);
 
       if (error) {
         console.warn("Failed to sync owner member cosmetics", error);
@@ -4382,6 +4402,16 @@ export default function ChatScreen({
     toastTimersRef.current.add(timer);
   }, []);
 
+  const openOfficialBotInfo = useCallback(
+    (bot: ChatMember) => {
+      showMessageToast(
+        bot.nickname,
+        bot.bio || "بوت رسمي من إدارة شات لمة — لا يقبل رسائل خاصة.",
+      );
+    },
+    [showMessageToast],
+  );
+
   useEffect(() => {
     return () => {
       toastTimersRef.current.forEach((t) => clearTimeout(t));
@@ -4746,22 +4776,13 @@ export default function ChatScreen({
     let isCancelled = false;
 
     const fetchSyncedBans = async () => {
-      const { data, error } = await supabase
-        .from("banned_users")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.warn("Failed to load banned users from Supabase", error);
-        return;
-      }
-
-      if (!data || isCancelled) return;
+      const data = await fetchBannedUserRows();
+      if (!data.length || isCancelled) return;
 
       setBannedUsersList((prev) =>
         mergeBanLists(
           prev,
-          (data as BannedUserRow[]).map((row) => parseBannedUserRow(row)),
+          data.map((row) => parseBannedUserRow(row)),
         ),
       );
     };
@@ -4869,17 +4890,17 @@ export default function ChatScreen({
         details,
       };
 
-      void supabase.from("owner_activity_logs").insert(payload).then(({ error }) => {
-        if (error) {
-          console.warn("Failed to sync owner activity log", error);
-        }
-      });
+      void syncOwnerActivityLog(payload);
     }
   };
 
   // Open user profile popover/modal dynamically with full network metadata fingerprinting details
   const resolveChatMemberByNickname = (nickname: string): ChatMember | null => {
     if (!nickname) return null;
+
+    const officialBot = getOfficialBotByNickname(nickname);
+    if (officialBot) return officialBot.member;
+
     if (
       nickname.includes("🛡️") ||
       nickname.includes("الحماية") ||
@@ -5077,6 +5098,14 @@ export default function ChatScreen({
   };
 
   const openMemberProfile = (nickname: string, options?: { direct?: boolean }) => {
+    if (isOfficialBotNickname(nickname)) {
+      const officialBot = getOfficialBotByNickname(nickname);
+      if (officialBot) {
+        showMessageToast(officialBot.nickname, officialBot.description);
+      }
+      return;
+    }
+
     const member = resolveChatMemberByNickname(nickname);
     if (!member) return;
 
@@ -5139,6 +5168,7 @@ export default function ChatScreen({
   };
 
   const startPrivateChatWithMember = (nickname: string) => {
+    if (isOfficialBotNickname(nickname)) return;
     const member = resolveChatMemberByNickname(nickname);
     if (!member) return;
     closeMobileChrome();
@@ -5378,19 +5408,18 @@ export default function ChatScreen({
     setNicknameRequestLoading(true);
     setNicknameRequestStatusText(null);
 
-    const { error } = await supabase.from("nickname_change_requests").insert({
-      user_id: currentUser.uid,
-      user_email: currentUser.email ?? null,
-      current_nickname: myActiveSession.nickname || currentUser.nickname,
-      requested_nickname: requestedNickname,
-      status: "pending",
+    const { error } = await submitNicknameChangeRequest({
+      userId: currentUser.uid,
+      userEmail: currentUser.email ?? null,
+      currentNickname: myActiveSession.nickname || currentUser.nickname,
+      requestedNickname,
     });
 
     setNicknameRequestLoading(false);
 
     if (error) {
       alert("تعذر إرسال طلب تغيير الاسم حالياً.");
-      console.warn("Failed to submit nickname request:", error);
+      console.warn("Failed to submit nickname request:", error.message);
       return;
     }
 
@@ -5417,16 +5446,14 @@ export default function ChatScreen({
     const nextEnabled = tempEntryTopicEnabled && Boolean(sanitizedTopic);
     setTempEntryTopicStatusText(null);
 
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        temp_entry_topic: sanitizedTopic,
-        temp_entry_topic_enabled: nextEnabled,
-      },
-    });
+    const { error } = await updateTempEntryTopicMetadata(
+      sanitizedTopic,
+      nextEnabled,
+    );
 
     if (error) {
       alert("تعذر حفظ التوبيك المؤقت حالياً.");
-      console.warn("Failed to save temp entry topic:", error);
+      console.warn("Failed to save temp entry topic:", error.message);
       return;
     }
 
@@ -5466,20 +5493,17 @@ export default function ChatScreen({
     if (!supabase || !isOwnerRole) return;
 
     setNicknameRequestLoading(true);
-    const { error } = await supabase
-      .from("nickname_change_requests")
-      .update({
-        status,
-        processed_at: new Date().toISOString(),
-        processed_by: currentUser.nickname,
-      })
-      .eq("id", requestId);
+    const { error } = await processNicknameChangeRequest({
+      requestId,
+      status,
+      processedBy: currentUser.nickname,
+    });
 
     setNicknameRequestLoading(false);
 
     if (error) {
       alert("تعذر تحديث حالة الطلب حالياً.");
-      console.warn("Failed to process nickname request:", error);
+      console.warn("Failed to process nickname request:", error.message);
       return;
     }
 
@@ -6014,9 +6038,9 @@ export default function ChatScreen({
     });
     const botWarningMsg: Message = {
       id: `guard-${Date.now()}`,
-      author: "🔥 LC-Fire",
+      author: OFFICIAL_BOT_AUTHORS.guard,
       text,
-      color: "#10b981",
+      color: "#f97316",
       isOwn: false,
       time: timeStr,
       type: "system",
@@ -6040,7 +6064,7 @@ export default function ChatScreen({
     });
     const botMsg: Message = {
       id: `lamma-bot-${Date.now()}-${Math.random()}`,
-      author: "🤖 LAMMA SYSTEM",
+      author: OFFICIAL_BOT_AUTHORS.system,
       text,
       color: "#10b981",
       isOwn: false,
@@ -6503,8 +6527,7 @@ export default function ChatScreen({
 
   const universalGlobalMedia =
     activeUniversalStyle?.backgrounds.global.kind !== "color";
-  const shellClearBg =
-    universalGlobalMedia || !isDefaultAmbientBg ? "false" : "true";
+  const shellClearBg = universalGlobalMedia ? "false" : "true";
 
   const handleApplyStyleSandbox = useCallback(
     async (session: StyleSandboxSession) => {
@@ -7038,37 +7061,27 @@ export default function ChatScreen({
     });
 
     if (supabase) {
-      supabase
-        .from("messages")
-        .insert([
-          {
-            id: newUuid,
-            room_id: giftRoomId,
-            author: currentUser.nickname,
-            text: `أرسل هدية ${icon} في الغرفة 🎁`,
-            color: currentUser.color || "#10b981",
-            type: "gift",
-            gift_icon: icon,
-            gift_name: "هدية تفاعلية",
-            sender_uid: senderUid,
-          },
-        ])
-        .then(({ error }) => {
-          if (error) {
-            console.error("Error sending gift to Supabase:", error);
-            setRoomMessages((prev) => ({
-              ...prev,
-              [giftRoomId]: (prev[giftRoomId] || []).filter(
-                (m) => m.id !== newUuid,
-              ),
-            }));
-            alert(
-              isRlsDenied(error)
-                ? "🛡️ السيرفر رفض إرسال الهدية — تحقق من صلاحياتك أو حالة الحظر."
-                : formatSupabaseUserError(error, "❌ تعذر إرسال الهدية. حاول مرة أخرى."),
-            );
-          }
-        })
+      void persistRoomGiftMessage({
+        id: newUuid,
+        roomId: giftRoomId,
+        author: currentUser.nickname,
+        color: currentUser.color || "#10b981",
+        giftIcon: icon,
+        senderUid,
+      }).catch((error) => {
+        console.error("Error sending gift to Supabase:", error);
+        setRoomMessages((prev) => ({
+          ...prev,
+          [giftRoomId]: (prev[giftRoomId] || []).filter(
+            (m) => m.id !== newUuid,
+          ),
+        }));
+        alert(
+          isRlsDenied(error)
+            ? "🛡️ السيرفر رفض إرسال الهدية — تحقق من صلاحياتك أو حالة الحظر."
+            : formatSupabaseUserError(error, "❌ تعذر إرسال الهدية. حاول مرة أخرى."),
+        );
+      });
     }
 
     // Animate multiple particles
@@ -7154,20 +7167,16 @@ export default function ChatScreen({
     }
 
     try {
-      const { error } = await supabase.from("messages").insert([
-        {
-          id: newUuid,
-          room_id: activeRoomId,
-          author: currentUser.nickname,
-          text: "",
-          color: currentUser.color || "#10b981",
-          type: finalType,
-          media_url: safeMedia,
-          youtube_id: getYoutubeId(safeMedia),
-          sender_uid: senderUid,
-        },
-      ]);
-      if (error) throw error;
+      await persistRoomMediaMessage({
+        id: newUuid,
+        roomId: activeRoomId,
+        author: currentUser.nickname,
+        color: currentUser.color || "#10b981",
+        type: finalType,
+        mediaUrl: safeMedia,
+        senderUid,
+        youtubeId: getYoutubeId(safeMedia),
+      });
     } catch (error) {
       console.error("Error sending media to Supabase:", error);
       setRoomMessages((prev) => ({
@@ -7225,24 +7234,17 @@ export default function ChatScreen({
         `${Date.now()}_${crypto.randomUUID()}_${safeName}`,
       );
 
-      const { error: uploadError } = await supabase.storage
-        .from("chat-media")
-        .upload(objectPath, compressed, {
-          cacheControl: "3600",
-          contentType: compressed.type || file.type,
-          upsert: false,
-        });
+      const { publicUrl, error: uploadError } = await uploadPublicRoomMediaFile(
+        compressed,
+        objectPath,
+        compressed.type || file.type,
+      );
 
       if (uploadError) {
-        alert(`❌ فشل رفع الصورة: ${uploadError.message}`);
+        alert(`❌ فشل رفع الصورة: ${uploadError}`);
         return;
       }
 
-      const { data: publicData } = supabase.storage
-        .from("chat-media")
-        .getPublicUrl(objectPath);
-
-      const publicUrl = publicData?.publicUrl;
       if (!publicUrl) {
         alert("❌ حصل خطأ في توليد رابط الصورة بعد الرفع.");
         return;
@@ -7302,24 +7304,17 @@ export default function ChatScreen({
         `${Date.now()}_${crypto.randomUUID()}_${safeName}`,
       );
 
-      const { error: uploadError } = await supabase.storage
-        .from("chat-media")
-        .upload(objectPath, file, {
-          cacheControl: "3600",
-          contentType: file.type || "video/mp4",
-          upsert: false,
-        });
+      const { publicUrl, error: uploadError } = await uploadPublicRoomMediaFile(
+        file,
+        objectPath,
+        file.type || "video/mp4",
+      );
 
       if (uploadError) {
-        alert(`❌ فشل رفع الفيديو: ${uploadError.message}`);
+        alert(`❌ فشل رفع الفيديو: ${uploadError}`);
         return;
       }
 
-      const { data: publicData } = supabase.storage
-        .from("chat-media")
-        .getPublicUrl(objectPath);
-
-      const publicUrl = publicData?.publicUrl;
       if (!publicUrl) {
         alert("❌ حصل خطأ في توليد رابط الفيديو بعد الرفع.");
         return;
@@ -7375,21 +7370,14 @@ export default function ChatScreen({
         .slice(0, 32) || `asset_${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
     const safeName = `${base}${ext}`;
     const objectPath = `${folder}/${Date.now()}_${crypto.randomUUID()}_${safeName}`;
-    const { error: uploadError } = await supabase.storage
-      .from("design-assets")
-      .upload(objectPath, file, {
-        cacheControl: "3600",
-        contentType: file.type || "application/octet-stream",
-        upsert: false,
-      });
+    const { publicUrl, error: uploadError } = await uploadDesignAssetFile(
+      file,
+      objectPath,
+    );
     if (uploadError) {
-      alert(`❌ فشل رفع الملف: ${uploadError.message}`);
+      alert(`❌ فشل رفع الملف: ${uploadError}`);
       return null;
     }
-    const { data: publicData } = supabase.storage
-      .from("design-assets")
-      .getPublicUrl(objectPath);
-    const publicUrl = publicData?.publicUrl;
     if (!publicUrl) {
       alert("❌ حصل خطأ في توليد رابط الملف بعد الرفع.");
       return null;
@@ -7979,19 +7967,25 @@ export default function ChatScreen({
           ? " lamma-modal-open"
           : ""
       }${designInspectActive ? " lamma-design-inspect-active" : ""}`}
-      style={
-        isMobileAppShell && vvLayout.keyboardOpen && vvLayout.shellHeight
+      style={{
+        ...(hasCustomWallpaper
+          ? {
+              ["--chat-wallpaper-bg" as string]: `center / cover no-repeat url("${String(activeRoomBg).replace(/"/g, '\\"')}")`,
+            }
+          : null),
+        ...(isMobileAppShell && vvLayout.keyboardOpen && vvLayout.shellHeight
           ? {
               height: `${vvLayout.shellHeight}px`,
               maxHeight: `${vvLayout.shellHeight}px`,
               top: `${vvLayout.shellTop}px`,
               bottom: "auto",
             }
-          : undefined
-      }
+          : null),
+      }}
       dir="rtl"
       data-app-theme={primaryTheme}
       data-clear-bg={shellClearBg}
+      data-custom-wallpaper={hasCustomWallpaper ? "true" : "false"}
       data-reading-mode={readingMode ? "true" : "false"}
     >
       <UniversalStyleVideoLayer />
@@ -8017,64 +8011,60 @@ export default function ChatScreen({
       ) : null}
       {activeRoomBg || universalGlobalMedia ? (
         <>
-          <div
-            className="absolute inset-0 z-0 pointer-events-none lamma-active-wallpaper"
-            data-design-region="chat-wallpaper"
-            style={
-              universalGlobalMedia
-                ? undefined
-                : {
-                    backgroundImage: `url(${activeRoomBg})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center center",
-                    transform: "scale(1)",
-                    filter: "none",
-                  }
-            }
-          />
-          {isDefaultAmbientBg && !universalGlobalMedia ? (
+          {!hasCustomWallpaper ? (
             <div
-              className="absolute inset-0 z-0 pointer-events-none"
-              style={{
-                backgroundImage: `url(${activeRoomBg})`,
-                backgroundSize: "cover",
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "center center",
-                opacity: 0,
-                filter: "none",
-                transform: "scale(1)",
-              }}
+              className="absolute inset-0 z-0 pointer-events-none lamma-active-wallpaper"
+              data-design-region="chat-wallpaper"
+              style={
+                universalGlobalMedia
+                  ? undefined
+                  : {
+                      backgroundImage: `url(${activeRoomBg})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center center",
+                      transform: "scale(1)",
+                      filter: "none",
+                    }
+              }
             />
           ) : null}
-          {isDefaultAmbientBg ? (
-            <div
-              className="absolute inset-0 z-0 pointer-events-none"
-              style={{
-                background:
-                  activeRoomBg === "/bg.jpg" || activeRoomBg === "/MAN.png"
-                    ? "transparent"
-                    : "transparent",
-              }}
-            />
-          ) : null}
-          <div
-            className="absolute inset-0 z-0 pointer-events-none"
-            style={{
-              background: isDefaultAmbientBg
-                ? "none"
-                : "radial-gradient(ellipse at center top, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.012) 34%, transparent 68%), radial-gradient(ellipse at center bottom, rgba(255, 151, 73, 0.035) 0%, rgba(255, 255, 255, 0.012) 34%, transparent 76%), linear-gradient(180deg, rgba(3, 8, 10, 0.06) 0%, rgba(3, 8, 10, 0.01) 24%, rgba(3, 7, 9, 0.08) 100%)",
-            }}
-          />
-          <div
-            className="absolute inset-0 z-0 pointer-events-none"
-            style={{
-              background: isDefaultAmbientBg
-                ? "none"
-                : "radial-gradient(circle at 60% 20%, rgba(255, 255, 255, 0.01), transparent 18%), radial-gradient(circle at 52% 82%, rgba(148, 163, 184, 0.006), transparent 24%)",
-            }}
-          />
-          {!isDefaultAmbientBg && activeRoomBg !== "/bg.jpg" && activeRoomBg !== "/MAN.png" ? (
-            <div className="absolute inset-0 bg-[rgba(4,8,10,0.035)] z-0 pointer-events-none" />
+          {!hasCustomWallpaper && !universalGlobalMedia ? (
+            <>
+              {isDefaultAmbientBg ? (
+                <>
+                  <div
+                    className="absolute inset-0 z-0 pointer-events-none"
+                    style={{
+                      backgroundImage: `url(${activeRoomBg})`,
+                      backgroundSize: "cover",
+                      backgroundRepeat: "no-repeat",
+                      backgroundPosition: "center center",
+                      opacity: 0,
+                      filter: "none",
+                      transform: "scale(1)",
+                    }}
+                  />
+                  <div className="absolute inset-0 z-0 pointer-events-none" />
+                </>
+              ) : (
+                <>
+                  <div
+                    className="absolute inset-0 z-0 pointer-events-none"
+                    style={{
+                      background:
+                        "radial-gradient(ellipse at center top, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.012) 34%, transparent 68%), radial-gradient(ellipse at center bottom, rgba(255, 151, 73, 0.035) 0%, rgba(255, 255, 255, 0.012) 34%, transparent 76%), linear-gradient(180deg, rgba(3, 8, 10, 0.06) 0%, rgba(3, 8, 10, 0.01) 24%, rgba(3, 7, 9, 0.08) 100%)",
+                    }}
+                  />
+                  <div
+                    className="absolute inset-0 z-0 pointer-events-none"
+                    style={{
+                      background:
+                        "radial-gradient(circle at 60% 20%, rgba(255, 255, 255, 0.01), transparent 18%), radial-gradient(circle at 52% 82%, rgba(148, 163, 184, 0.006), transparent 24%)",
+                    }}
+                  />
+                </>
+              )}
+            </>
           ) : null}
         </>
       ) : null}
@@ -9657,6 +9647,27 @@ export default function ChatScreen({
 
             {activeSidebarTab === "members" && (
               <div className="space-y-4 font-semibold text-xs text-right">
+                {officialBotsInRoom.length > 0 ? (
+                  <div>
+                    <div className="text-[10px] text-emerald-300/90 font-extrabold flex items-center justify-between mb-1.5 font-sans uppercase tracking-widest text-[9px]">
+                      <span className="flex items-center gap-1 font-sans">🤖 نظام الشات</span>
+                      <span className="text-[9px] font-mono text-gray-500">
+                        {officialBotsInRoom.length}
+                      </span>
+                    </div>
+                    <div className="pl-1 space-y-1 font-sans rounded-2xl overflow-hidden bg-emerald-500/[0.04] border border-emerald-500/10 lamma-list-panel p-1.5 mb-3">
+                      {officialBotsInRoom.map((bot, idx) => (
+                        <OfficialBotMemberRow
+                          key={bot.id}
+                          bot={bot}
+                          onInfo={openOfficialBotInfo}
+                          variant="sidebar"
+                          isLast={idx === officialBotsInRoom.length - 1}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="text-[10px] text-gray-400 font-extrabold flex items-center justify-between mb-1.5 font-sans">
                   <span className="flex items-center gap-1 font-sans uppercase tracking-widest text-[9px]">
                     👥 Connected
@@ -9799,7 +9810,7 @@ export default function ChatScreen({
         <div
           data-col="center"
           data-design-region="chat-feed"
-          className={`flex-1 flex flex-col min-w-0 min-h-0 backdrop-blur-xl xl:order-2 lamma-column-frame lamma-chat-core-shell ${
+          className={`flex-1 flex flex-col min-w-0 min-h-0 ${hasCustomWallpaper ? "" : "backdrop-blur-xl"} xl:order-2 lamma-column-frame lamma-chat-core-shell ${
             isMobileAppShell || mobileTab === "chat" ? "flex" : "hidden md:flex"
           } ${isLeftColumnCollapsed ? "xl:border-l xl:border-white/10" : ""} ${isRightColumnCollapsed ? "xl:border-r xl:border-white/10" : ""}`}
         >
@@ -12015,10 +12026,31 @@ export default function ChatScreen({
                     <span className="text-[12px] font-black">المتصلون</span>
                   </div>
                   <span className="text-[10px] text-[color:var(--text-secondary)] font-mono">
-                    {chatMembers.length}
+                    {chatMembers.length + officialBotsInRoom.length}
                   </span>
                 </div>
                 <div className="flex-1 overflow-y-auto pr-1 pl-2 space-y-4 lamma-fire-scroll">
+                  {officialBotsInRoom.length > 0 ? (
+                    <div>
+                      <div className="text-[10px] font-black flex items-center justify-between uppercase tracking-widest text-emerald-300/90 mb-1">
+                        <span>🤖 نظام الشات</span>
+                        <span className="text-[9px] font-mono text-[color:var(--text-secondary)]">
+                          {officialBotsInRoom.length}
+                        </span>
+                      </div>
+                      <div className="space-y-0 rounded-2xl overflow-hidden border border-emerald-500/15 bg-emerald-500/[0.04] mb-3">
+                        {officialBotsInRoom.map((bot, idx) => (
+                          <OfficialBotMemberRow
+                            key={bot.id}
+                            bot={bot}
+                            onInfo={openOfficialBotInfo}
+                            variant="panel"
+                            isLast={idx === officialBotsInRoom.length - 1}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="text-[10px] font-black flex items-center justify-between uppercase tracking-widest text-gray-300">
                     <span>👥 Connected</span>
                     <span className="text-[9px] font-mono text-[color:var(--text-secondary)]">
@@ -13524,12 +13556,50 @@ export default function ChatScreen({
                       m.nickname
                         .toLowerCase()
                         .includes(searchQuery.toLowerCase()),
+                    ).length === 0 &&
+                    officialBotsInRoom.filter((b) =>
+                      b.nickname
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase()),
                     ).length === 0 ? (
                       <div className="text-[10px] text-gray-500 py-1 text-center">
                         لا يوجد أعضاء مطابقين
                       </div>
                     ) : (
                       <div className="grid gap-1">
+                        {officialBotsInRoom
+                          .filter((b) =>
+                            b.nickname
+                              .toLowerCase()
+                              .includes(searchQuery.toLowerCase()),
+                          )
+                          .map((b) => (
+                            <button
+                              key={b.id}
+                              onClick={() => openOfficialBotInfo(b)}
+                              className="flex items-center justify-between p-1.5 rounded-lg text-right text-[10px] transition-all cursor-pointer w-full lamma-list-item lamma-official-bot-member"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-5 h-5 flex items-center justify-center overflow-hidden rounded-full shrink-0">
+                                  <MemberAvatar
+                                    avatar={b.avatar}
+                                    size="xs"
+                                    className="w-full h-full"
+                                    imageClassName="w-full h-full rounded-full"
+                                  />
+                                </span>
+                                <span
+                                  style={{ color: b.color }}
+                                  className="font-bold"
+                                >
+                                  {b.nickname}
+                                </span>
+                              </div>
+                              <span className="text-emerald-400/80 text-[8px]">
+                                بوت
+                              </span>
+                            </button>
+                          ))}
                         {chatMembers
                           .filter((m) =>
                             m.nickname

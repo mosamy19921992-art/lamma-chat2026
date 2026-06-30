@@ -16,12 +16,11 @@ jobs:
     steps:
       - name: Ping Supabase REST (keep project active)
         env:
-          # يستخدم الـ secrets لو مضافة، وإلا يرجع للقيم العامة (المفتاح publishable عام وآمن — موجود أصلًا في الواجهة).
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://detvapbvkabvdjsdttfy.supabase.co' }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_BHyYFJ1yoK7_Ml71goljcw_nNuRFUfi' }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "::error::Missing SUPABASE_URL or SUPABASE_ANON_KEY."
+            echo "::error::Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in repository secrets."
             exit 1
           fi
 

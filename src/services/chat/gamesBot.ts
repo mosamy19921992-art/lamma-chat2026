@@ -121,6 +121,7 @@ export type GameBotResult = {
   botMessage: string;
   isWin?: boolean;
   preventSend?: boolean;
+  pointsEarned?: number;
 } | null;
 
 export function handleGameCommand(
@@ -255,6 +256,7 @@ export function checkAnswer(
           `⭐ مجموع نقاطه: ${total} نقطة\n\n` +
           `اكتب /سؤال لسؤال جديد!`,
         isWin: true,
+        pointsEarned: 10,
       };
     }
   }
@@ -278,6 +280,7 @@ export function checkAnswer(
           `🎉 ${senderNickname} عرفها! الكلمة كانت "${original}" مقلوبة → "${reversed}"\n` +
           `⭐ +5 نقاط! مجموعه: ${state.scores[senderNickname]}`,
         isWin: true,
+        pointsEarned: 5,
       };
     }
   }

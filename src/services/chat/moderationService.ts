@@ -197,3 +197,53 @@ export async function postRoomSystemMessage(input: {
       typeof payload.message_id === "string" ? payload.message_id : undefined,
   };
 }
+
+export async function fetchBannedUserRows(): Promise<BannedUserRow[]> {
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("banned_users")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.warn("Failed to load banned users from Supabase", error);
+    return [];
+  }
+
+  return (data as BannedUserRow[]) || [];
+}
+
+export async function insertBannedUserRow(
+  payload: BannedUserRow,
+): Promise<{ data: BannedUserRow | null; error: { message: string } | null }> {
+  if (!supabase) {
+    return { data: null, error: { message: "Supabase client is not configured." } };
+  }
+
+  const { data, error } = await supabase
+    .from("banned_users")
+    .insert(payload)
+    .select("*")
+    .single();
+
+  return {
+    data: (data as BannedUserRow | null) ?? null,
+    error: error ? { message: error.message } : null,
+  };
+}
+
+export async function deleteBannedUsersByIds(
+  ids: string[],
+): Promise<{ error: { message: string } | null }> {
+  if (!supabase) {
+    return { error: { message: "Supabase client is not configured." } };
+  }
+  if (ids.length === 0) {
+    return { error: null };
+  }
+
+  const { error } = await supabase.from("banned_users").delete().in("id", ids);
+
+  return { error: error ? { message: error.message } : null };
+}

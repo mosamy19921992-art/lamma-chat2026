@@ -14,6 +14,7 @@
 @import "./styles/ui-polish-audit.css";
 @import "./styles/ultimate-design-system.css";
 @import "./styles/design-fx-2026-fixes.css";
+@import "./styles/custom-wallpaper-glass.css";
 @import "tailwindcss";
 
 @theme {
@@ -5747,4 +5748,18 @@ body.lamma-fx-liquid .lamma-tab-soft:hover {
 .lamma-neutral-glass .lamma-side-column [class*="text-[color:var(--text-secondary)]"],
 .lamma-neutral-glass .lamma-side-column .text-\[color\:var\(--text-secondary\)\] {
   color: var(--us-text, var(--text-secondary, inherit)) !important;
+}
+
+/* Uploaded chat wallpaper — direct on chat column like column face images */
+.lamma-neutral-glass[data-custom-wallpaper="true"]:not([data-custom-face="on"]) .lamma-chat-core-shell {
+  background: var(--chat-wallpaper-bg) !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+}
+
+.lamma-neutral-glass[data-custom-wallpaper="true"]:not([data-custom-face="on"]) .lamma-chat-core-shell .lamma-fire-scroll {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }

@@ -70,6 +70,33 @@ function createLocalPrivateMessage(
   };
 }
 
+export async function sendAdminPmMessage(
+  targetNickname: string,
+  message: string,
+): Promise<void> {
+  if (!supabase) {
+    throw new Error("Supabase client is not configured.");
+  }
+
+  await requireAuthenticatedUid();
+
+  const { error } = await supabase.from("pm_messages").insert([
+    {
+      sender_uid: "admin",
+      sender_nickname: "الأدمن",
+      receiver_uid: targetNickname,
+      receiver_nickname: targetNickname,
+      text: message.slice(0, 4000),
+      type: "text",
+      is_read: false,
+    },
+  ]);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function persistPrivateMessage({
   currentUser,
   targetNickname,
