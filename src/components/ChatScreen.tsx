@@ -11887,7 +11887,7 @@ export default function ChatScreen({
           className={`hidden xl:flex xl:order-1 flex-col gap-3 overflow-hidden backdrop-blur-xl transition-all duration-300 ${
             isRightColumnCollapsed
               ? "w-0 p-0 opacity-0 pointer-events-none border-none"
-              : "w-[320px] 2xl:w-[340px] px-1 pt-0 pb-0 opacity-100 border-l border-white/8 lamma-column-frame lamma-column-shell lamma-side-column"
+              : "w-[300px] 2xl:w-[340px] px-1 pt-0 pb-0 opacity-100 border-l border-white/8 lamma-column-frame lamma-column-shell lamma-side-column"
           }`}
         >
           <div
@@ -11899,7 +11899,7 @@ export default function ChatScreen({
           >
             <div className="min-h-0 lamma-rooms-panel">
               <div
-                className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full"
+                className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full lamma-widget-card"
                 data-design-region="column-cards"
               >
                 <div className="flex items-center justify-between mb-2">
@@ -12003,7 +12003,7 @@ export default function ChatScreen({
 
             <div className="min-h-0 lamma-members-panel">
               <div
-                className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full"
+                className="lamma-glass rounded-3xl p-3 overflow-hidden flex flex-col min-h-0 h-full lamma-widget-card"
                 data-design-region="column-cards"
               >
                 <div className="flex items-center justify-between mb-2">

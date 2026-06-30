@@ -38,7 +38,9 @@
 /* Compact widget layout — scales when owner resizes column sections */
 .lamma-store-panel,
 .lamma-radio-panel,
-.lamma-music-panel {
+.lamma-music-panel,
+.lamma-rooms-panel,
+.lamma-members-panel {
   container-type: size;
   container-name: sidebar-widget;
   min-height: 0;
@@ -48,6 +50,32 @@
 .lamma-widget-card {
   min-height: 0;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.lamma-rooms-panel .lamma-fire-scroll,
+.lamma-members-panel .lamma-fire-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.lamma-side-column [data-design-region="column-cards"] {
+  min-width: 0;
+}
+
+.lamma-side-column [data-design-region="column-cards"] button,
+.lamma-side-column [data-design-region="column-cards"] .lamma-list-item,
+.lamma-side-column [data-design-region="column-cards"] .lamma-room-list-card {
+  min-width: 0;
+}
+
+.lamma-side-column [data-design-region="column-cards"] span,
+.lamma-side-column [data-design-region="column-cards"] h4,
+.lamma-side-column [data-design-region="column-cards"] p {
+  overflow-wrap: anywhere;
 }
 
 .lamma-widget-body {
@@ -107,6 +135,16 @@
   .lamma-widget-controls button svg {
     width: 14px !important;
     height: 14px !important;
+  }
+
+  .lamma-rooms-panel .lamma-fire-scroll,
+  .lamma-members-panel .lamma-fire-scroll {
+    gap: 0.35rem !important;
+  }
+
+  .lamma-rooms-panel [data-design-region="column-cards"],
+  .lamma-members-panel [data-design-region="column-cards"] {
+    padding: 0.55rem !important;
   }
 }
 
