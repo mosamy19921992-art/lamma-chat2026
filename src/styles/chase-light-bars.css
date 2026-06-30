@@ -1,30 +1,8 @@
-/* ── Chase Light Bar Effects 2026 ──
-   Reads data-chase-columns / data-chase-composer / data-chase-header
-   set by chaseLightBarService.ts on .lamma-neutral-glass root.
-   Each target gets its own light strip style. */
+/* ── Chase Light / Neon Beam 2026 ──
+   data-neon-beam-targets on .lamma-neutral-glass (chaseLightBarService.ts).
+   Per-card neon frame — edge chase (Aurora/Laser…) removed. */
 
-/* ── Keyframes ── */
-@keyframes lamma-chase-aurora {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
-}
-
-@keyframes lamma-chase-breathe {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
-}
-
-@keyframes lamma-chase-laser {
-  0% { transform: translateX(-100%); opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { transform: translateX(100%); opacity: 0; }
-}
-
-@keyframes lamma-chase-pulse-glow {
-  0%, 100% { box-shadow: 0 0 4px rgba(var(--chase-tint-rgb, 110,231,183), 0.3); }
-  50% { box-shadow: 0 0 16px rgba(var(--chase-tint-rgb, 110,231,183), 0.7); }
-}
+/* ── Keyframes ── (reserved; neon-beam uses static conic ring) */
 
 /* Full neon frame — follows target shape (card / header / composer). */
 :root {
@@ -107,22 +85,6 @@
   overflow-y: visible !important;
 }
 
-/* Chase edge glow on column cards — same top-row clip on store / rooms */
-.lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"]) .lamma-side-column.lamma-column-frame,
-.lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"]) .lamma-side-column > .grid,
-.lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"]) .lamma-side-column .lamma-store-panel,
-.lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"]) .lamma-side-column .lamma-rooms-panel {
-  overflow: visible !important;
-}
-
-.lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"]) .lamma-side-column[class*="border-r"] {
-  padding-top: 5px !important;
-}
-
-.lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"]) .lamma-side-column[class*="border-l"] {
-  padding-top: 5px !important;
-}
-
 /* Don't clip the border runner — beam rides outside, content stays inside */
 .lamma-neutral-glass[data-neon-beam-targets~="store"] .lamma-side-column .lamma-store-panel .lamma-glass,
 .lamma-neutral-glass[data-neon-beam-targets~="radio"] .lamma-side-column .lamma-radio-panel .lamma-glass,
@@ -190,149 +152,6 @@
   box-shadow: none !important;
 }
 
-/* ── Shared base for all chase targets ── */
-.lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"])
-  .lamma-side-column[class*="border-r"] .lamma-glass,
-.lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"])
-  .lamma-side-column[class*="border-l"] .lamma-glass,
-.lamma-neutral-glass[data-chase-composer]:not([data-chase-composer="none"])
-  .lamma-composer-layout,
-.lamma-neutral-glass[data-chase-header]:not([data-chase-header="none"])
-  .lamma-header {
-  position: relative !important;
-}
-
-/* ── COLUMNS target ── */
-
-/* soft-edge */
-.lamma-neutral-glass[data-chase-columns="soft-edge"]
-  .lamma-side-column[class*="border-r"] .lamma-glass::before,
-.lamma-neutral-glass[data-chase-columns="soft-edge"]
-  .lamma-side-column[class*="border-l"] .lamma-glass::before {
-  content: "" !important;
-  display: block !important;
-  position: absolute !important;
-  inset: 0 !important;
-  border-radius: inherit !important;
-  padding: 1px !important;
-  background: linear-gradient(135deg,
-    rgba(var(--chase-tint-rgb, 110,231,183), 0.6),
-    rgba(var(--chase-tint-rgb, 110,231,183), 0.15)) !important;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
-  -webkit-mask-composite: xor !important;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
-  mask-composite: exclude !important;
-  pointer-events: none !important;
-  z-index: 3 !important;
-}
-
-/* aurora-flow */
-.lamma-neutral-glass[data-chase-columns="aurora-flow"]
-  .lamma-side-column[class*="border-r"] .lamma-glass::before,
-.lamma-neutral-glass[data-chase-columns="aurora-flow"]
-  .lamma-side-column[class*="border-l"] .lamma-glass::before {
-  content: "" !important;
-  display: block !important;
-  position: absolute !important;
-  inset: 0 !important;
-  border-radius: inherit !important;
-  padding: 1px !important;
-  background: linear-gradient(90deg,
-    rgba(var(--chase-tint-rgb, 110,231,183), 0.7),
-    rgba(56, 189, 248, 0.7),
-    rgba(var(--chase-tint-rgb, 110,231,183), 0.7)) !important;
-  background-size: 200% 100% !important;
-  animation: lamma-chase-aurora var(--chase-speed, 6s) linear infinite !important;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
-  -webkit-mask-composite: xor !important;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
-  mask-composite: exclude !important;
-  pointer-events: none !important;
-  z-index: 3 !important;
-}
-
-/* ambient-breathe */
-.lamma-neutral-glass[data-chase-columns="ambient-breathe"]
-  .lamma-side-column[class*="border-r"] .lamma-glass,
-.lamma-neutral-glass[data-chase-columns="ambient-breathe"]
-  .lamma-side-column[class*="border-l"] .lamma-glass {
-  animation: lamma-chase-pulse-glow 4s ease-in-out infinite !important;
-}
-
-/* laser-scan */
-.lamma-neutral-glass[data-chase-columns="laser-scan"]
-  .lamma-side-column[class*="border-r"] .lamma-glass::before,
-.lamma-neutral-glass[data-chase-columns="laser-scan"]
-  .lamma-side-column[class*="border-l"] .lamma-glass::before {
-  content: "" !important;
-  display: block !important;
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  height: 1px !important;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(var(--chase-tint-rgb, 110,231,183), 1),
-    transparent) !important;
-  animation: lamma-chase-laser var(--chase-speed, 6s) linear infinite !important;
-  pointer-events: none !important;
-  z-index: 3 !important;
-  border-radius: inherit !important;
-}
-
-/* mono-glow */
-.lamma-neutral-glass[data-chase-columns="mono-glow"]
-  .lamma-side-column[class*="border-r"] .lamma-glass,
-.lamma-neutral-glass[data-chase-columns="mono-glow"]
-  .lamma-side-column[class*="border-l"] .lamma-glass {
-  box-shadow:
-    0 0 12px rgba(var(--chase-tint-rgb, 110,231,183), 0.25),
-    inset 0 0 8px rgba(var(--chase-tint-rgb, 110,231,183), 0.08) !important;
-}
-
-
-
-
-
-
-
-/* ── COMPOSER target ── */
-.lamma-neutral-glass[data-chase-composer="soft-edge"] .lamma-composer-layout {
-  border: 1px solid rgba(var(--chase-tint-rgb, 110,231,183), 0.35) !important;
-}
-.lamma-neutral-glass[data-chase-composer="aurora-flow"] .lamma-composer-layout {
-  border: 1px solid transparent !important;
-  background-image: linear-gradient(#0a0e14, #0a0e14),
-    linear-gradient(90deg,
-      rgba(var(--chase-tint-rgb, 110,231,183), 0.7),
-      rgba(56, 189, 248, 0.7),
-      rgba(var(--chase-tint-rgb, 110,231,183), 0.7)) !important;
-  background-size: 100% 100%, 200% 100% !important;
-  background-origin: border-box !important;
-  background-clip: padding-box, border-box !important;
-  animation: lamma-chase-aurora var(--chase-speed, 6s) linear infinite !important;
-}
-.lamma-neutral-glass[data-chase-composer="ambient-breathe"] .lamma-composer-layout {
-  animation: lamma-chase-pulse-glow 4s ease-in-out infinite !important;
-}
-.lamma-neutral-glass[data-chase-composer="laser-scan"] .lamma-composer-layout::before {
-  content: "" !important;
-  display: block !important;
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  height: 1px !important;
-  background: linear-gradient(90deg, transparent,
-    rgba(var(--chase-tint-rgb, 110,231,183), 1), transparent) !important;
-  animation: lamma-chase-laser var(--chase-speed, 6s) linear infinite !important;
-  pointer-events: none !important;
-  z-index: 5 !important;
-}
-.lamma-neutral-glass[data-chase-composer="mono-glow"] .lamma-composer-layout {
-  box-shadow: 0 0 12px rgba(var(--chase-tint-rgb, 110,231,183), 0.2) !important;
-}
 .lamma-neutral-glass[data-neon-beam-targets~="store"] .lamma-side-column .lamma-store-panel .lamma-glass > *,
 .lamma-neutral-glass[data-neon-beam-targets~="radio"] .lamma-side-column .lamma-radio-panel .lamma-glass > *,
 .lamma-neutral-glass[data-neon-beam-targets~="music"] .lamma-side-column .lamma-music-panel .lamma-glass > *,
@@ -344,49 +163,6 @@
 .lamma-neutral-glass[data-chase-header="neon-beam"] .lamma-header > * {
   position: relative !important;
   z-index: 2 !important;
-}
-
-/* ── HEADER target ── */
-.lamma-neutral-glass[data-chase-header="soft-edge"] .lamma-header {
-  border-bottom: 1px solid rgba(var(--chase-tint-rgb, 110,231,183), 0.35) !important;
-}
-.lamma-neutral-glass[data-chase-header="aurora-flow"] .lamma-header {
-  border-bottom: 1px solid transparent !important;
-  border-image: linear-gradient(90deg,
-    rgba(var(--chase-tint-rgb, 110,231,183), 0.7),
-    rgba(56, 189, 248, 0.7),
-    rgba(var(--chase-tint-rgb, 110,231,183), 0.7)) !important;
-  border-image-slice: 1 !important;
-}
-.lamma-neutral-glass[data-chase-header="ambient-breathe"] .lamma-header {
-  box-shadow: 0 0 12px rgba(var(--chase-tint-rgb, 110,231,183), 0.15) !important;
-  animation: lamma-chase-breathe 4s ease-in-out infinite !important;
-}
-.lamma-neutral-glass[data-chase-header="laser-scan"] .lamma-header::after {
-  content: "" !important;
-  display: block !important;
-  position: absolute !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  height: 1px !important;
-  background: linear-gradient(90deg, transparent,
-    rgba(var(--chase-tint-rgb, 110,231,183), 1), transparent) !important;
-  animation: lamma-chase-laser var(--chase-speed, 6s) linear infinite !important;
-  pointer-events: none !important;
-  z-index: 5 !important;
-}
-.lamma-neutral-glass[data-chase-header="mono-glow"] .lamma-header {
-  box-shadow: 0 2px 12px rgba(var(--chase-tint-rgb, 110,231,183), 0.15) !important;
-}
-
-/* ── Reduced motion ── */
-@media (prefers-reduced-motion: reduce) {
-  .lamma-neutral-glass[data-chase-columns] *,
-  .lamma-neutral-glass[data-chase-composer] *,
-  .lamma-neutral-glass[data-chase-header] * {
-    animation: none !important;
-  }
 }
 
 /* Design Center — live preview card for neon beam strip */
@@ -441,18 +217,7 @@
   pointer-events: none;
 }
 
-/* ── Suppress legacy index.css card edge when 2026 chase/neon is active ── */
-.lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"])
-  .lamma-side-column[class*="border-r"] .lamma-glass::before,
-.lamma-neutral-glass[data-chase-columns]:not([data-chase-columns="none"])
-  .lamma-side-column[class*="border-l"] .lamma-glass::before {
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-}
-
-/* Legacy universal sidebar chase + UDS rgb-wave on cards — disabled in favor of chase 2026 */
+/* Legacy universal sidebar chase + UDS rgb-wave on cards — disabled in favor of neon-beam */
 .lamma-neutral-glass[data-us-sidebar-chase="true"]
   .lamma-side-column[class*="border-r"] .lamma-glass::before,
 .lamma-neutral-glass[data-us-sidebar-chase="true"]
@@ -464,7 +229,7 @@ body.uds-rgb-wave .lamma-neutral-glass .lamma-glass.uds-container-rgb-wave::befo
   animation: none !important;
 }
 
-/* Neon ring geometry + soft outer halo (wins over chase-columns flatten below) */
+/* Neon ring geometry + soft outer halo */
 .lamma-neutral-glass[data-neon-beam-targets~="store"] .lamma-side-column .lamma-store-panel .lamma-glass,
 .lamma-neutral-glass[data-neon-beam-targets~="radio"] .lamma-side-column .lamma-radio-panel .lamma-glass,
 .lamma-neutral-glass[data-neon-beam-targets~="music"] .lamma-side-column .lamma-music-panel .lamma-glass,

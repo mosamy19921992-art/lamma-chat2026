@@ -22,19 +22,6 @@ import {
   type ColumnDividerStyleId,
 } from "../../services/design/sidebarWidgetStyleService";
 import {
-  CHASE_LIGHT_PRESETS_2026,
-  buildChaseAllSettings,
-  commitChaseLightSettings,
-  getActiveNeonBeamTargets,
-  loadChaseLightSettings,
-  type ChaseLightSettings,
-  type ChaseLightStyleId,
-  type ChaseLightTarget,
-} from "../../services/design/chaseLightBarService";
-
-/** Edge glow presets — neon line is separate (Colors tab → خط النيون). */
-const CHASE_EDGE_PRESETS = CHASE_LIGHT_PRESETS_2026.filter((p) => p.id !== "neon-beam");
-import {
   COLUMN_CARD_STYLE_PRESETS,
   commitColumnCardStyle,
   loadColumnCardStyleId,
@@ -107,8 +94,6 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
   const [columnId, setColumnId] = useState<ColumnCardStyleId | null>(() =>
     loadColumnCardStyleId(),
   );
-  const [chase, setChase] = useState<ChaseLightSettings>(() => loadChaseLightSettings());
-
   const applyBubble = (id: BubbleShapeId) => {
     if (!isOwnerRole) return;
     if (commitBubbleShape(id)) setBubbleId(id);
@@ -135,33 +120,6 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
     } else {
       alert("⚠️ افتح غرفة شات لتطبيق شكل البطاقات.");
     }
-  };
-
-  const applyChaseTarget = (target: ChaseLightTarget, styleId: ChaseLightStyleId) => {
-    if (!isOwnerRole) return;
-    if (styleId === "neon-beam") return;
-    let next: ChaseLightSettings = { ...chase, [target]: styleId };
-    if (target === "composer" || target === "header") {
-      next = {
-        ...next,
-        neonBeamTargets: (next.neonBeamTargets ?? []).filter((id) => id !== target),
-      };
-    }
-    setChase(next);
-    if (commitChaseLightSettings(next)) {
-      setChase(loadChaseLightSettings());
-    }
-  };
-
-  const applyChaseAll = (styleId: ChaseLightStyleId) => {
-    if (!isOwnerRole) return;
-    if (styleId === "neon-beam") {
-      alert("💠 خط النيون الدوّار — من تبويب 🎨 الألوان، اختار كل بطاقة لوحدها.");
-      return;
-    }
-    const next = buildChaseAllSettings(styleId, chase);
-    setChase(next);
-    if (commitChaseLightSettings(next)) setChase(loadChaseLightSettings());
   };
 
   return (
@@ -248,74 +206,6 @@ export function DesignShapesPanel({ onStartInspectMode, isOwnerRole = false }: D
           onSelect={applyColumn}
           disabled={!isOwnerRole}
         />
-      </SectionBlock>
-
-      <SectionBlock title="✨ إضاءة الحواف" hint="Soft / Aurora / Laser — خط النيون الدوّار من تبويب 🎨 الألوان (بطاقة ببطاقة)">
-        {/* تطبيق على الكل دفعة */}
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          {CHASE_EDGE_PRESETS.map((p) => {
-            const isAllActive =
-              chase.columns === p.id &&
-              chase.composer === p.id &&
-              chase.header === p.id &&
-              getActiveNeonBeamTargets(chase).length === 0;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                disabled={!isOwnerRole}
-                onClick={() => applyChaseAll(p.id)}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border transition-all hover:scale-[1.03] active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none ${
-                  isAllActive
-                    ? "border-cyan-400/60 bg-cyan-500/15 shadow-[0_0_12px_rgba(6,182,212,0.25)]"
-                    : "border-white/10 bg-white/[0.04] hover:border-white/25 hover:bg-white/[0.07]"
-                }`}
-              >
-                <span className="text-xl leading-none">{p.emoji}</span>
-                <span className={`text-[8px] font-black text-center leading-tight ${isAllActive ? "text-cyan-300" : "text-gray-300"}`}>
-                  {p.title}
-                </span>
-                {isAllActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#22d3ee]" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* تطبيق لكل منطقة */}
-        <div className="space-y-2">
-          <div className="text-[9px] text-gray-400 font-black">🎯 تخصيص لكل منطقة:</div>
-          {(
-            [
-              ["header", "📌 الهيدر"],
-              ["columns", "🃏 الأعمدة"],
-              ["composer", "⌨️ شريط الكتابة"],
-            ] as const
-          ).map(([target, label]) => (
-            <div key={target} className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07]">
-              <div className="text-[9px] font-black text-gray-300 mb-1.5">{label}</div>
-              <div className="flex flex-wrap gap-1.5">
-                {CHASE_EDGE_PRESETS.map((p) => (
-                  <button
-                    key={`${target}-${p.id}`}
-                    type="button"
-                    disabled={!isOwnerRole}
-                    onClick={() => applyChaseTarget(target, p.id)}
-                    title={p.title}
-                    className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black border transition-all ${
-                      chase[target] === p.id
-                        ? "border-amber-400/60 bg-amber-500/15 text-amber-200 shadow-[0_0_8px_rgba(245,158,11,0.2)]"
-                        : "border-white/10 text-gray-400 hover:text-white hover:border-white/25"
-                    }`}
-                  >
-                    {p.emoji} {p.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
       </SectionBlock>
     </div>
   );

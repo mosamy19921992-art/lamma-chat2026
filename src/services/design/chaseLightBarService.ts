@@ -2,6 +2,7 @@ import { loadGlassFormTint, DEFAULT_GLASS_TINT } from "./glassTransparencyServic
 import { setDesignPreviewActive } from "./designPreviewDom";
 import { scheduleDesignOverlaysSync } from "./designOverlaySync";
 
+/** Legacy edge-chase ids — migrated to "none" on load. Neon frame uses neonBeamTargets. */
 export type ChaseLightStyleId =
   | "none"
   | "neon-beam"
@@ -10,8 +11,6 @@ export type ChaseLightStyleId =
   | "ambient-breathe"
   | "laser-scan"
   | "mono-glow";
-
-export type ChaseLightTarget = "columns" | "composer" | "header";
 
 /** Per-card / per-edge targets for neon-beam (border line only). */
 export type NeonBeamTargetId =
@@ -49,28 +48,6 @@ export const NEON_BEAM_ALL_TARGETS: NeonBeamTargetId[] = [
 
 const NEON_BEAM_TARGET_SET = new Set<string>(NEON_BEAM_ALL_TARGETS);
 
-export interface ChaseLightPreset {
-  id: ChaseLightStyleId;
-  title: string;
-  subtitle: string;
-  emoji: string;
-}
-
-/** Primary 2026 presets — clean, single-accent, no rainbow by default. */
-export const CHASE_LIGHT_PRESETS_2026: ChaseLightPreset[] = [
-  { id: "none", title: "بدون", subtitle: "إيقاف — افتراضي نظيف", emoji: "⬜" },
-  { id: "neon-beam", title: "إطار نيون", subtitle: "إطار ملوّن — يتبع شكل البطاقة أو الهيدر", emoji: "💠" },
-  { id: "soft-edge", title: "Soft Edge", subtitle: "خط gradient رفيع", emoji: "✨" },
-  { id: "aurora-flow", title: "Aurora", subtitle: "لونين accent + cyan", emoji: "🌌" },
-  { id: "ambient-breathe", title: "Ambient", subtitle: "توهج ناعم نابض", emoji: "💫" },
-  { id: "laser-scan", title: "Laser Scan", subtitle: "خط يتحرك على الحافة", emoji: "🔦" },
-  { id: "mono-glow", title: "Mono Glow", subtitle: "لون واحد — بدون رينبو", emoji: "💡" },
-];
-
-/** Legacy rainbow presets were removed in the 2026 cleanup. Any saved
-   legacy id is normalized to "none" by normalizeSettings() below. */
-export const CHASE_LIGHT_PRESETS: ChaseLightPreset[] = [...CHASE_LIGHT_PRESETS_2026];
-
 export interface ChaseLightSettings {
   columns: ChaseLightStyleId;
   composer: ChaseLightStyleId;
@@ -85,8 +62,6 @@ const STORAGE_KEY = "lamma_chase_light_settings";
 const ROOT_SELECTOR = ".lamma-neutral-glass";
 
 const DEFAULT_SETTINGS: ChaseLightSettings = {
-  // Default to no decorative lights — they were always-on and looked messy.
-  // Owners can still enable any chase style from the design library.
   columns: "none",
   composer: "none",
   header: "none",
@@ -114,6 +89,12 @@ function normalizeNeonBeamTargets(raw: unknown): NeonBeamTargetId[] {
     (id): id is NeonBeamTargetId =>
       typeof id === "string" && NEON_BEAM_TARGET_SET.has(id),
   );
+}
+
+/** Edge chase styles (Soft/Aurora/Laser…) removed — only none + neon-beam remain. */
+function stripEdgeChaseStyle(id: unknown): ChaseLightStyleId {
+  if (id === "neon-beam") return "neon-beam";
+  return "none";
 }
 
 function buildNeonBeamTargetsAttr(settings: ChaseLightSettings): string {
@@ -165,18 +146,17 @@ function syncNeonBeamChaseFlags(settings: ChaseLightSettings): ChaseLightSetting
   const targets = new Set(settings.neonBeamTargets ?? []);
   return {
     ...settings,
-    // neon-beam on columns is legacy — column cards use neonBeamTargets only
-    columns: settings.columns === "neon-beam" ? "none" : settings.columns,
+    columns: "none",
     composer: targets.has("composer")
       ? "neon-beam"
       : settings.composer === "neon-beam"
         ? "none"
-        : settings.composer,
+        : "none",
     header: targets.has("header")
       ? "neon-beam"
       : settings.header === "neon-beam"
         ? "none"
-        : settings.header,
+        : "none",
   };
 }
 
@@ -195,7 +175,7 @@ function hydrateNeonBeamTargets(settings: ChaseLightSettings): ChaseLightSetting
   }
   return {
     ...settings,
-    columns: settings.columns === "neon-beam" ? "none" : settings.columns,
+    columns: "none",
     neonBeamTargets: NEON_BEAM_ALL_TARGETS.filter((id) => targets.has(id)),
   };
 }
@@ -203,13 +183,11 @@ function hydrateNeonBeamTargets(settings: ChaseLightSettings): ChaseLightSetting
 function normalizeSettings(raw: Partial<ChaseLightSettings> | null): ChaseLightSettings {
   const base = { ...DEFAULT_SETTINGS };
   if (!raw) return base;
-  const valid = (id: unknown): id is ChaseLightStyleId =>
-    CHASE_LIGHT_PRESETS.some((p) => p.id === id);
   const neonBeamTargets = normalizeNeonBeamTargets(raw.neonBeamTargets);
   const merged: ChaseLightSettings = {
-    columns: valid(raw.columns) ? raw.columns : base.columns,
-    composer: valid(raw.composer) ? raw.composer : base.composer,
-    header: valid(raw.header) ? raw.header : base.header,
+    columns: "none",
+    composer: stripEdgeChaseStyle(raw.composer),
+    header: stripEdgeChaseStyle(raw.header),
     tintHex:
       raw.tintHex && /^#[0-9a-fA-F]{6}$/.test(raw.tintHex)
         ? raw.tintHex
@@ -221,34 +199,6 @@ function normalizeSettings(raw: Partial<ChaseLightSettings> | null): ChaseLightS
     neonBeamTargets,
   };
   return syncNeonBeamChaseFlags(hydrateNeonBeamTargets(merged));
-}
-
-/** Apply one chase style to header + columns + composer (2026 unified path). */
-export function buildChaseAllSettings(
-  styleId: ChaseLightStyleId,
-  base?: ChaseLightSettings,
-): ChaseLightSettings {
-  const current = base ?? loadChaseLightSettings();
-  if (styleId === "none") {
-    return normalizeSettings({
-      ...current,
-      columns: "none",
-      composer: "none",
-      header: "none",
-      neonBeamTargets: [],
-    });
-  }
-  if (styleId === "neon-beam") {
-    // خط النيون = اختيار بطاقة ببطاقة من تبويب الألوان — مش «طبّق على الكل»
-    return normalizeSettings(current);
-  }
-  return normalizeSettings({
-    ...current,
-    columns: styleId,
-    composer: styleId,
-    header: styleId,
-    neonBeamTargets: [],
-  });
 }
 
 export function loadChaseLightSettings(): ChaseLightSettings {
@@ -269,9 +219,15 @@ function applySettingsToDom(settings: ChaseLightSettings, preview: boolean): boo
   const root = getRoot();
   if (!root) return false;
 
-  root.setAttribute("data-chase-columns", settings.columns);
-  root.setAttribute("data-chase-composer", settings.composer);
-  root.setAttribute("data-chase-header", settings.header);
+  root.setAttribute("data-chase-columns", "none");
+  root.setAttribute(
+    "data-chase-composer",
+    settings.composer === "neon-beam" ? "neon-beam" : "none",
+  );
+  root.setAttribute(
+    "data-chase-header",
+    settings.header === "neon-beam" ? "neon-beam" : "none",
+  );
   const neonBeamAttr = buildNeonBeamTargetsAttr(settings);
   if (neonBeamAttr) {
     root.setAttribute("data-neon-beam-targets", neonBeamAttr);
@@ -300,10 +256,6 @@ function persistSettings(settings: ChaseLightSettings): void {
   }
 }
 
-export function getChaseLightLabel(id: ChaseLightStyleId): string {
-  return CHASE_LIGHT_PRESETS.find((p) => p.id === id)?.title ?? id;
-}
-
 export function previewChaseLightPatch(
   patch: Partial<ChaseLightSettings>,
 ): boolean {
@@ -312,13 +264,6 @@ export function previewChaseLightPatch(
   }
   pendingPreview = { ...(pendingPreview ?? loadChaseLightSettings()), ...patch };
   return applySettingsToDom(normalizeSettings(pendingPreview), true);
-}
-
-export function previewChaseLightForTarget(
-  target: ChaseLightTarget,
-  styleId: ChaseLightStyleId,
-): boolean {
-  return previewChaseLightPatch({ [target]: styleId });
 }
 
 export function commitChaseLightSettings(
@@ -382,16 +327,8 @@ export function commitNeonBeamTargets(
   const next = normalizeSettings({
     ...base,
     neonBeamTargets: unique,
-    composer: set.has("composer")
-      ? "neon-beam"
-      : base.composer === "neon-beam"
-        ? "none"
-        : base.composer,
-    header: set.has("header")
-      ? "neon-beam"
-      : base.header === "neon-beam"
-        ? "none"
-        : base.header,
+    composer: set.has("composer") ? "neon-beam" : "none",
+    header: set.has("header") ? "neon-beam" : "none",
     speedSec: options?.speedSec ?? base.speedSec,
   });
   return commitChaseLightSettings(next);
@@ -402,9 +339,8 @@ export function clearNeonBeamTargets(): boolean {
   const next = normalizeSettings({
     ...base,
     neonBeamTargets: [],
-    columns: base.columns === "neon-beam" ? "none" : base.columns,
-    composer: base.composer === "neon-beam" ? "none" : base.composer,
-    header: base.header === "neon-beam" ? "none" : base.header,
+    composer: "none",
+    header: "none",
   });
   return commitChaseLightSettings(next);
 }

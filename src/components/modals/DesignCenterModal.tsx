@@ -158,7 +158,7 @@ const MEGA_THEMES_2026: {
     colors: { name: "ليل بنفسجي", bg: "#0b0813", surface: "rgba(19,15,29,0.75)", text: "#f0e6ff", accent: "#a78bfa", accent2: "#7c3aed" },
     glass: { id: "crystal", tint: "#a78bfa" },
     column: { id: "neon-ring", tint: "#a78bfa" },
-    chase: { columns: "aurora-flow", composer: "soft-edge", header: "none", tintHex: "#a78bfa", speedSec: 5 },
+    chase: { columns: "none", composer: "none", header: "none", tintHex: "#a78bfa", speedSec: 5 },
     fx: { holo: false, aurora: true, shimmer: true, float: false, neon: true, rainbow: false, crystal: true, liquid: false },
     uds: { neonBorder: "none", neonBorderColor: "electric-violet", glassTexture: "crystal-glow", glassTint: "electric-violet", palette: "electric-violet", applyToBody: false, applyToContainers: true },
   },
@@ -172,7 +172,7 @@ const MEGA_THEMES_2026: {
     glass: { id: "smoke-dark", tint: "#ff00ff" },
     column: { id: "neon-ring", tint: "#ff00ff" },
     chase: {
-      columns: "neon-beam",
+      columns: "none",
       composer: "neon-beam",
       header: "none",
       tintHex: "#ff00ff",
@@ -191,7 +191,7 @@ const MEGA_THEMES_2026: {
     colors: { name: "أعماق المحيط", bg: "#030a14", surface: "rgba(7,24,40,0.72)", text: "#e0f4ff", accent: "#06b6d4", accent2: "#0ea5e9" },
     glass: { id: "ios-liquid", tint: "#06b6d4" },
     column: { id: "ios-sheet", tint: "#06b6d4" },
-    chase: { columns: "aurora-flow", composer: "soft-edge", header: "none", tintHex: "#06b6d4", speedSec: 6 },
+    chase: { columns: "none", composer: "none", header: "none", tintHex: "#06b6d4", speedSec: 6 },
     fx: { holo: false, aurora: true, shimmer: true, float: true, neon: false, rainbow: false, crystal: false, liquid: false },
     uds: { neonBorder: "pulsing-glow", neonBorderColor: "neon-cyan", glassTexture: "ios-ultra-blur", glassTint: "neon-cyan", palette: "neon-cyan", applyToBody: false, applyToContainers: true },
   },
@@ -204,7 +204,7 @@ const MEGA_THEMES_2026: {
     colors: { name: "غابة زمردية", bg: "#020f08", surface: "rgba(10,32,22,0.78)", text: "#ecfdf5", accent: "#10b981", accent2: "#34d399" },
     glass: { id: "ghost", tint: "#10b981" },
     column: { id: "liquid-ring", tint: "#10b981" },
-    chase: { columns: "soft-edge", composer: "none", header: "none", tintHex: "#10b981", speedSec: 7 },
+    chase: { columns: "none", composer: "none", header: "none", tintHex: "#10b981", speedSec: 7 },
     fx: { holo: true, aurora: true, shimmer: false, float: true, neon: false, rainbow: false, crystal: false, liquid: false },
     uds: { neonBorder: "border-aura", neonBorderColor: "aurora-green", glassTexture: "velvet-blur", glassTint: "aurora-green", palette: "aurora-green", applyToBody: false, applyToContainers: true },
   },
@@ -217,7 +217,7 @@ const MEGA_THEMES_2026: {
     colors: { name: "ذهبي فاخر", bg: "#0f0b00", surface: "rgba(26,20,0,0.8)", text: "#fef9e7", accent: "#fbbf24", accent2: "#f59e0b" },
     glass: { id: "mirror", tint: "#fbbf24" },
     column: { id: "crystal", tint: "#fbbf24" },
-    chase: { columns: "soft-edge", composer: "none", header: "none", tintHex: "#fbbf24", speedSec: 5 },
+    chase: { columns: "none", composer: "none", header: "none", tintHex: "#fbbf24", speedSec: 5 },
     fx: { holo: false, aurora: false, shimmer: true, float: false, neon: false, rainbow: false, crystal: true, liquid: true },
     uds: { neonBorder: "led-strip", neonBorderColor: "gold-eclipse", glassTexture: "dark-mirror", glassTint: "gold-eclipse", palette: "gold-eclipse", applyToBody: false, applyToContainers: true },
   },
@@ -243,7 +243,7 @@ const MEGA_THEMES_2026: {
     colors: { name: "الفضاء العميق", bg: "#010208", surface: "rgba(5,8,20,0.82)", text: "#e2e8f0", accent: "#6366f1", accent2: "#8b5cf6" },
     glass: { id: "ios-widget", tint: "#6366f1" },
     column: { id: "frosted", tint: "#6366f1" },
-    chase: { columns: "aurora-flow", composer: "soft-edge", header: "none", tintHex: "#6366f1", speedSec: 5 },
+    chase: { columns: "none", composer: "none", header: "none", tintHex: "#6366f1", speedSec: 5 },
     fx: { holo: false, aurora: true, shimmer: false, float: true, neon: true, rainbow: false, crystal: false, liquid: false },
     uds: { neonBorder: "pulsing-glow", neonBorderColor: "electric-violet", glassTexture: "dark-mirror", glassTint: "electric-violet", palette: "deep-space-blue", applyToBody: false, applyToContainers: true },
   },
@@ -1666,7 +1666,7 @@ export const DesignCenterModal = ({
                                 ⬜ إيقاف خط النيون
                               </button>
                               <p className="text-[9px] text-gray-500 font-bold text-center">
-                                يُطبَّق فوراً عند اختيار كل بطاقة · إضاءة Aurora/Laser: تبويب 🔷 الشكل
+                                يُطبَّق فوراً عند اختيار كل بطاقة
                               </p>
                             </div>
                           </div>
