@@ -26,7 +26,9 @@
 - **Phase 7 (2026-06):** hook `useOwnerMemberAccess` + `verify:unit` + `verify:phase7`
 - **Phase 8 (2026-06):** hook `useOwnerSettingsSync` + `verify:phase8`
 - **Phase 9 (2026-06):** hook `useNicknameChangeRequests` + `verify:phase9`
-- `npm run verify:all` = lint + build + phase4–9 + hardening + live + smoke + design
+- **Phase 10 (2026-06):** hook `useTempEntryTopic` + `verify:phase10`
+- **Phase 11 (2026-06):** final closure gate `verify:phase11` (hooks matrix + bundle critical path)
+- `npm run verify:all` = lint + build + phase4–11 + hardening + live + smoke + design
 
 ## 1. نظرة عامة
 
@@ -566,18 +568,17 @@ npm run preview
 
 ## 13. نقاط الضعف
 
-- `ChatScreen.tsx` لا يزال كبيرًا (~13K سطر) — Phase 4–9 (2026-06): services + hooks (rooms, subscription, moderation, owner member/settings, nickname requests) + lazy social feed
-- منطق Supabase الأساسي في `src/services/` — بقايا orchestration (activity UI) داخل ChatScreen
-- اختبارات smoke/hardening/live/phase4–9 + unit lib عبر `npm run verify:all`
+- `ChatScreen.tsx` لا يزال كبيرًا (~12K سطر UI) — Phase 4–11 (2026-06): services + 7 hooks مستخرجة + lazy social feed
+- منطق Supabase الأساسي في `src/services/` — بقايا orchestration (activity UI، رسائل، تصميم) داخل ChatScreen
+- اختبارات smoke/hardening/live/phase4–11 + unit lib عبر `npm run verify:all`
 - `public/login.html` legacy redirect فقط — لا ازدواجية دخول فعلية
 
 ## 14. توصيات تحسين
 
-1. تفكيك `ChatScreen.tsx` تدريجيًا (layout → rooms → design shell → owner sync)
-2. مواصلة نقل orchestration المتبقي من ChatScreen إلى services
-3. إضافة unit tests للـ services الجديدة (nickname, media, metadata)
-4. توسيع `verify:all` لتغطية مسارات: الدخول، إرسال الرسائل، رفع الوسائط، صلاحيات الإدارة
-5. تقليل الاعتماد على الحالة المحلية العملاقة داخل شاشة الشات
+1. تفكيك `ChatScreen.tsx` تدريجيًا — **Phase 4–11 مغلقة** (7 hooks + services)
+2. E2E أعمق (Playwright) لمسارات: landing → guest → send message → media upload
+3. unit tests إضافية للـ services (nickname, media, metadata)
+4. تقليل الاعتماد على الحالة المحلية العملاقة داخل شاشة الشات
 
 ## 15. مسار قراءة مقترح لمطور جديد
 

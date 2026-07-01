@@ -53,6 +53,7 @@ for (const token of requiredImports) {
 const moderationImports = ["fetchBannedUserRows", "insertBannedUserRow"];
 const settingsImports = ["upsertOwnerSettingsRow"];
 const nicknameImports = ["fetchNicknameChangeRequests"];
+const profileImports = ["fetchTempEntryTopicMetadata"];
 for (const token of moderationImports) {
   if (chatScreen.includes(token) || moderationHook.includes(token)) {
     pass(`Moderation stack uses ${token}`);
@@ -84,6 +85,19 @@ for (const token of nicknameImports) {
     pass(`Nickname stack uses ${token}`);
   } else {
     fail(`Nickname stack uses ${token}`);
+  }
+}
+
+const tempEntryHookPath = join(root, "src/hooks/useTempEntryTopic.ts");
+const tempEntryHook = existsSync(tempEntryHookPath)
+  ? readFileSync(tempEntryHookPath, "utf8")
+  : "";
+
+for (const token of profileImports) {
+  if (chatScreen.includes(token) || tempEntryHook.includes(token)) {
+    pass(`Temp entry topic stack uses ${token}`);
+  } else {
+    fail(`Temp entry topic stack uses ${token}`);
   }
 }
 

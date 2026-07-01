@@ -10,6 +10,11 @@ import {
 import { rolePromotionScopeLabel } from "../src/lib/memberRoleResolution.ts";
 import { normalizeMemberRole } from "../src/lib/rolePolicy.ts";
 import { nicknameRequestAppliedStorageKey } from "../src/lib/nicknameRequestStorage.ts";
+import {
+  buildTempEntryTopicStorageKey,
+  sanitizeTempEntryTopic,
+  TEMP_ENTRY_TOPIC_MAX_LEN,
+} from "../src/lib/tempEntryTopicStorage.ts";
 
 test("normalizeAuthRole maps Arabic and English owner tokens", () => {
   assert.equal(normalizeAuthRole("المالك"), "owner");
@@ -54,4 +59,10 @@ test("nicknameRequestAppliedStorageKey is stable per user and request", () => {
     nicknameRequestAppliedStorageKey("uid-1", "req-9"),
     "lamma_nickname_request_applied_uid-1_req-9",
   );
+});
+
+test("temp entry topic storage helpers sanitize and key by user", () => {
+  assert.equal(buildTempEntryTopicStorageKey("user-7"), "lamma_temp_entry_topic_user-7");
+  assert.equal(sanitizeTempEntryTopic("  hello  "), "hello");
+  assert.equal(sanitizeTempEntryTopic("x".repeat(80)).length, TEMP_ENTRY_TOPIC_MAX_LEN);
 });

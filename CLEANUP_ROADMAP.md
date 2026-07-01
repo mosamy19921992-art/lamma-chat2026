@@ -246,7 +246,28 @@ src/features/chat/
 
 **Hook الجديد:** `useNicknameChangeRequests`.
 
-**المتبقي (Phase 10+):** layout slices إضافية، E2E tests.
+## ✅ إغلاق المرحلة 10 — Temp Entry Topic (2026-06-30)
+
+| البند | الحالة |
+|---|---|
+| Slice G — `useTempEntryTopic` (localStorage + metadata sync + flash on room enter) | ✅ |
+| Lib helper — `tempEntryTopicStorage.ts` | ✅ |
+| `verify:phase10` static temp-entry gate | ✅ |
+| `verify:all` (lint + build + phase4–10 + hardening + live + smoke + design) | ✅ |
+
+**Hook الجديد:** `useTempEntryTopic`.
+
+## ✅ إغلاق المرحلة 11 — Final Closure (2026-06-30)
+
+| البند | الحالة |
+|---|---|
+| Hooks matrix Phase 5–10 wired in ChatScreen | ✅ |
+| Bundle critical-path checks (chat + lazy social) | ✅ |
+| Unit tests — 9 lib checks | ✅ |
+| `verify:phase11` closure gate | ✅ |
+| `verify:all` كامل (phase4–11 + hardening + live + smoke + design) | ✅ |
+
+**النتيجة:** خطة تفكيك ChatScreen (Phase 4–11) مغلقة — orchestration owner/moderation/nickname/temp-topic في hooks؛ services layer جاهزة؛ smoke/hardening/live مغطّاة.
 
 ## المرحلة 4: توحيد نظام الدخول ✅
 

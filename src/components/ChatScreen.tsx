@@ -213,6 +213,7 @@ import { useModeration } from "../hooks/useModeration";
 import { useOwnerMemberAccess } from "../hooks/useOwnerMemberAccess";
 import { useOwnerSettingsSync } from "../hooks/useOwnerSettingsSync";
 import { useNicknameChangeRequests } from "../hooks/useNicknameChangeRequests";
+import { useTempEntryTopic } from "../hooks/useTempEntryTopic";
 import { useIsMobileViewport } from "../hooks/useIsMobileViewport";
 import { useVisualViewportLayout } from "../hooks/useVisualViewportOffset";
 import { useDeepLinkParams } from "../hooks/useDeepLinkParams";
@@ -314,10 +315,6 @@ import {
   fetchOwnerDashboardBundle,
   OWNER_SETTINGS_ROW_ID,
 } from "../services/chat/ownerDashboardService";
-import {
-  fetchTempEntryTopicMetadata,
-  updateTempEntryTopicMetadata,
-} from "../services/auth/userProfileMetadataService";
 import {
   uploadDesignAssetFile,
   uploadPublicRoomMediaFile,
@@ -847,7 +844,21 @@ export default function ChatScreen({
   });
   const canPublishPosts = currentUser.authProvider === "supabase";
   const isRegisteredAccount = currentUser.authProvider === "supabase";
-  const tempEntryTopicStorageKey = `lamma_temp_entry_topic_${currentUser.uid || currentUser.nickname}`;
+  const {
+    tempEntryTopicInput,
+    setTempEntryTopicInput,
+    tempEntryTopicEnabled,
+    setTempEntryTopicEnabled,
+    tempEntryTopicStatusText,
+    setTempEntryTopicStatusText,
+    handleSaveTempEntryTopic,
+    activeTempEntryTopic,
+  } = useTempEntryTopic({
+    userId: currentUser.uid,
+    userNickname: currentUser.nickname,
+    isRegisteredAccount,
+    activeRoomId,
+  });
   const visibleRoomCount = availableRooms.filter(() => true).length;
   const activeRoomBg =
     roomBgMap[activeRoomId] || ownerBgImage || DEFAULT_AMBIENT_BG;
@@ -870,38 +881,6 @@ export default function ChatScreen({
     activeRoomBg !== "/MAN.png" &&
     !hasColumnFaceImages;
   const isChatColumnExpanded = isLeftColumnCollapsed || isRightColumnCollapsed;
-  const readStoredTempEntryTopic = () => {
-    if (typeof window === "undefined") {
-      return { text: "", enabled: false };
-    }
-
-    try {
-      const raw = localStorage.getItem(tempEntryTopicStorageKey);
-      if (!raw) return { text: "", enabled: false };
-      const parsed = JSON.parse(raw) as {
-        text?: string;
-        enabled?: boolean;
-      };
-      const text =
-        typeof parsed.text === "string" ? parsed.text.trim().slice(0, 60) : "";
-      return {
-        text,
-        enabled: parsed.enabled === true && Boolean(text),
-      };
-    } catch {
-      return { text: "", enabled: false };
-    }
-  };
-  const persistTempEntryTopic = (text: string, enabled: boolean) => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(
-      tempEntryTopicStorageKey,
-      JSON.stringify({
-        text: text.trim().slice(0, 60),
-        enabled: enabled && Boolean(text.trim()),
-      }),
-    );
-  };
 
   useEffect(() => {
     setDesignLogoInput(brandLogoUrl || "");
@@ -1481,18 +1460,6 @@ export default function ChatScreen({
   };
 
   const [showStatus, setShowStatus] = useState(false);
-  const [tempEntryTopicInput, setTempEntryTopicInput] = useState("");
-  const [tempEntryTopicEnabled, setTempEntryTopicEnabled] = useState(false);
-  const [tempEntryTopicStatusText, setTempEntryTopicStatusText] = useState<
-    string | null
-  >(null);
-  const [visibleTempEntryTopic, setVisibleTempEntryTopic] = useState<
-    string | null
-  >(null);
-  const tempEntryTopicTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const tempEntryTopicLastTriggerRef = useRef("");
   useEffect(() => {
     localStorage.setItem(userBioStorageKey, myCustomBio);
   }, [myCustomBio, userBioStorageKey]);
@@ -1502,82 +1469,6 @@ export default function ChatScreen({
       return () => clearTimeout(timer);
     }
   }, [showStatus]);
-  useEffect(() => {
-    const stored = readStoredTempEntryTopic();
-    setTempEntryTopicInput(stored.text);
-    setTempEntryTopicEnabled(stored.enabled);
-    setTempEntryTopicStatusText(null);
-    tempEntryTopicLastTriggerRef.current = "";
-
-    if (!isRegisteredAccount || !supabase) {
-      setVisibleTempEntryTopic(null);
-      return;
-    }
-
-    let cancelled = false;
-    const syncTempEntryTopic = async () => {
-      const metadata = await fetchTempEntryTopicMetadata();
-      if (cancelled || !metadata) return;
-
-      setTempEntryTopicInput(metadata.text);
-      setTempEntryTopicEnabled(metadata.enabled);
-      persistTempEntryTopic(metadata.text, metadata.enabled);
-    };
-
-    void syncTempEntryTopic();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    currentUser.nickname,
-    currentUser.uid,
-    isRegisteredAccount,
-    tempEntryTopicStorageKey,
-  ]);
-  useEffect(() => {
-    if (tempEntryTopicTimerRef.current) {
-      clearTimeout(tempEntryTopicTimerRef.current);
-      tempEntryTopicTimerRef.current = null;
-    }
-
-    if (!isRegisteredAccount) {
-      setVisibleTempEntryTopic(null);
-      return;
-    }
-
-    const nextTopic = tempEntryTopicInput.trim();
-    if (!tempEntryTopicEnabled || !nextTopic) {
-      setVisibleTempEntryTopic(null);
-      return;
-    }
-
-    const triggerKey = `${currentUser.uid || currentUser.nickname}:${activeRoomId}`;
-    if (tempEntryTopicLastTriggerRef.current === triggerKey) {
-      return;
-    }
-
-    tempEntryTopicLastTriggerRef.current = triggerKey;
-    setVisibleTempEntryTopic(nextTopic);
-    tempEntryTopicTimerRef.current = setTimeout(() => {
-      setVisibleTempEntryTopic(null);
-      tempEntryTopicTimerRef.current = null;
-    }, 5000);
-
-    return () => {
-      if (tempEntryTopicTimerRef.current) {
-        clearTimeout(tempEntryTopicTimerRef.current);
-        tempEntryTopicTimerRef.current = null;
-      }
-    };
-  }, [
-    activeRoomId,
-    currentUser.nickname,
-    currentUser.uid,
-    isRegisteredAccount,
-    tempEntryTopicEnabled,
-    tempEntryTopicInput,
-  ]);
 
   const toggleSearchPop = () => {
     setActiveModal(null);
@@ -1871,7 +1762,6 @@ export default function ChatScreen({
   const currentDisplayAvatar = myActiveSession.avatar || currentUser.avatar || "👤";
   const currentDisplayBadge = myActiveSession.badge || currentUser.badge;
   const currentDisplayTitle = myActiveSession.title || currentUser.title;
-  const activeTempEntryTopic = visibleTempEntryTopic?.trim() || "";
 
   const buildCurrentChatMember = (): ChatMember => ({
     id: currentUser.uid || `member-${currentDisplayNickname}`,
@@ -4292,62 +4182,6 @@ export default function ChatScreen({
     window.setTimeout(() => {
       onLogout();
     }, 0);
-  };
-
-  const handleSaveTempEntryTopic = async () => {
-    const rawTopic = tempEntryTopicInput.trim();
-    if (rawTopic.length > 60) {
-      alert("اجعل التوبيك المؤقت 60 حرفاً أو أقل.");
-      return;
-    }
-
-    if (!supabase || !isRegisteredAccount || !currentUser.uid) {
-      alert("هذه الميزة متاحة للحسابات المسجلة فقط.");
-      return;
-    }
-
-    const sanitizedTopic = rawTopic.slice(0, 60);
-    const nextEnabled = tempEntryTopicEnabled && Boolean(sanitizedTopic);
-    setTempEntryTopicStatusText(null);
-
-    const { error } = await updateTempEntryTopicMetadata(
-      sanitizedTopic,
-      nextEnabled,
-    );
-
-    if (error) {
-      alert("تعذر حفظ التوبيك المؤقت حالياً.");
-      console.warn("Failed to save temp entry topic:", error.message);
-      return;
-    }
-
-    setTempEntryTopicInput(sanitizedTopic);
-    setTempEntryTopicEnabled(nextEnabled);
-    persistTempEntryTopic(sanitizedTopic, nextEnabled);
-    tempEntryTopicLastTriggerRef.current = "";
-
-    if (tempEntryTopicTimerRef.current) {
-      clearTimeout(tempEntryTopicTimerRef.current);
-      tempEntryTopicTimerRef.current = null;
-    }
-
-    if (nextEnabled && sanitizedTopic) {
-      setVisibleTempEntryTopic(sanitizedTopic);
-      tempEntryTopicTimerRef.current = setTimeout(() => {
-        setVisibleTempEntryTopic(null);
-        tempEntryTopicTimerRef.current = null;
-      }, 5000);
-    } else {
-      setVisibleTempEntryTopic(null);
-    }
-
-    setTempEntryTopicStatusText(
-      sanitizedTopic
-        ? nextEnabled
-          ? "تم حفظ التوبيك المؤقت وسيظهر جنب اسمك لحظات وقت الدخول."
-          : "تم حفظ النص، لكن ظهوره معطل حالياً حتى تفعله."
-        : "تم مسح التوبيك المؤقت من حسابك.",
-    );
   };
 
   // States to keep interface simple and un-cluttered
