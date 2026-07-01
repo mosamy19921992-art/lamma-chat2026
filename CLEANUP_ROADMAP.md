@@ -171,7 +171,7 @@ src/features/chat/
 - `mediaStorageService` — public room media + design assets upload
 - `privateMessagesService.sendAdminPmMessage`
 
-**المتبقي (Phase 6+):** layout slices إضافية، bundle splitting أوسع، اختبارات آلية.
+**المتبقي (Phase 7+):** owner sync slices، layout hooks إضافية، unit tests.
 
 ---
 
@@ -200,6 +200,20 @@ src/features/chat/
 | `verify:all` (lint + build + phase4 + phase5 + hardening + live + smoke + design) | ✅ |
 
 **Hooks الجديدة:** `useRoomNavigation`, `useStoreSubscription`.
+
+## ✅ إغلاق المرحلة 6 — Moderation Hook + Social Bundle (2026-06-30)
+
+| البند | الحالة |
+|---|---|
+| Slice C — `useModeration` (حظر، sync، megaban check، add/remove ban) | ✅ |
+| Lazy `SocialFeedPanel` في `UserProfilePageModal` + `Suspense` | ✅ |
+| إزالة duplicates moderation من `ChatScreen.tsx` | ✅ |
+| `verify:phase6` static moderation gate | ✅ |
+| `verify:all` (lint + build + phase4–6 + hardening + live + smoke + design) | ✅ |
+
+**Hook الجديد:** `useModeration`.
+
+**المتبقي (Phase 7+):** owner sync slices، layout hooks إضافية، unit tests.
 
 ## المرحلة 4: توحيد نظام الدخول ✅
 

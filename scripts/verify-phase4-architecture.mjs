@@ -17,6 +17,10 @@ const requiredServices = [
 
 const chatScreenPath = join(root, "src/components/ChatScreen.tsx");
 const chatScreen = readFileSync(chatScreenPath, "utf8");
+const moderationHookPath = join(root, "src/hooks/useModeration.ts");
+const moderationHook = existsSync(moderationHookPath)
+  ? readFileSync(moderationHookPath, "utf8")
+  : "";
 
 let failed = 0;
 
@@ -41,13 +45,20 @@ const requiredImports = [
   "fetchNicknameChangeRequests",
   "persistRoomMediaMessage",
   "uploadPublicRoomMediaFile",
-  "fetchBannedUserRows",
-  "insertBannedUserRow",
 ];
 
 for (const token of requiredImports) {
   if (chatScreen.includes(token)) pass(`ChatScreen uses ${token}`);
   else fail(`ChatScreen uses ${token}`);
+}
+
+const moderationImports = ["fetchBannedUserRows", "insertBannedUserRow"];
+for (const token of moderationImports) {
+  if (chatScreen.includes(token) || moderationHook.includes(token)) {
+    pass(`Moderation stack uses ${token}`);
+  } else {
+    fail(`Moderation stack uses ${token}`);
+  }
 }
 
 const forbiddenDirect = [

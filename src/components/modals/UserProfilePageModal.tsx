@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { MessageCircle, Sparkles, X } from "lucide-react";
 import AMLogo from "../AMLogo";
-import { SocialFeedPanel } from "../social/SocialFeedPanel";
 import type { ChatMember, UserSession } from "../../lib/chatTypes";
 import type { MemberCosmeticGrant } from "../../lib/chatTypes";
 import type { SocialPost, UserProfileRecord } from "../../lib/socialTypes";
@@ -12,6 +11,8 @@ import {
   updateUserBio,
 } from "../../services/social/userProfileService";
 import { fetchProfileTimeline } from "../../hooks/useSocialFeed";
+
+const SocialFeedPanel = lazy(() => import("../social/SocialFeedPanel"));
 
 interface UserProfilePageModalProps {
   isOpen: boolean;
@@ -187,7 +188,14 @@ export function UserProfilePageModal({
               </div>
 
               <div className="p-3">
-                <SocialFeedPanel
+                <Suspense
+                  fallback={
+                    <div className="p-6 text-center text-gray-400 text-xs">
+                      جاري تحميل المنشورات…
+                    </div>
+                  }
+                >
+                  <SocialFeedPanel
                   posts={timeline}
                   currentSession={currentUser}
                   chatMembers={chatMembers}
@@ -200,6 +208,7 @@ export function UserProfilePageModal({
                   onLike={onLike}
                   onComment={onComment}
                 />
+                </Suspense>
               </div>
             </div>
           </motion.div>

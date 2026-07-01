@@ -22,7 +22,8 @@
 - `supabase-production-hardening.sql` + `scripts/apply-production-setup.mjs` للإنتاج
 - **Phase 4 (2026-06):** استخراج services (owner dashboard، nickname، activity logs، media) + `verify:phase4`
 - **Phase 5 (2026-06):** hooks `useRoomNavigation` + `useStoreSubscription`، lazy `SocialFeedPanel` + `verify:phase5`
-- `npm run verify:all` = lint + build + phase4 + phase5 + hardening + live + smoke + design
+- **Phase 6 (2026-06):** hook `useModeration`، lazy social feed في profile modal + `verify:phase6`
+- `npm run verify:all` = lint + build + phase4 + phase5 + phase6 + hardening + live + smoke + design
 
 ## 1. نظرة عامة
 
@@ -562,9 +563,9 @@ npm run preview
 
 ## 13. نقاط الضعف
 
-- `ChatScreen.tsx` لا يزال كبيرًا (~13K سطر) — Phase 4–5 (2026-06): services + `useRoomNavigation` + `useStoreSubscription` + lazy social feed
-- منطق Supabase الأساسي في `src/services/` — بقايا orchestration/sync داخل ChatScreen (owner settings، moderation realtime)
-- اختبارات smoke/hardening/live/phase4/phase5 عبر `npm run verify:all`
+- `ChatScreen.tsx` لا يزال كبيرًا (~13K سطر) — Phase 4–6 (2026-06): services + `useRoomNavigation` + `useStoreSubscription` + `useModeration` + lazy social feed
+- منطق Supabase الأساسي في `src/services/` — بقايا orchestration/sync داخل ChatScreen (owner settings)
+- اختبارات smoke/hardening/live/phase4–6 عبر `npm run verify:all`
 - `public/login.html` legacy redirect فقط — لا ازدواجية دخول فعلية
 
 ## 14. توصيات تحسين

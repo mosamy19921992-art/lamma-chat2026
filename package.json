@@ -16,7 +16,8 @@
     "verify:extended": "npm run verify:design",
     "verify:phase4": "node scripts/verify-phase4-architecture.mjs",
     "verify:phase5": "node scripts/verify-phase5-layout.mjs",
-    "verify:all": "npm run lint && npm run build && npm run verify:phase4 && npm run verify:phase5 && npm run verify:hardening && npm run verify:live && npm run verify:smoke && npm run verify:extended"
+    "verify:phase6": "node scripts/verify-phase6-moderation.mjs",
+    "verify:all": "npm run lint && npm run build && npm run verify:phase4 && npm run verify:phase5 && npm run verify:phase6 && npm run verify:hardening && npm run verify:live && npm run verify:smoke && npm run verify:extended"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
