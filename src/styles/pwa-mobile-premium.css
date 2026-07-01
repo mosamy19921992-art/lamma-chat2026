@@ -477,10 +477,15 @@
     animation: lammaMobileMenuRise 180ms ease both;
   }
 
-  .lamma-pwa-app-shell.lamma-modal-open,
-  html.lamma-modal-open body {
+  /* Shell-only scroll lock — html/body overflow causes iOS PWA layout jitter */
+  .lamma-pwa-app-shell.lamma-modal-open {
     overflow: hidden !important;
     overscroll-behavior: none;
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+
+  .lamma-pwa-app-shell.lamma-modal-open .lamma-pwa-main-stage {
+    overflow: hidden !important;
   }
 
   .lamma-pwa-app-shell .lamma-chat-input-shell {

@@ -170,7 +170,7 @@ export function UserContextPopup({
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 320 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             className="fixed inset-x-0 bottom-0 z-[9995] max-h-[88vh] rounded-t-[28px] overflow-hidden flex flex-col text-right lamma-modal-shell lamma-user-overlay border-t border-white/10"
             dir="rtl"
           >

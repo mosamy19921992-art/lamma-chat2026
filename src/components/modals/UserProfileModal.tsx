@@ -180,7 +180,7 @@ export const UserProfileModal = ({ showProfileModal, selectedProfileMember, setS
             }
             transition={
               isMobileViewport
-                ? { type: "spring", damping: 30, stiffness: 340 }
+                ? { duration: 0.22, ease: [0.22, 1, 0.36, 1] }
                 : { duration: 0.16 }
             }
             className={`fixed z-[9995] flex flex-col lamma-modal-shell lamma-user-overlay overflow-hidden ${

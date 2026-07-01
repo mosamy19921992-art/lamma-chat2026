@@ -4631,29 +4631,6 @@ export default function ChatScreen({
     showUserContextPop;
 
   useEffect(() => {
-    if (!isMobileAppShell) return;
-    const cls = "lamma-modal-open";
-    const open =
-      Boolean(activeModal) || hasFloatingDropdownOpen || hasProfileOverlayOpen;
-    if (open) {
-      document.documentElement.classList.add(cls);
-      document.body.classList.add(cls);
-    } else {
-      document.documentElement.classList.remove(cls);
-      document.body.classList.remove(cls);
-    }
-    return () => {
-      document.documentElement.classList.remove(cls);
-      document.body.classList.remove(cls);
-    };
-  }, [
-    isMobileAppShell,
-    activeModal,
-    hasFloatingDropdownOpen,
-    hasProfileOverlayOpen,
-  ]);
-
-  useEffect(() => {
     if (isPostsRoom) {
       feedViewportRef.current?.scrollTo({ top: 0, behavior: "smooth" });
       return;

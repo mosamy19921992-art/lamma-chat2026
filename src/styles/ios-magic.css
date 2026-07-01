@@ -26,16 +26,28 @@
   /* ──────────────────────────────────────────────
      HEADER — iOS translucent frosted bar
   ────────────────────────────────────────────── */
+  /* Solid header — avoid stacked blur/gradients that bleed on PWA */
   .lamma-pwa-app-shell .lamma-header {
-    backdrop-filter: var(--ios-blur-heavy) !important;
-    -webkit-backdrop-filter: var(--ios-blur-heavy) !important;
-    background:
-      radial-gradient(circle at 18% 0%, rgba(var(--lamma-header-accent-rgb, 16, 185, 129), 0.08), transparent 44%),
-      rgba(6, 10, 16, 0.78) !important;
-    border-bottom: 0.5px solid rgba(255, 255, 255, 0.09) !important;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 6px 24px rgba(0, 0, 0, 0.22) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(14, 18, 24, 0.98) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: none !important;
     padding: 0.25rem 0.5rem !important;
     min-height: 54px !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-header-aurora {
+    display: none !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-header::before {
+    opacity: 0 !important;
+  }
+
+  .lamma-pwa-app-shell .lamma-header::after {
+    opacity: 0.35 !important;
+    box-shadow: none !important;
   }
 
   /* Fix header actions alignment */
@@ -393,10 +405,35 @@
     100% { transform: scale(1);    opacity: 1; }
   }
 
-  [class*="modal-content"],
-  [class*="modal-inner"] {
+  /* Profile/sheet modals use Framer Motion — skip CSS bounce to avoid double motion */
+  [class*="modal-content"]:not(.lamma-modal-shell):not(.lamma-user-overlay),
+  [class*="modal-inner"]:not(.lamma-modal-shell):not(.lamma-user-overlay) {
     animation: iosModalBounce 400ms var(--spring-bounce) both !important;
     border-radius: 28px !important;
+  }
+
+  .lamma-modal-shell.lamma-user-overlay,
+  .lamma-user-overlay.lamma-modal-shell {
+    animation: none !important;
+  }
+
+  .lamma-pwa-app-shell.lamma-modal-open .lamma-message {
+    animation: none !important;
+  }
+
+  /* Login — calm infinite glows that jitter on standalone PWA */
+  .lamma-magic-login-shell .panel[data-view="main"] .brandLogo {
+    animation: none !important;
+  }
+
+  .lamma-magic-login-shell .optionCard::before {
+    animation: none !important;
+    opacity: 0.55 !important;
+  }
+
+  .lamma-magic-login-shell .panel[data-view="main"] {
+    -webkit-backdrop-filter: blur(22px) saturate(1.25) !important;
+    backdrop-filter: blur(22px) saturate(1.25) !important;
   }
 
   /* ──────────────────────────────────────────────

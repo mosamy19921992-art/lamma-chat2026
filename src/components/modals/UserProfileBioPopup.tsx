@@ -127,7 +127,7 @@ export function UserProfileBioPopup({
             exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95 }}
             transition={
               isMobile
-                ? { type: "spring", damping: 28, stiffness: 320 }
+                ? { duration: 0.22, ease: [0.22, 1, 0.36, 1] }
                 : { duration: 0.15 }
             }
             className={panelClass}
