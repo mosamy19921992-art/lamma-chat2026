@@ -213,7 +213,18 @@ src/features/chat/
 
 **Hook الجديد:** `useModeration`.
 
-**المتبقي (Phase 7+):** owner sync slices، layout hooks إضافية، unit tests.
+## ✅ إغلاق المرحلة 7 — Owner Member Access + Unit Tests (2026-06-30)
+
+| البند | الحالة |
+|---|---|
+| Slice D — `useOwnerMemberAccess` (صلاحيات/cosmetics + realtime + persist) | ✅ |
+| Unit tests — `authProfile`, `inviteAccess`, `chatHelpers` | ✅ |
+| `verify:phase7` + `verify:unit` gates | ✅ |
+| `verify:all` (lint + build + phase4–7 + hardening + live + smoke + design) | ✅ |
+
+**Hook الجديد:** `useOwnerMemberAccess`.
+
+**المتبقي (Phase 8+):** owner settings sync hook، layout slices إضافية.
 
 ## المرحلة 4: توحيد نظام الدخول ✅
 

@@ -124,8 +124,6 @@ import {
   type NicknameChangeRequestRow,
   SupabaseMessage,
   type OwnerActivityLogRow,
-  type OwnerMemberPermissionRow,
-  type OwnerMemberCosmeticsRow,
   type OwnerSettingsRow,
 } from "../lib/supabase.ts";
 import type { PublicChatSettingsPayload } from "../services/chat/ownerSettingsService";
@@ -213,6 +211,7 @@ import type { MemberRole } from "../lib/chatTypes";
 import { useRoomNavigation } from "../hooks/useRoomNavigation";
 import { useStoreSubscription } from "../hooks/useStoreSubscription";
 import { useModeration } from "../hooks/useModeration";
+import { useOwnerMemberAccess } from "../hooks/useOwnerMemberAccess";
 import { useIsMobileViewport } from "../hooks/useIsMobileViewport";
 import { useVisualViewportLayout } from "../hooks/useVisualViewportOffset";
 import { useDeepLinkParams } from "../hooks/useDeepLinkParams";
@@ -313,10 +312,6 @@ import { syncOwnerActivityLog } from "../services/chat/ownerActivityLogService";
 import {
   fetchOwnerDashboardBundle,
   upsertOwnerSettingsRow,
-  upsertOwnerMemberPermissions,
-  listOwnerMemberCosmeticNicknames,
-  deleteOwnerMemberCosmetic,
-  upsertOwnerMemberCosmetics,
   OWNER_SETTINGS_ROW_ID,
 } from "../services/chat/ownerDashboardService";
 import {
@@ -838,6 +833,25 @@ export default function ChatScreen({
     publicChatSessionStartedAt,
   ).getTime();
   const isManagementRole = isOwnerRole || isAdminRole;
+  const [ownerWriteAccessOk, setOwnerWriteAccessOk] = useState<boolean | null>(
+    null,
+  );
+  const canPersistOwnerSettings = isOwnerRole && ownerWriteAccessOk === true;
+  const {
+    memberCustomPermissions,
+    setMemberCustomPermissions,
+    memberCosmeticGrants,
+    setMemberCosmeticGrants,
+    applyPermissionsFromRows,
+    applyCosmeticsFromRows,
+    resetMemberAccessSyncReady,
+    markMemberAccessSyncReady,
+  } = useOwnerMemberAccess({
+    isManagementRole,
+    isOwnerRole,
+    canPersistOwnerSettings,
+    ownerNickname: currentUser.nickname,
+  });
   const canPublishPosts = currentUser.authProvider === "supabase";
   const isRegisteredAccount = currentUser.authProvider === "supabase";
   const tempEntryTopicStorageKey = `lamma_temp_entry_topic_${currentUser.uid || currentUser.nickname}`;
@@ -2554,28 +2568,6 @@ export default function ChatScreen({
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
 
-  // Custom user permissions managed exclusively by the owner
-  const [memberCustomPermissions, setMemberCustomPermissions] = useState<
-    Record<string, MemberCustomPermissions>
-  >(() => {
-    const saved = localStorage.getItem("lamma_custom_user_perms");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        // ignore
-      }
-    }
-    return {};
-  });
-
-  useEffect(() => {
-    localStorage.setItem(
-      "lamma_custom_user_perms",
-      JSON.stringify(memberCustomPermissions),
-    );
-  }, [memberCustomPermissions]);
-
   const canUserControlMusicRadio = useMemo(
     () => canControlMusicRadio(currentUser, memberCustomPermissions),
     [currentUser, memberCustomPermissions],
@@ -2596,27 +2588,6 @@ export default function ChatScreen({
   const pendingPasswordRoom = pendingRoomSwitchId
     ? customRooms.find((room) => room.id === pendingRoomSwitchId)
     : null;
-
-  const [memberCosmeticGrants, setMemberCosmeticGrants] = useState<
-    Record<string, MemberCosmeticGrant>
-  >(() => {
-    const saved = localStorage.getItem("lamma_member_cosmetic_grants");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        // ignore
-      }
-    }
-    return {};
-  });
-
-  useEffect(() => {
-    localStorage.setItem(
-      "lamma_member_cosmetic_grants",
-      JSON.stringify(memberCosmeticGrants),
-    );
-  }, [memberCosmeticGrants]);
 
   // WebRTC calls — real peer connection with dual-server auto-failover
   const pmTargetNicknameRef = useRef<string | null>(null);
@@ -2785,29 +2756,13 @@ export default function ChatScreen({
   };
 
   const ownerSettingsSyncReadyRef = useRef(false);
-  const ownerPermissionsSyncReadyRef = useRef(false);
-  const ownerCosmeticsSyncReadyRef = useRef(false);
-  const ownerPermissionsSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const ownerCosmeticsSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
   const ownerSettingsSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
   const ownerRlsAlertShownRef = useRef(false);
-  const ownerMemberPermissionsAlertShownRef = useRef(false);
-  const lastSyncedMemberPermissionsRef = useRef("");
-  const lastSyncedMemberCosmeticsRef = useRef("");
-  const [ownerWriteAccessOk, setOwnerWriteAccessOk] = useState<boolean | null>(
-    null,
-  );
   const [applyingStyleSandboxId, setApplyingStyleSandboxId] = useState<
     string | null
   >(null);
-
-  const canPersistOwnerSettings = isOwnerRole && ownerWriteAccessOk === true;
 
   const syncPublicOwnerSettings = useCallback(
     (settings: PublicChatSettingsPayload) => {
@@ -2974,120 +2929,15 @@ export default function ChatScreen({
   }, [isCurrentUserOwner, isManagementRole, syncPublicOwnerSettings]);
 
   useEffect(() => {
-    if (!supabase || !isManagementRole) return;
-    let isCancelled = false;
-    const unsubscribe = subscribeChannelWithRetry(() =>
-      supabase
-        .channel('owner_permissions_sync')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'owner_member_permissions' },
-          (payload) => {
-            if (isCancelled) return;
-            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-              const p = payload.new;
-              setMemberCustomPermissions(prev => {
-                const next = {
-                  ...prev,
-                  [p.nickname]: {
-                    recordingAllowed: !!p.recording_allowed,
-                    callsAllowed: !!p.calls_allowed,
-                    videoCallsAllowed: !!p.video_calls_allowed,
-                    musicRadioAllowed: !!p.music_radio_allowed,
-                    roomCreationAllowed: !!p.room_creation_allowed,
-                    roomCreationQuota: Number(p.room_creation_quota) || 0,
-                    imagesAllowed: !!p.images_allowed,
-                    youtubeAllowed: !!p.youtube_allowed,
-                  },
-                };
-                lastSyncedMemberPermissionsRef.current = JSON.stringify(next);
-                return next;
-              });
-            } else if (payload.eventType === 'DELETE') {
-              const p = payload.old;
-              if (p && p.nickname) {
-                setMemberCustomPermissions(prev => {
-                  const next = { ...prev };
-                  delete next[p.nickname];
-                  lastSyncedMemberPermissionsRef.current = JSON.stringify(next);
-                  return next;
-                });
-              }
-            }
-          },
-        ),
-    );
-    return () => {
-      isCancelled = true;
-      unsubscribe();
-    };
-  }, [isManagementRole]);
-
-  useEffect(() => {
-    if (!supabase || !isManagementRole) return;
-    let isCancelled = false;
-    const unsubscribe = subscribeChannelWithRetry(() =>
-      supabase
-        .channel("owner_cosmetics_sync")
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "owner_member_cosmetics" },
-          (payload) => {
-            if (isCancelled) return;
-            if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
-              const p = payload.new as OwnerMemberCosmeticsRow;
-              if (!p.nickname?.trim()) return;
-              if (!p.vip_tier && !p.frame) {
-                setMemberCosmeticGrants((prev) => {
-                  const next = { ...prev };
-                  delete next[p.nickname];
-                  return next;
-                });
-                return;
-              }
-              setMemberCosmeticGrants((prev) => {
-                const next = {
-                  ...prev,
-                  [p.nickname]: {
-                    vipTier: p.vip_tier || null,
-                    frame: p.frame || null,
-                  },
-                };
-                lastSyncedMemberCosmeticsRef.current = JSON.stringify(next);
-                return next;
-              });
-            } else if (payload.eventType === "DELETE") {
-              const p = payload.old as OwnerMemberCosmeticsRow;
-              if (p?.nickname) {
-                setMemberCosmeticGrants((prev) => {
-                  const next = { ...prev };
-                  delete next[p.nickname];
-                  lastSyncedMemberCosmeticsRef.current = JSON.stringify(next);
-                  return next;
-                });
-              }
-            }
-          },
-        ),
-    );
-    return () => {
-      isCancelled = true;
-      unsubscribe();
-    };
-  }, [isManagementRole]);
-
-  useEffect(() => {
     let cancelled = false;
 
     const loadOwnerData = async () => {
       ownerSettingsSyncReadyRef.current = false;
-      ownerPermissionsSyncReadyRef.current = false;
-      ownerCosmeticsSyncReadyRef.current = false;
+      resetMemberAccessSyncReady();
 
       if (!supabase) {
         ownerSettingsSyncReadyRef.current = true;
-        ownerPermissionsSyncReadyRef.current = true;
-        ownerCosmeticsSyncReadyRef.current = true;
+        markMemberAccessSyncReady();
         return;
       }
 
@@ -3151,41 +3001,11 @@ export default function ChatScreen({
         }
 
         if (bundle.permissions.length > 0) {
-          const nextPermissions = bundle.permissions.reduce<
-            Record<string, MemberCustomPermissions>
-          >((acc, row) => {
-            if (!row.nickname?.trim()) return acc;
-            acc[row.nickname] = {
-              recordingAllowed: Boolean(row.recording_allowed),
-              callsAllowed: Boolean(row.calls_allowed),
-              videoCallsAllowed: Boolean(row.video_calls_allowed),
-              musicRadioAllowed: Boolean(row.music_radio_allowed),
-              roomCreationAllowed: Boolean(row.room_creation_allowed),
-              roomCreationQuota: Number(row.room_creation_quota) || 0,
-              imagesAllowed: Boolean(row.images_allowed),
-              youtubeAllowed: Boolean(row.youtube_allowed),
-            };
-            return acc;
-          }, {});
-
-          lastSyncedMemberPermissionsRef.current = JSON.stringify(nextPermissions);
-          setMemberCustomPermissions(nextPermissions);
+          applyPermissionsFromRows(bundle.permissions);
         }
 
         if (bundle.cosmetics.length > 0) {
-          const nextCosmetics = bundle.cosmetics.reduce<
-            Record<string, MemberCosmeticGrant>
-          >((acc, row) => {
-            if (!row.nickname?.trim()) return acc;
-            if (!row.vip_tier && !row.frame) return acc;
-            acc[row.nickname] = {
-              vipTier: row.vip_tier || null,
-              frame: row.frame || null,
-            };
-            return acc;
-          }, {});
-          lastSyncedMemberCosmeticsRef.current = JSON.stringify(nextCosmetics);
-          setMemberCosmeticGrants(nextCosmetics);
+          applyCosmeticsFromRows(bundle.cosmetics);
         }
 
         if (bundle.activityLogs.length > 0) {
@@ -3205,8 +3025,7 @@ export default function ChatScreen({
       } finally {
         if (!cancelled) {
           ownerSettingsSyncReadyRef.current = true;
-          ownerPermissionsSyncReadyRef.current = true;
-          ownerCosmeticsSyncReadyRef.current = true;
+          markMemberAccessSyncReady();
         }
       }
     };
@@ -3216,7 +3035,18 @@ export default function ChatScreen({
     return () => {
       cancelled = true;
     };
-  }, [currentUser.authProvider, currentUser.role, currentUser.uid, isManagementRole, isCurrentUserOwner, syncPublicOwnerSettings]);
+  }, [
+    applyCosmeticsFromRows,
+    applyPermissionsFromRows,
+    currentUser.authProvider,
+    currentUser.role,
+    currentUser.uid,
+    isManagementRole,
+    isCurrentUserOwner,
+    markMemberAccessSyncReady,
+    resetMemberAccessSyncReady,
+    syncPublicOwnerSettings,
+  ]);
 
   const fetchNicknameRequests = async () => {
     if (
@@ -3414,125 +3244,6 @@ export default function ChatScreen({
     botRuleAntiSpam,
     botRuleSwearFilter,
   ]);
-
-  useEffect(() => {
-    if (
-      !ownerPermissionsSyncReadyRef.current ||
-      !supabase ||
-      !canPersistOwnerSettings
-    ) {
-      return;
-    }
-
-    if (ownerPermissionsSyncTimeoutRef.current) {
-      clearTimeout(ownerPermissionsSyncTimeoutRef.current);
-    }
-
-    ownerPermissionsSyncTimeoutRef.current = setTimeout(async () => {
-      const snapshot = JSON.stringify(memberCustomPermissions);
-      if (snapshot === lastSyncedMemberPermissionsRef.current) {
-        return;
-      }
-
-      const rows: OwnerMemberPermissionRow[] = Object.entries(
-        memberCustomPermissions,
-      ).map(([nickname, permissions]) => ({
-        nickname,
-        updated_by: currentUser.nickname,
-        recording_allowed: permissions.recordingAllowed,
-        calls_allowed: permissions.callsAllowed,
-        video_calls_allowed: permissions.videoCallsAllowed,
-        music_radio_allowed: permissions.musicRadioAllowed,
-        room_creation_allowed: permissions.roomCreationAllowed,
-        room_creation_quota: permissions.roomCreationQuota,
-        images_allowed: permissions.imagesAllowed,
-        youtube_allowed: permissions.youtubeAllowed,
-      }));
-
-      if (rows.length === 0) return;
-
-      const { error } = await upsertOwnerMemberPermissions(rows);
-
-      if (error) {
-        console.warn("Failed to sync owner member permissions", error);
-        if (
-          isOwnerRole &&
-          !ownerMemberPermissionsAlertShownRef.current
-        ) {
-          ownerMemberPermissionsAlertShownRef.current = true;
-          alert(
-            `⚠️ تعذر حفظ صلاحيات الأعضاء على السيرفر: ${error.message}\n` +
-              "تحقق من user_roles (role=owner) وسياسات RLS على owner_member_permissions.",
-          );
-        }
-      } else {
-        lastSyncedMemberPermissionsRef.current = snapshot;
-      }
-    }, OWNER_SYNC_DEBOUNCE_MS);
-
-    return () => {
-      if (ownerPermissionsSyncTimeoutRef.current) {
-        clearTimeout(ownerPermissionsSyncTimeoutRef.current);
-      }
-    };
-  }, [canPersistOwnerSettings, currentUser.nickname, isOwnerRole, memberCustomPermissions]);
-
-  useEffect(() => {
-    if (
-      !ownerCosmeticsSyncReadyRef.current ||
-      !supabase ||
-      !canPersistOwnerSettings
-    ) {
-      return;
-    }
-
-    if (ownerCosmeticsSyncTimeoutRef.current) {
-      clearTimeout(ownerCosmeticsSyncTimeoutRef.current);
-    }
-
-    ownerCosmeticsSyncTimeoutRef.current = setTimeout(async () => {
-      const snapshot = JSON.stringify(memberCosmeticGrants);
-      if (snapshot === lastSyncedMemberCosmeticsRef.current) {
-        return;
-      }
-
-      const rows: OwnerMemberCosmeticsRow[] = Object.entries(
-        memberCosmeticGrants,
-      ).map(([nickname, grant]) => ({
-        nickname,
-        updated_by: currentUser.nickname,
-        vip_tier: grant.vipTier || null,
-        frame: grant.frame || null,
-      }));
-
-      const existingNicknames = await listOwnerMemberCosmeticNicknames();
-      const keep = new Set(rows.map((r) => r.nickname));
-      const toDelete = existingNicknames.filter((nickname) => !keep.has(nickname));
-
-      for (const nickname of toDelete) {
-        const { error: delErr } = await deleteOwnerMemberCosmetic(nickname);
-        if (delErr) {
-          console.warn("Failed to delete cosmetic row:", nickname, delErr.message);
-        }
-      }
-
-      if (rows.length === 0) return;
-
-      const { error } = await upsertOwnerMemberCosmetics(rows);
-
-      if (error) {
-        console.warn("Failed to sync owner member cosmetics", error);
-      } else {
-        lastSyncedMemberCosmeticsRef.current = snapshot;
-      }
-    }, OWNER_SYNC_DEBOUNCE_MS);
-
-    return () => {
-      if (ownerCosmeticsSyncTimeoutRef.current) {
-        clearTimeout(ownerCosmeticsSyncTimeoutRef.current);
-      }
-    };
-  }, [canPersistOwnerSettings, currentUser.nickname, memberCosmeticGrants]);
 
   // Audio refs and states for separate Radio & Music players
   const radioAudioRef = useRef<HTMLAudioElement | null>(null);
