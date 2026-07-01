@@ -7,6 +7,8 @@ import {
   sanitizeHexColor,
   getYoutubeId,
 } from "../src/lib/chatHelpers.ts";
+import { rolePromotionScopeLabel } from "../src/lib/memberRoleResolution.ts";
+import { normalizeMemberRole } from "../src/lib/rolePolicy.ts";
 
 test("normalizeAuthRole maps Arabic and English owner tokens", () => {
   assert.equal(normalizeAuthRole("المالك"), "owner");
@@ -35,4 +37,13 @@ test("getYoutubeId extracts video id", () => {
     "dQw4w9WgXcQ",
   );
   assert.equal(getYoutubeId("https://example.com"), null);
+});
+
+test("normalizeMemberRole maps admin token", () => {
+  assert.equal(normalizeMemberRole("admin"), "admin");
+  assert.equal(normalizeMemberRole("unknown"), "user");
+});
+
+test("rolePromotionScopeLabel describes global promotion", () => {
+  assert.match(rolePromotionScopeLabel("admin", "egypt"), /كل الغرف/);
 });

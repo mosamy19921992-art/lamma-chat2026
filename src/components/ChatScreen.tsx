@@ -212,6 +212,7 @@ import { useRoomNavigation } from "../hooks/useRoomNavigation";
 import { useStoreSubscription } from "../hooks/useStoreSubscription";
 import { useModeration } from "../hooks/useModeration";
 import { useOwnerMemberAccess } from "../hooks/useOwnerMemberAccess";
+import { useOwnerSettingsSync } from "../hooks/useOwnerSettingsSync";
 import { useIsMobileViewport } from "../hooks/useIsMobileViewport";
 import { useVisualViewportLayout } from "../hooks/useVisualViewportOffset";
 import { useDeepLinkParams } from "../hooks/useDeepLinkParams";
@@ -311,7 +312,6 @@ import {
 import { syncOwnerActivityLog } from "../services/chat/ownerActivityLogService";
 import {
   fetchOwnerDashboardBundle,
-  upsertOwnerSettingsRow,
   OWNER_SETTINGS_ROW_ID,
 } from "../services/chat/ownerDashboardService";
 import {
@@ -439,7 +439,6 @@ function hydrateUniversalStyleFromSettings(
   if (!config || config.version !== 1) return;
   persistAndApplyUniversalStyle(config);
 }
-const OWNER_SYNC_DEBOUNCE_MS = 350;
 
 function sanitizeRoomBgMap(value: unknown): Record<string, string> {
   if (!value || typeof value !== "object") return {};
@@ -2755,11 +2754,6 @@ export default function ChatScreen({
     return `${m}:${s}`;
   };
 
-  const ownerSettingsSyncReadyRef = useRef(false);
-  const ownerSettingsSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const ownerRlsAlertShownRef = useRef(false);
   const [applyingStyleSandboxId, setApplyingStyleSandboxId] = useState<
     string | null
   >(null);
@@ -2830,6 +2824,112 @@ export default function ChatScreen({
     [],
   );
 
+  const applyOwnerSettingsRowExtras = useCallback(
+    (settings: OwnerSettingsRow) => {
+      if (settings.ghost_mode !== undefined && isCurrentUserOwner) {
+        setIsGhostMode(Boolean(settings.ghost_mode));
+      }
+      if (settings.spy_mode !== undefined && isCurrentUserOwner) {
+        setIsSpyMode(Boolean(settings.spy_mode));
+      }
+      if (settings.banned_words) {
+        setBannedWords(
+          Array.isArray(settings.banned_words)
+            ? settings.banned_words.filter(
+                (word): word is string =>
+                  typeof word === "string" && word.trim().length > 0,
+              )
+            : [],
+        );
+      }
+      if (settings.room_dj_map !== undefined) {
+        const parsed = parseRoomDjMap(settings.room_dj_map);
+        roomDjMapRef.current = parsed;
+        setRoomDjMap(parsed);
+      }
+      if (settings.dj_library !== undefined) {
+        setDjLibrary(parseDjLibrary(settings.dj_library));
+      }
+      if (settings.bot_enabled !== undefined) {
+        setIsBotEnabled(Boolean(settings.bot_enabled));
+      }
+      if (settings.bot_rule_anti_links !== undefined) {
+        setBotRuleAntiLinks(Boolean(settings.bot_rule_anti_links));
+      }
+      if (settings.bot_rule_anti_spam !== undefined) {
+        setBotRuleAntiSpam(Boolean(settings.bot_rule_anti_spam));
+      }
+      if (settings.bot_rule_swear_filter !== undefined) {
+        setBotRuleSwearFilter(Boolean(settings.bot_rule_swear_filter));
+      }
+    },
+    [isCurrentUserOwner],
+  );
+
+  const buildOwnerSettingsPersistPayload = useCallback(
+    (): OwnerSettingsRow => ({
+      id: OWNER_SETTINGS_ROW_ID,
+      ghost_mode: isGhostMode,
+      spy_mode: isSpyMode,
+      maintenance_mode: isMaintenanceMode,
+      global_mute: isGlobalMute,
+      global_mic_mute: isGlobalMicMute,
+      vip_only_images: isOnlyVIPCanSendImages,
+      bot_silent: isBotSilent,
+      ads_enabled: isAdsEnabled,
+      greetings_enabled: isWelcomeToastEnabled,
+      invite_only_mode: isInviteOnlyMode,
+      banned_words: bannedWords,
+      owner_bg_image: ownerBgImage,
+      custom_logo_url: brandLogoUrl,
+      room_bg_map: roomBgMap,
+      design_presets: designPresets,
+      store_products: storeProducts,
+      dj_library: djLibrary,
+      bot_enabled: isBotEnabled,
+      bot_rule_anti_links: botRuleAntiLinks,
+      bot_rule_anti_spam: botRuleAntiSpam,
+      bot_rule_swear_filter: botRuleSwearFilter,
+    }),
+    [
+      bannedWords,
+      brandLogoUrl,
+      designPresets,
+      djLibrary,
+      isAdsEnabled,
+      isBotEnabled,
+      isBotSilent,
+      isGhostMode,
+      isGlobalMicMute,
+      isGlobalMute,
+      isInviteOnlyMode,
+      isMaintenanceMode,
+      isOnlyVIPCanSendImages,
+      isSpyMode,
+      isWelcomeToastEnabled,
+      ownerBgImage,
+      roomBgMap,
+      storeProducts,
+      botRuleAntiLinks,
+      botRuleAntiSpam,
+      botRuleSwearFilter,
+    ],
+  );
+
+  const {
+    resetSettingsSyncReady,
+    markSettingsSyncReady,
+    hydrateSettingsFromBundle,
+  } = useOwnerSettingsSync({
+    isManagementRole,
+    isOwnerRole,
+    isCurrentUserOwner,
+    canPersistOwnerSettings,
+    onApplyPublicSettings: syncPublicOwnerSettings,
+    onApplyOwnerSettingsRow: applyOwnerSettingsRowExtras,
+    buildPersistPayload: buildOwnerSettingsPersistPayload,
+  });
+
   useEffect(() => {
     if (!isOwnerRole) {
       setOwnerWriteAccessOk(null);
@@ -2845,98 +2945,14 @@ export default function ChatScreen({
   }, [isOwnerRole, currentUser.uid, currentUser.authProvider]);
 
   useEffect(() => {
-    if (!supabase) return;
-    let isCancelled = false;
-
-    if (isManagementRole) {
-      const unsubscribe = subscribeChannelWithRetry(() =>
-        supabase
-          .channel("owner_settings_sync")
-          .on(
-            "postgres_changes",
-            {
-              event: "UPDATE",
-              schema: "public",
-              table: "owner_settings",
-              filter: "id=eq.global",
-            },
-            (payload) => {
-              if (isCancelled) return;
-              const settings = payload.new as OwnerSettingsRow;
-              if (settings.ghost_mode !== undefined && isCurrentUserOwner) {
-                setIsGhostMode(!!settings.ghost_mode);
-              }
-              if (settings.spy_mode !== undefined && isCurrentUserOwner) {
-                setIsSpyMode(!!settings.spy_mode);
-              }
-              syncPublicOwnerSettings(settings);
-              if (settings.banned_words) {
-                setBannedWords(
-                  Array.isArray(settings.banned_words)
-                    ? settings.banned_words.filter(
-                        (word): word is string =>
-                          typeof word === "string" && word.trim().length > 0,
-                      )
-                    : [],
-                );
-              }
-              if (settings.dj_library !== undefined) {
-                setDjLibrary(parseDjLibrary(settings.dj_library));
-              }
-              if (settings.bot_enabled !== undefined) {
-                setIsBotEnabled(!!settings.bot_enabled);
-              }
-              if (settings.bot_rule_anti_links !== undefined) {
-                setBotRuleAntiLinks(!!settings.bot_rule_anti_links);
-              }
-              if (settings.bot_rule_anti_spam !== undefined) {
-                setBotRuleAntiSpam(!!settings.bot_rule_anti_spam);
-              }
-              if (settings.bot_rule_swear_filter !== undefined) {
-                setBotRuleSwearFilter(!!settings.bot_rule_swear_filter);
-              }
-            },
-          ),
-      );
-      return () => {
-        isCancelled = true;
-        unsubscribe();
-      };
-    }
-
-    const unsubscribe = subscribeChannelWithRetry(() =>
-      supabase
-        .channel("public_chat_settings_sync")
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "public_chat_settings",
-            filter: "id=eq.global",
-          },
-          (payload) => {
-            if (isCancelled) return;
-            const row = payload.new as { payload?: PublicChatSettingsPayload };
-            if (row.payload) syncPublicOwnerSettings(row.payload);
-          },
-        ),
-    );
-    return () => {
-      isCancelled = true;
-      unsubscribe();
-    };
-  }, [isCurrentUserOwner, isManagementRole, syncPublicOwnerSettings]);
-
-  useEffect(() => {
     let cancelled = false;
 
     const loadOwnerData = async () => {
-      ownerSettingsSyncReadyRef.current = false;
+      resetSettingsSyncReady();
       resetMemberAccessSyncReady();
 
       if (!supabase) {
-        ownerSettingsSyncReadyRef.current = true;
+        markSettingsSyncReady();
         markMemberAccessSyncReady();
         return;
       }
@@ -2950,55 +2966,7 @@ export default function ChatScreen({
 
         if (cancelled || !bundle) return;
 
-        if (bundle.ownerSettings) {
-          const settings = bundle.ownerSettings;
-          if (isCurrentUserOwner) {
-            setIsGhostMode(Boolean(settings.ghost_mode));
-            setIsSpyMode(Boolean(settings.spy_mode));
-          }
-          syncPublicOwnerSettings(settings);
-          setBannedWords(
-            Array.isArray(settings.banned_words)
-              ? settings.banned_words.filter(
-                  (word): word is string =>
-                    typeof word === "string" && word.trim().length > 0,
-                )
-              : [],
-          );
-          if (settings.room_dj_map !== undefined) {
-            const parsed = parseRoomDjMap(settings.room_dj_map);
-            roomDjMapRef.current = parsed;
-            setRoomDjMap(parsed);
-          }
-          if (settings.dj_library !== undefined) {
-            setDjLibrary(parseDjLibrary(settings.dj_library));
-          }
-          if (settings.bot_enabled !== undefined) {
-            setIsBotEnabled(Boolean(settings.bot_enabled));
-          }
-          if (settings.bot_rule_anti_links !== undefined) {
-            setBotRuleAntiLinks(Boolean(settings.bot_rule_anti_links));
-          }
-          if (settings.bot_rule_anti_spam !== undefined) {
-            setBotRuleAntiSpam(Boolean(settings.bot_rule_anti_spam));
-          }
-          if (settings.bot_rule_swear_filter !== undefined) {
-            setBotRuleSwearFilter(Boolean(settings.bot_rule_swear_filter));
-          }
-          if (
-            Array.isArray(settings.store_products) &&
-            settings.store_products.length > 0
-          ) {
-            setStoreProducts(
-              settings.store_products.filter(
-                (item): item is Record<string, unknown> =>
-                  Boolean(item) && typeof item === "object" && "id" in item,
-              ) as typeof storeProducts,
-            );
-          }
-        } else if (bundle.publicSettings) {
-          syncPublicOwnerSettings(bundle.publicSettings);
-        }
+        hydrateSettingsFromBundle(bundle);
 
         if (bundle.permissions.length > 0) {
           applyPermissionsFromRows(bundle.permissions);
@@ -3024,7 +2992,7 @@ export default function ChatScreen({
         console.warn("Owner state fallback to localStorage", error);
       } finally {
         if (!cancelled) {
-          ownerSettingsSyncReadyRef.current = true;
+          markSettingsSyncReady();
           markMemberAccessSyncReady();
         }
       }
@@ -3041,11 +3009,12 @@ export default function ChatScreen({
     currentUser.authProvider,
     currentUser.role,
     currentUser.uid,
+    hydrateSettingsFromBundle,
     isManagementRole,
-    isCurrentUserOwner,
     markMemberAccessSyncReady,
+    markSettingsSyncReady,
     resetMemberAccessSyncReady,
-    syncPublicOwnerSettings,
+    resetSettingsSyncReady,
   ]);
 
   const fetchNicknameRequests = async () => {
@@ -3157,93 +3126,6 @@ export default function ChatScreen({
       // ignore
     }
   }, [designPresets, designPresetsStorageKey]);
-
-  useEffect(() => {
-    if (
-      !ownerSettingsSyncReadyRef.current ||
-      !supabase ||
-      !canPersistOwnerSettings
-    ) {
-      return;
-    }
-
-    if (ownerSettingsSyncTimeoutRef.current) {
-      clearTimeout(ownerSettingsSyncTimeoutRef.current);
-    }
-
-    ownerSettingsSyncTimeoutRef.current = setTimeout(async () => {
-      const payload: OwnerSettingsRow = {
-        id: OWNER_SETTINGS_ROW_ID,
-        ghost_mode: isGhostMode,
-        spy_mode: isSpyMode,
-        maintenance_mode: isMaintenanceMode,
-        global_mute: isGlobalMute,
-        global_mic_mute: isGlobalMicMute,
-        vip_only_images: isOnlyVIPCanSendImages,
-        bot_silent: isBotSilent,
-        ads_enabled: isAdsEnabled,
-        greetings_enabled: isWelcomeToastEnabled,
-        invite_only_mode: isInviteOnlyMode,
-        banned_words: bannedWords,
-        owner_bg_image: ownerBgImage,
-        custom_logo_url: brandLogoUrl,
-        room_bg_map: roomBgMap,
-        design_presets: designPresets,
-        store_products: storeProducts,
-        dj_library: djLibrary,
-        bot_enabled: isBotEnabled,
-        bot_rule_anti_links: botRuleAntiLinks,
-        bot_rule_anti_spam: botRuleAntiSpam,
-        bot_rule_swear_filter: botRuleSwearFilter,
-      };
-
-      const { error } = await upsertOwnerSettingsRow(payload);
-
-      if (error) {
-        console.warn("Failed to sync owner settings", error);
-        if (error.code === "42501" && !ownerRlsAlertShownRef.current) {
-          ownerRlsAlertShownRef.current = true;
-          alert(
-            "⚠️ تنبيه: التعديلات لم تُحفظ على السيرفر!\n\n" +
-            "السبب: حساب المالك لا يملك صلاحية الكتابة في قاعدة البيانات (Supabase RLS).\n\n" +
-            "لإصلاح هذا:\n" +
-            "1. تأكد أن metadata الحساب يحتوي على role: \"owner\"\n" +
-            "2. تأكد من صلاحيات جدول owner_settings في Supabase Dashboard\n\n" +
-            "التغييرات ستعمل على جهازك فقط حتى يتم الإصلاح."
-          );
-        }
-      }
-    }, OWNER_SYNC_DEBOUNCE_MS);
-
-    return () => {
-      if (ownerSettingsSyncTimeoutRef.current) {
-        clearTimeout(ownerSettingsSyncTimeoutRef.current);
-      }
-    };
-  }, [
-    bannedWords,
-    brandLogoUrl,
-    canPersistOwnerSettings,
-    designPresets,
-    isAdsEnabled,
-    isBotEnabled,
-    isBotSilent,
-    isGhostMode,
-    isGlobalMicMute,
-    isGlobalMute,
-    isMaintenanceMode,
-    isOnlyVIPCanSendImages,
-    isSpyMode,
-    isWelcomeToastEnabled,
-    isInviteOnlyMode,
-    ownerBgImage,
-    roomBgMap,
-    djLibrary,
-    storeProducts,
-    botRuleAntiLinks,
-    botRuleAntiSpam,
-    botRuleSwearFilter,
-  ]);
 
   // Audio refs and states for separate Radio & Music players
   const radioAudioRef = useRef<HTMLAudioElement | null>(null);

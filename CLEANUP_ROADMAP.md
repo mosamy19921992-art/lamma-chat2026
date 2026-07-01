@@ -224,7 +224,18 @@ src/features/chat/
 
 **Hook الجديد:** `useOwnerMemberAccess`.
 
-**المتبقي (Phase 8+):** owner settings sync hook، layout slices إضافية.
+## ✅ إغلاق المرحلة 8 — Owner Settings Sync (2026-06-30)
+
+| البند | الحالة |
+|---|---|
+| Slice E — `useOwnerSettingsSync` (realtime + debounced persist + hydrate) | ✅ |
+| Unit tests — توسيع `rolePolicy` + `memberRoleResolution` | ✅ |
+| `verify:phase8` static owner-settings gate | ✅ |
+| `verify:all` (lint + build + phase4–8 + hardening + live + smoke + design) | ✅ |
+
+**Hook الجديد:** `useOwnerSettingsSync`.
+
+**المتبقي (Phase 9+):** nickname requests hook، layout slices إضافية، E2E tests.
 
 ## المرحلة 4: توحيد نظام الدخول ✅
 

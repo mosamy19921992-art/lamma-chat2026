@@ -18,8 +18,9 @@
     "verify:phase5": "node scripts/verify-phase5-layout.mjs",
     "verify:phase6": "node scripts/verify-phase6-moderation.mjs",
     "verify:phase7": "node scripts/verify-phase7-owner.mjs",
+    "verify:phase8": "node scripts/verify-phase8-owner-settings.mjs",
     "verify:unit": "npx tsx --test scripts/unit-lib.test.ts",
-    "verify:all": "npm run lint && npm run build && npm run verify:phase4 && npm run verify:phase5 && npm run verify:phase6 && npm run verify:phase7 && npm run verify:hardening && npm run verify:live && npm run verify:smoke && npm run verify:extended"
+    "verify:all": "npm run lint && npm run build && npm run verify:phase4 && npm run verify:phase5 && npm run verify:phase6 && npm run verify:phase7 && npm run verify:phase8 && npm run verify:hardening && npm run verify:live && npm run verify:smoke && npm run verify:extended"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",

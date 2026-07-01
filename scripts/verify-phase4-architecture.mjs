@@ -41,7 +41,6 @@ for (const rel of requiredServices) {
 
 const requiredImports = [
   "fetchOwnerDashboardBundle",
-  "upsertOwnerSettingsRow",
   "fetchNicknameChangeRequests",
   "persistRoomMediaMessage",
   "uploadPublicRoomMediaFile",
@@ -53,11 +52,25 @@ for (const token of requiredImports) {
 }
 
 const moderationImports = ["fetchBannedUserRows", "insertBannedUserRow"];
+const settingsImports = ["upsertOwnerSettingsRow"];
 for (const token of moderationImports) {
   if (chatScreen.includes(token) || moderationHook.includes(token)) {
     pass(`Moderation stack uses ${token}`);
   } else {
     fail(`Moderation stack uses ${token}`);
+  }
+}
+
+const settingsHookPath = join(root, "src/hooks/useOwnerSettingsSync.ts");
+const settingsHook = existsSync(settingsHookPath)
+  ? readFileSync(settingsHookPath, "utf8")
+  : "";
+
+for (const token of settingsImports) {
+  if (chatScreen.includes(token) || settingsHook.includes(token)) {
+    pass(`Owner settings stack uses ${token}`);
+  } else {
+    fail(`Owner settings stack uses ${token}`);
   }
 }
 
