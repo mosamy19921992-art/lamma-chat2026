@@ -41,7 +41,6 @@ for (const rel of requiredServices) {
 
 const requiredImports = [
   "fetchOwnerDashboardBundle",
-  "fetchNicknameChangeRequests",
   "persistRoomMediaMessage",
   "uploadPublicRoomMediaFile",
 ];
@@ -53,6 +52,7 @@ for (const token of requiredImports) {
 
 const moderationImports = ["fetchBannedUserRows", "insertBannedUserRow"];
 const settingsImports = ["upsertOwnerSettingsRow"];
+const nicknameImports = ["fetchNicknameChangeRequests"];
 for (const token of moderationImports) {
   if (chatScreen.includes(token) || moderationHook.includes(token)) {
     pass(`Moderation stack uses ${token}`);
@@ -71,6 +71,19 @@ for (const token of settingsImports) {
     pass(`Owner settings stack uses ${token}`);
   } else {
     fail(`Owner settings stack uses ${token}`);
+  }
+}
+
+const nicknameHookPath = join(root, "src/hooks/useNicknameChangeRequests.ts");
+const nicknameHook = existsSync(nicknameHookPath)
+  ? readFileSync(nicknameHookPath, "utf8")
+  : "";
+
+for (const token of nicknameImports) {
+  if (chatScreen.includes(token) || nicknameHook.includes(token)) {
+    pass(`Nickname stack uses ${token}`);
+  } else {
+    fail(`Nickname stack uses ${token}`);
   }
 }
 

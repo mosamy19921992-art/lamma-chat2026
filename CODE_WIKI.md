@@ -25,7 +25,8 @@
 - **Phase 6 (2026-06):** hook `useModeration`، lazy social feed في profile modal + `verify:phase6`
 - **Phase 7 (2026-06):** hook `useOwnerMemberAccess` + `verify:unit` + `verify:phase7`
 - **Phase 8 (2026-06):** hook `useOwnerSettingsSync` + `verify:phase8`
-- `npm run verify:all` = lint + build + phase4–8 + hardening + live + smoke + design
+- **Phase 9 (2026-06):** hook `useNicknameChangeRequests` + `verify:phase9`
+- `npm run verify:all` = lint + build + phase4–9 + hardening + live + smoke + design
 
 ## 1. نظرة عامة
 
@@ -565,9 +566,9 @@ npm run preview
 
 ## 13. نقاط الضعف
 
-- `ChatScreen.tsx` لا يزال كبيرًا (~13K سطر) — Phase 4–8 (2026-06): services + hooks (rooms, subscription, moderation, owner member/settings) + lazy social feed
-- منطق Supabase الأساسي في `src/services/` — بقايا orchestration (nickname، activity UI) داخل ChatScreen
-- اختبارات smoke/hardening/live/phase4–8 + unit lib عبر `npm run verify:all`
+- `ChatScreen.tsx` لا يزال كبيرًا (~13K سطر) — Phase 4–9 (2026-06): services + hooks (rooms, subscription, moderation, owner member/settings, nickname requests) + lazy social feed
+- منطق Supabase الأساسي في `src/services/` — بقايا orchestration (activity UI) داخل ChatScreen
+- اختبارات smoke/hardening/live/phase4–9 + unit lib عبر `npm run verify:all`
 - `public/login.html` legacy redirect فقط — لا ازدواجية دخول فعلية
 
 ## 14. توصيات تحسين

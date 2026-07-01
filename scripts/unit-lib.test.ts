@@ -9,6 +9,7 @@ import {
 } from "../src/lib/chatHelpers.ts";
 import { rolePromotionScopeLabel } from "../src/lib/memberRoleResolution.ts";
 import { normalizeMemberRole } from "../src/lib/rolePolicy.ts";
+import { nicknameRequestAppliedStorageKey } from "../src/lib/nicknameRequestStorage.ts";
 
 test("normalizeAuthRole maps Arabic and English owner tokens", () => {
   assert.equal(normalizeAuthRole("المالك"), "owner");
@@ -46,4 +47,11 @@ test("normalizeMemberRole maps admin token", () => {
 
 test("rolePromotionScopeLabel describes global promotion", () => {
   assert.match(rolePromotionScopeLabel("admin", "egypt"), /كل الغرف/);
+});
+
+test("nicknameRequestAppliedStorageKey is stable per user and request", () => {
+  assert.equal(
+    nicknameRequestAppliedStorageKey("uid-1", "req-9"),
+    "lamma_nickname_request_applied_uid-1_req-9",
+  );
 });

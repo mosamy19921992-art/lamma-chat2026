@@ -1,4 +1,7 @@
 import { supabase, type NicknameChangeRequestRow } from "../../lib/supabase";
+import { nicknameRequestAppliedStorageKey } from "../../lib/nicknameRequestStorage";
+
+export { nicknameRequestAppliedStorageKey };
 
 export async function fetchNicknameChangeRequests(options: {
   userId: string;

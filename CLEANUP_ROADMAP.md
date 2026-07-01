@@ -235,7 +235,18 @@ src/features/chat/
 
 **Hook الجديد:** `useOwnerSettingsSync`.
 
-**المتبقي (Phase 9+):** nickname requests hook، layout slices إضافية، E2E tests.
+## ✅ إغلاق المرحلة 9 — Nickname Change Requests (2026-06-30)
+
+| البند | الحالة |
+|---|---|
+| Slice F — `useNicknameChangeRequests` (fetch + submit + process + realtime + apply approved) | ✅ |
+| Unit test — `nicknameRequestAppliedStorageKey` | ✅ |
+| `verify:phase9` static nickname gate | ✅ |
+| `verify:all` (lint + build + phase4–9 + hardening + live + smoke + design) | ✅ |
+
+**Hook الجديد:** `useNicknameChangeRequests`.
+
+**المتبقي (Phase 10+):** layout slices إضافية، E2E tests.
 
 ## المرحلة 4: توحيد نظام الدخول ✅
 

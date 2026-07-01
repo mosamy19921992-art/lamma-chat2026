@@ -121,7 +121,6 @@ import {
 } from "../services/profile/profileAvatarService";
 import {
   supabase,
-  type NicknameChangeRequestRow,
   SupabaseMessage,
   type OwnerActivityLogRow,
   type OwnerSettingsRow,
@@ -213,6 +212,7 @@ import { useStoreSubscription } from "../hooks/useStoreSubscription";
 import { useModeration } from "../hooks/useModeration";
 import { useOwnerMemberAccess } from "../hooks/useOwnerMemberAccess";
 import { useOwnerSettingsSync } from "../hooks/useOwnerSettingsSync";
+import { useNicknameChangeRequests } from "../hooks/useNicknameChangeRequests";
 import { useIsMobileViewport } from "../hooks/useIsMobileViewport";
 import { useVisualViewportLayout } from "../hooks/useVisualViewportOffset";
 import { useDeepLinkParams } from "../hooks/useDeepLinkParams";
@@ -316,14 +316,8 @@ import {
 } from "../services/chat/ownerDashboardService";
 import {
   fetchTempEntryTopicMetadata,
-  updateAuthNicknameMetadata,
   updateTempEntryTopicMetadata,
 } from "../services/auth/userProfileMetadataService";
-import {
-  fetchNicknameChangeRequests,
-  processNicknameChangeRequest,
-  submitNicknameChangeRequest,
-} from "../services/profile/nicknameChangeService";
 import {
   uploadDesignAssetFile,
   uploadPublicRoomMediaFile,
@@ -1429,14 +1423,6 @@ export default function ChatScreen({
     null,
   );
   const profileAvatarInputRef = useRef<HTMLInputElement>(null);
-  const [nicknameRequests, setNicknameRequests] = useState<
-    NicknameChangeRequestRow[]
-  >([]);
-  const [nicknameRequestInput, setNicknameRequestInput] = useState("");
-  const [nicknameRequestLoading, setNicknameRequestLoading] = useState(false);
-  const [nicknameRequestStatusText, setNicknameRequestStatusText] = useState<
-    string | null
-  >(null);
   const [adminTab, setAdminTab] = useState<
     "actions" | "logs" | "bans" | "reports" | "store_mgmt"
   >("actions");
@@ -2930,6 +2916,32 @@ export default function ChatScreen({
     buildPersistPayload: buildOwnerSettingsPersistPayload,
   });
 
+  const handleSessionNicknameUpdate = useCallback((nickname: string) => {
+    setMyActiveSession((prev) => ({
+      ...prev,
+      nickname,
+    }));
+  }, []);
+
+  const {
+    nicknameRequests,
+    nicknameRequestInput,
+    setNicknameRequestInput,
+    nicknameRequestLoading,
+    nicknameRequestStatusText,
+    handleSubmitNicknameChangeRequest,
+    handleProcessNicknameRequest,
+  } = useNicknameChangeRequests({
+    userId: currentUser.uid,
+    userEmail: currentUser.email,
+    authProvider: currentUser.authProvider,
+    currentNickname: currentUser.nickname,
+    sessionNickname: myActiveSession.nickname,
+    isOwnerRole,
+    operatorNickname: currentUser.nickname,
+    onSessionNicknameUpdate: handleSessionNicknameUpdate,
+  });
+
   useEffect(() => {
     if (!isOwnerRole) {
       setOwnerWriteAccessOk(null);
@@ -3015,84 +3027,6 @@ export default function ChatScreen({
     markSettingsSyncReady,
     resetMemberAccessSyncReady,
     resetSettingsSyncReady,
-  ]);
-
-  const fetchNicknameRequests = async () => {
-    if (
-      !supabase ||
-      currentUser.authProvider !== "supabase" ||
-      !currentUser.uid
-    ) {
-      setNicknameRequests([]);
-      return;
-    }
-
-    const data = await fetchNicknameChangeRequests({
-      userId: currentUser.uid,
-      isOwner: isOwnerRole,
-    });
-    setNicknameRequests(data);
-  };
-
-  useEffect(() => {
-    void fetchNicknameRequests();
-  }, [currentUser.authProvider, currentUser.uid, isOwnerRole]);
-
-  useEffect(() => {
-    if (
-      !supabase ||
-      currentUser.authProvider !== "supabase" ||
-      !currentUser.uid
-    ) {
-      return;
-    }
-
-    const approvedRequest = nicknameRequests.find(
-      (request) =>
-        request.user_id === currentUser.uid && request.status === "approved",
-    );
-
-    if (!approvedRequest?.id) return;
-
-    const appliedKey = `lamma_nickname_request_applied_${currentUser.uid}_${approvedRequest.id}`;
-    if (sessionStorage.getItem(appliedKey)) return;
-
-    const requestedNickname = approvedRequest.requested_nickname.trim();
-    if (!requestedNickname) return;
-
-    const applyApprovedNickname = async () => {
-      if (
-        requestedNickname.toLowerCase() ===
-        (myActiveSession.nickname || currentUser.nickname).toLowerCase()
-      ) {
-        sessionStorage.setItem(appliedKey, "1");
-        return;
-      }
-
-      const { error } = await updateAuthNicknameMetadata(requestedNickname);
-
-      if (error) {
-        console.warn("Failed to apply approved nickname request:", error.message);
-        return;
-      }
-
-      sessionStorage.setItem(appliedKey, "1");
-      setMyActiveSession((prev) => ({
-        ...prev,
-        nickname: requestedNickname,
-      }));
-      setNicknameRequestStatusText(
-        `تم اعتماد طلب تغيير الاسم إلى ${requestedNickname} بنجاح.`,
-      );
-    };
-
-    void applyApprovedNickname();
-  }, [
-    currentUser.authProvider,
-    currentUser.nickname,
-    currentUser.uid,
-    myActiveSession.nickname,
-    nicknameRequests,
   ]);
 
   useEffect(() => {
@@ -4360,62 +4294,6 @@ export default function ChatScreen({
     }, 0);
   };
 
-  const handleSubmitNicknameChangeRequest = async () => {
-    const requestedNickname = nicknameRequestInput.trim();
-
-    if (!requestedNickname) {
-      alert("اكتب الاسم الجديد المطلوب أولاً.");
-      return;
-    }
-
-    if (
-      requestedNickname.toLowerCase() ===
-      (myActiveSession.nickname || currentUser.nickname).toLowerCase()
-    ) {
-      alert("الاسم الجديد هو نفسه الاسم الحالي.");
-      return;
-    }
-
-    if (!supabase || currentUser.authProvider !== "supabase" || !currentUser.uid) {
-      alert("هذه الميزة متاحة للحسابات المسجلة فقط.");
-      return;
-    }
-
-    const hasPendingRequest = nicknameRequests.some(
-      (request) =>
-        request.user_id === currentUser.uid && request.status === "pending",
-    );
-
-    if (hasPendingRequest) {
-      alert("لديك طلب تغيير اسم قيد المراجعة بالفعل.");
-      return;
-    }
-
-    setNicknameRequestLoading(true);
-    setNicknameRequestStatusText(null);
-
-    const { error } = await submitNicknameChangeRequest({
-      userId: currentUser.uid,
-      userEmail: currentUser.email ?? null,
-      currentNickname: myActiveSession.nickname || currentUser.nickname,
-      requestedNickname,
-    });
-
-    setNicknameRequestLoading(false);
-
-    if (error) {
-      alert("تعذر إرسال طلب تغيير الاسم حالياً.");
-      console.warn("Failed to submit nickname request:", error.message);
-      return;
-    }
-
-    setNicknameRequestInput("");
-    setNicknameRequestStatusText(
-      "تم إرسال طلب تغيير الاسم للمالك وسيظهر له للمراجعة.",
-    );
-    await fetchNicknameRequests();
-  };
-
   const handleSaveTempEntryTopic = async () => {
     const rawTopic = tempEntryTopicInput.trim();
     if (rawTopic.length > 60) {
@@ -4470,30 +4348,6 @@ export default function ChatScreen({
           : "تم حفظ النص، لكن ظهوره معطل حالياً حتى تفعله."
         : "تم مسح التوبيك المؤقت من حسابك.",
     );
-  };
-
-  const handleProcessNicknameRequest = async (
-    requestId: string,
-    status: "approved" | "rejected",
-  ) => {
-    if (!supabase || !isOwnerRole) return;
-
-    setNicknameRequestLoading(true);
-    const { error } = await processNicknameChangeRequest({
-      requestId,
-      status,
-      processedBy: currentUser.nickname,
-    });
-
-    setNicknameRequestLoading(false);
-
-    if (error) {
-      alert("تعذر تحديث حالة الطلب حالياً.");
-      console.warn("Failed to process nickname request:", error.message);
-      return;
-    }
-
-    await fetchNicknameRequests();
   };
 
   // States to keep interface simple and un-cluttered
