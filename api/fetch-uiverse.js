@@ -19,6 +19,18 @@ function validateRootDomain(url, domain) {
   }
 }
 
+function validateRootDomain(url, domain) {
+  if (!url || !domain) {
+    return false;
+  }
+  try {
+    const host = new URL(url).host;
+    return host === domain || host.endsWith('.' + domain);
+  } catch(_) {
+    return false;
+  }
+}
+
 const UIVERSE_HOST = "uiverse.io";
 const MAX_BYTES = 512_000;
 const GALAXY_BASE =
@@ -82,7 +94,7 @@ function isAllowedUrl(raw) {
 function isUiverseUrl(raw) {
   try {
     const u = new URL(raw);
-    return u.hostname.replace(/^www\./, "").endsWith(UIVERSE_HOST);
+    return validateRootDomain(u.hostname.replace(/^www\./, ""), "uiverse.io");
   } catch {
     return false;
   }
